@@ -43,16 +43,21 @@ const QZ1 := -11.4
 const WALLX := -2.85   # the face of the west wall
 const WALLH := 2.3
 const DOORZ := -14.0   # where the door is, in the water; on the wall itself there is plain stone
-const SHEET_EX := 0.15   # the east edge of the cloth that lies over the pool
-const SHEET_L := 2.6
+const SHEET_C := Vector3(-0.75, 0.035, -13.2)   # the middle of the cloth that lies over the pool
+const SHOW_CAPSTAN := false   # the old capstan of this court is out of the way: the room is about the cloth and the wall
 var winch_a: Node3D
 var glass2: ShaderMaterial
 var door_a: Node3D        # the leaf of plain stone in the west wall, and the door the water shows in its place
 var door_m: Node3D
 var seam_a: Node3D        # the joints of the leaf: they show only once the door has been seen in the water
 var door_seen := false    # the wall can be pushed only after the cloth is off and the door has been seen
-var sheet: Node3D
-var sheet_mats: Array = []
+var sheet: MeshInstance3D   # the cloth: a simulated sheet, played back frame by frame
+var sheet_mesh: ArrayMesh
+var sheet_data: PackedFloat32Array
+var sheet_meta: Dictionary = {}
+var sheet_uv: PackedVector2Array
+var sheet_ix: PackedInt32Array
+var sheet_f := 1.0          # where the cloth is in its simulation, in frames
 var sheet_held := false
 var her_mats: Array = []
 var posing := false
@@ -211,30 +216,21 @@ void fragment(){
 	float sh = 0.8 + 0.2 * clamp(dot(n, normalize(vec3(-0.25, 0.7, 0.66))) * 0.5 + 0.5, 0.0, 1.0);
 	ALBEDO = mix(ca, cb, UV.y) * sh;
 }"""
-## a sheet of cloth lying on the ground that can be dragged by one edge: the edge goes with the hand that holds it,
-## and the rest is drawn after it and gathers into folds
+## the cloth over the pool: its folds come from a simulation, so the shader only has to light them
 const SH_SHEET := """shader_type spatial;
 render_mode unshaded, cull_disabled;
 uniform sampler2D albedo_tex : source_color, filter_linear_mipmap;
-uniform vec3 tint = vec3(1.0); uniform float ex = 0.0; uniform float len = 2.6;
-uniform vec3 grab = vec3(0.0); uniform float pull = 0.0; uniform float lift = 0.0;
-varying vec3 wn; varying float fold;
-void vertex(){
-	vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	float u = clamp((ex - w.x) / len, 0.0, 1.0);          // 0 at the edge she holds, 1 at the far edge
-	float wave = 0.5 + 0.5 * sin(u * 44.0 + w.z * 2.3 + sin(w.z * 5.0) * 0.8);
-	fold = pull * wave;
-	w.x = mix(w.x, grab.x - u * len * mix(1.0, 0.3, pull), step(0.0001, pull + lift));
-	w.y = w.y * (1.0 + pull * 0.6) + pull * (0.03 + 0.09 * wave);
-	float dz = (w.z - grab.z) / 0.95;   // (squared by hand: pow() of a negative number is not a number, and the cloth vanished)
-	w.y += (1.0 - smoothstep(0.0, 0.4, u)) * lift * (grab.y - 0.05) * exp(-dz * dz);
-	VERTEX = (inverse(MODEL_MATRIX) * vec4(w, 1.0)).xyz;
-	wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
-}
+uniform vec3 base : source_color = vec3(0.8, 0.36, 0.25); uniform float mean_l = 0.2;
+varying vec3 wn;
+void vertex(){ wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz); }
 void fragment(){
 	vec3 n = normalize(wn); if (!FRONT_FACING) n = -n;
-	float sh = 0.74 + 0.26 * clamp(dot(n, normalize(vec3(-0.25, 0.7, 0.66))) * 0.5 + 0.5, 0.0, 1.0);
-	ALBEDO = texture(albedo_tex, UV).rgb * tint * sh * mix(1.0, 0.82 + 0.3 * fold, clamp(pull * 2.0, 0.0, 1.0));
+	float ndl = clamp(dot(n, normalize(vec3(-0.5, 0.52, 0.6))), 0.0, 1.0);    // a low light, so that it rakes the folds
+	float sh = 0.5 + 0.62 * ndl;
+	sh *= mix(0.74, 1.0, smoothstep(0.2, 0.9, abs(n.y)));   // the steep sides of a fold lie in its own shade
+	// the colour is her own terracotta; the painted cloth gives only its light and dark, the creases it was made with
+	float d = clamp(dot(texture(albedo_tex, UV).rgb, vec3(0.3333)) / mean_l, 0.5, 1.45);
+	ALBEDO = base * mix(1.0, d, 0.85) * sh;
 }"""
 ## the reflection, drawn as a soft dark shape lying on the water: every vertex is mirrored in the
 ## water plane and slid along the view direction until it meets the surface
@@ -1269,7 +1265,7 @@ func _shots() -> void:
 		{"n": "18-mirror-pool", "p": Vector3(-1.4, 0, -1.14), "y": 0.0, "c": Vector3(-0.8, 0.1, -0.1), "s": 5.2},
 		{"n": "19-mirror-pool-wide", "p": Vector3(-1.4, 0, -1.14), "y": 0.0, "c": Vector3(-1.4, 0.3, 0.7), "s": 13.5},
 		{"n": "21-sea-check", "p": Vector3(-4.9, 0, 0.4), "y": PI, "c": Vector3(-4.9, 1.9, 0.4), "s": 6.2},
-		{"n": "22-covered-pool", "p": Vector3(0.7, 0, -13.2), "y": -PI * 0.5, "c": Vector3(-1.0, 0.4, -13.0), "s": 7.5},
+		{"n": "22-covered-pool", "p": Vector3(1.37, 0, -13.2), "y": -PI * 0.5, "c": Vector3(-1.0, 0.4, -13.0), "s": 7.5},
 		{"n": "23-door-in-water", "p": Vector3(0.25, 0, -12.4), "y": -PI * 0.6, "c": Vector3(-1.2, 0.4, -13.0), "s": 6.2, "nosheet": true},
 		{"n": "13-statues", "p": Vector3(-17.0, 0, -22.0), "y": 0.4, "c": Vector3(-16.4, 0.8, -24.4), "s": 8.0},
 	]
@@ -2296,6 +2292,7 @@ func _pool_c() -> void:
 	cornice(CX0, z0, x, z1, h); dentils(CX0, z0, x, z1, h); crenels(Vector3(x - 0.09, h + 0.06, z0 + 0.1), Vector3(x - 0.09, h + 0.06, z1 - 0.1), 0.335)
 	door_a = Node3D.new(); add_child(door_a)
 	blk(Vector3(x - 0.16, 0, da), Vector3(x, dh, db), "stone", door_a)
+	blk(Vector3(x - 0.02, 0, da), Vector3(x + 0.03, 0.1, db), "shade", door_a)   # the skirting runs on unbroken: nothing gives the leaf away
 	seam_a = Node3D.new(); seam_a.position = Vector3(x + 0.003, 0, DOORZ); seam_a.scale = Vector3(1, 0.001, 1); seam_a.visible = false; door_a.add_child(seam_a)
 	for sz in [-0.45, 0.45]: blk(Vector3(0, 0, sz - 0.014), Vector3(0.004, dh, sz + 0.014), "dark", seam_a)
 	blk(Vector3(0, dh - 0.028, -0.45), Vector3(0.004, dh, 0.45), "dark", seam_a)
@@ -2327,21 +2324,71 @@ func _pool_c() -> void:
 	glass2.set_shader_parameter("blur_px", 1.9); glass2.set_shader_parameter("wave", 0.7)   # a little clearer than the first pool: here there is something to read
 	prim(wq, Vector3((QX0 + QX1) * 0.5, 0.012, (QZ0 + QZ1) * 0.5), glass2).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# the cloth over the pool
-	var cf := "res://props/cloth.glb"
-	if FileAccess.file_exists(cf) and OS.get_environment("NOSHEET") != "1":
-		var st := GLTFState.new(); var doc := GLTFDocument.new()
-		doc.append_from_file(ProjectSettings.globalize_path(cf), st)
-		sheet = doc.generate_scene(st) as Node3D
-		sheet.position = Vector3(SHEET_EX - SHEET_L * 0.5, 0.075, (QZ0 + QZ1) * 0.5); sheet.scale = Vector3(SHEET_L / 0.782, 0.62, (QZ1 - QZ0 + 0.6) / 1.0); add_child(sheet)
-		for m in sheet.find_children("*", "MeshInstance3D", true, false):
-			var mi := m as MeshInstance3D
-			for si in mi.mesh.get_surface_count():
-				var om := mi.mesh.surface_get_material(si)
-				var sm := ShaderMaterial.new(); sm.shader = shaders["sheet"]
-				if om is BaseMaterial3D and (om as BaseMaterial3D).albedo_texture != null: sm.set_shader_parameter("albedo_tex", (om as BaseMaterial3D).albedo_texture)
-				sm.set_shader_parameter("ex", SHEET_EX); sm.set_shader_parameter("len", SHEET_L); sm.set_shader_parameter("tint", Vector3(1.16, 1.0, 0.92))
-				mi.set_surface_override_material(si, sm); sheet_mats.append(sm)
-			mi.extra_cull_margin = 3.0
+	var sj := "res://props/sheet.json"
+	if FileAccess.file_exists(sj) and OS.get_environment("NOSHEET") != "1":
+		sheet_meta = JSON.parse_string(FileAccess.get_file_as_string(sj))
+		sheet_data = FileAccess.get_file_as_bytes("res://props/sheet.bin").to_float32_array()
+		var nx := int(sheet_meta.nx); var ny := int(sheet_meta.ny)
+		for j in ny + 1:
+			for i in nx + 1: sheet_uv.append(Vector2(float(i) / nx, 1.0 - float(j) / ny))
+		for j in ny:
+			for i in nx:
+				var k := j * (nx + 1) + i
+				sheet_ix.append_array(PackedInt32Array([k, k + nx + 1, k + 1, k + 1, k + nx + 1, k + nx + 2]))
+		var im := Image.load_from_file(ProjectSettings.globalize_path("res://props/sheet.png"))
+		var small: Image = im.duplicate(); small.resize(1, 1, Image.INTERPOLATE_LANCZOS); var mean := small.get_pixel(0, 0)   # tinted so that on the whole it is the terracotta of her own cloth
+		im.generate_mipmaps()
+		var sm := ShaderMaterial.new(); sm.shader = shaders["sheet"]; sm.set_shader_parameter("albedo_tex", ImageTexture.create_from_image(im))
+		var ml := mean.srgb_to_linear()   # (the texture is read as linear light, so its mean is taken there)
+		sm.set_shader_parameter("mean_l", maxf((ml.r + ml.g + ml.b) / 3.0, 0.01)); sm.set_shader_parameter("base", Color(0.78, 0.35, 0.25))
+		sheet_mesh = ArrayMesh.new(); sheet = MeshInstance3D.new(); sheet.mesh = sheet_mesh; sheet.material_override = sm; sheet.extra_cull_margin = 6.0; add_child(sheet)
+		sheet_f = float(OS.get_environment("SHEET_F")) if OS.get_environment("SHEET_F") != "" else 1.0
+		sheet_set(sheet_f)
+
+## the cloth as it lies at frame f of its simulation (the stored frames are every second one; between them it is blended)
+func sheet_set(f: float) -> void:
+	if sheet_mesh == null: return
+	var nx := int(sheet_meta.nx); var ny := int(sheet_meta.ny); var nv := (nx + 1) * (ny + 1); var step := float(sheet_meta.step)
+	var q := clampf((f - 1.0) / step, 0.0, float(sheet_meta.frames) - 1.0); var a := int(q); var b := mini(a + 1, int(sheet_meta.frames) - 1); var u := q - a
+	var vs := PackedVector3Array(); vs.resize(nv); var o0 := a * nv * 3; var o1 := b * nv * 3
+	for k in nv:   # Blender's x east, y north, z up -> x, -z, y here
+		var k3 := k * 3
+		vs[k] = Vector3(lerpf(sheet_data[o0 + k3], sheet_data[o1 + k3], u) + SHEET_C.x, lerpf(sheet_data[o0 + k3 + 2], sheet_data[o1 + k3 + 2], u) + SHEET_C.y, -lerpf(sheet_data[o0 + k3 + 1], sheet_data[o1 + k3 + 1], u) + SHEET_C.z)
+	var ns := PackedVector3Array(); ns.resize(nv)
+	for j in ny + 1:
+		for i in nx + 1:
+			var k := j * (nx + 1) + i
+			var dx := vs[k + (1 if i < nx else 0)] - vs[k - (1 if i > 0 else 0)]
+			var dy := vs[k + ((nx + 1) if j < ny else 0)] - vs[k - ((nx + 1) if j > 0 else 0)]
+			ns[k] = dy.cross(dx).normalized()
+	var arr := []; arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = vs; arr[Mesh.ARRAY_NORMAL] = ns; arr[Mesh.ARRAY_TEX_UV] = sheet_uv; arr[Mesh.ARRAY_INDEX] = sheet_ix
+	sheet_mesh.clear_surfaces(); sheet_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+
+## where one vertex of the cloth is at frame f
+func sheet_vpos(v: int, f: float) -> Vector3:
+	var nv := (int(sheet_meta.nx) + 1) * (int(sheet_meta.ny) + 1); var step := float(sheet_meta.step)
+	var q := clampf((f - 1.0) / step, 0.0, float(sheet_meta.frames) - 1.0); var a := int(q); var b := mini(a + 1, int(sheet_meta.frames) - 1); var u := q - a
+	var o0 := (a * nv + v) * 3; var o1 := (b * nv + v) * 3
+	return Vector3(lerpf(sheet_data[o0], sheet_data[o1], u) + SHEET_C.x, lerpf(sheet_data[o0 + 2], sheet_data[o1 + 2], u) + SHEET_C.y, -lerpf(sheet_data[o0 + 1], sheet_data[o1 + 1], u) + SHEET_C.z)
+
+## her hands while she gathers the cloth. Each patch of its middle line is taken by one hand in turn (right, left,
+## right ...): the hand reaches for it as it comes, goes with it to her waist, and lets it fall on the heap
+func sheet_hands(dt: float) -> void:
+	var wl := 0.0; var wr := 0.0; var hi := 0.0
+	var grabs: Array = sheet_meta.grabs
+	for k in grabs.size():
+		var g: Dictionary = grabs[k]; var arr := float(g.arr); var drop := float(g.drop)
+		var w := clampf((sheet_f - (arr - 11.0)) / 9.0, 0.0, 1.0) * clampf((drop + 5.0 - sheet_f) / 5.0, 0.0, 1.0)
+		if w <= 0.0: continue
+		var p := sheet_vpos(int(g.v), sheet_f) + Vector3(0.0, 0.03, 0.0)
+		if k % 2 == 0:
+			if w > wr: wr = w; tgtR = p + Vector3(0, 0, -0.05)
+		else:
+			if w > wl: wl = w; tgtL = p + Vector3(0, 0, 0.05)
+		hi = maxf(hi, w * clampf(1.0 - (p.y - 0.45) / 0.5, 0.0, 1.0))
+	a_wR = lerpf(a_wR, wr, 1.0 - exp(-14.0 * dt)); a_wL = lerpf(a_wL, wl, 1.0 - exp(-14.0 * dt))
+	a_lean = lerpf(a_lean, 0.05 + 0.2 * hi, 1.0 - exp(-7.0 * dt))   # she bends to the cloth and straightens as she draws it up
 
 func _world() -> void:
 	# ---- A. the arrival court (10 x 9.5 m, open floor all round the mirror pool)
@@ -2388,11 +2435,11 @@ func _world() -> void:
 	parapet(Vector3(-3.3, 0, -11.6), Vector3(-3.3, 0, -10.1)); parapet(Vector3(3.4, 0, -16.0), Vector3(3.4, 0, -10.1))
 	parapet(Vector3(-3.3, 0, -10.1), Vector3(-0.85, 0, -10.1)); parapet(Vector3(0.85, 0, -10.1), Vector3(3.4, 0, -10.1))
 	lantern(Vector3(3.15, 0, -10.35), 3, -1.0); cypress(Vector3(-3.0, 0, -10.5), 2.1); urn(Vector3(2.2, 0, -15.9), 0.9); urn(Vector3(2.45, 0, -15.75), 0.65, "rose")
-	cyl(CAP, 0.3, 0.26, 0.05, pal("shade"), 32); cyl(CAP + Vector3(0, 0.05, 0), 0.065, 0.05, 0.95, pal("stone"), 16)
-	cap_rot = Node3D.new(); cap_rot.name = "Cap"; cap_rot.position = CAP + Vector3(0, 0.98, 0); cap_rot.rotation.y = -0.42; add_child(cap_rot)
+	cyl(CAP, 0.3, 0.26, 0.05, pal("shade"), 32).visible = SHOW_CAPSTAN; cyl(CAP + Vector3(0, 0.05, 0), 0.065, 0.05, 0.95, pal("stone"), 16).visible = SHOW_CAPSTAN
+	cap_rot = Node3D.new(); cap_rot.name = "Cap"; cap_rot.position = CAP + Vector3(0, 0.98, 0); cap_rot.rotation.y = -0.42; cap_rot.visible = SHOW_CAPSTAN; add_child(cap_rot)
 	blk(Vector3(-0.022, -0.022, -0.2), Vector3(0.022, 0.022, 0.84), "dark", cap_rot)
 	ball(Vector3(0, 0, 0.86), 0.045, pal("crim"), cap_rot); ball(Vector3(0, 0.06, 0), 0.045, pal("crim"), cap_rot)
-	decal(CAP + Vector3(0.12, 0, -0.12), 0.9, 0.7, 0.22, 0.78)
+	if SHOW_CAPSTAN: decal(CAP + Vector3(0.12, 0, -0.12), 0.9, 0.7, 0.22, 0.78)
 	_pool_c()
 	# ---- the turning bridge and the long walk west
 	slab(-4.2, -13.6, -3.4, -12.4, 0.0); slab(-4.2, -14.6, -3.4, -13.6, 0.0)
@@ -2760,10 +2807,7 @@ func _process(dt: float) -> void:
 		bridge.rotation.y = PI * 0.5 * (1.0 - smoothstep(0.0, 1.0, clampf(-ph / (PI * 0.5), 0.0, 1.0)))
 		var dir := Vector3(sin(th), 0, cos(th))
 		tgtR = CAP + Vector3(0, 0.98, 0) + dir * 0.5; tgtL = CAP + Vector3(0, 0.98, 0) + dir * 0.74
-	if sheet_held:   # she drags the cloth by its edge: the edge follows her hand and the rest gathers behind it
-		var gp := Vector3(maxf(pos.x - 0.34, SHEET_EX), 0.74, pos.z)
-		for sm2 in sheet_mats: (sm2 as ShaderMaterial).set_shader_parameter("grab", gp); (sm2 as ShaderMaterial).set_shader_parameter("pull", clampf((gp.x - SHEET_EX) / 0.95, 0.0, 1.0))
-		tgtR = gp + Vector3(0.03, 0.03, 0.0)
+	if sheet_held: sheet_hands(dt)   # she hauls the cloth in hand over hand: each hand goes with the patch it holds
 	var lv := Vector2(vel.x * cos(yaw) - vel.z * sin(yaw), vel.x * sin(yaw) + vel.z * cos(yaw))
 	sway_v += ((-lv * 0.17 + Vector2(sin(t * 0.6), cos(t * 0.45)) * 0.02 - sway) * 16.0 - sway_v * 3.4) * dt
 	sway += sway_v * dt
@@ -3020,45 +3064,56 @@ func _solve1() -> void:
 	get_tree().quit()
 
 ## the covered mirror, solved. No captions: she finds the court closed, draws the cloth off the pool, sees in the
-## water a door that the wall does not have, goes to that place on the wall and pushes
+## water a door that the wall does not have, goes to that place on the wall and lays her hands on it. Only then do the
+## joints of the door show in the stone, and it gives way
 func _solve2() -> void:
 	started = true; title_box.hide(); hint.hide()
-	pos = Vector3(0.3, 0, -10.3); yaw = PI; cam_t = pos; cam.size = 6.8
+	var grabs: Array = sheet_meta.grabs
+	var stand := Vector3(SHEET_C.x + float(sheet_meta.xr) + 0.4, 0, SHEET_C.z)
+	var done_f := float((grabs[grabs.size() - 1] as Dictionary).drop) + 8.0; var FE := float(sheet_meta.end)
+	pos = Vector3(0.4, 0, -10.3); yaw = PI; cam_t = pos; cam.size = 6.8
 	await wait(1.0)
-	cam_focus = Vector3(-0.5, 0.2, -12.5); cam_focus_on = true
-	await go([Vector3(0.75, 0, -12.2), Vector3(SHEET_EX + 0.55, 0, -13.2)])
-	await face(Vector3(-1.0, 0, -13.2))
+	cam_focus = Vector3(-0.2, 0.2, -12.6); cam_focus_on = true
+	await go([Vector3(1.5, 0, -11.6), stand])
+	await face(Vector3(-1.0, 0, stand.z))
 	await wait(0.6)
-	# she takes the edge of the cloth and draws it off the water
-	sheet_held = true
-	var g := tw(); g.tween_property(self, "a_wR", 1.0, 0.5); g.tween_property(self, "a_lean", 0.16, 0.5)
-	for sm in sheet_mats: g.tween_method(func(v: float): (sm as ShaderMaterial).set_shader_parameter("lift", v), 0.0, 1.0, 0.7)
-	await g.finished
-	await wait(0.2)
-	create_tween().tween_property(self, "a_lean", 0.05, 0.5)
-	await go([Vector3(1.45, 0, -13.2)], 0.55)
-	await wait(0.3)
+	# she gathers the cloth in, hand over hand, and it heaps at her feet
+	create_tween().tween_property(cam, "size", 5.8, 2.0)
+	sheet_f = float(sheet_meta.t0) - 4.0; sheet_held = true
+	while sheet_f < done_f:
+		sheet_f = minf(sheet_f + get_process_delta_time() * 30.0, done_f); sheet_set(sheet_f)
+		await get_tree().process_frame
 	sheet_held = false
-	var r := tw(); r.tween_property(self, "a_wR", 0.0, 0.5); r.tween_property(self, "a_lean", 0.0, 0.5)
-	for sm in sheet_mats: r.tween_method(func(v: float): (sm as ShaderMaterial).set_shader_parameter("lift", v), 1.0, 0.0, 0.6)
-	await r.finished
+	var r := tw(); r.tween_property(self, "a_wR", 0.0, 0.5); r.tween_property(self, "a_wL", 0.0, 0.5); r.tween_property(self, "a_lean", 0.0, 0.5)
+	var settle := func():   # the heap settles by itself while she turns to the water
+		while sheet_f < FE:
+			sheet_f = minf(sheet_f + get_process_delta_time() * 30.0, FE); sheet_set(sheet_f)
+			await get_tree().process_frame
+	settle.call()
+	await wait(0.9)
 	# the water: the wall upside down, and in it a door
-	await go([Vector3(0.25, 0, -12.4)])
+	cam_focus = Vector3(-1.0, 0.3, -12.7)
+	create_tween().tween_property(cam, "size", 4.9, 1.8)
+	await go([Vector3(1.25, 0, -11.9), Vector3(0.35, 0, -11.75)])
 	await face(Vector3(-1.5, 0, -12.9))
-	cam_focus = Vector3(-1.1, 0.3, -12.7)
-	create_tween().tween_property(cam, "size", 4.8, 1.6)
 	await wait(3.0)
-	door_seen = true; seam_a.visible = true
-	create_tween().tween_property(seam_a, "scale:y", 1.0, 1.4).set_trans(Tween.TRANS_SINE)   # now the joints show on the stone
-	await wait(2.0)
-	create_tween().tween_property(cam, "size", 6.0, 1.6)
-	cam_focus = Vector3(-1.3, 0.4, -13.0)
+	door_seen = true
+	# she goes to that place on the wall. There is nothing to see there, until she lays her hands on the stone
+	create_tween().tween_property(cam, "size", 5.8, 1.6)
+	cam_focus = Vector3(-1.5, 0.5, -13.2)
 	await go([Vector3(0.3, 0, -10.95), Vector3(-2.55, 0, -10.95), Vector3(-2.5, 0, DOORZ)])
 	await face(Vector3(WALLX, 0, DOORZ))
+	await wait(0.4)
 	tgtL = Vector3(WALLX + 0.02, 1.12, DOORZ + 0.16); tgtR = Vector3(WALLX + 0.02, 1.12, DOORZ - 0.16)
-	var ph := tw(); ph.tween_property(self, "a_wL", 1.0, 0.5); ph.tween_property(self, "a_wR", 1.0, 0.5); ph.tween_property(self, "a_lean", 0.18, 0.5)
+	var ph := tw(); ph.tween_property(self, "a_wL", 1.0, 0.5); ph.tween_property(self, "a_wR", 1.0, 0.5); ph.tween_property(self, "a_lean", 0.14, 0.5)
 	await ph.finished
-	if door_seen:   # the stone gives way: it goes back into the wall, then down
+	if door_seen:
+		seam_a.visible = true   # now the joints show, drawn up the stone from the floor
+		var st := create_tween(); st.tween_property(seam_a, "scale:y", 1.0, 1.5).set_trans(Tween.TRANS_SINE)
+		await st.finished
+		await wait(0.5)
+		# and the stone gives way: back into the wall, then down
+		create_tween().tween_property(self, "a_lean", 0.2, 0.4)
 		var dt1 := create_tween().set_parallel()
 		dt1.tween_property(door_a, "position:x", -0.3, 1.1).set_trans(Tween.TRANS_SINE); dt1.tween_property(door_m, "position:x", -0.3, 1.1).set_trans(Tween.TRANS_SINE)
 		await wait(0.7)
