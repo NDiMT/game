@@ -1387,6 +1387,11 @@ func _shots() -> void:
 	if OS.get_environment("SHOT_HINT") != "": hint.show(); hint.text = OS.get_environment("SHOT_HINT"); hint.modulate.a = 1.0   # to look at the hint line in a still
 	var dir := OS.get_environment("SHOT_DIR")
 	await get_tree().create_timer(2.0).timeout
+	for tp in OS.get_environment("TAP_TEST").split(";", false):   # "x,z,from x,from z;...": she stands at the one point, the other is tapped, and it says where she is sent
+		var tf := tp.split(","); pos = Vector3(float(tf[2]), 0, float(tf[3])); cam_t = pos; route.clear()
+		await get_tree().process_frame; await get_tree().process_frame
+		tap(cam.unproject_position(Vector3(float(tf[0]), 0, float(tf[1]))))
+		print("TAP ", tp, " -> ", (route.back().p as Vector3) if not route.is_empty() else "no way")
 	var list := [
 		{"n": "00-key-art", "p": Vector3(1.6, 0, 2.2), "y": 0.9, "c": Vector3(2.3, 1.6, -0.6), "s": 15.5},
 		{"n": "01-map", "p": Vector3(0.5, 0, 2.0), "y": 0.6, "c": Vector3(-8.5, 0, -11.5), "s": 36.0},
@@ -3371,13 +3376,13 @@ func _arrive() -> void:
 
 # ---------------------------------------------------------------- frame
 func _process(dt: float) -> void:
-	if not lighten_check.is_empty() and Engine.get_frames_drawn() % 400 == 399:
+	if not lighten_check.is_empty() and Engine.get_process_frames() % 400 == 399:   # (counted in frames of the game, not frames drawn: the check runs without a screen too, where nothing is drawn)
 		var moved := 0; var names := []
 		for r in lighten_check:
 			if not is_instance_valid(r[0]) or not (r[0] as MeshInstance3D).is_visible_in_tree() or not (r[0] as MeshInstance3D).global_transform.is_equal_approx(r[1]):
 				moved += 1
 				if names.size() < 6: names.append(str(r[2]).right(60))
-		print("LIGHTEN check at frame ", Engine.get_frames_drawn(), ": ", moved, " of ", lighten_check.size(), " moved or hid ", names)
+		print("LIGHTEN check at frame ", Engine.get_process_frames(), ": ", moved, " of ", lighten_check.size(), " moved or hid ", names)
 	if Engine.get_frames_drawn() == 45 and OS.get_environment("STATS") == "3":   # what the frame is made of: the heaviest meshes, and every texture
 		var rows := {}; var texs := {}
 		for mm in find_children("*", "MeshInstance3D", true, false):
