@@ -74,21 +74,35 @@ const HERS := 2           # which place of that row is empty
 const ROWW_X := -13.7
 const ROWW_Z := [-33.3, -32.1, -30.9]
 const DOOR6 := Vector3(-15.85, 0, -32.0)
+# ---------------------------------------------------------------- the atrium (I.7)
+const UX0 := -34.0
+const UZ0 := -43.0
+const UX1 := -16.0
+const UZ1 := -24.0
+const UC := Vector3(-25.0, 0, -32.6)      # the middle of the great basin
+const UR := 4.2                           # its radius
+const UH := 4.3                           # half the side of the square opening it sits in
+const POD_H := 1.2                        # the podium of the Gate
+const POD_Z := UZ0 + 2.6                  # its front edge, where the stair comes up
+const STAIR_Z := UZ0 + 5.0                # the foot of the stair
 
 var N := {}      # the pieces that move, by name (kept here so that the joined world leaves them alone)
 var WL: Array = []      # the still waters, in order: their names
 var W := {}      # each water: {"r": [x0, z0, x1, z1], "heads": [rects of floor from which her reflection can be sent], "foot": {name: {x0, z0, x1, z1, on, h}}}
 var refl_w := ""      # the water her reflection is out on
+var ramps: Array = []      # floor that is not level: {"r": its rect, "z0", "z1": between these it goes from height "y0" to "y1"}
+var on_ramp := false
 var refl_busy := 0      # how many orders to her reflection are still being carried out
 var woke := false
 var flags := {}
 
 func _init() -> void:
 	old_world = false
+	title_sub = "I  ·  The Veiled Gate\ntap to begin"; end_sub = "the three wings are still being built\ntap to begin again"
 
 func _hollows() -> Array:
 	return [[HX0 + 0.5, HZ0 + 0.5, HX1 - 0.5, HZ1 - 0.5], [TX0 + 0.5, TZ0 + 0.5, TX1 - 0.5, TZ1 - 0.5], [VX0 + 0.5, VZ0 + 0.5, VX1 - 0.5, VZ1 - 0.5],
-		[FX0 + 0.5, FZ0 - 0.1, FX1 - 0.5, FZ1 - 0.5], [GX0 + 0.5, GZ0 + 0.5, GX1 - 0.5, GZ1 - 0.5]]
+		[FX0 + 0.5, FZ0 - 0.1, FX1 - 0.5, FZ1 - 0.5], [GX0 + 0.5, GZ0 + 0.5, GX1 - 0.5, GZ1 - 0.5], [UX0 + 0.5, UZ0 + 0.5, UX1 - 0.5, UZ1 - 0.5]]
 
 # ---------------------------------------------------------------- small builders
 func R(x0: float, z0: float, x1: float, z1: float, on := true, h := 0.0) -> Dictionary:
@@ -140,7 +154,7 @@ func sluice(key: String, c: Vector3, along_x := false, half := 0.62, h := 1.5) -
 	for gy in [0.38, 0.95, h - 0.06]: bb(Vector3(-half, gy, -0.024), Vector3(half, gy + 0.04, 0.024))
 	bb(Vector3(-half, 0.42, -0.012), Vector3(half, 0.95, 0.012))      # the board that held the water back
 	bb_end("gold", leaf)
-	N[key] = leaf
+	N[key] = leaf; N[key + "_h"] = h
 
 ## a bronze grille as a leaf of its own: across a walk, or (twin) one that stands only in a water
 func leaf(key: String, c: Vector3, along_x: bool, half: float, h: float, parent: Node = self, twin := false) -> Node3D:
@@ -155,6 +169,26 @@ func leaf(key: String, c: Vector3, along_x: bool, half: float, h: float, parent:
 	if twin: b1.material_override = under_mat(Color("4a4468")); b2.material_override = under_mat(Color("c98f2c"))
 	if key != "": N[key] = lf
 	return lf
+
+## a cloth that hangs in folds from a level edge: c is the middle of that edge, w its width, h how far it hangs
+func drape(c: Vector3, w: float, h: float, pleats: int, m: Material) -> MeshInstance3D:
+	var v := PackedVector3Array(); var nn := PackedVector3Array(); var uv := PackedVector2Array()
+	var cols := pleats * 2; var rows := 9
+	var at := func(i: int, j: int) -> Vector3:
+		var fy := float(j) / rows
+		var amp := 0.045 + 0.06 * fy
+		var hem := 0.05 * sin(i * 1.7) * fy * fy      # the hem is not cut straight
+		return Vector3(-w * 0.5 + w * i / cols + 0.02 * sin(i * 0.9 + j * 0.8) * fy, -(h + hem) * fy, amp * (1.0 if i % 2 == 1 else -1.0) + 0.03 * sin(i * 0.45) * fy)
+	for i in cols:
+		for j in rows:
+			var q := [at.call(i, j), at.call(i + 1, j), at.call(i + 1, j + 1), at.call(i, j + 1)]
+			var fn: Vector3 = ((q[1] as Vector3) - (q[0] as Vector3)).cross((q[3] as Vector3) - (q[0] as Vector3)).normalized()
+			if fn.z < 0.0: fn = -fn
+			for k in [0, 1, 2, 0, 2, 3]:
+				v.append(q[k]); nn.append(fn); uv.append(Vector2(float(i + (1 if k in [1, 2] else 0)) / cols, float(j + (1 if k in [2, 3] else 0)) / rows))
+	var arr := []; arr.resize(Mesh.ARRAY_MAX); arr[Mesh.ARRAY_VERTEX] = v; arr[Mesh.ARRAY_NORMAL] = nn; arr[Mesh.ARRAY_TEX_UV] = uv
+	var am := ArrayMesh.new(); am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	return prim(am, c, m)
 
 ## a plain floor over the sea
 func floor_plain(x0: float, z0: float, x1: float, z1: float, tile := 1.0) -> void:
@@ -178,7 +212,7 @@ func her_plinth(p: Vector3, yaw: float, pose: String, parent: Node) -> Node3D:
 	return her_statue(p + Vector3(0, 0.17, 0), yaw, pose, 1.0, parent)
 
 func sluice_open(key: String, secs := 2.4) -> void:
-	var gt := create_tween(); gt.tween_property(N[key], "position:y", -1.75, secs).set_trans(Tween.TRANS_SINE)
+	var gt := create_tween(); gt.tween_property(N[key], "position:y", -(float(N[key + "_h"]) + 0.25), secs).set_trans(Tween.TRANS_SINE)
 	await gt.finished
 
 ## the dry channel: a band of darker stone between two thin kerbs, flush with the floor
@@ -195,7 +229,7 @@ func channel(a: Vector3, b: Vector3, w := 0.5) -> void:
 # ---------------------------------------------------------------- the world
 func _world() -> void:
 	mroot = Node3D.new(); mroot.name = "MirrorPool"; mroot.transform = Transform3D(Basis(Vector3(1, 0, 0), Vector3(0, -1, 0), Vector3(0, 0, 1)), Vector3.ZERO); add_child(mroot)
-	_harbour(); _causeway(); _basin(); _well(); _fountain(); _forecourt()
+	_harbour(); _causeway(); _basin(); _well(); _fountain(); _forecourt(); _atrium()
 	_strip_refl(mroot)
 	pos = HERPL + Vector3(0, 0.17, 0); yaw = 0.0
 
@@ -330,7 +364,7 @@ func _well() -> void:
 	wall(VX0, VZ0 + 0.3, VX0 + 0.3, -21.6, 2.3); wall(VX0, -20.0, VX0 + 0.3, VZ1, 2.3)      # the west wall, either side of the sluice
 	parapet(Vector3(VX1 - 0.1, 0, VZ0 + 0.4), Vector3(VX1 - 0.1, 0, VZ1 - 0.1)); parapet(Vector3(-1.3, 0, VZ1 - 0.1), Vector3(VX1 - 0.1, 0, VZ1 - 0.1)); parapet(Vector3(VX0 + 0.4, 0, VZ1 - 0.1), Vector3(-2.8, 0, VZ1 - 0.1))
 	stele("stele_4", Vector3(-0.1, 0, VZ1 - 0.75), 0.0, ["I threw the handle\ndown the well.", "The well kept it.\nIt keeps whatever touches it."])
-	tree(Vector3(VX0 + 0.9, 0, VZ0 + 0.95), 1.1); urn(Vector3(-0.1, 0, VZ0 + 0.8), 1.0); lantern(Vector3(-4.6, 0, VZ1 - 0.7), 5, -1.0)
+	tree(Vector3(VX0 + 0.9, 0, VZ0 + 0.95), 1.1); urn(Vector3(-0.1, 0, VZ0 + 0.8), 1.0); urn(Vector3(-4.6, 0, VZ1 - 0.8), 0.8, "rose")
 
 ## the bucket hangs with its foot y over the water; the rope follows it
 func _bucket_set(y: float) -> void:
@@ -414,9 +448,72 @@ func _forecourt() -> void:
 	stele("stele_6", Vector3(GX1 - 0.75, 0, GZ1 - 0.8), 0.0, ["I left one place empty.\nI knew who it was for.", "The door counts them.\nIt opens when none is missing."])
 	for i in ROW_X.size():
 		if i != HERS: _look_add("", Vector3(ROW_X[i], 0, ROW_Z), 1.9, ["one of his. veiled, like all of them", "it stands where he put it"])
-	lantern(Vector3(GX1 - 0.8, 0, GZ0 + 1.0), 6)
-	# beyond the door: the first stones of the atrium
-	floor_plain(GX0 - 3.0, DOOR6.z - 1.6, GX0, DOOR6.z + 1.6, 1.0); channel(Vector3(GX0 - 3.0, 0, DOOR6.z), Vector3(GX0, 0, DOOR6.z))
+	urn(Vector3(GX1 - 0.8, 0, GZ0 + 1.0), 1.0)
+
+## I.7 the atrium. In its middle a great round basin, three steps deep, dry: all three waters of the house came
+## together here. Three dry channels come in from three shut doors. On the north side, at the top of a stair, the
+## Gate: barred, tied, and covered with the one cloth. Two lamps burn beside it by day
+func _atrium() -> void:
+	var n0 := get_child_count()
+	_pool_court(UX0, UZ0, UX1, UZ1, UC.x - UH, UC.z - UH, UC.x + UH, UC.z + UH, "stone", "PoolSkyU")
+	for c in get_children().slice(n0):      # this opening holds a dry basin, not a pool: no kerb, and nothing to see below
+		var mi := c as MeshInstance3D
+		if mi == null: continue
+		if mi.name == "PoolSkyU": mi.visible = false
+		elif mi.mesh is BoxMesh and absf((mi.mesh as BoxMesh).size.y - 0.04) < 0.001 and absf(mi.position.y - 0.02) < 0.001: remove_child(mi); mi.queue_free()
+	tile_hole = Rect2(UC.x - UH, UC.z - UH, UH * 2.0, UH * 2.0); tiles(UX0, UZ0, UX1, UZ1, 1.0); tile_hole = Rect2()
+	turned(UC, [[UH * 1.432, 0.006], [UR, 0.006], [UR, -0.15], [UR - 0.9, -0.15], [UR - 0.9, -0.3], [UR - 1.8, -0.3], [UR - 1.8, -0.45], [0.0, -0.45]], "stone", 48)
+	turned(UC, [[UR + 0.22, 0.01], [UR, 0.01]], "shade", 48); turned(UC, [[UH * 1.432, 0.008], [UH * 1.432 - 0.1, 0.008]], "shade", 48)
+	cyl(UC + Vector3(0, -0.45, 0), 0.3, 0.3, 0.012, pal("gold"), 24)      # the drain in its middle
+	for a in 12: blk(Vector3(-0.012, 0, 0.45), Vector3(0.012, 0.004, UR - 1.95), "shade").transform = Transform3D(Basis(Vector3.UP, TAU * a / 12.0), UC + Vector3(0, -0.449, 0)) * Transform3D(Basis(), Vector3(0, 0, (0.45 + UR - 1.95) * 0.5))
+	# the podium, the stair, the Gate
+	var gx := UC.x
+	blk(Vector3(gx - 3.0, 0, UZ0 + 0.3), Vector3(gx + 3.0, POD_H, POD_Z), "stone"); blk(Vector3(gx - 3.04, 0, UZ0 + 0.3), Vector3(gx + 3.04, 0.16, POD_Z + 0.04), "shade")
+	cornice(gx - 3.0, UZ0 + 0.3, gx + 3.0, POD_Z, POD_H - 0.06, 0.04, 0.06)
+	for k in 7:
+		var z0 := POD_Z + 0.3 * k
+		blk(Vector3(gx - 1.2, 0, z0), Vector3(gx + 1.2, POD_H - 0.15 * (k + 1), z0 + 0.3), "stone")
+		blk(Vector3(gx - 1.2, POD_H - 0.15 * (k + 1) - 0.03, z0 + 0.3), Vector3(gx + 1.2, POD_H - 0.15 * (k + 1), z0 + 0.32), "shade")
+	for e in [-1.0, 1.0]:      # the cheeks of the stair, each ending in a block for a lamp
+		blk(Vector3(gx + e * 1.2 - 0.14 * (1.0 - e), 0, POD_Z), Vector3(gx + e * 1.2 + 0.14 * (1.0 + e), 0.5, STAIR_Z - 0.3), "stone")
+		blk(Vector3(gx + e * 1.34 - 0.22, 0, STAIR_Z - 0.5), Vector3(gx + e * 1.34 + 0.22, 0.72, STAIR_Z - 0.06), "stone"); blk(Vector3(gx + e * 1.34 - 0.25, 0.72, STAIR_Z - 0.53), Vector3(gx + e * 1.34 + 0.25, 0.78, STAIR_Z - 0.03), "shade")
+	wall(UX0, UZ0, gx - 1.95, UZ0 + 0.3, 3.2); wall(gx + 1.95, UZ0, -20.44, UZ0 + 0.3, 3.2); wall(-18.56, UZ0, UX1, UZ0 + 0.3, 3.2)      # the north wall, with the Gate and the door of the Spring in it
+	blk(Vector3(-20.44, 2.35, UZ0), Vector3(-18.56, 3.2, UZ0 + 0.3), "stone")
+	for e in [-1.0, 1.0]:      # the piers of the Gate
+		var px: float = gx + e * 1.7
+		blk(Vector3(px - 0.3, POD_H, UZ0 + 0.2), Vector3(px + 0.3, 5.0, UZ0 + 0.8), "stone"); blk(Vector3(px - 0.34, POD_H, UZ0 + 0.16), Vector3(px + 0.34, POD_H + 0.2, UZ0 + 0.84), "shade")
+		blk(Vector3(px - 0.34, 4.86, UZ0 + 0.16), Vector3(px + 0.34, 5.0, UZ0 + 0.84), "shade"); ball(Vector3(px, 5.72, UZ0 + 0.5), 0.2, pal("gold")); blk(Vector3(px - 0.2, 5.36, UZ0 + 0.3), Vector3(px + 0.2, 5.54, UZ0 + 0.7), "stone")
+	var gw := CSGBox3D.new(); gw.size = Vector3(4.0, 1.9, 0.6); gw.position = Vector3(gx, 4.4 + 0.02, UZ0 + 0.5); gw.material = pal("stone")
+	var gc := CSGCylinder3D.new(); gc.operation = CSGShape3D.OPERATION_SUBTRACTION; gc.radius = 1.4; gc.height = 0.8; gc.sides = 36
+	gc.rotation.x = PI * 0.5; gc.position = Vector3(0, -0.95, 0); gc.material = pal("shade"); gw.add_child(gc); add_child(gw)
+	cornice(gx - 2.0, UZ0 + 0.2, gx + 2.0, UZ0 + 0.8, 5.36, 0.05, 0.08)
+	blk(Vector3(gx - 1.4, POD_H, UZ0 + 0.36), Vector3(gx + 1.4, 3.46, UZ0 + 0.44), "gold")      # the leaves, of polished bronze, under the cloth
+	var lf := cyl(Vector3.ZERO, 1.4, 1.4, 0.08, pal("gold"), 36); lf.rotation.x = PI * 0.5; lf.position = Vector3(gx, 3.46, UZ0 + 0.4)
+	blk(Vector3(gx - 1.75, 2.5, UZ0 + 0.46), Vector3(gx + 1.75, 2.72, UZ0 + 0.6), "dark")      # the bar
+	# the cloth: it hangs in folds from a cord strung between the piers, down to a hand above the podium. The crown
+	# of the bronze leaves shows over it
+	var veil := cloth(Color("d9553a"), Color("a63a26"), 0.5)
+	N["veil"] = drape(Vector3(gx, 4.56, UZ0 + 0.92), 3.5, 4.56 - POD_H - 0.22, 20, veil)
+	var rod := cyl(Vector3.ZERO, 0.025, 0.025, 3.7, pal("gold"), 8); rod.rotation.z = PI * 0.5; rod.position = Vector3(gx, 4.58, UZ0 + 0.9)
+	for ry in [2.25, 3.45]:      # the cords that hold it shut: they go round the piers to the far side
+		blk(Vector3(gx - 2.02, ry, UZ0 + 1.0), Vector3(gx + 2.02, ry + 0.035, UZ0 + 1.03), "rope")
+		for e in [-1.0, 1.0]: blk(Vector3(gx + e * 2.02 - 0.017, ry, UZ0 + 0.3), Vector3(gx + e * 2.02 + 0.017, ry + 0.035, UZ0 + 1.03), "rope")
+	lantern(Vector3(gx - 2.45, POD_H, POD_Z - 0.45), 5, 1.0); lantern(Vector3(gx + 2.45, POD_H, POD_Z - 0.45), 6, -1.0)      # the two lamps that burn by day
+	# the doors of the three wings, shut: the Cistern to the west, the Spring in the north wall, the Lamps to the south
+	wall(UX0, UZ0 + 0.3, UX0 + 0.3, UC.z - 0.94, 3.2); wall(UX0, UC.z + 0.94, UX0 + 0.3, UZ1, 3.2)
+	blk(Vector3(UX0, 2.35, UC.z - 0.94), Vector3(UX0 + 0.3, 3.2, UC.z + 0.94), "stone")
+	sluice("doorW", Vector3(UX0 + 0.15, 0, UC.z), true, 0.6, 2.1); sluice("doorN", Vector3(-19.5, 0, UZ0 + 0.15), false, 0.6, 2.1); sluice("doorS", Vector3(-30.0, 0, UZ1 - 0.2), false, 0.6, 1.5)
+	parapet(Vector3(UX0 + 0.4, 0, UZ1 - 0.1), Vector3(-30.95, 0, UZ1 - 0.1)); parapet(Vector3(-29.05, 0, UZ1 - 0.1), Vector3(UX1 - 0.1, 0, UZ1 - 0.1))
+	parapet(Vector3(UX1 - 0.1, 0, GZ1 + 0.1), Vector3(UX1 - 0.1, 0, UZ1 - 0.1))
+	wall(UX1 - 0.3, UZ0 + 0.3, UX1, GZ0, 3.2)
+	channel(Vector3(UX0 + 0.3, 0, UC.z), Vector3(UC.x - UR - 0.2, 0, UC.z)); channel(Vector3(UC.x + UR + 0.2, 0, DOOR6.z), Vector3(UX1, 0, DOOR6.z))
+	channel(Vector3(-19.5, 0, UZ0 + 0.3), Vector3(-19.5, 0, -37.4)); channel(Vector3(-30.0, 0, UZ1 - 0.2), Vector3(-30.0, 0, -27.4))
+	stele("stele_7", Vector3(gx + 2.2, 0, STAIR_Z + 0.5), 0.0, ["This one I could not turn,\nor sink, or blind.\nSo I covered it.", "A pool this size shows too much.\nI let it run dry."])
+	_look_add("ubasin", UC + Vector3(UR - 0.4, 0, 0.0), 0.3, ["no water. no one", "three channels come in here, and one goes down to the sea"])
+	_look_add("", Vector3(gx - 2.45, POD_H, POD_Z - 0.45), 1.4, ["a lamp, burning by day", "its light falls where the water would be"])
+	for dl in [[Vector3(UX0 + 0.3, 0, UC.z), "the channel of the cistern comes in under it"], [Vector3(-19.5, 0, UZ0 + 0.3), "the channel of the spring comes in under it"], [Vector3(-30.0, 0, UZ1 - 0.2), "the channel of the lamps comes in under it"]]:
+		_look_add("", dl[0], 1.6, ["a door, shut", dl[1]])
+	urn(Vector3(UX1 - 0.9, 0, UZ1 - 0.9), 1.0); urn(Vector3(UX0 + 0.9, 0, UZ1 - 0.9), 1.0, "rose"); cypress(Vector3(UX0 + 0.9, 0, UZ0 + 1.0), 2.8); cypress(Vector3(UX1 - 0.9, 0, UZ0 + 1.0), 2.8)
 
 # ---------------------------------------------------------------- what can be tapped, and where she can walk
 func _things() -> void:
@@ -438,6 +535,7 @@ func _things() -> void:
 	var pl := Vector3(ROW_X[HERS], 0, ROW_Z)
 	objs["place6w"] = {"at": pl + Vector3(0, -1.0, 0), "stand": pl + Vector3(0, 0, -0.72), "mark": false, "water": "G", "rstand": pl + Vector3(0.75, 0, -0.72),
 		"hits": [pl + Vector3(0, -0.2, 0), pl + Vector3(0, -1.9, 0)]}
+	objs["gate"] = {"at": Vector3(UC.x, POD_H + 1.6, UZ0 + 0.9), "stand": Vector3(UC.x, 0, UZ0 + 1.5), "mark": false, "hits": [Vector3(UC.x, POD_H + 0.3, UZ0 + 0.9), Vector3(UC.x, POD_H + 3.4, UZ0 + 0.9)]}
 	objs["place6"] = {"at": pl + Vector3(0, 0.3, 0), "stand": pl + Vector3(0, 0, -0.72), "mark": false, "hits": [pl + Vector3(0, 0.02, 0), pl + Vector3(0, 0.5, 0)]}
 
 func _nav() -> void:
@@ -460,7 +558,14 @@ func _nav() -> void:
 	rects["Fl"] = R(FPX0 - 0.3, FPZ0 + 0.15, FPX1 + 0.3, FPZ0 + 0.42); rects["F5"] = R(ARCH_X - 0.25, GZ1 - 0.5, ARCH_X + 0.25, FPZ0 + 0.42, false)
 	rects["Gs"] = R(GX0 + 0.8, GPZ1 + 0.3, GX1 - 0.45, GZ1 - 0.45); rects["Ge"] = R(GPX1 + 0.35, GZ0 + 0.8, GX1 - 0.45, GZ1 - 0.45)
 	rects["Gw"] = R(GX0 + 0.8, GZ0 + 0.8, ROWW_X - 0.6, GZ1 - 0.45); rects["Gn"] = R(GX0 + 0.8, GZ0 + 0.8, GX1 - 0.45, ROW_Z - 0.6)
-	rects["D6"] = R(GX0 - 0.7, DOOR6.z - 0.25, GX0 + 0.8, DOOR6.z + 0.25, false); rects["A0"] = R(GX0 - 2.6, DOOR6.z - 1.1, GX0 - 0.7, DOOR6.z + 1.1)
+	rects["D6"] = R(GX0 - 0.7, DOOR6.z - 0.25, GX0 + 0.8, DOOR6.z + 0.25, false); rects["D6"].x0 = UX1 - 0.7
+	var kb := UH + 0.25      # she keeps this far from the middle of the dry basin
+	rects["Us"] = R(UX0 + 0.8, UC.z + kb, UX1 - 0.45, UZ1 - 0.45); rects["Un"] = R(UX0 + 0.8, STAIR_Z + 0.25, UX1 - 0.45, UC.z - kb)
+	rects["Uw"] = R(UX0 + 0.8, STAIR_Z + 0.25, UC.x - kb, UZ1 - 0.45); rects["Ue"] = R(UC.x + kb, STAIR_Z + 0.25, UX1 - 0.45, UZ1 - 0.45)
+	rects["Unw"] = R(UX0 + 0.8, UZ0 + 0.8, UC.x - 3.5, STAIR_Z + 0.25); rects["Une"] = R(UC.x + 3.5, UZ0 + 0.8, UX1 - 0.75, STAIR_Z + 0.25)
+	rects["Ust"] = R(UC.x - 0.85, POD_Z - 0.05, UC.x + 0.85, STAIR_Z + 0.25); rects["Upod"] = R(UC.x - 2.0, UZ0 + 1.25, UC.x + 2.0, POD_Z - 0.05)
+	ramps = [{"r": rects["Ust"], "z0": POD_Z, "z1": STAIR_Z, "y0": POD_H, "y1": 0.0}, {"r": rects["Upod"], "z0": 0.0, "z1": 1.0, "y0": POD_H, "y1": POD_H}]
+	solids.append(Vector3(UC.x + 2.2, STAIR_Z + 0.5, 0.45))
 	for i in ROW_X.size(): solids.append(Vector3(ROW_X[i], ROW_Z, 0.45))
 	for i in ROWW_Z.size(): solids.append(Vector3(ROWW_X, ROWW_Z[i], 0.45))
 	posing = true; pose_k = 1.0
@@ -924,6 +1029,19 @@ func _do_wall5() -> void:
 	plug.visible = false
 	rects["F5"].on = true; done["wall5"] = true; done["arch5"] = true; looks.erase("fwall")
 
+## I.7: the Gate. She lays a hand on the cloth. (For now the chapter ends here.)
+func _do_gate() -> void:
+	await face(Vector3(UC.x, 0, UZ0))
+	tgtR = Vector3(UC.x - 0.12, POD_H + 1.28, UZ0 + 0.93)
+	var a := tw(); a.tween_property(self, "a_wR", 1.0, 0.9); a.tween_property(self, "a_headp", -0.2, 0.9)
+	await a.finished
+	quote("gate", "Barred, and covered,\nand tied on the far side.", 4.5, true)
+	await wait(3.2)
+	var b := tw(); b.tween_property(self, "a_wR", 0.0, 0.9); b.tween_property(self, "a_headp", 0.0, 0.9)
+	await b.finished
+	await wait(2.0)
+	_end()
+
 ## I.6: the statue that stands, in the water, on the plinth that is empty above. Her reflection goes up to it, looks
 ## at it, and looks back at her
 func _do_place6w() -> void:
@@ -980,7 +1098,24 @@ func _do_place6() -> void:
 func _process(dt: float) -> void:
 	super._process(dt)
 	if not refl_out.is_empty() and not busy and refl_w != "" and _rect_dist(pos, W[refl_w].r) > 3.2: _refl_melt()      # she has left that water
-	if started and not ended and pos.x < GX0 - 1.6: _end()      # (for now) the chapter is built as far as the door of the atrium
+	var fy = _floor_y(pos)      # the stair and the podium: she stands as high as the floor is there
+	if fy != null: pos.y = fy; on_ramp = true
+	elif on_ramp: pos.y = 0.0; on_ramp = false
+
+## how high the floor is at a place, where it is not level (null: level floor)
+func _floor_y(p: Vector3):
+	for rp in ramps:
+		if in_rect(rp.r, p): return lerpf(rp.y0, rp.y1, clampf((p.z - rp.z0) / (rp.z1 - rp.z0), 0.0, 1.0))
+	return null
+
+## a tap on floor that stands higher than the rest names a place on it
+func _ground_under(sp: Vector2):
+	var o := cam.project_ray_origin(sp); var d := cam.project_ray_normal(sp)
+	for rp in ramps:
+		for y in [rp.y0, (rp.y0 + rp.y1) * 0.5, rp.y1]:
+			var g: Vector3 = o + d * ((float(y) - o.y) / d.y)
+			if rp.r.on and in_rect(rp.r, g) and absf(float(_floor_y(g)) - float(y)) < 0.16: return Vector3(g.x, 0, g.z)
+	return super._ground_under(sp)
 
 func _ready() -> void:
 	super._ready()
@@ -1063,20 +1198,22 @@ func _play_act1() -> void:
 		print("ACT1 I.5 reflection in the arch: ", (refl_out.holder as Node3D).position if not refl_out.is_empty() else "under her", " she at ", pos)
 		await _tap_wait(Vector3(ARCH_X, 1.0, FZ0 + 0.3))      # the wall
 		print("ACT1 I.5 wall ", done.has("wall5"), " way through ", rects["F5"].on, " she at ", pos)
-	await _tap_wait(Vector3(ARCH_X, 0, GZ1 - 1.0))
-	var pl := Vector3(ROW_X[HERS], 0, ROW_Z)
-	await _tap_wait(pl + Vector3(0, -1.0, 0))      # the statue in the water
-	print("ACT1 I.6 reflection by the statue of the water: ", (refl_out.holder as Node3D).position if not refl_out.is_empty() else "under her", " she at ", pos)
-	await _tap_wait(pl + Vector3(0, 0.3, 0))      # the empty plinth
-	print("ACT1 I.6 place ", done.has("place6"), " door ", rects["D6"].on, " she at ", pos)
-	_tap_at(Vector3(GX0 - 2.1, 0, DOOR6.z))
-	while not ended and t < 400.0: await get_tree().process_frame
-	print("ACT1 end ", ended, " at ", pos)
+	if from != "U":
+		await _tap_wait(Vector3(ARCH_X, 0, GZ1 - 1.0))
+		var pl := Vector3(ROW_X[HERS], 0, ROW_Z)
+		await _tap_wait(pl + Vector3(0, -1.0, 0))      # the statue in the water
+		print("ACT1 I.6 reflection by the statue of the water: ", (refl_out.holder as Node3D).position if not refl_out.is_empty() else "under her", " she at ", pos)
+		await _tap_wait(pl + Vector3(0, 0.3, 0))      # the empty plinth
+		print("ACT1 I.6 place ", done.has("place6"), " door ", rects["D6"].on, " she at ", pos)
+	await _tap_wait(Vector3(UX1 - 2.0, 0, DOOR6.z))
+	print("ACT1 I.7 in the atrium at ", pos)
+	await _tap_wait(Vector3(UC.x, POD_H + 1.6, UZ0 + 0.9))
+	print("ACT1 I.7 at the gate: ", pos, " ended ", ended)
 	get_tree().quit()
 
 ## (to try a later court) everything before it is done, and she stands at its entry
 func _open_to(c: String) -> void:
-	var order := ["T", "V", "F", "G"]; var k := order.find(c)
+	var order := ["T", "V", "F", "G", "U"]; var k := order.find(c)
 	rects["S1"].on = true; (N["s1"] as Node3D).position.y = -1.75; done["wheel1"] = true
 	pos = Vector3(0, 0, TZ1 + 0.5); yaw = PI
 	if k >= 1:
@@ -1088,4 +1225,7 @@ func _open_to(c: String) -> void:
 	if k >= 3:
 		rects["F5"].on = true; done["wall5"] = true; done["arch5"] = true; (N["plug5"] as Node3D).visible = false
 		pos = Vector3(ARCH_X, 0, FZ0 - 0.6); yaw = PI
+	if k >= 4:
+		rects["D6"].on = true; done["place6"] = true; done["place6w"] = true; (N["door6"] as Node3D).position.y = -2.4; (N["place6_m"] as Node3D).visible = false
+		pos = Vector3(UX1 - 1.6, 0, DOOR6.z); yaw = -PI * 0.5
 	cam_t = pos

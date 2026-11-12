@@ -83,6 +83,8 @@ var kribbon: Node3D
 var kglow: MeshInstance3D
 var crank_on := false
 var kkey_top := Vector3.ZERO      # the hand of the islet's statue: in the water the key hangs from it
+var title_sub := "demo  ·  tap to begin"
+var end_sub := "end of the demo  ·  tap to play again"
 var old_world := true      # false in a world built by a script that extends this one: what belongs to the old courts is then left out
 var pocket: Array = []      # what she carries: at most three things, each used once
 var pocket_ui: Control
@@ -4348,12 +4350,12 @@ func _ui() -> void:
 		(quote_glow if lay[3] else quote_box).add_child(ql); quote_lbls.append(ql)
 	quote_box.move_child(quote_glow, quote_box.get_child_count() - 2)   # the light lies under the letters, over the haze
 	pocket_ui = Pocket.new(); pocket_ui.set_anchors_preset(Control.PRESET_FULL_RECT); pocket_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(pocket_ui)
-	title_box = _card("EIDOLON", "demo  ·  tap to begin", cl, qfont)
+	title_box = _card("EIDOLON", title_sub, cl, qfont)
 	if hand_play and STICK:
 		ctl = Joy.new(); add_child(ctl)
 		ctl.interact.connect(func() -> void:
 			if reach != "" and not busy: use(reach))
-	end_box = _card("EIDOLON", "end of the demo  ·  tap to play again", cl, qfont); end_box.modulate.a = 0.0; end_box.visible = false
+	end_box = _card("EIDOLON", end_sub, cl, qfont); end_box.modulate.a = 0.0; end_box.visible = false
 
 ## the title and the end card. f: the typeface of the lines of the story (EB Garamond italic), so that the cards and those lines are set alike.
 ## The scene stays clear behind the card and is veiled only where the words stand: dusk at the head and the foot of the
