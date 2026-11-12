@@ -536,7 +536,8 @@ const GLSL_GLINT := """float glints(vec2 p, float tm, vec2 cell, float dens){
 	f.x += (h2 - 0.5) * 0.3;
 	float len = 0.1 + 0.22 * fract(h * 7.3);
 	float along = 1.0 - clamp(abs(f.x) / len, 0.0, 1.0);
-	float d = smoothstep(0.0, 0.5, along) * smoothstep(0.1 * (0.35 + 0.65 * along), 0.03 * (0.35 + 0.65 * along), abs(f.y));
+	float w = 0.1 * (0.35 + 0.65 * along); float wy = max(w, fwidth(g.y) * 1.2);      // never thinner than a pixel: a stroke seen from far grows faint instead of flickering
+	float d = smoothstep(0.0, 0.5, along) * smoothstep(wy, wy * 0.3, abs(f.y)) * (w / wy);
 	return step(1.0 - dens, h) * d * smoothstep(0.25, 0.85, sin(tm * (0.45 + h2 * 0.5) + h * 40.0) * 0.5 + 0.5);
 }
 """
@@ -601,6 +602,7 @@ void fragment(){
 	vec2 cell = floor(wp.xz * 11.0);
 	float tw = fract(sin(dot(cell, vec2(12.9898, 78.233)) + floor(time_s * 2.5) * 0.37) * 43758.5453);
 	float glit = step(0.93, tw) * road * smoothstep(0.38, 0.08, length(fract(wp.xz * 11.0) - 0.5));
+	lines *= smoothstep(21.0, 11.0, mist_r);   // with the whole map in view the long lines only made a pattern: there the sea lies plain
 	vec3 col = mix(near_col, far_col, m) + vec3(0.5, 0.6, 0.6) * (lines * 0.1 * brk + sp * 0.35) * (1.0 - m);
 	col += (vec3(1.0, 0.93, 0.78) * glit * 0.55 + vec3(0.9, 0.8, 0.7) * road * 0.07) * (1.0 - m * 0.6);
 	ALBEDO = col; ALPHA = mix(0.6, 1.0, m);
@@ -3216,6 +3218,7 @@ func _turned_ones() -> void:
 		var made := _turn_plinth(self, TURN_AT[i], 0, pose)
 		turn_n.append(made[0]); turn_pin.append(made[1]); turn_girth.append(_statue_girth(made[0]))
 		var gem := ball(TURN_AT[i] + Vector3(0.341 * PLINTH_K, 0.048 * PLINTH_K + 0.03, 0.341 * PLINTH_K), 0.036, mat(Color("ff5a62"))); turn_gem.append(gem)
+		cyl(TURN_AT[i] + Vector3(0.341 * PLINTH_K, 0.048 * PLINTH_K, 0.341 * PLINTH_K), 0.056, 0.048, 0.016, pal("gold"), 12)      # the stud sits in a bronze collar
 		_turn_plinth(mroot, TURN_AT[i], TURN_GOAL[i], pose)      # in the water she stands as she should
 	_strip_refl(mroot, m0, "mir", 0.3)
 	var wq := QuadMesh.new(); wq.size = Vector2(RX1 - RX0, RZ1 - RZ0); wq.orientation = PlaneMesh.FACE_Y
@@ -3455,6 +3458,11 @@ func _world() -> void:
 	var gpm := ShaderMaterial.new(); gpm.shader = shaders["pane"]; timed.append(gpm)      # the glass of the great mirror: dark, with a pale head and two slow glints across it (it was an empty dark doorway)
 	prim(gq, Vector3(MX - 0.012, 1.1, MZ), gpm).rotation.y = PI * 0.5
 	blk(Vector3(MX - 0.02, 0, MZ - 0.64), Vector3(MX + 0.05, 0.035, MZ + 0.64), "gold")      # the foot of its frame
+	# and its head, as on the standing mirrors: a gilt cornice, a low pediment and a red stone in it
+	blk(Vector3(MX - 0.02, 2.24, MZ - 0.7), Vector3(MX + 0.06, 2.3, MZ + 0.7), "gold")
+	var mpd := PrismMesh.new(); mpd.size = Vector3(1.4, 0.26, 0.07)
+	prim(mpd, Vector3(MX + 0.015, 2.43, MZ), pal("gold")).rotation.y = PI * 0.5
+	var mgem := blk(Vector3(-0.012, -0.045, -0.045), Vector3(0.022, 0.045, 0.045), "crim"); mgem.position = Vector3(MX + 0.05, 2.39, MZ); mgem.rotation.x = PI * 0.25
 	blk(Vector3(MX - 1.1, 0, -27.0), Vector3(MX, 2.2, MZ - 0.95), "stone"); blk(Vector3(MX - 1.1, 0, MZ + 0.95), Vector3(MX, 1.2, -20.0), "stone")
 	cornice(MX - 1.1, MZ + 0.95, MX, -20.0, 1.2, 0.03, 0.05); cornice(MX - 1.1, -27.0, MX, MZ - 0.95, 2.2, 0.03, 0.05)
 	bush(Vector3(MX - 0.5, 1.2, -20.5), 1.1); bush(Vector3(MX - 0.55, 1.2, -21.4), 0.9, "leaf3"); cypress(Vector3(MX - 0.55, 1.2, -22.1), 2.0)
@@ -3490,7 +3498,8 @@ func _world() -> void:
 	parapet(Vector3(-19.4, 0, -20.1), Vector3(-17.0, 0, -20.1)); parapet(Vector3(-15.6, 0, -20.1), Vector3(-12.6, 0, -20.1)); parapet(Vector3(-12.6, 0, -26.6), Vector3(-12.6, 0, -20.1))
 	blk(Vector3(-12.67, 0.05, -20.17), Vector3(-12.53, 0.34, -20.03), "stone")      # the post of their corner
 	plinth_head("kit_face5", Vector3(-19.0, 0, -26.25), 0.6)
-	var gpool := pool(-14.4, -25.4, -13.2, -22.0); model("statue_veiled_kneeling", Vector3(-14.72, 0, -23.7), 1.1, PI * 0.5)
+	var gpool := pool(-14.4, -25.4, -13.2, -22.0); model("statue_veiled_kneeling", Vector3(-14.72, 0.06, -23.7), 1.1, PI * 0.5)
+	cyl(Vector3(-14.72, 0, -23.7), 0.245, 0.235, 0.03, pal("shade"), 20); cyl(Vector3(-14.72, 0.03, -23.7), 0.2, 0.2, 0.03, pal("stone"), 20)      # she too stands on a foot of stone, a low one: she was set straight on the paving
 	var lpi := 0
 	for lp in [Vector3(-13.9, 0.021, -24.6), Vector3(-13.6, 0.021, -23.2), Vector3(-14.1, 0.021, -22.5)]:   # lily pads on the pool, in twos, one of each pair in bud
 		lily(lp, 0.13, lp.z * 2.3, true); lily(lp + Vector3(0.19 * cos(lp.z * 1.7), 0, 0.19 * sin(lp.z * 1.7)), 0.085, lp.z * 5.1, false)
