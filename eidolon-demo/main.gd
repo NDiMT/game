@@ -3131,7 +3131,7 @@ func _world() -> void:
 	else: parapet(Vector3(-3.3, 0, -16.0), Vector3(-3.3, 0, -13.82)); parapet(Vector3(-3.3, 0, -12.18), Vector3(-3.3, 0, -10.1))   # they end inside the gate's piers (their ends used to stick out into the gateway)
 	parapet(Vector3(3.4, 0, -16.0), Vector3(3.4, 0, -10.1))
 	parapet(Vector3(-3.3, 0, -10.1), Vector3(-0.85, 0, -10.1)); parapet(Vector3(0.85, 0, -10.1), Vector3(3.4, 0, -10.1))
-	lantern(Vector3(3.05, 0, -12.6), 3, -1.0); cypress(Vector3(-3.0, 0, -10.5), 2.1); urn(Vector3(2.2, 0, -15.9), 0.9); urn(Vector3(2.45, 0, -15.75), 0.65, "rose")   # (the lamp stands half way up the east rail: in the corner it hid the wheel in the water, and the hands on it)
+	lantern(Vector3(3.1, 0, -10.56), 3, -1.0); cypress(Vector3(-3.0, 0, -10.5), 2.1); urn(Vector3(2.2, 0, -15.9), 0.9); urn(Vector3(2.45, 0, -15.75), 0.65, "rose")   # (the lamp stands in the court's near corner, clear of both rails)
 	cyl(CAP, 0.3, 0.26, 0.05, pal("shade"), 32).visible = SHOW_CAPSTAN; cyl(CAP + Vector3(0, 0.05, 0), 0.065, 0.05, 0.95, pal("stone"), 16).visible = SHOW_CAPSTAN
 	cap_rot = Node3D.new(); cap_rot.name = "Cap"; cap_rot.position = CAP + Vector3(0, 0.98, 0); cap_rot.rotation.y = -0.42; cap_rot.visible = SHOW_CAPSTAN; add_child(cap_rot)
 	blk(Vector3(-0.022, -0.022, -0.2), Vector3(0.022, 0.022, 0.84), "dark", cap_rot)
