@@ -33,6 +33,27 @@ const CS2CZ := -45.3      # the causeway that the water keeps runs along this z,
 const CS_LOW := -0.6
 const CS_MID := -0.3
 const CS_GATE2 := Vector3(-44.4, 0, -49.25)      # the wheel that lets the west tank's water out or in
+# ---------------------------------------------------------------- Σ.3 the bottom, and the half wheel
+const CS3X0 := -62.0
+const CS3Z0 := -52.0
+const CS3X1 := -49.6
+const CS3Z1 := -40.0
+const CS3PX0 := -60.0     # the great cistern
+const CS3PZ0 := -49.6
+const CS3PX1 := -52.4
+const CS3PZ1 := -42.6
+const CS3_BOT := -1.2     # its bottom
+const CS3_FULL := -0.1
+const CS3_MID := -0.6     # the height of the half wheel's axle
+const CS3_LEDGE := -0.55  # the walk along its east and north walls, a hand above the middle level
+const CS3_LW := 0.9       # how wide that walk is
+const CS3_WHEEL := Vector3(-57.6, CS3_MID, CS3PZ0 + 0.07)      # the middle of the half wheel, on the north wall
+const CS3_WR := 0.52
+const CS3_IN := Vector3(-60.9, 0, -45.0)       # the wheel of its inlet, on the west rim
+const CS3_OVER := Vector3(-57.2, 0, -50.5)     # the pull of its overflow, on the north rim
+var cs3_in := false       # the inlet runs
+var cs3_over := false     # the overflow at the middle is open
+var cs3_wet := false
 var cs_mirs: Array = []      # the mirrored bodies of her that belong to waters below the floor's height, to be made once she exists: [key, root]
 var cs_courts: Array = []    # the courts with such waters: in them her ordinary mirrored body is put away
 
@@ -40,11 +61,11 @@ func _init() -> void:
 	super._init(); wing_open["W"] = true
 
 func _hollows() -> Array:
-	return super._hollows() + [[CS1X0 + 0.5, CS1Z0 + 0.5, CS1X1 - 0.5, CS1Z1 - 0.5], [CS2X0 + 0.5, CS2Z0 + 0.5, CS2X1 - 0.5, CS2Z1 - 0.5]]
+	return super._hollows() + [[CS1X0 + 0.5, CS1Z0 + 0.5, CS1X1 - 0.5, CS1Z1 - 0.5], [CS2X0 + 0.5, CS2Z0 + 0.5, CS2X1 - 0.5, CS2Z1 - 0.5], [CS3X0 + 0.5, CS3Z0 + 0.5, CS3X1 - 0.5, CS3Z1 - 0.5]]
 
 func _wings() -> void:
 	super._wings()
-	_cs1(); _cs2()
+	_cs1(); _cs2(); _cs3()
 
 ## a deeper pit for a pool whose water must show things that stand high over it
 func _cs_deep_pit(sky: String, depth: float) -> void:
@@ -110,6 +131,10 @@ func _wing_things() -> void:
 		if e.sk != null:
 			var hm := HerMod.new(); hm.main = self; (e.sk as Skeleton3D).add_child(hm)
 		if e.ap != null: (e.ap as AnimationPlayer).play("idle")
+	var g3: Vector3 = N["cs_hub3i"]
+	objs["cs_inlet3"] = {"at": g3, "stand": g3 + (N["cs_hubn3i"] as Vector3) * 0.56 - Vector3(0, g3.y, 0), "mark": false, "hits": [Vector3(CS3_IN.x, 0.15, CS3_IN.z), g3, g3 + Vector3(0, 0.3, 0)]}
+	objs["cs_over3"] = {"at": CS3_OVER + Vector3(0, 1.0, 0), "stand": CS3_OVER + Vector3(0, 0, -0.55), "mark": false, "hits": [CS3_OVER + Vector3(0, 0.1, 0), CS3_OVER + Vector3(0, 1.25, 0)]}
+	objs["cs_wheel3"] = {"at": CS3_WHEEL + Vector3(0, 0.3, 0.1), "stand": Vector3(CS3_WHEEL.x + 1.05, 0, CS3PZ0 + 0.45), "mark": false, "hits": [CS3_WHEEL + Vector3(0, -0.4, 0.1), CS3_WHEEL + Vector3(0, 0.5, 0.1)]}
 	var g2: Vector3 = N["cs_hub2"]
 	objs["cs_gate2"] = {"at": g2, "stand": g2 + (N["cs_hubn2"] as Vector3) * 0.56 - Vector3(0, g2.y, 0), "mark": false, "hits": [Vector3(g2.x, 0.15, CS_GATE2.z), g2, g2 + Vector3(0, 0.3, 0)]}
 	var l2 := Vector3(CS2PX0 + 0.45, 0, CS2CZ)
@@ -128,7 +153,13 @@ func _wing_nav() -> void:
 	rects["C2e"] = R(CS2PX1 + 0.3, CS2Z0 + 0.75, CS2X1 - 0.45, CS2Z1 - 0.45); rects["C2s"] = R(CS2X0 + 0.75, CS2PZ1 + 0.3, CS2X1 - 0.45, CS2Z1 - 0.45)
 	rects["C2n"] = R(CS2X0 + 0.75, CS2Z0 + 0.75, CS2X1 - 0.45, CS2PZ0 - 0.3); rects["C2w"] = R(CS2X0 + 0.75, CS2Z0 + 0.75, CS2PX0 - 0.3, CS2Z1 - 0.45)
 	solids.append(Vector3(CS_GATE2.x, CS_GATE2.z, 0.5))
-	rects["C2x"] = R(CS2X0 - 0.6, CS2CZ - 0.25, CS2X0 + 0.77, CS2CZ + 0.25, false)
+	rects["C2x"] = R(CS3X1 - 0.47, CS2CZ - 0.25, CS2X0 + 0.77, CS2CZ + 0.25, false)
+	rects["C3e"] = R(CS3PX1 + 0.3, CS3Z0 + 0.75, CS3X1 - 0.45, CS3Z1 - 0.45); rects["C3s"] = R(CS3X0 + 0.75, CS3PZ1 + 0.3, CS3X1 - 0.45, CS3Z1 - 0.45)
+	rects["C3n"] = R(CS3X0 + 0.75, CS3Z0 + 0.75, CS3X1 - 0.45, CS3PZ0 - 0.3); rects["C3w"] = R(CS3X0 + 0.75, CS3Z0 + 0.75, CS3PX0 - 0.3, CS3Z1 - 0.45)
+	rects["C3st"] = R(CS3PX1 - CS3_LW + 0.2, CS3PZ1 - 1.5, CS3PX1 - 0.2, CS3PZ1 + 0.32); rects["C3le"] = R(CS3PX1 - CS3_LW + 0.2, CS3PZ0 + 0.3, CS3PX1 - 0.2, CS3PZ1 - 1.5); rects["C3ln"] = R(CS3_WHEEL.x + 0.85, CS3PZ0 + 0.3, CS3PX1 - 0.2, CS3PZ0 + CS3_LW - 0.2)
+	ramps.append({"r": rects["C3st"], "z0": CS3PZ1 - 1.5, "z1": CS3PZ1, "y0": CS3_LEDGE, "y1": 0.0}); ramps.append({"r": rects["C3le"], "z0": 0.0, "z1": 1.0, "y0": CS3_LEDGE, "y1": CS3_LEDGE}); ramps.append({"r": rects["C3ln"], "z0": 0.0, "z1": 1.0, "y0": CS3_LEDGE, "y1": CS3_LEDGE})
+	solids.append(Vector3(CS3_IN.x, CS3_IN.z, 0.5)); solids.append(Vector3(CS3_OVER.x, CS3_OVER.z, 0.25))
+	rects["C3x"] = R(-57.25, CS3Z1 - 0.47, -56.75, CS3Z1 + 0.6, false)
 
 ## Σ.1: the lever in the water. Her reflection, as deep as she stands high, takes hold of it and draws it down
 func _do_cs_lever1() -> void:
@@ -171,12 +202,24 @@ func _cs_water(key: String, x0: float, z0: float, x1: float, z1: float, level: f
 	cs_mirs.append(["mir_" + key, mr])
 	return mr
 
+## the plain colour of a thing mirrored in such a water. Only what stands above the water is mirrored in it: of
+## the copy that hangs under the water's root, whatever would come out above the surface is not drawn
+var cs_ush: Shader
+func _cs_umat(key: String, c: Color) -> ShaderMaterial:
+	if cs_ush == null:
+		cs_ush = Shader.new(); cs_ush.code = "shader_type spatial;\nrender_mode unshaded, cull_disabled;\nuniform vec3 col : source_color; uniform float level = 0.0;\nvarying vec3 wp;\nvoid vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }\nvoid fragment(){ if (wp.y > level) discard; ALBEDO = col; }"
+	var m := ShaderMaterial.new(); m.shader = cs_ush; m.set_shader_parameter("col", c); m.set_shader_parameter("level", float(N[key + "_level"]))
+	if not N.has(key + "_umats"): N[key + "_umats"] = []
+	(N[key + "_umats"] as Array).append(m)
+	return m
+
 ## the water of such a tank goes to a level, slowly: its surface, and under it its whole mirror world twice as far
 func _cs_level(key: String, to: float, secs := 2.6) -> void:
 	var from: float = N[key + "_level"]
 	var lt := create_tween(); lt.tween_method(func(v: float) -> void:
 		N[key + "_level"] = v
-		(N[key + "_mr"] as Node3D).position.y = 2.0 * v; (N[key + "_glass"] as Node3D).position.y = v + 0.012, from, to, secs).set_trans(Tween.TRANS_SINE)
+		(N[key + "_mr"] as Node3D).position.y = 2.0 * v; (N[key + "_glass"] as Node3D).position.y = v + 0.012
+		for m in N.get(key + "_umats", []): (m as ShaderMaterial).set_shader_parameter("level", v), from, to, secs).set_trans(Tween.TRANS_SINE)
 	await lt.finished
 
 ## Σ.2: two tanks side by side, a low wall with a gap between them. The east one stands low; the west one a step
@@ -195,12 +238,12 @@ func _cs2() -> void:
 		var twin: bool = both != self
 		for wl in [[CS2PX0 - 0.08, CS2PZ0 - 0.08, CS2PX1 + 0.08, CS2PZ0], [CS2PX0 - 0.08, CS2PZ0, CS2PX0, CS2PZ1]]:      # the north and west sides, which the eye sees
 			var b := blk(Vector3(wl[0], -0.95, wl[1]), Vector3(wl[2], -0.17, wl[3]), "shade", both)
-			if twin: b.material_override = under_mat(Color("b3a595"))
+			if twin: b.material_override = _cs_umat("cs2S" if both == mrS else "cs2T", Color("b3a595"))
 		for seg in [[CS2PZ0, CS2CZ - 0.55], [CS2CZ + 0.55, CS2PZ1]]:
 			var d := blk(Vector3(CS2WX0, -0.95, seg[0]), Vector3(CS2WX1, 0.45, seg[1]), "stone", both)
-			if twin: d.material_override = under_mat(Color("cfc0aa"))
+			if twin: d.material_override = _cs_umat("cs2S" if both == mrS else "cs2T", Color("cfc0aa"))
 			var cp := blk(Vector3(CS2WX0 - 0.03, 0.45, seg[0]), Vector3(CS2WX1 + 0.03, 0.5, seg[1]), "shade", both)
-			if twin: cp.material_override = under_mat(Color("b3a595"))
+			if twin: cp.material_override = _cs_umat("cs2S" if both == mrS else "cs2T", Color("b3a595"))
 	# in each water only: the causeway toward the gap, stone by stone, level with the floor
 	for part in [[mrS, CS2WX1, CS2PX1], [mrT, CS2PX0, CS2WX0]]:
 		var n := 7; var a: float = part[1]; var b2: float = part[2]
@@ -231,6 +274,232 @@ func _cs2() -> void:
 	stele("cs_stele2", Vector3(CS2X1 - 0.75, 0, CS2Z1 - 0.85), 0.0, ["Two basins,\nso that neither is ever full.", "One step of water\nis two steps of what it shows."])
 	_look_add("cs_gap", Vector3(CS2WX1 + 0.1, -0.3, CS2CZ - 0.9), 0.9, ["a low wall between the two tanks, with a gap", "in each water a causeway leads to the gap. they do not meet"])
 	urn(Vector3(CS2X1 - 0.8, 0, CS2Z0 + 0.9), 1.0, "rose")
+
+## Σ.3: the great cistern, empty. A walk runs along its east and north walls half way down, and on the north wall
+## hangs a bronze wheel sawn in half: only its upper half is there. Its inlet (a wheel on the west rim) fills it to
+## the brim; an overflow half way up (a pull on the north rim) lets it stand at the height of the wheel's axle
+func _cs3() -> void:
+	floor_plain(CS3X1, CS2CZ - 0.8, CS2X0, CS2CZ + 0.8, 0.0); channel(Vector3(CS3X1, 0, CS2CZ), Vector3(CS2X0, 0, CS2CZ))
+	_pool_court(CS3X0, CS3Z0, CS3X1, CS3Z1, CS3PX0, CS3PZ0, CS3PX1, CS3PZ1, "stone", "PoolSkyC3")
+	_cs_deep_pit("PoolSkyC3", 4.6)
+	N["cs3_pit"] = get_node("PoolSkyC3"); (N["cs3_pit"] as Node3D).visible = false
+	tile_hole = Rect2(CS3PX0 - 0.08, CS3PZ0 - 0.08, CS3PX1 - CS3PX0 + 0.16, CS3PZ1 - CS3PZ0 + 0.16); tiles(CS3X0, CS3Z0, CS3X1, CS3Z1, 1.0); tile_hole = Rect2()
+	cs_courts.append([CS3X0, CS3Z0, CS3X1, CS3Z1])
+	var mr := _cs_water("cs3", CS3PX0, CS3PZ0, CS3PX1, CS3PZ1, CS3_BOT + 0.02)
+	mr.visible = false
+	# its surface can lie as a film over the stone before it shows anything: the same glass, with a veil
+	var gsh := Shader.new(); gsh.code = SH_GLASS.replace("//GLINT", GLSL_GLINT).replace("uniform float time_s = 0.0;", "uniform float time_s = 0.0; uniform float veil = 0.0; uniform float alpha = 1.0; uniform vec3 veil_col : source_color = vec3(0.8);").replace("	ALBEDO = c;", "	c = mix(c, mix(veil_col, vec3(0.6, 0.85, 0.88), 0.18), veil);\n	ALBEDO = c; ALPHA = alpha;")
+	var gm := ShaderMaterial.new(); gm.shader = gsh; timed.append(gm)
+	gm.set_shader_parameter("lost_a", 0.0); gm.set_shader_parameter("blur_px", 0.6); gm.set_shader_parameter("lod", 0.0); gm.set_shader_parameter("veil", 1.0); gm.set_shader_parameter("alpha", 0.0); gm.set_shader_parameter("veil_col", Color("d9cdb9"))
+	(N["cs3_glass"] as MeshInstance3D).material_override = gm; (N["cs3_glass"] as Node3D).visible = false; N["cs3_gm"] = gm
+	# the tank itself: its bottom (a face eight metres long, smooth, with nothing on it), its walls, the walk
+	var bot := Node3D.new(); add_child(bot); N["cs3_bot"] = bot
+	blk(Vector3(CS3PX0 - 0.08, CS3_BOT - 0.1, CS3PZ0 - 0.08), Vector3(CS3PX1 + 0.08, CS3_BOT, CS3PZ1 + 0.08), "shade", bot)
+	var fc := Vector3((CS3PX0 + CS3PX1) * 0.5 - 0.5, CS3_BOT, (CS3PZ0 + CS3PZ1) * 0.5 + 0.5)
+	var face := turned(Vector3.ZERO, [[2.35, 0.0], [2.35, 0.012], [2.2, 0.03], [0.0, 0.03]], "marble", 40, bot); face.position = fc; face.scale = Vector3(1.0, 1.0, 1.28); face.rotation.y = -0.5
+	var veilb := turned(Vector3.ZERO, [[2.62, 0.0], [2.62, 0.008], [2.4, 0.008]], "stone", 40, bot); veilb.position = fc; veilb.scale = Vector3(1.0, 1.0, 1.28); veilb.rotation.y = -0.5
+	for md in [[Vector3(-59.0, CS3_BOT, -43.6), 0.34, 0.3], [Vector3(-58.2, CS3_BOT, -44.3), 0.27, 1.4], [Vector3(-54.6, CS3_BOT, -48.4), 0.3, 2.2], [Vector3(-59.2, CS3_BOT, -47.9), 0.25, 0.9]]:      # the mirrors he sank: bronze discs, face down
+		cyl(md[0], md[1], md[1], 0.03, pal("gold"), 20, bot); cyl(md[0] + Vector3(0, 0.03, 0), md[1] * 0.3, md[1] * 0.3, 0.02, pal("dark"), 12, bot)
+		var hd := blk(Vector3(-0.03, 0, 0), Vector3(0.03, 0.03, md[1] + 0.22), "gold", bot); hd.position += md[0]; hd.rotation.y = md[2]
+	for both in [self, mr]:
+		var twin: bool = both != self
+		for wl in [[CS3PX0 - 0.08, CS3PZ0 - 0.08, CS3PX1 + 0.08, CS3PZ0], [CS3PX0 - 0.08, CS3PZ0, CS3PX0, CS3PZ1]]:      # the north and west walls
+			var b := blk(Vector3(wl[0], CS3_BOT, wl[1]), Vector3(wl[2], -0.17, wl[3]), "shade", both)
+			if twin: b.material_override = _cs_umat("cs3", Color("b3a595"))
+		# the walk: along the east wall from the stair, then along the north wall to the wheel
+		for lg in [[CS3PX1 - CS3_LW, CS3PZ0, CS3PX1, CS3PZ1 - 1.5], [CS3_WHEEL.x + 0.75, CS3PZ0, CS3PX1 - CS3_LW, CS3PZ0 + CS3_LW]]:
+			var b2 := blk(Vector3(lg[0], CS3_BOT, lg[1]), Vector3(lg[2], CS3_LEDGE, lg[3]), "stone", both)
+			if twin: b2.material_override = _cs_umat("cs3", Color("cfc0aa"))
+		for k in 4:      # the stair down to it from the south rim
+			var b3 := blk(Vector3(CS3PX1 - CS3_LW, CS3_BOT, CS3PZ1 - 0.375 * (k + 1)), Vector3(CS3PX1, CS3_LEDGE * (k + 1) / 4.0 + 0.0, CS3PZ1 - 0.375 * k), "stone", both)
+			if twin: b3.material_override = _cs_umat("cs3", Color("cfc0aa"))
+	# the half wheel: a whole wheel as it was made, of which the stone shows only what is above the axle (he sawed
+	# the rest away); the water, when it stands at the axle, shows the other half
+	var wsh := Shader.new(); wsh.code = "shader_type spatial;\nrender_mode unshaded, cull_disabled;\nuniform vec3 col : source_color; uniform float axle = 0.0; uniform float level = -100.0; uniform float twin = 0.0;\nvarying vec3 wp; varying vec3 wn;\nvoid vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz); }\nvoid fragment(){\n	if (twin < 0.5) { if (wp.y < axle) discard; } else { if (wp.y > level || 2.0 * level - wp.y < axle) discard; }\n	float sh = 0.74 + 0.26 * clamp(dot(normalize(wn), normalize(vec3(0.35, 0.7, 0.62))) * 0.5 + 0.5, 0.0, 1.0);\n	ALBEDO = col * sh * mix(1.0, 0.86, twin);\n}"
+	for both in [self, mr]:
+		var twin: bool = both != self
+		var wm := ShaderMaterial.new(); wm.shader = wsh; wm.set_shader_parameter("col", Color("d6a03a")); wm.set_shader_parameter("axle", CS3_MID); wm.set_shader_parameter("twin", 1.0 if twin else 0.0)
+		var wm2: ShaderMaterial = wm.duplicate(); wm2.set_shader_parameter("col", Color("8a6a2a"))
+		var wn := Node3D.new(); wn.position = CS3_WHEEL; both.add_child(wn)
+		var rim := TorusMesh.new(); rim.inner_radius = CS3_WR - 0.07; rim.outer_radius = CS3_WR; rim.rings = 32; rim.ring_segments = 8
+		prim(rim, Vector3.ZERO, wm, wn).rotation.x = PI * 0.5
+		for i in 6:
+			var sp := prim(_box(Vector3(0.05, CS3_WR * 2.0 - 0.1, 0.04)), Vector3.ZERO, wm2, wn); sp.rotation.z = PI * i / 6.0
+		var hub := cyl(Vector3.ZERO, 0.1, 0.1, 0.1, wm, 14, wn); hub.rotation.x = PI * 0.5; hub.position = Vector3(0, 0, 0.0)
+		for i in 12:      # pegs round the rim, to push it by
+			var pg := prim(_box(Vector3(0.05, 0.05, 0.12)), Vector3(cos(TAU * i / 12.0), sin(TAU * i / 12.0), 0) * (CS3_WR - 0.035) + Vector3(0, 0, 0.07), wm2, wn)
+			pg.rotation.z = TAU * i / 12.0
+		N["cs3_wheel_m" if twin else "cs3_wheel"] = wn; N["cs3_wmat_m" if twin else "cs3_wmat"] = [wm, wm2]
+	blk(Vector3(CS3_WHEEL.x - 0.09, CS3_MID - 0.09, CS3PZ0 - 0.06), Vector3(CS3_WHEEL.x + 0.09, CS3_MID + 0.09, CS3PZ0 + 0.03), "dark")      # its bearing in the wall
+	var rim_e := R(CS3PX1 + 0.3, CS3Z0 + 0.75, CS3X1 - 0.45, CS3Z1 - 0.45); var rim_s := R(CS3X0 + 0.75, CS3PZ1 + 0.3, CS3X1 - 0.45, CS3Z1 - 0.45)
+	var le := R(CS3PX1 - CS3_LW + 0.2, CS3PZ0 + 0.3, CS3PX1 - 0.2, CS3PZ1 - 1.5, true, CS3_LEDGE); var ln := R(CS3_WHEEL.x + 0.85, CS3PZ0 + 0.3, CS3PX1 - 0.2, CS3PZ0 + CS3_LW - 0.2, true, CS3_LEDGE)
+	W["C3"] = {"r": [CS3PX0, CS3PZ0, CS3PX1, CS3PZ1], "level": CS3_BOT, "wet": false, "mir": "mir_cs3", "heads": [rim_e, rim_s, le, ln], "foot": {"re": rim_e, "rs": rim_s, "le": le, "ln": ln}}
+	WL.append("C3")
+	# the inlet: a capstan on the west rim, and under it in the wall the mouth the water comes from
+	var wd := winch(CS3_IN, PI * 0.5, self, false)
+	N["cs_wheel3i"] = wd.wheel; N["cs_hub3i"] = wd.hub; N["cs_hubn3i"] = wd.n
+	blk(Vector3(CS3PX0 - 0.05, -0.62, CS3_IN.z - 0.22), Vector3(CS3PX0 + 0.06, -0.3, CS3_IN.z + 0.22), "gold"); blk(Vector3(CS3PX0 + 0.06, -0.56, CS3_IN.z - 0.15), Vector3(CS3PX0 + 0.075, -0.36, CS3_IN.z + 0.15), "dark")
+	# the overflow: a bronze flap in the north wall at the middle height, a chain up the wall, and a ring to pull on a post
+	var flap := Node3D.new(); flap.position = Vector3(CS3_OVER.x, CS3_MID + 0.02, CS3PZ0 + 0.02); add_child(flap); N["cs3_flap"] = flap
+	blk(Vector3(-0.2, -0.26, 0), Vector3(0.2, 0.0, 0.03), "gold", flap)
+	blk(Vector3(CS3_OVER.x - 0.24, CS3_MID - 0.28, CS3PZ0 - 0.02), Vector3(CS3_OVER.x + 0.24, CS3_MID + 0.05, CS3PZ0 + 0.015), "dark")
+	for i in 7: blk(Vector3(CS3_OVER.x - 0.012, CS3_MID + 0.04 + 0.08 * i, CS3PZ0 + 0.02), Vector3(CS3_OVER.x + 0.012, CS3_MID + 0.1 + 0.08 * i, CS3PZ0 + 0.045), "gold" if i % 2 == 0 else "dark")
+	blk(CS3_OVER + Vector3(-0.1, 0, -0.1), CS3_OVER + Vector3(0.1, 0.08, 0.1), "shade"); blk(CS3_OVER + Vector3(-0.06, 0.08, -0.06), CS3_OVER + Vector3(0.06, 0.95, 0.06), "stone")
+	var pull := Node3D.new(); pull.position = CS3_OVER + Vector3(0, 0.95, 0.0); add_child(pull); N["cs3_pull"] = pull
+	var ring := TorusMesh.new(); ring.inner_radius = 0.06; ring.outer_radius = 0.085
+	prim(ring, Vector3(0, 0.1, 0.08), pal("gold"), pull).rotation.x = PI * 0.5; blk(Vector3(-0.012, 0, 0.06), Vector3(0.012, 0.06, 0.085), "gold", pull)
+	wall(CS3X0, CS3Z0, CS3X1, CS3Z0 + 0.3, 2.6); wall(CS3X0, CS3Z0 + 0.3, CS3X0 + 0.3, CS3Z1, 2.6)
+	parapet(Vector3(CS3X1 - 0.1, 0, CS3Z0 + 0.4), Vector3(CS3X1 - 0.1, 0, CS2CZ - 0.8)); parapet(Vector3(CS3X1 - 0.1, 0, CS2CZ + 0.8), Vector3(CS3X1 - 0.1, 0, CS3Z1 - 0.1)); parapet(Vector3(CS3X0 + 0.4, 0, CS3Z1 - 0.1), Vector3(-57.75, 0, CS3Z1 - 0.1)); parapet(Vector3(-56.25, 0, CS3Z1 - 0.1), Vector3(CS3X1 - 0.1, 0, CS3Z1 - 0.1))
+	sluice("cs_s3", Vector3(-57.0, 0, CS3Z1 - 0.2), false, 0.5)
+	channel(Vector3(CS3X1 - 1.1, 0, CS2CZ), Vector3(CS3X1, 0, CS2CZ)); channel(Vector3(CS3X1 - 1.1, 0, CS2CZ + 0.5), Vector3(CS3X1 - 1.1, 0, CS3Z1 - 1.1)); channel(Vector3(-57.0, 0, CS3Z1 - 1.1), Vector3(CS3X1 - 1.6, 0, CS3Z1 - 1.1)); channel(Vector3(-57.0, 0, CS3Z1 - 0.6), Vector3(-57.0, 0, CS3Z1))
+	stele("cs_stele3", Vector3(CS3X1 - 0.8, 0, CS3Z1 - 0.9), 0.0, ["I cut the wheel in half.\nHalf a wheel opens nothing.", "The half I carved, I kept.\nThe other half the water gives,\nat the right height."])
+	_look_add("cs_face", Vector3(CS3PX1 - 0.3, 0, CS3PZ1 + 0.1), 0.3, ["the bottom of the cistern is a face, eight metres long", "smooth. nothing is carved on it"])
+	_look_add("cs_sunk", Vector3(CS3PX0 + 0.2, 0, CS3PZ1 + 0.1), 0.3, ["bronze discs on the bottom, face down", "mirrors. he sank them"])
+	urn(Vector3(CS3X1 - 0.8, 0, CS3Z0 + 0.9), 1.0); cypress(Vector3(CS3X0 + 0.85, 0, CS3Z1 - 0.8), 2.6)
+
+## the level the cistern's water goes to with its inlet and its overflow as they stand: none, the middle, the brim
+func _cs3_target() -> float:
+	return CS3_BOT if not cs3_in else (CS3_MID if cs3_over else CS3_FULL)
+
+## the cistern's water goes there. Coming into the empty tank it first lies as a film over the stone, then deepens
+## and begins to show; going out, the other way round. The walk is under water when it stands at the brim
+func _cs3_apply() -> void:
+	var to := _cs3_target(); var gm: ShaderMaterial = N["cs3_gm"]; var gl: Node3D = N["cs3_glass"]
+	var wet := to > CS3_BOT + 0.05
+	if not refl_out.is_empty() and refl_w == "C3": await _refl_melt()
+	rects["C3le"].on = false; rects["C3ln"].on = false; rects["C3st"].on = false      # (while the water moves)
+	if wet and not cs3_wet:      # water comes into the empty tank
+		N["cs3_level"] = CS3_BOT + 0.02; (N["cs3_mr"] as Node3D).position.y = 2.0 * (CS3_BOT + 0.02); gl.position.y = CS3_BOT + 0.032
+		gm.set_shader_parameter("veil", 1.0); gm.set_shader_parameter("alpha", 0.0); gl.visible = true
+		var f := create_tween(); f.tween_method(func(v: float) -> void: gm.set_shader_parameter("alpha", v), 0.0, 1.0, 0.9)
+		await f.finished
+		(N["cs3_bot"] as Node3D).visible = false; (N["cs3_pit"] as Node3D).visible = true; (N["cs3_mr"] as Node3D).visible = true
+		cs3_wet = true; W["C3"].wet = true
+		create_tween().tween_method(func(v: float) -> void: gm.set_shader_parameter("veil", v), 1.0, 0.0, 1.6)
+	var lt := create_tween(); lt.tween_method(func(v: float) -> void:
+		N["cs3_level"] = v; W["C3"].level = v
+		(N["cs3_mr"] as Node3D).position.y = 2.0 * v; gl.position.y = v + 0.012
+		for m in (N["cs3_wmat_m"] as Array) + (N.get("cs3_umats", []) as Array): (m as ShaderMaterial).set_shader_parameter("level", v), float(N["cs3_level"]), to if wet else CS3_BOT + 0.02, 0.6 + 4.0 * absf(float(N["cs3_level"]) - (to if wet else CS3_BOT + 0.02))).set_trans(Tween.TRANS_SINE)
+	if not wet and cs3_wet:      # the last of it: it stops showing, and is a film on the stone again
+		var total := 0.6 + 4.0 * absf(float(N["cs3_level"]) - (CS3_BOT + 0.02))
+		await wait(maxf(total - 1.4, 0.0))
+		var v2 := create_tween(); v2.tween_method(func(v: float) -> void: gm.set_shader_parameter("veil", v), 0.0, 1.0, 1.4)
+		await lt.finished
+		(N["cs3_bot"] as Node3D).visible = true; (N["cs3_pit"] as Node3D).visible = false; (N["cs3_mr"] as Node3D).visible = false
+		cs3_wet = false; W["C3"].wet = false
+		var f2 := create_tween(); f2.tween_method(func(v: float) -> void: gm.set_shader_parameter("alpha", v), 1.0, 0.0, 0.9)
+		await f2.finished
+		gl.visible = false
+	else:
+		await lt.finished
+	var dry := to < CS3_LEDGE - 0.02      # the walk stands clear of the water
+	rects["C3le"].on = dry; rects["C3ln"].on = dry; rects["C3st"].on = dry
+
+## Σ.3: the inlet's wheel. She turns it: the water comes in (or stops, and what is in the tank drains away)
+func _do_cs_inlet3() -> void:
+	var hub: Vector3 = N["cs_hub3i"]; var hn: Vector3 = N["cs_hubn3i"]; var wa: Node3D = N["cs_wheel3i"]
+	await face(hub)
+	var hands := func(_v: float) -> void:
+		var pts := _crank_pts(hub, hn, wa.rotation.x, 0.35)
+		tgtL = pts[0]; tgtR = pts[1]
+	hands.call(0.0)
+	var up := tw(); up.tween_property(self, "a_wL", 1.0, 0.6); up.tween_property(self, "a_wR", 1.0, 0.6); up.tween_property(self, "a_lean", 0.08, 0.6)
+	await up.finished
+	var s0 := cam.size
+	cam_focus = Vector3((CS3PX0 + CS3PX1) * 0.5 + 0.4, -0.3, (CS3PZ0 + CS3PZ1) * 0.5 + 0.3); cam_focus_on = true
+	create_tween().tween_property(cam, "size", 11.5, 1.4).set_trans(Tween.TRANS_SINE)
+	cs3_in = not cs3_in
+	var wt := create_tween().set_parallel(); wt.tween_property(wa, "rotation:x", wa.rotation.x + (PI * 2.5 if cs3_in else -PI * 2.5), 3.6).set_trans(Tween.TRANS_SINE); wt.tween_method(hands, 0.0, 1.0, 3.6)
+	await wait(0.8)
+	await _cs3_apply()
+	if wt.is_running(): await wt.finished
+	var off := tw(); off.tween_property(self, "a_wL", 0.0, 0.6); off.tween_property(self, "a_wR", 0.0, 0.6); off.tween_property(self, "a_lean", 0.0, 0.6)
+	await off.finished
+	cam_focus_on = false
+	create_tween().tween_property(cam, "size", s0, 1.4).set_trans(Tween.TRANS_SINE)
+
+## Σ.3: the pull of the overflow. She draws the ring up (or lets it down): the flap half way up the wall opens (or
+## shuts), and the water, if it stood higher, falls to that height
+func _do_cs_over3() -> void:
+	await face(CS3_OVER)
+	var pull: Node3D = N["cs3_pull"]; var flap: Node3D = N["cs3_flap"]
+	tgtR = pull.global_position + Vector3(0, 0.1, 0.08)
+	var a := tw(); a.tween_property(self, "a_wR", 1.0, 0.6); a.tween_property(self, "a_lean", 0.06, 0.6)
+	await a.finished
+	cs3_over = not cs3_over
+	var s0 := cam.size
+	cam_focus = Vector3((CS3PX0 + CS3PX1) * 0.5 + 0.4, -0.3, (CS3PZ0 + CS3PZ1) * 0.5 + 0.3); cam_focus_on = true
+	create_tween().tween_property(cam, "size", 11.5, 1.4).set_trans(Tween.TRANS_SINE)
+	var pt := create_tween().set_parallel(); pt.tween_property(pull, "position:y", CS3_OVER.y + (1.22 if cs3_over else 0.95), 0.8).set_trans(Tween.TRANS_SINE)
+	pt.tween_method(func(_v: float) -> void: tgtR = pull.global_position + Vector3(0, 0.1, 0.08), 0.0, 1.0, 0.8)
+	pt.tween_property(flap, "rotation:x", -1.3 if cs3_over else 0.0, 0.8).set_trans(Tween.TRANS_SINE)
+	await pt.finished
+	var b := tw(); b.tween_property(self, "a_wR", 0.0, 0.6); b.tween_property(self, "a_lean", 0.0, 0.6)
+	await _cs3_apply()
+	cam_focus_on = false
+	create_tween().tween_property(cam, "size", s0, 1.4).set_trans(Tween.TRANS_SINE)
+
+## Σ.3: the half wheel. With the tank empty, or its water anywhere but at the axle, half a wheel does not turn. With
+## the water at the axle the half and its reflection are one wheel: she pushes her half down, her reflection pushes
+## its own, turn and turn about, and the deep door opens
+func _do_cs_wheel3() -> void:
+	var c := CS3_WHEEL
+	await face(Vector3(c.x, 0, c.z))
+	var rimp := func(ang: float) -> Vector3: return c + Vector3(cos(ang), sin(ang), 0) * CS3_WR + Vector3(0, 0, 0.16)
+	tgtL = rimp.call(0.55); tgtR = rimp.call(0.25)
+	var a := tw(); a.tween_property(self, "a_wL", 1.0, 0.6); a.tween_property(self, "a_wR", 1.0, 0.6); a.tween_property(self, "a_lean", 0.12, 0.6)
+	await a.finished
+	var wa: Node3D = N["cs3_wheel"]; var wm: Node3D = N["cs3_wheel_m"]
+	var whole := cs3_wet and absf(float(N["cs3_level"]) - CS3_MID) < 0.03
+	if not whole:      # she bears down on it: it gives a little, and comes back
+		var rk := create_tween().set_trans(Tween.TRANS_SINE)
+		rk.tween_method(func(v: float) -> void:
+			wa.rotation.z = v; wm.rotation.z = v; tgtL = rimp.call(0.55 + v); tgtR = rimp.call(0.25 + v), 0.0, -0.14, 0.5)
+		rk.tween_method(func(v: float) -> void:
+			wa.rotation.z = v; wm.rotation.z = v; tgtL = rimp.call(0.55 + v); tgtR = rimp.call(0.25 + v), -0.14, 0.0, 0.7)
+		await rk.finished
+		var b0 := tw(); b0.tween_property(self, "a_wL", 0.0, 0.6); b0.tween_property(self, "a_wR", 0.0, 0.6); b0.tween_property(self, "a_lean", 0.0, 0.6)
+		await b0.finished
+		return
+	var e := _refl_out_now("C3"); var hm := _hermod(e)
+	var s0 := cam.size
+	cam_focus = Vector3(c.x + 1.6, -0.4, c.z + 1.6); cam_focus_on = true
+	create_tween().tween_property(cam, "size", 6.4, 1.4).set_trans(Tween.TRANS_SINE)
+	var mir := func(p: Vector3) -> Vector3: return Vector3(p.x, 2.0 * CS3_MID - p.y, p.z)
+	hm.tL = mir.call(rimp.call(0.55)); hm.tR = mir.call(rimp.call(0.25)); hm.own = true
+	var base := 0.0
+	for turn in 4:
+		var mine := turn % 2 == 0
+		if not mine:
+			var hu := create_tween().set_parallel(); hu.tween_property(hm, "wL", 1.0, 0.4); hu.tween_property(hm, "wR", 1.0, 0.4); hu.tween_property(hm, "bow", 0.12, 0.4)
+			await hu.finished
+		var b1 := base
+		var push := create_tween(); push.tween_method(func(v: float) -> void:
+			wa.rotation.z = b1 - v; wm.rotation.z = b1 - v
+			var k := minf(v, 0.75)
+			if mine: tgtL = rimp.call(0.55 - k); tgtR = rimp.call(0.25 - k)
+			else: hm.tL = mir.call(rimp.call(0.55 - k)); hm.tR = mir.call(rimp.call(0.25 - k)), 0.0, PI * 0.5, 1.5).set_trans(Tween.TRANS_SINE)
+		await push.finished
+		base -= PI * 0.5
+		if mine:      # her hands come back up for the next hold
+			var back := create_tween().set_parallel(); back.tween_property(self, "tgtL", rimp.call(0.55), 0.5); back.tween_property(self, "tgtR", rimp.call(0.25), 0.5)
+			await back.finished
+		else:
+			var hd2 := create_tween().set_parallel(); hd2.tween_property(hm, "wL", 0.0, 0.4); hd2.tween_property(hm, "wR", 0.0, 0.4); hd2.tween_property(hm, "bow", 0.0, 0.4)
+			await hd2.finished
+			hm.tL = mir.call(rimp.call(0.55)); hm.tR = mir.call(rimp.call(0.25))
+	hm.own = false
+	var b := tw(); b.tween_property(self, "a_wL", 0.0, 0.6); b.tween_property(self, "a_wR", 0.0, 0.6); b.tween_property(self, "a_lean", 0.0, 0.6)
+	await b.finished
+	H[refl_key] = e; refl_out = {}; refl_w = ""      # her reflection is under her feet again (it never left them)
+	cam_focus = Vector3(-56.0, 0.3, CS3Z1 - 2.2)
+	create_tween().tween_property(cam, "size", 11.0, 1.6).set_trans(Tween.TRANS_SINE)
+	await wait(1.4)
+	await sluice_open("cs_s3", 2.8)
+	rects["C3x"].on = true; done["cs_wheel3"] = true
+	await wait(0.5)
+	cam_focus_on = false
+	create_tween().tween_property(cam, "size", s0, 1.4).set_trans(Tween.TRANS_SINE)
 
 ## Σ.2: the wheel of the west tank. She turns it: the water there goes down a step (or comes back up), and what it
 ## shows goes twice as far
@@ -314,6 +583,9 @@ func _process(dt: float) -> void:
 func _ready() -> void:
 	super._ready()
 	if "cistern" in OS.get_cmdline_user_args(): _play_cistern()
+	if OS.get_environment("CS3") != "":      # (for stills) the great cistern at the brim, or at the middle
+		cs3_in = true; cs3_over = OS.get_environment("CS3") == "mid"
+		_cs3_apply()
 
 func _play_cistern() -> void:
 	await get_tree().create_timer(1.0).timeout
@@ -338,4 +610,14 @@ func _play_cistern() -> void:
 	print("CISTERN 2 wheel: west level ", N["cs2T_level"], " gap ", W["C2"].foot["gap"].on, " she at ", pos, ", reflection ", (refl_out.holder as Node3D).position if not refl_out.is_empty() else "under her")
 	await _tap_wait(l2)
 	print("CISTERN 2 second try: lever ", done.has("cs_lever2"), " sluice ", rects["C2x"].on, " she at ", pos)
+	await _tap_wait(CS3_WHEEL + Vector3(0, 0.2, 0.1))      # the half wheel, with the tank empty
+	print("CISTERN 3 empty: wheel ", done.has("cs_wheel3"), " she at ", pos)
+	await _tap_wait(N["cs_hub3i"])      # the inlet: it fills to the brim
+	print("CISTERN 3 inlet: level ", N["cs3_level"], " walk open ", rects["C3le"].on, " she at ", pos)
+	await _tap_wait(CS3_WHEEL + Vector3(0, 0.2, 0.1))
+	print("CISTERN 3 full: wheel ", done.has("cs_wheel3"), " she at ", pos)
+	await _tap_wait(CS3_OVER + Vector3(0, 1.0, 0))      # the overflow: it falls to the middle
+	print("CISTERN 3 overflow: level ", N["cs3_level"], " walk open ", rects["C3le"].on)
+	await _tap_wait(CS3_WHEEL + Vector3(0, 0.2, 0.1))
+	print("CISTERN 3 at the axle: wheel ", done.has("cs_wheel3"), " sluice ", rects["C3x"].on, " she at ", pos)
 	get_tree().quit()

@@ -1160,7 +1160,7 @@ func _views() -> void:
 	started = true; title_box.hide(); hint.hide()
 	if not woke: _wake_now()
 	var dir := OS.get_environment("SHOT_DIR")
-	await get_tree().create_timer(2.0).timeout
+	await get_tree().create_timer(float(OS.get_environment("VIEW_WAIT")) if OS.get_environment("VIEW_WAIT") != "" else 2.0).timeout
 	for at in OS.get_environment("VIEWS").split(";", false):
 		var f := at.split(",")
 		var sh := {"n": f[0], "c": Vector3(float(f[1]), 0.4, float(f[2])), "s": float(f[3])}
