@@ -49,25 +49,25 @@ const KX0 := -22.2
 const KZ0 := -40.2
 const KX1 := -13.2
 const KZ1 := -32.6
-const WX0 := -19.8      # its pool: it lies up to the foot of the north wall
+const WX0 := -19.45      # its pool: it lies up to the foot of the north wall
 const WZ0 := -39.8
 const WX1 := -14.6
 const WZ1 := -34.6
 const KWALL_H := 2.6
 const KPIV := Vector3(-19.8, 0, -37.0)      # the crane turns here, on a round quay at the pool's west rim
-const KQUAY := 1.15      # the radius of that quay
-const KANG := [30.0, 0.0, -38.2]      # the ways its arm can point (degrees, from east through south): at open water, at the islet, at the door the water keeps
-const KISLE := Vector3(-15.9, 0, -37.0)
-const KDOOR_X := -17.1      # the door the water keeps: the arm's third way leads to the step before it
+const KQUAY := 1.45      # the radius of that quay
+const KANG := [30.0, 0.0, -35.66]      # the ways its arm can point (degrees, from east through south): at open water, at the islet, at the door the water keeps
+const KISLE := Vector3(-15.7, 0, -37.0)
+const KDOOR_X := -16.85      # the door the water keeps: the arm's third way leads to the step before it
 const KDOOR_H := 2.08
-const BEAM_R0 := 1.2      # the timber that hangs from the arm just over the water: from here to here along the arm
-const BEAM_R1 := 3.3
+const BEAM_R0 := 1.5      # the timber that hangs from the arm just over the water: from here to here along the arm
+const BEAM_R1 := 3.5
 const BEAM_TOP := 0.25
-const KSTAND := 0.72      # how far from the crane's axis she stands, under its arm, to send her reflection out
-const KPOST := Vector3(-20.3, 0, -37.0)      # the crank post beside the turntable
+const KSTAND := 1.0      # how far from the crane's axis she stands, under its arm, to send her reflection out
+const KPOST := Vector3(-20.4, 0, -36.5)      # the crank post beside the turntable
 const KSTEP := 0.7      # how far the door's step (in the water) stands out from the wall
-const KGEAR := 6.0      # turns of the crank post for one of the crane
-const KJIB_Y := 2.85      # the underside of the arm, where the chains hang from
+const KGEAR := 2.17      # turns of the crank post for one of the crane
+const KJIB_Y := 2.48      # the underside of the arm, where the chains hang from
 const KBENCH := Vector3(-14.1, 0, -33.3)
 var crane_n: Node3D
 var crane_m: Node3D
@@ -99,7 +99,7 @@ const LOOK_LINES := {      # what she notices in the things he made, by kind
 	"mirror": ["a mirror. it shows the court, and no one in it"],
 	"shroud": ["a mirror under a cloth", "the cloth is tied on the far side"],
 }
-const STELE_PARTS := "stone:marble,shade:shade,dark:dark,gold:gold"
+const STELE_PARTS := "stone:marble,gold:gold,dark:dark"
 const QUIET := ["plinth", "winch", "bench", "crane"]      # things that show a small gold mark only when she is near
 const NOMARK := ["turn1", "turn2", "turn3", "wkey", "wdoor"]      # things with no mark at all: a statue to turn, and what is seen only in the water
 const AX0 := -6.5   # the first court, now wide and open around the pool
@@ -1882,7 +1882,7 @@ func _shots() -> void:
 		{"n": "24-statue-row", "p": Vector3(-0.5, 0, MYPL.z), "y": -PI * 0.5, "c": Vector3(-2.2, 0.3, -0.5), "s": 6.0},
 		{"n": "25-crossing-court", "p": Vector3(CROSS_X, 0, QZ1 + 0.3), "y": PI, "c": Vector3(1.2, 0.3, -13.7), "s": 10.2},
 		{"n": "28-turned-ones", "p": Vector3(-16.32, 0, -14.4), "y": -PI * 0.5, "c": Vector3(-17.9, 0.2, -13.0), "s": 9.8},
-		{"n": "30-crane-court", "p": Vector3(-19.18, 0, -36.64), "y": 1.047, "c": Vector3(-17.3, 0.2, -36.6), "s": 10.0},
+		{"n": "30-crane-court", "p": Vector3(-18.93, 0, -36.5), "y": 1.047, "c": Vector3(-17.3, 0.2, -36.6), "s": 10.0},
 		{"n": "26-causeway-mirrors", "p": Vector3(0, 0, -7.0), "y": -PI * 0.6, "c": Vector3(-0.8, 1.75, -7.8), "s": 8.6, "quote": true},   # framed as the run frames it
 		{"n": "22-covered-pool", "p": Vector3(1.37, 0, -13.2), "y": -PI * 0.5, "c": Vector3(-1.0, 0.4, -13.0), "s": 7.5},
 		{"n": "23-door-in-water", "p": Vector3(0.25, 0, -12.4), "y": -PI * 0.6, "c": Vector3(-1.2, 0.4, -13.0), "s": 6.2, "nosheet": true},
@@ -3953,12 +3953,12 @@ func _gear(parent: Node, r: float, n: int, h: float, p := "gold") -> void:
 func _crane(parent: Node) -> Node3D:
 	var twin := parent == mroot
 	var n := Node3D.new(); n.position = KPIV; n.rotation.y = -deg_to_rad(KANG[0]); parent.add_child(n)
-	var tt := Node3D.new(); tt.position = Vector3(0, 0.05, 0); n.add_child(tt)
-	cyl(Vector3.ZERO, 0.4, 0.4, 0.05, pal("wood"), 28, tt)
-	var gr := Node3D.new(); gr.position = Vector3(0, 0.05, 0); tt.add_child(gr); _gear(gr, 0.42, 48, 0.035)
-	if FileAccess.file_exists("res://props/crane.glb"):
-		prop_model("crane", n, 0.0, 0.0, twin, false, "wood:wood,rope:rope,gold:gold,stone:stone")
-	else:      # (until the model is made) a plain mast, arm, brace and counterweight
+	if FileAccess.file_exists("res://props/crane.glb"):      # (props/crane, made in Tripo: its turntable with a toothed bronze ring, mast, level arm, brace, windlass, counterweight in a sling)
+		prop_model("crane", n, 0.0, 0.0, twin, false, "wood:wood,rope:rope,gold:gold,stone:stone,dark:dark").position.y = 0.05
+	else:      # (without the model) a plain turntable, mast, arm, brace and counterweight
+		var tt := Node3D.new(); tt.position = Vector3(0, 0.05, 0); n.add_child(tt)
+		cyl(Vector3.ZERO, 0.4, 0.4, 0.05, pal("wood"), 28, tt)
+		var gr := Node3D.new(); gr.position = Vector3(0, 0.05, 0); tt.add_child(gr); _gear(gr, 0.42, 48, 0.035)
 		blk(Vector3(-0.1, 0.1, -0.1), Vector3(0.1, 3.05, 0.1), "wood", n)
 		blk(Vector3(-0.9, 2.85, -0.08), Vector3(3.6, 3.02, 0.08), "wood", n)
 		var br := blk(Vector3(-0.9, -0.05, -0.05), Vector3(0.9, 0.05, 0.05), "wood", n); br.position = Vector3(0.75, 2.2, 0); br.rotation.z = 0.72
@@ -4058,13 +4058,14 @@ func _crane_court() -> void:
 	kribbon = Node3D.new(); kribbon.position = kkey_top; mroot.add_child(kribbon)
 	var rb := blk(Vector3(-0.012, -0.3, -0.004), Vector3(0.012, 0.0, 0.004), "crim", kribbon)
 	var rm2: StandardMaterial3D = lm.duplicate(); rm2.albedo_color = Color("d23a44"); rb.material_override = rm2
-	kkey = Node3D.new(); kkey.name = "Key"; add_child(kkey); kkey.position = Vector3(kkey_top.x, -(kkey_top.y - 0.35), kkey_top.z); kkey.rotation.x = PI      # (in the water: upside down, its ring to the ribbon)
+	kkey = Node3D.new(); kkey.name = "Key"; add_child(kkey); kkey.position = Vector3(kkey_top.x, -(kkey_top.y - 0.5), kkey_top.z); kkey.rotation.z = PI * 0.5      # (in the water it hangs upside down: its ring, at the ribbon, is the deeper end)
 	khalo = halo(2.6, Color(1.0, 0.86, 0.6, 0.5)); khalo.position = Vector3(KDOOR_X, 1.0, WZ0 + 0.1); khalo.scale = Vector3.ONE * 0.001; khalo.visible = false; add_child(khalo)
 	if OS.get_environment("KI") != "":      # (stills) the crane as it stands at another of its places
 		crane_i = int(OS.get_environment("KI"))
 		crane_n.rotation.y = -deg_to_rad(KANG[crane_i]); crane_m.rotation.y = crane_n.rotation.y
-	if FileAccess.file_exists("res://props/key.glb"):
-		prop_model("key", kkey, 0.0, 0.0, false, false, "gold:gold,crim:crim")
+	if FileAccess.file_exists("res://props/key.glb"):      # (props/key: as made it lies flat, its ring toward -x)
+		var km := prop_model("key", kkey, 0.0, 0.0, false, false, "gold:gold,crim:crim"); km.scale = Vector3.ONE * 1.45; km.position = Vector3(0, -0.03, 0)
+		for q in km.find_children("*", "MeshInstance3D", true, false): (q as MeshInstance3D).material_override = gm; (q as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	else:
 		var k1 := cyl(Vector3(0, -0.2, 0), 0.014, 0.014, 0.2, gm, 8, kkey); k1.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		var kt := TorusMesh.new(); kt.inner_radius = 0.03; kt.outer_radius = 0.055
@@ -4085,13 +4086,14 @@ func _crane_court() -> void:
 	# square head for the crank. The crank itself lies on the workbench until she brings it
 	turned(KPOST, [[0.14, 0.05], [0.14, 0.1], [0.1, 0.13], [0.085, 0.16], [0.0, 0.16]], "stone", 16)
 	kpin = Node3D.new(); kpin.position = KPOST; add_child(kpin)
-	var pg := Node3D.new(); pg.position = Vector3(0, 0.1, 0); kpin.add_child(pg); _gear(pg, 0.075, 8, 0.035)
-	cyl(Vector3(0, 0.1, 0), 0.028, 0.028, 0.84, pal("gold"), 10, kpin)
+	var pg := Node3D.new(); pg.position = Vector3(0, 0.2, 0); kpin.add_child(pg); _gear(pg, 0.25, 16, 0.05)      # its wheel reaches over the turntable's rim to the toothed ring
+	cyl(Vector3(0, 0.1, 0), 0.03, 0.03, 0.84, pal("gold"), 10, kpin)
 	blk(Vector3(-0.035, 0.94, -0.035), Vector3(0.035, 1.02, 0.035), "gold", kpin)
-	kcrank = _crank_handle(kpin); kcrank.position = Vector3(0, 0.98, 0); kcrank.visible = false
+	kcrank = Node3D.new(); kcrank.position = Vector3(0, 0.955, 0); kpin.add_child(kcrank); kcrank.visible = false
+	var ck := _crank_handle(kcrank); ck.rotation.x = -PI * 0.5; ck.position = Vector3(0, 0, 0.046)      # on the post it lies level: its socket over the square head, its grip standing up
 	# the workbench in the south-west corner, the crank on it
 	thing("workbench", KBENCH, 0.8, "wood:wood,stone:marble,gold:gold,dark:dark", 0.0)
-	kcrank_bench = _crank_handle(self); kcrank_bench.position = KBENCH + Vector3(0.05, 0.82, 0.25); kcrank_bench.rotation = Vector3(0, 0.6, 0)
+	kcrank_bench = _crank_handle(self); kcrank_bench.position = KBENCH + Vector3(float(OS.get_environment("KB_X")) if OS.get_environment("KB_X") != "" else 0.05, float(OS.get_environment("KB_Y")) if OS.get_environment("KB_Y") != "" else 0.82, float(OS.get_environment("KB_Z")) if OS.get_environment("KB_Z") != "" else 0.25); kcrank_bench.rotation = Vector3(0, 0.6, 0)
 	# rails on the three open sides, the way in between two posts
 	parapet(Vector3(KX0 + 0.1, 0, WZ0 + 0.1), Vector3(KX0 + 0.1, 0, KZ1 - 0.1)); parapet(Vector3(KX0 + 0.1, 0, KZ1 - 0.1), Vector3(DX - 0.75, 0, KZ1 - 0.1))
 	parapet(Vector3(DX + 0.75, 0, KZ1 - 0.1), Vector3(KX1 - 0.1, 0, KZ1 - 0.1)); parapet(Vector3(KX1 - 0.1, 0, WZ0 + 0.1), Vector3(KX1 - 0.1, 0, KZ1 - 0.1))
@@ -4103,7 +4105,7 @@ func _crane_court() -> void:
 func _crank_handle(parent: Node) -> Node3D:
 	var n := Node3D.new(); parent.add_child(n)
 	if FileAccess.file_exists("res://props/crank.glb"):
-		prop_model("crank", n, 0.0, 0.0, false, false, "gold:gold,wood:wood")
+		prop_model("crank", n, 0.0, 0.0, false, false, "gold:gold,wood:wood,dark:dark")
 	else:
 		blk(Vector3(-0.045, -0.03, -0.045), Vector3(0.045, 0.03, 0.045), "gold", n)
 		blk(Vector3(0.0, -0.014, -0.02), Vector3(0.3, 0.014, 0.02), "gold", n)
@@ -4185,7 +4187,7 @@ func _actors() -> void:
 	for i in 3: objs["turn%d" % (i + 1)] = {"at": TURN_AT[i] + Vector3(0, 1.88, 0), "stand": TURN_AT[i] + Vector3(TURN_STAND, 0, 0), "hits": [TURN_AT[i] + Vector3(0, 0.12, 0), TURN_AT[i] + Vector3(0, 1.88, 0)]}   # (its mark floats 0.55 above "at": clear of the statue's head)
 	# the fourth puzzle: the workbench with the crank on it, the crank post of the crane, and in the water the key and the door
 	objs["bench"] = {"at": KBENCH + Vector3(0, 0.8, 0), "stand": KBENCH + Vector3(0, 0, -0.72), "hits": [KBENCH + Vector3(0, 0.3, 0), KBENCH + Vector3(0, 0.8, 0)]}
-	objs["crane"] = {"at": KPOST + Vector3(0, 1.0, 0), "stand": KPOST + Vector3(-0.56, 0, 0), "hits": [KPOST + Vector3(0, 0.2, 0), KPOST + Vector3(0, 1.0, 0), KPIV + Vector3(0, 1.3, 0), KPIV + Vector3(0, 2.7, 0)]}
+	objs["crane"] = {"at": KPOST + Vector3(0, 1.0, 0), "stand": KPOST + Vector3(-0.47, 0, 0.3), "hits": [KPOST + Vector3(0, 0.2, 0), KPOST + Vector3(0, 1.0, 0), KPIV + Vector3(0, 1.3, 0), KPIV + Vector3(0, 2.7, 0)]}
 	objs["wkey"] = {"at": Vector3(kkey_top.x, -(kkey_top.y - 0.45), kkey_top.z), "stand": KPIV + _crane_dir() * KSTAND, "hits": [Vector3(kkey_top.x, -(kkey_top.y - 0.05), kkey_top.z), Vector3(kkey_top.x, -(kkey_top.y - 0.6), kkey_top.z)]}
 	objs["wdoor"] = {"at": Vector3(KDOOR_X, -1.0, WZ0), "stand": KPIV + _crane_dir() * KSTAND, "hits": [Vector3(KDOOR_X, -0.25, WZ0), Vector3(KDOOR_X, -1.9, WZ0)]}
 	for k in objs:
@@ -4206,8 +4208,8 @@ func _nav() -> void:
 			 ["Cw", -4.2, -13.25, -2.65, -12.75], ["BR", -7.6, -13.25, -4.2, -12.75], ["D", -13.35, -13.25, -7.6, -12.75],
 			["E", -21.2, -10.75, -13.33, -10.64], ["Ee", -13.65, -15.9, -13.33, -10.05], ["Es", -21.1, -15.9, -13.33, -15.08], ["Em", -16.32, -15.1, -13.5, -14.05], ["Ew", -21.5, -15.5, -21.05, -10.6],
 			["T1", -19.34, -15.1, -19.2, -14.3], ["T2", -17.84, -15.1, -17.7, -14.3], ["T3", -16.34, -15.1, -16.2, -14.3], ["G1", -16.55, -20.35, -16.05, -15.88], ["F", -18.9, -26.2, -15.0, -20.35], ["G", DX - 0.2, KZ1 - 0.4, DX + 0.2, -26.2],
-			["Ks", KX0 + 0.5, WZ1 + 0.35, KX1 - 0.5, KZ1 + 0.3], ["Kw", KX0 + 0.5, WZ0 + 0.3, KPIV.x - 0.7, KZ1 + 0.3], ["Ke", WX1 + 0.35, WZ0 + 0.5, KX1 - 0.5, KZ1 + 0.3],      # the crane's court: round its pool
-			["Kpn", KPIV.x - 0.7, KPIV.z - 0.75, KPIV.x + 0.85, KPIV.z - 0.45], ["Kps", KPIV.x - 0.7, KPIV.z + 0.45, KPIV.x + 0.85, KPIV.z + 0.75], ["Kpe", KPIV.x + 0.55, KPIV.z - 0.75, KPIV.x + 0.85, KPIV.z + 0.75],      # its quay: round the mast
+			["Ks", KX0 + 0.5, WZ1 + 0.35, KX1 - 0.5, KZ1 + 0.3], ["Kw", KX0 + 0.5, WZ0 + 0.3, KPIV.x - 0.78, KZ1 + 0.3], ["Ke", WX1 + 0.35, WZ0 + 0.5, KX1 - 0.5, KZ1 + 0.3],      # the crane's court: round its pool
+			["Kpn", KPIV.x - 0.78, KPIV.z - 1.0, KPIV.x + 1.06, KPIV.z - 0.78], ["Kps", KPIV.x - 0.78, KPIV.z + 0.78, KPIV.x + 1.06, KPIV.z + 1.0], ["Kpe", KPIV.x + 0.78, KPIV.z - 1.0, KPIV.x + 1.06, KPIV.z + 1.0],      # its quay: round the mast
 			["Kl", KPIV.x - 1.1, WZ0 + 0.18, KDOOR_X + 0.3, WZ0 + 0.42], ["Kd", KDOOR_X - 0.15, KZ0 - 1.2, KDOOR_X + 0.15, WZ0 + 0.42]]:      # the ledge and the doorway (shut until the door opens)
 		rects[r[0]] = {"x0": r[1], "z0": r[2], "x1": r[3], "z1": r[4], "on": true}
 	rects["BR"].on = false; rects["G"].on = false; rects["G1"].on = false; rects["Kl"].on = false; rects["Kd"].on = false
@@ -4218,7 +4220,7 @@ func _nav() -> void:
 		gate_a.position.y = 0.0; gate_c.position.y = 0.0
 		rects["B1"].on = false; rects["Cw"].on = false
 	else: done["plinth"] = true; done["winch"] = true      # in the scripted runs and the stills these are not things to tap
-	solids.append(Vector3(KPIV.x, KPIV.z, 0.45)); solids.append(Vector3(KBENCH.x, KBENCH.z, 0.55))      # the crane's turntable with its crank post, and the workbench
+	solids.append(Vector3(KPIV.x, KPIV.z, 0.76)); solids.append(Vector3(KPOST.x, KPOST.z, 0.3)); solids.append(Vector3(KBENCH.x, KBENCH.z, 0.55))      # the crane's turntable with its crank post, and the workbench
 	if OS.get_environment("START") == "K":      # (to try the fourth court by hand) she begins on the bridge to it, the garden's door open behind her
 		pos = Vector3(DX, 0, -30.4); yaw = PI; cam_t = pos; rects["G"].on = true; done["mirror"] = true; door.position.y -= 2.15
 
@@ -4987,7 +4989,7 @@ func _process(dt: float) -> void:
 		n.rotation.y = t * 1.2
 	if not carry.is_empty():      # a thing in a hand goes where the hand goes
 		var csk: Skeleton3D = carry.sk
-		(carry.node as Node3D).global_position = csk.global_transform * csk.get_bone_global_pose(carry.bone).origin + Vector3(0, 0.07 if carry.flip else -0.07, 0)
+		(carry.node as Node3D).global_position = csk.global_transform * csk.get_bone_global_pose(carry.bone).origin + Vector3(0, 0.24 if carry.flip else -0.24, 0)
 	if cam_focus_on: cam_t = cam_t.lerp(cam_focus, 1.0 - exp(-1.8 * dt))
 	elif rig_file != "": cam_t = cam_t.lerp(pos + vel * 0.25, 1.0 - exp(-4.0 * dt))
 	else: cam_t = cam_t.lerp(pos + vel * 0.55, 1.0 - exp(-2.4 * dt))
@@ -5155,7 +5157,7 @@ func _hold(node: Node3D, who: String) -> void:      # a thing goes into her righ
 	var e: Dictionary = refl_out if who == "out" else H[who]
 	var sk: Skeleton3D = e.sk
 	carry = {"node": node, "sk": sk, "bone": _bone(sk, "RightHand"), "flip": who != "main"}
-	node.visible = true; node.rotation = Vector3(PI if who != "main" else 0.0, 0, 0)
+	node.visible = true; node.rotation = Vector3(0, 0, PI * 0.5 if who != "main" else -PI * 0.5)      # it hangs from the hand by its ring
 
 func _hermod(e: Dictionary) -> HerMod:
 	for c in (e.sk as Skeleton3D).get_children():
@@ -5217,7 +5219,7 @@ func _do_crane() -> void:
 ## she pushes the crank round; the small wheel on its post drives the turntable, and the crane swings to its i-th place
 func _crane_turn(i: int) -> void:
 	var a0: float = KANG[crane_i]; var a1: float = KANG[i]
-	var grip := func() -> Vector3: return kpin.global_transform * Vector3(0.28, 1.07, 0.0)
+	var grip := func() -> Vector3: return kpin.global_transform * Vector3(0.293, 1.12, 0.0)
 	tgtR = grip.call()
 	var up := tw(); up.tween_property(self, "a_wR", 1.0, 0.45); up.tween_property(self, "a_lean", 0.16, 0.45)
 	await up.finished
@@ -5276,7 +5278,7 @@ func _do_wkey() -> void:
 	await up.finished
 	await wait(0.3)
 	kribbon.visible = false
-	carry = {"node": kkey, "sk": e.sk, "bone": _bone(e.sk, "RightHand"), "flip": true}
+	carry = {"node": kkey, "sk": e.sk, "bone": _bone(e.sk, "RightHand"), "flip": true}; kkey.rotation = Vector3(0, 0, PI * 0.5)
 	var dn := create_tween().set_parallel(); dn.tween_property(hm, "wR", 0.0, 0.6); dn.tween_property(hm, "bow", 0.0, 0.6)
 	await dn.finished
 	hm.own = false
@@ -5407,7 +5409,7 @@ func _solve4() -> void:
 			kribbon.visible = false; kkey.visible = false; done["wkey"] = true; _pocket_add("key")
 			await _do_wdoor()
 			await wait(0.6)
-			await go([Vector3(KPIV.x + 0.4, 0, KPIV.z - 0.6), Vector3(KPIV.x - 0.9, 0, KPIV.z - 0.6), Vector3(KPIV.x - 0.9, 0, WZ0 + 0.3), Vector3(KDOOR_X, 0, WZ0 + 0.3), Vector3(KDOOR_X, 0, KZ0 - 0.6)])
+			await go([Vector3(KPIV.x + 0.92, 0, KPIV.z - 0.89), Vector3(KPIV.x - 0.95, 0, KPIV.z - 0.89), Vector3(KPIV.x - 0.95, 0, WZ0 + 0.3), Vector3(KDOOR_X, 0, WZ0 + 0.3), Vector3(KDOOR_X, 0, KZ0 - 0.6)])
 		await wait(1.5)
 		get_tree().quit(); return
 	await wait(0.8)
@@ -5424,7 +5426,7 @@ func _solve4() -> void:
 	if OS.get_environment("K4LOG") == "1": print("K4 step 6 at ", pos, " frame ", Engine.get_frames_drawn())
 	await wait(0.4)
 	if OS.get_environment("K4LOG") == "1": print("K4 step 7 at ", pos, " frame ", Engine.get_frames_drawn())
-	await go([Vector3(-18.0, 0, WZ1 + 0.9), Vector3(KPIV.x - 1.2, 0, WZ1 + 0.9), Vector3(KPIV.x - 1.2, 0, KPIV.z + 0.3), objs["crane"].stand])
+	await go([Vector3(-18.0, 0, WZ1 + 0.9), Vector3(KPIV.x - 1.2, 0, WZ1 + 0.9), objs["crane"].stand])
 	if OS.get_environment("K4LOG") == "1": print("K4 step 8 at ", pos, " frame ", Engine.get_frames_drawn())
 	await _do_crane()
 	if OS.get_environment("K4LOG") == "1": print("K4 step 9 at ", pos, " frame ", Engine.get_frames_drawn())
@@ -5436,8 +5438,7 @@ func _solve4() -> void:
 	if OS.get_environment("K4LOG") == "1": print("K4 step 12 at ", pos, " frame ", Engine.get_frames_drawn())
 	var way := func(i: int) -> Array:      # from the crank post round the mast to her place under the arm
 		var h := KPIV + _crane_dir(i) * KSTAND
-		var side := -0.6 if h.z < KPIV.z else 0.6
-		return [Vector3(KPIV.x - 0.6, 0, KPIV.z + side), Vector3(h.x, 0, KPIV.z + side) if absf(h.z - KPIV.z) < 0.45 else h, h]
+		return [Vector3(KPIV.x - 0.9, 0, KPIV.z + 0.89), Vector3(KPIV.x + 0.92, 0, KPIV.z + 0.89), h]
 	await go(way.call(1))
 	if OS.get_environment("K4LOG") == "1": print("K4 step 13 at ", pos, " frame ", Engine.get_frames_drawn())
 	await _do_wkey()
@@ -5445,8 +5446,7 @@ func _solve4() -> void:
 	await wait(0.5)
 	if OS.get_environment("K4LOG") == "1": print("K4 step 15 at ", pos, " frame ", Engine.get_frames_drawn())
 	var back := func() -> Array:
-		var side := -0.6 if pos.z < KPIV.z else 0.6
-		return [Vector3(pos.x, 0, KPIV.z + side), Vector3(KPIV.x - 0.6, 0, KPIV.z + side), objs["crane"].stand]
+		return [Vector3(KPIV.x + 0.92, 0, KPIV.z + 0.89), Vector3(KPIV.x - 0.9, 0, KPIV.z + 0.89), objs["crane"].stand]
 	await go(back.call())
 	if OS.get_environment("K4LOG") == "1": print("K4 step 16 at ", pos, " frame ", Engine.get_frames_drawn())
 	await _do_crane()
@@ -5459,9 +5459,9 @@ func _solve4() -> void:
 	if OS.get_environment("K4LOG") == "1": print("K4 step 20 at ", pos, " frame ", Engine.get_frames_drawn())
 	await wait(0.8)
 	if OS.get_environment("K4LOG") == "1": print("K4 step 21 at ", pos, " frame ", Engine.get_frames_drawn())
-	await go([Vector3(KPIV.x - 0.1, 0, KPIV.z - 0.6), Vector3(KPIV.x - 0.9, 0, KPIV.z - 0.6), Vector3(KPIV.x - 0.9, 0, WZ0 + 0.3), Vector3(KDOOR_X, 0, WZ0 + 0.3), Vector3(KDOOR_X, 0, KZ0 - 0.6)])
+	await go([Vector3(KPIV.x + 0.92, 0, KPIV.z - 0.89), Vector3(KPIV.x - 0.95, 0, KPIV.z - 0.89), Vector3(KPIV.x - 0.95, 0, WZ0 + 0.3), Vector3(KDOOR_X, 0, WZ0 + 0.3), Vector3(KDOOR_X, 0, KZ0 - 0.6)])
 	if OS.get_environment("K4LOG") == "1": print("K4 step 22 at ", pos, " frame ", Engine.get_frames_drawn())
-	if DisplayServer.get_name() == "headless": print("SOLVE4 end at ", pos, " ended ", ended, " pocket ", pocket, " crane at ", crane_i, " done ", done.keys())
+	if DisplayServer.get_name() == "headless": print("SOLVE4 end at frame ", Engine.get_process_frames(), " ", pos, " ended ", ended, " pocket ", pocket, " crane at ", crane_i, " done ", done.keys())
 
 # ---------------------------------------------------------------- scripted run (for recordings and tests)
 func _auto() -> void:
