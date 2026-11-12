@@ -1804,6 +1804,7 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 		_tour(true)
 	if "handtest" in OS.get_cmdline_user_args(): _hand_test()
 	if "handtest4" in OS.get_cmdline_user_args(): _hand_test4()
+	if "looktest" in OS.get_cmdline_user_args(): _look_test()
 	if "pantest" in OS.get_cmdline_user_args(): _pan_test()
 	if "turndiag" in OS.get_cmdline_user_args(): _turn_diag()
 	if "refltest" in OS.get_cmdline_user_args(): _refl_test()
@@ -3920,10 +3921,10 @@ func _world() -> void:
 		if i != 2: _look_add("", Vector3(MYPL.x, 0, MYPL.z + 0.9 * (i - 2)), 1.8, ["one of five. the fifth place is empty", "veiled, like all of them"])
 	# the sculptor's steles: one in each court. His own words, and in them, sideways, what the court asks
 	stele("stele_a", Vector3(-2.6, 0, -3.5), 0.0, ["I carved her five times for this row.\nFour of them stay where I put them.", "The fifth plinth I left for her.\nShe has only to stand as they stand."])
-	stele("stele_c", Vector3(-3.03, 0, -11.45), PI * 0.5, ["I let the crossing fall, stone by stone,\nso that nothing of hers could reach the wheel.", "Still water forgets nothing.\nIt keeps the stones I took away."])
+	stele("stele_c", Vector3(-3.03, 0, -11.45), PI * 0.5, ["I let the crossing fall,\nstone by stone, so that nothing\nof hers could reach the wheel.", "Still water forgets nothing.\nIt keeps the stones I took away."])
 	stele("stele_e", Vector3(-21.88, 0, -12.6), PI * 0.5, ["I turned each of them to face where I chose.", "The water would not have it.\nIt shows them as they mean to stand."])
-	stele("stele_f", Vector3(-18.3, 0, -26.32), 0.0, ["One mirror I could not bring myself to break.\nI gave it a wall, and a cloth, and my back.", "A mirror keeps whatever it is shown.\nSo I showed it nothing."])
-	stele("stele_k", Vector3(KX0 + 0.42, 0, -35.2), PI * 0.5, ["The key I gave to no one.\nI hung it where a hand of stone cannot close.", "I walled the door up from this side.\nI forgot the water has a side of its own."])
+	stele("stele_f", Vector3(-18.3, 0, -26.32), 0.0, ["One mirror I could not\nbring myself to break. I gave it\na wall, and a cloth, and my back.", "A mirror keeps whatever it is shown.\nSo I showed it nothing."])
+	stele("stele_k", Vector3(KX0 + 0.42, 0, -35.2), PI * 0.5, ["The key I gave to no one.\nI hung it where a hand of stone\ncannot close.", "I walled the door up from this side.\nI forgot the water\nhas a side of its own."])
 	_look_add("", KISLE + Vector3(0.08, 0, 0), 1.5, ["her hand is open, and empty", "in the water the hand is not empty"])
 	_look_add("kwall", Vector3(KDOOR_X, 0.3, WZ0), 1.6, ["a wall of plain stone", "in the water this wall has a door"])
 	mirror_stand(Vector3(-17.9, 0, -16.5), 0.32); mirror_stand(Vector3(-14.7, 0, -16.5), -0.18); mirror_stand(Vector3(3.05, 0, -14.6) if COVERED else Vector3(-3.05, 0, -14.6), -PI * 0.5 if COVERED else PI * 0.5)
@@ -5347,6 +5348,17 @@ func _do_wdoor() -> void:
 	cam_focus_on = false
 	create_tween().tween_property(cam, "size", s0, 1.4)
 	say("the wall has opened")
+
+## (to look at) she is by the crane's court; a stele is tapped, then the statue on the islet
+func _look_test() -> void:
+	started = true; title_box.hide(); hint.hide(); cam.size = PLAY_SIZE
+	await wait(0.4)
+	tap(cam.unproject_position(looks["stele_k"].foot + Vector3(0, 0.7, 0)))
+	await wait(9.0)
+	for k in looks:
+		if (looks[k].foot as Vector3).distance_to(KISLE + Vector3(0.08, 0, 0)) < 0.1: tap(cam.unproject_position(looks[k].foot + Vector3(0, 0.9, 0)))
+	await wait(4.0)
+	get_tree().quit()
 
 ## (test) the fourth court played by taps alone, from the bridge to the end of the demo. Prints what each tap led to
 func _hand_test4() -> void:
