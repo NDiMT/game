@@ -90,6 +90,7 @@ var N := {}      # the pieces that move, by name (kept here so that the joined w
 var WL: Array = []      # the still waters, in order: their names
 var W := {}      # each water: {"r": [x0, z0, x1, z1], "heads": [rects of floor from which her reflection can be sent], "foot": {name: {x0, z0, x1, z1, on, h}}}
 var refl_w := ""      # the water her reflection is out on
+var refl_key := "mir"      # which of her mirrored bodies it is (a water whose surface is not at the floor's height has one of its own: W[id].mir)
 var ramps: Array = []      # floor that is not level: {"r": its rect, "z0", "z1": between these it goes from height "y0" to "y1"}
 var on_ramp := false
 var refl_busy := 0      # how many orders to her reflection are still being carried out
@@ -604,9 +605,10 @@ func _pools() -> Array:
 
 func _water_under(sp: Vector2):
 	var o := cam.project_ray_origin(sp); var d := cam.project_ray_normal(sp)
-	var g := o + d * ((0.012 - o.y) / d.y)
 	for i in WL.size():
 		var r: Array = W[WL[i]].r
+		if not W[WL[i]].get("wet", true): continue      # (a tank that stands empty)
+		var g := o + d * ((float(W[WL[i]].get("level", 0.0)) + 0.012 - o.y) / d.y)      # where the finger meets this water's own surface
 		if g.x > r[0] and g.x < r[2] and g.z > r[1] and g.z < r[3]:
 			for n in rects:      # floor that stands in the water (a mole, a quay) is floor
 				if rects[n].on and in_rect(rects[n], g): return null
@@ -624,7 +626,7 @@ func _foot_of(wid: String, p: Vector3, reach := 0.2) -> String:
 	var best := ""; var bd := reach
 	for n in W[wid].foot:
 		var f: Dictionary = W[wid].foot[n]
-		if not f.on: continue
+		if not f.on or absf(float(f.h) - p.y) > 0.35: continue      # (a footing at another height is another place)
 		var d := _flat(_near_in(f, p), p)
 		if d < bd: bd = d; best = n
 	return best
@@ -635,12 +637,12 @@ func _foot_of(wid: String, p: Vector3, reach := 0.2) -> String:
 func _refl_path(wid: String, from: Vector3, to: Vector3) -> Dictionary:
 	var F: Dictionary = W[wid].foot
 	var a := _foot_of(wid, from, 0.9)
-	if a == "": return {"pts": [], "left": 1e9, "h": 0.0}
+	if a == "": return {"pts": [], "left": 1e9, "h": 0.0, "hs": []}
 	var prev := {a: ""}; var q := [a]
 	while not q.is_empty():
 		var c: String = q.pop_front()
 		for n in F:
-			if F[n].on and not prev.has(n) and portal(F[c], F[n]) != null: prev[n] = c; q.append(n)
+			if F[n].on and not prev.has(n) and absf(float(F[c].h) - float(F[n].h)) < 0.3 and portal(F[c], F[n]) != null: prev[n] = c; q.append(n)
 	var goal := to; var gd := 1e9      # the place on any footing nearest to what was asked for
 	for n in F:
 		if not F[n].on: continue
@@ -669,10 +671,15 @@ func _head_point(wid: String) -> Vector3:
 		if _flat(c, pos) < bd: bd = _flat(c, pos); best = c
 	return best
 
+## where her reflection stands when it is under her feet
+func _refl_start(_wid: String) -> Vector3:
+	return pos      # (a mirrored body's own height is the height of what it mirrors: the root it hangs under does the turning over)
+
 ## her reflection is taken from under her feet, to be moved on its own
 func _refl_out_now(wid: String) -> Dictionary:
 	if refl_out.is_empty():
-		var e0: Dictionary = H["mir"]; H.erase("mir"); refl_out = e0
+		refl_key = W[wid].get("mir", "mir")
+		var e0: Dictionary = H[refl_key]; H.erase(refl_key); refl_out = e0
 	refl_w = wid
 	return refl_out
 
@@ -700,15 +707,15 @@ func _refl_melt() -> void:
 	if _flat(hd.position, pos) > 0.25:
 		var a := create_tween(); a.tween_property(hd, "scale:y", 0.02, 0.32).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 		await a.finished
-		hd.position = Vector3(pos.x, 0, pos.z); hd.rotation.y = yaw
+		hd.position = pos; hd.rotation.y = yaw
 		var b := create_tween(); b.tween_property(hd, "scale:y", 1.0, 0.32).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 		await b.finished
 	else:
 		var rt := create_tween(); rt.tween_property(hd, "rotation:y", hd.rotation.y + angle_difference(hd.rotation.y, yaw), 0.3).set_trans(Tween.TRANS_SINE)
 		await rt.finished
-	hd.position.y = 0.0; hd.scale = Vector3.ONE
+	hd.position.y = pos.y; hd.scale = Vector3.ONE
 	(e.ap as AnimationPlayer).play("walk" if walk_on else "idle", 0.3)
-	H["mir"] = e; refl_out = {}; refl_w = ""
+	H[refl_key] = e; refl_out = {}; refl_w = ""
 
 ## it has nowhere to go: it looks down at the water, and from side to side
 func _refl_no(e: Dictionary) -> void:
@@ -722,7 +729,7 @@ func _refl_no(e: Dictionary) -> void:
 ## it is but could from under her feet, it comes back to her first. True if it arrived at the place itself
 func _refl_to(wid: String, to: Vector3) -> bool:
 	refl_token += 1; var my := refl_token
-	if not H.has("mir") and refl_out.is_empty(): return false
+	if not H.has(W[wid].get("mir", "mir")) and refl_out.is_empty(): return false
 	if not refl_out.is_empty() and refl_w != wid: await _refl_melt(); refl_token += 1; my = refl_token
 	if refl_out.is_empty():
 		var hp := _head_point(wid)
@@ -732,14 +739,14 @@ func _refl_to(wid: String, to: Vector3) -> bool:
 			while not route.is_empty() and refl_token == my: await get_tree().process_frame
 			if refl_token != my or _flat(pos, hp) > 0.4: return false
 		face_to = Vector3(to.x, 0, to.z)
-		if _foot_of(wid, pos, 0.9) == "":      # this water has nothing for it to stand on
+		if _foot_of(wid, _refl_start(wid), 0.9) == "":      # this water has nothing for it to stand on
 			await _her_no()
 			return false
 	else:      # it is out: could it get nearer from under her feet than from where it stands?
 		var here := _refl_path(wid, (refl_out.holder as Node3D).position, to)
 		var hp2 := _head_point(wid)
 		if _flat(pos, hp2) < 0.4:
-			var home := _refl_path(wid, pos, to)
+			var home := _refl_path(wid, _refl_start(wid), to)
 			if home.left < here.left - 0.3:
 				await _refl_melt(); refl_token += 1; my = refl_token
 	var e := _refl_out_now(wid)
@@ -1129,7 +1136,7 @@ func _process(dt: float) -> void:
 ## how high the floor is at a place, where it is not level (null: level floor)
 func _floor_y(p: Vector3):
 	for rp in ramps:
-		if in_rect(rp.r, p): return lerpf(rp.y0, rp.y1, clampf((p.z - rp.z0) / (rp.z1 - rp.z0), 0.0, 1.0))
+		if rp.r.on and in_rect(rp.r, p): return lerpf(rp.y0, rp.y1, clampf(((p.x if rp.get("ax", "z") == "x" else p.z) - rp.z0) / (rp.z1 - rp.z0), 0.0, 1.0))
 	return null
 
 ## a tap on floor that stands higher than the rest names a place on it
