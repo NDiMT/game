@@ -842,6 +842,37 @@ func crenels(a: Vector3, b: Vector3, step := 0.3, sz := 0.13, p := "stone") -> v
 		var c := a.lerp(b, float(i) / maxf(n, 1))
 		blk(c - Vector3(sz, 0, sz) * 0.5, c + Vector3(sz * 0.5, sz * 0.9, sz * 0.5), p)
 
+## a small sign that always faces the eye: a round arrow in gold with a dark edge, for "this turns"
+var _turn_tex: ImageTexture
+func _sign_turn() -> MeshInstance3D:
+	if _turn_tex == null:
+		var n := 96; var im := Image.create(n, n, false, Image.FORMAT_RGBA8)
+		var gold := Color(1.0, 0.86, 0.5); var edge := Color(0.24, 0.17, 0.2)
+		var tip := Vector2(cos(-0.35), sin(-0.35)) * 0.62      # where the arrow's head sits, and the way it points (on round the circle)
+		var fw := Vector2(-sin(-0.35), cos(-0.35))
+		for y in n:
+			for x in n:
+				var a := 0.0; var e := 0.0
+				for sy in 3:
+					for sx in 3:
+						var q := Vector2((x + (sx + 0.5) / 3.0) / n, (y + (sy + 0.5) / 3.0) / n) * 2.0 - Vector2.ONE
+						var r := q.length(); var ang := fposmod(atan2(q.y, q.x) + 0.35, TAU)
+						var on_arc := ang > 0.75      # the ring is open before the arrow's head
+						var d_ring := absf(r - 0.62) if on_arc else 9.0
+						var rel := q - tip; var along := rel.dot(fw); var side := absf(rel.dot(Vector2(fw.y, -fw.x)))
+						var d_head := maxf(-along - 0.02, maxf(along - 0.42, side - (0.42 - along) * 0.62))      # a triangle: wide at its back, a point at its front
+						var d := minf(d_ring - 0.105, d_head)
+						if d < 0.0: a += 1.0
+						if d < 0.075: e += 1.0
+				a /= 9.0; e /= 9.0
+				im.set_pixel(x, y, Color(lerpf(edge.r, gold.r, a), lerpf(edge.g, gold.g, a), lerpf(edge.b, gold.b, a), maxf(a, e * 0.85)))
+		im.generate_mipmaps(); _turn_tex = ImageTexture.create_from_image(im)
+	var q2 := QuadMesh.new(); q2.size = Vector2(0.5, 0.5)
+	var m := StandardMaterial3D.new(); m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; m.albedo_texture = _turn_tex
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; m.render_priority = 3
+	var mi := MeshInstance3D.new(); mi.mesh = q2; mi.material_override = m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
 func halo(size: float, c: Color) -> MeshInstance3D:
 	var g := Gradient.new(); g.offsets = PackedFloat32Array([0.0, 0.35, 1.0])
 	g.colors = PackedColorArray([c, Color(c.r, c.g, c.b, c.a * 0.35), Color(c.r, c.g, c.b, 0)])
@@ -1688,6 +1719,7 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 		_tour(true)
 	if "handtest" in OS.get_cmdline_user_args(): _hand_test()
 	if "pantest" in OS.get_cmdline_user_args(): _pan_test()
+	if "turndiag" in OS.get_cmdline_user_args(): _turn_diag()
 	if "solve2" in OS.get_cmdline_user_args():
 		get_viewport().msaa_3d = Viewport.MSAA_2X
 		_solve2()
@@ -3756,13 +3788,16 @@ func _actors() -> void:
 		fig.visible = false; wfig.visible = false
 	# things to tap
 	if SHOW_CAPSTAN: objs["capstan"] = {"at": CAP + Vector3(0, 0.9, 0), "stand": CAP + Vector3(0, 0, 0.66)}   # the old capstan is gone, and its red mark with it
-	objs["mirror"] = {"at": Vector3(MX, 1.2, MZ), "stand": Vector3(MX + 0.52, 0, MZ)}
-	objs["plinth"] = {"at": MYPL + Vector3(0, 0.45, 0), "stand": MYPL + Vector3(0.75, 0, 0)}      # her own empty plinth (first puzzle)
-	objs["winch"] = {"at": PED + Vector3(-WINCH_HUB.x, WINCH_HUB.y, 0) * WINCH_K, "stand": Vector3(QX0 - 0.39, 0, PED.z)}   # the wheel in the water (second puzzle)
-	for i in 3: objs["turn%d" % (i + 1)] = {"at": TURN_AT[i] + Vector3(0, 1.88, 0), "stand": TURN_AT[i] + Vector3(TURN_STAND, 0, 0)}   # (its mark floats 0.55 above "at": clear of the statue's head)
+	objs["mirror"] = {"at": Vector3(MX, 1.2, MZ), "stand": Vector3(MX + 0.52, 0, MZ), "hits": [Vector3(MX, 0.2, MZ), Vector3(MX, 1.2, MZ)]}
+	objs["plinth"] = {"at": MYPL + Vector3(0, 0.45, 0), "stand": MYPL + Vector3(0.75, 0, 0), "hits": [MYPL + Vector3(0, 0.05, 0), MYPL + Vector3(0, 0.45, 0)]}      # her own empty plinth (first puzzle)
+	objs["winch"] = {"at": PED + Vector3(-WINCH_HUB.x, WINCH_HUB.y, 0) * WINCH_K, "stand": Vector3(QX0 - 0.39, 0, PED.z), "hits": [PED + Vector3(0, 0.15, 0), PED + Vector3(0, WINCH_HUB.y * WINCH_K, 0), PED + Vector3(-WINCH_HUB.x, WINCH_HUB.y, 0) * WINCH_K]}   # the wheel in the water (second puzzle)
+	for i in 3: objs["turn%d" % (i + 1)] = {"at": TURN_AT[i] + Vector3(0, 1.88, 0), "stand": TURN_AT[i] + Vector3(TURN_STAND, 0, 0), "hits": [TURN_AT[i] + Vector3(0, 0.12, 0), TURN_AT[i] + Vector3(0, 1.88, 0)]}   # (its mark floats 0.55 above "at": clear of the statue's head)
 	for k in objs:
 		var n := Node3D.new(); add_child(n); n.position = objs[k].at + Vector3(0, 0.55 if k != "mirror" else 1.35, 0)
 		var quiet: bool = k == "plinth" or k == "winch"      # these two give themselves away only when she is near: a small gold mark
+		if k.begins_with("turn"):      # over a turning statue: a round arrow, so that one sees what a tap will do
+			n.add_child(_sign_turn()); n.add_child(halo(0.62, Color(1.0, 0.8, 0.42, 0.34)))
+			markers[k] = n; continue
 		var d := blk(Vector3(-0.05, -0.05, -0.05), Vector3(0.05, 0.05, 0.05), "crim", n)
 		d.material_override = mat(Color("ffd36b") if quiet else Color("ff5a62")); d.rotation = Vector3(0.6155, PI * 0.25, 0)
 		if quiet: d.scale = Vector3.ONE * 0.8
@@ -3984,7 +4019,7 @@ func tap(sp: Vector2) -> void:
 	var px := get_viewport().get_visible_rect().size.x / 720.0
 	for k in objs:
 		if done.has(k): continue
-		if cam.unproject_position(objs[k].at).distance_to(sp) < 70.0 * px or cam.unproject_position(markers[k].position).distance_to(sp) < 60.0 * px:
+		if _tap_hits(k, sp, px):
 			usering.position = Vector3(objs[k].at.x, 0.03, objs[k].at.z); use_p = 0.0
 			use(k); return
 	if cam.unproject_position(pos + Vector3(0, 0.9, 0)).distance_to(sp) < 62.0 * px:
@@ -4019,6 +4054,20 @@ func _keep_smooth() -> void:
 		res_level -= 1; res_probe = true; res_hold = 4.0      # room to spare: one careful step back up
 	else: return
 	get_viewport().scaling_3d_scale = RES_STEPS[res_level]
+
+## does a tap at sp fall on the thing k: anywhere along it, from its foot (or the points it names in "hits") up to
+## its floating mark. A statue is hit on its gear and drum as well as on its body
+func _tap_hits(k: String, sp: Vector2, px: float) -> bool:
+	var pts := []
+	for q in objs[k].get("hits", [objs[k].at]): pts.append(cam.unproject_position(q))
+	pts.append(cam.unproject_position(markers[k].position))
+	var r := 64.0 * px
+	for i in pts.size() - 1:
+		var a: Vector2 = pts[i]; var b: Vector2 = pts[i + 1]
+		var ab := b - a
+		var u := clampf((sp - a).dot(ab) / maxf(ab.length_squared(), 0.001), 0.0, 1.0)
+		if sp.distance_to(a + ab * u) < r: return true
+	return pts.size() == 1 and sp.distance_to(pts[0]) < r
 
 ## the place on walkable floor that a point of the screen names (the nearest such place, if the point is off the
 ## floor; never inside a lamp stand or a plinth), or null if there is none near it
@@ -4330,7 +4379,8 @@ func _process(dt: float) -> void:
 			n.scale = Vector3.ONE * move_toward(n.scale.x, 1.0 if nearby else 0.001, dt * 2.5)
 			if n.scale.x < 0.01: n.visible = false
 		n.position.y = objs[k].at.y + (0.55 if k != "mirror" else 1.35) + 0.05 * sin(t * 2.4)
-		n.rotation.y = t * 1.2
+		if k.begins_with("turn"): n.scale = Vector3.ONE * (1.0 + 0.07 * sin(t * 2.4 + n.position.x))
+		else: n.rotation.y = t * 1.2
 	if cam_focus_on: cam_t = cam_t.lerp(cam_focus, 1.0 - exp(-1.8 * dt))
 	elif rig_file != "": cam_t = cam_t.lerp(pos + vel * 0.25, 1.0 - exp(-4.0 * dt))
 	else: cam_t = cam_t.lerp(pos + vel * 0.55, 1.0 - exp(-2.4 * dt))
@@ -4505,6 +4555,31 @@ func _auto() -> void:
 	await _a_walk(Vector3(DX, 0, -28.2))
 	await wait(3.0)
 	print("AUTO done ended=", ended, " done=", done)
+	get_tree().quit()
+
+## (a check) can the three turning statues be reached and used by taps, from different places in their court, and
+## what does a tap on a statue's body, its drum or its gear do
+func _turn_diag() -> void:
+	started = true; title_box.hide(); hint.hide(); cam.size = PLAY_SIZE
+	rects["B1"].on = true; rects["Cw"].on = true; rects["BR"].on = true
+	for from in [Vector3(-13.5, 0, -13.0), Vector3(-13.6, 0, -10.4), Vector3(-17.0, 0, -10.4), Vector3(-21.2, 0, -12.0), Vector3(-15.0, 0, -15.6)]:
+		var line := "from %s (in '%s'):" % [from, rect_of(from)]
+		for i in 3:
+			var st: Vector3 = objs["turn%d" % (i + 1)].stand
+			line += "  statue %d stand %s in '%s' path %d" % [i + 1, st.snapped(Vector3.ONE * 0.01), rect_of(st), find_path(from, st).size()]
+		print("TURN ", line)
+	pos = Vector3(-13.5, 0, -13.0); cam_t = pos
+	for i in 30: await get_tree().process_frame
+	var px := get_viewport().get_visible_rect().size.x / 720.0
+	for i in 3:
+		var base: Vector3 = TURN_AT[i]
+		for part in [["mark", markers["turn%d" % (i + 1)].position], ["head", base + Vector3(0, 2.1, 0)], ["body", base + Vector3(0, 1.4, 0)], ["drum", base + Vector3(0, 0.45, 0)], ["gear", base + Vector3(0.3, 0.17, 0.3)]]:
+			var sp := cam.unproject_position(part[1])
+			var hit := ""
+			for k in objs:
+				if done.has(k): continue
+				if _tap_hits(k, sp, px): hit = k; break
+			print("TURN a tap on statue ", i + 1, "'s ", part[0], " at screen ", Vector2i(sp), " -> ", hit if hit != "" else "nothing (she would walk to the floor nearby)")
 	get_tree().quit()
 
 ## a search for surfaces that fight for the same pixels (COPLANAR=1 on any run): two boxes or drums of different
