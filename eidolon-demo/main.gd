@@ -678,6 +678,12 @@ var blob: MeshInstance3D
 var pulse: MeshInstance3D
 var tapring: MeshInstance3D
 var usering: MeshInstance3D
+var refl_out := {}         # (play) her reflection while it is away from her, out on the water: its body (empty: it is under her feet)
+var refl_stay := false     # (while she is sent to the rim for it) her walking does not call the reflection back
+var refl_token := 0        # each order to the reflection carries the next number; an older order sees it has been overtaken and stops
+var refl_ring: MeshInstance3D
+var refl_p := 1.0
+var water_hinted := false
 var hold_id := -1           # the finger that is down (-1: none), where it is, and for how long: held, it leads her
 var hold_at := Vector2.ZERO
 var hold_t := 0.0
@@ -1720,6 +1726,7 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	if "handtest" in OS.get_cmdline_user_args(): _hand_test()
 	if "pantest" in OS.get_cmdline_user_args(): _pan_test()
 	if "turndiag" in OS.get_cmdline_user_args(): _turn_diag()
+	if "refltest" in OS.get_cmdline_user_args(): _refl_test()
 	if "solve2" in OS.get_cmdline_user_args():
 		get_viewport().msaa_3d = Viewport.MSAA_2X
 		_solve2()
@@ -3745,6 +3752,8 @@ func _actors() -> void:
 	var tq := QuadMesh.new(); tq.size = Vector2(1.1, 1.1); tq.orientation = PlaneMesh.FACE_Y
 	tapring = prim(tq, Vector3.ZERO, ring_mat(Vector3(1.0, 0.9, 0.7)))
 	var uq := QuadMesh.new(); uq.size = Vector2(2.4, 2.4); uq.orientation = PlaneMesh.FACE_Y
+	var wq2 := QuadMesh.new(); wq2.size = Vector2(1.5, 1.5); wq2.orientation = PlaneMesh.FACE_Y
+	refl_ring = prim(wq2, Vector3(0, -50, 0), ring_mat(Vector3(0.78, 0.94, 1.0)))      # the answer to a tap on still water: a pale ripple where her reflection will go
 	usering = prim(uq, Vector3(0, -50, 0), ring_mat(Vector3(1.0, 0.74, 0.3)))      # the answer to a tap on a thing that can be used: a wide gold ripple at its foot
 	lamp = Node3D.new(); add_child(lamp); lamp.position = Vector3(0, -50, 0); lamp.visible = false; lamp_energy = 0.0
 	ball(Vector3.ZERO, 0.055, mat(Color("ffd98a")), lamp)
@@ -4024,6 +4033,10 @@ func tap(sp: Vector2) -> void:
 			use(k); return
 	if cam.unproject_position(pos + Vector3(0, 0.9, 0)).distance_to(sp) < 62.0 * px:
 		_self(); return
+	var wu = _water_under(sp)
+	if wu != null and hand_play:      # still water: her reflection is sent there (she stands at the rim; if she is not there yet, she goes first)
+		hold_id = -1
+		_send_reflection(wu[0], wu[1], sp); return
 	var run := (t - last_tap) < 0.38
 	last_tap = t
 	var bp2 = _ground_under(sp)
@@ -4054,6 +4067,89 @@ func _keep_smooth() -> void:
 		res_level -= 1; res_probe = true; res_hold = 4.0      # room to spare: one careful step back up
 	else: return
 	get_viewport().scaling_3d_scale = RES_STEPS[res_level]
+
+## the still waters her reflection can walk on: the pool of the second court and the pool of the third (x0, z0, x1, z1)
+func _pools() -> Array:
+	return [[QX0, QZ0, QX1, QZ1], [RX0, RZ0, RX1, RZ1]]
+
+func _rect_dist(p: Vector3, r: Array) -> float:
+	return Vector2(maxf(maxf(r[0] - p.x, p.x - r[2]), 0.0), maxf(maxf(r[1] - p.z, p.z - r[3]), 0.0)).length()
+
+## the still water under a point of the screen: [which pool, the place on it] or null
+func _water_under(sp: Vector2):
+	var o := cam.project_ray_origin(sp); var d := cam.project_ray_normal(sp)
+	var g := o + d * ((0.012 - o.y) / d.y)
+	var pl := _pools()
+	for i in pl.size():
+		var r: Array = pl[i]
+		if g.x > r[0] and g.x < r[2] and g.z > r[1] and g.z < r[3]:
+			return [i, Vector3(clampf(g.x, r[0] + 0.28, r[2] - 0.28), 0, clampf(g.z, r[1] + 0.28, r[3] - 0.28))]
+	return null
+
+## the way of the reflection over a pool from one place to another: straight, but round the winch that stands in the
+## second court's pool (she cannot walk through its pedestal, and neither can her reflection through its reflection)
+func _refl_way(pi: int, from: Vector3, to: Vector3) -> Array:
+	if pi != 0: return [to]
+	var c := Vector3(PED.x, 0, PED.z); var keep := 0.95
+	if Vector2(to.x - c.x, to.z - c.z).length() < keep:
+		var out := Vector3(to.x - c.x, 0, to.z - c.z); to = c + (out.normalized() if out.length() > 0.01 else Vector3(-1, 0, 0)) * keep
+	var ab := Vector3(to.x - from.x, 0, to.z - from.z)
+	var u := clampf(Vector3(c.x - from.x, 0, c.z - from.z).dot(ab) / maxf(ab.length_squared(), 0.001), 0.0, 1.0)
+	var near := Vector3(from.x, 0, from.z) + ab * u
+	var off := near - c
+	if off.length() >= keep - 0.02 or u <= 0.02 or u >= 0.98: return [to]
+	var side := off.normalized() if off.length() > 0.01 else Vector3(ab.z, 0, -ab.x).normalized()
+	var r: Array = _pools()[0]
+	var via := c + side * (keep + 0.25)
+	via = Vector3(clampf(via.x, r[0] + 0.25, r[2] - 0.25), 0, clampf(via.z, r[1] + 0.25, r[3] - 0.25))
+	return [via, to]
+
+## (play) a tap on still water: her reflection leaves her and walks to that place on it. She has to stand at the
+## pool's rim for it; if she does not, she goes to the rim nearest the place first. A newer order overtakes this one
+func _send_reflection(pi: int, to: Vector3, sp: Vector2) -> void:
+	var r: Array = _pools()[pi]
+	if busy: return
+	if not refl_out.is_empty() and _rect_dist(pos, r) > 1.2: return      # it is on its way back to her, and she has left the water
+	refl_token += 1; var my := refl_token
+	refl_ring.position = Vector3(to.x, 0.03, to.z); refl_p = 0.0
+	if refl_out.is_empty():
+		if not H.has("mir"): return
+		if _rect_dist(pos, r) > 0.85:
+			var rp = _ground_under(sp)
+			refl_stay = true
+			var ok: bool = rp != null and walk_to(rp, PLAY_WALK)
+			refl_stay = false
+			if not ok: return
+			pending = ""
+			while not route.is_empty() and refl_token == my: await get_tree().process_frame
+			if refl_token != my or _rect_dist(pos, r) > 1.15: return
+		face_to = Vector3(to.x, 0, to.z)
+		var e0: Dictionary = H["mir"]; H.erase("mir"); refl_out = e0
+	var e: Dictionary = refl_out; var hd: Node3D = e.holder
+	(e.ap as AnimationPlayer).play("walk", 0.25); (e.ap as AnimationPlayer).speed_scale = 1.15
+	for wp in _refl_way(pi, hd.position, to):
+		var d: Vector3 = wp - hd.position; d.y = 0.0
+		if d.length() > 0.02: hd.rotation.y = atan2(d.x, d.z)
+		while refl_token == my and Vector2(hd.position.x - wp.x, hd.position.z - wp.z).length() > 0.03:
+			hd.position = hd.position.move_toward(Vector3(wp.x, hd.position.y, wp.z), 1.3 * get_process_delta_time())
+			await get_tree().process_frame
+		if refl_token != my: return
+	(e.ap as AnimationPlayer).play("idle", 0.4); (e.ap as AnimationPlayer).speed_scale = 1.0
+
+## her reflection comes back under her feet, wherever she has gone meanwhile, and is hers again
+func _refl_return() -> void:
+	refl_token += 1; var my := refl_token
+	var e: Dictionary = refl_out; var hd: Node3D = e.holder
+	(e.ap as AnimationPlayer).play("walk", 0.2); (e.ap as AnimationPlayer).speed_scale = 1.9
+	while refl_token == my:
+		var d := Vector3(pos.x - hd.position.x, 0, pos.z - hd.position.z)
+		if d.length() < 0.18: break
+		hd.rotation.y = atan2(d.x, d.z)
+		hd.position = hd.position.move_toward(Vector3(pos.x, hd.position.y, pos.z), 2.8 * get_process_delta_time())
+		await get_tree().process_frame
+	if refl_token != my: return
+	(e.ap as AnimationPlayer).play("walk" if walk_on else "idle", 0.3)
+	H["mir"] = e; refl_out = {}
 
 ## does a tap at sp fall on the thing k: anywhere along it, from its foot (or the points it names in "hits") up to
 ## its floating mark. A statue is hit on its gear and drum as well as on its body
@@ -4095,12 +4191,17 @@ func _ground_under(sp: Vector2):
 func walk_to(p: Vector3, cap := WALK) -> bool:
 	var pts := find_path(pos, p)
 	if pts.is_empty(): return false
+	if not refl_out.is_empty() and not refl_stay: _refl_return()      # she walks on: her reflection comes back to her
 	speed_cap = cap; face_to = null
 	route.clear()
 	for q in pts: route.append({"p": q})
 	return true
 
 func use(k: String) -> void:
+	if k == "winch" and not refl_out.is_empty() and _rect_dist(pos, _pools()[0]) < 1.2:      # her reflection is out on that water: it goes to the wheel from where it is, and she stays where she stands
+		route.clear(); pending = ""; busy = true
+		await _do_winch()
+		busy = false; settled.emit(); return
 	if not walk_to(objs[k].stand):
 		say("there is no way there yet"); return
 	pending = k
@@ -4344,6 +4445,10 @@ func _process(dt: float) -> void:
 	pulse_p = move_toward(pulse_p, 1.0, dt * 0.6); (pulse.material_override as ShaderMaterial).set_shader_parameter("p", pulse_p)
 	tap_p = move_toward(tap_p, 1.0, dt * 1.6); (tapring.material_override as ShaderMaterial).set_shader_parameter("p", tap_p)
 	use_p = move_toward(use_p, 1.0, dt * 1.1); (usering.material_override as ShaderMaterial).set_shader_parameter("p", use_p)
+	refl_p = move_toward(refl_p, 1.0, dt * 1.3); (refl_ring.material_override as ShaderMaterial).set_shader_parameter("p", refl_p)
+	if hand_play and started and not water_hinted and not busy and H.has("mir"):
+		for pr in _pools():
+			if _rect_dist(pos, pr) < 0.8: water_hinted = true; say("tap the water: her reflection goes where you point")
 	if lamp_held:
 		lamp_vel += ((-vel * 0.045 - lamp_off) * 40.0 - lamp_vel * 4.0) * dt
 		lamp_off += lamp_vel * dt
@@ -4557,6 +4662,21 @@ func _auto() -> void:
 	print("AUTO done ended=", ended, " done=", done)
 	get_tree().quit()
 
+## (to look at, with HAND=1 and --write-movie) she stands by the pool of the second court; the water is tapped twice,
+## the second time beyond the winch, and then the floor
+func _refl_test() -> void:
+	started = true; title_box.hide(); hint.hide(); cam.size = PLAY_SIZE
+	rects["B1"].on = true; gate_a.position.y = -2.4
+	pos = Vector3(-0.4, 0, -10.9); yaw = PI; cam_t = pos
+	for i in 30: await get_tree().process_frame
+	tap(cam.unproject_position(Vector3(0.1, 0.012, -12.5)))
+	for i in 110: await get_tree().process_frame
+	tap(cam.unproject_position(Vector3(2.1, 0.012, -14.2)))
+	for i in 150: await get_tree().process_frame
+	tap(cam.unproject_position(Vector3(-2.0, 0, -10.8)))
+	for i in 90: await get_tree().process_frame
+	get_tree().quit()
+
 ## (a check) can the three turning statues be reached and used by taps, from different places in their court, and
 ## what does a tap on a statue's body, its drum or its gear do
 func _turn_diag() -> void:
@@ -4701,6 +4821,25 @@ func _hand_test() -> void:
 		print("HAND after a tap on the empty plinth: at ", pos.snapped(Vector3.ONE * 0.01), " gate A ", snappedf(gate_a.position.y, 0.01), " way north ", rects["B1"].on)
 		await walk.call(Vector3(-2.0, 0, -11.0))
 		print("HAND walked by taps to court C: at ", pos.snapped(Vector3.ONE * 0.01), " | onto its pool: ", "possible (wrong)" if rect_of(Vector3(0.5, 0, -13.5)) != "" else "not possible", " | beyond gate C: ", "possible" if not find_path(pos, Vector3(-3.9, 0, -13.0)).is_empty() else "shut")
+		var water := func(to: Vector3, secs: float) -> float:      # a tap on the water there; says how near the winch's axis the reflection came on its way
+			cam_t = pos
+			for i in 20: await get_tree().process_frame
+			tap(cam.unproject_position(Vector3(to.x, 0.012, to.z)))
+			var nearest := 99.0
+			for i in int(secs * 30.0):
+				await get_tree().process_frame
+				if not refl_out.is_empty(): nearest = minf(nearest, Vector2((refl_out.holder as Node3D).position.x - PED.x, (refl_out.holder as Node3D).position.z - PED.z).length())
+			return nearest
+		await water.call(Vector3(0.0, 0, -12.2), 7.0)
+		print("HAND a tap on the water at (0.0, -12.2): she stands at ", pos.snapped(Vector3.ONE * 0.01), " (", snappedf(_rect_dist(pos, _pools()[0]), 0.01), " m from the water), her reflection is ", "out, at " + str((refl_out.holder as Node3D).position.snapped(Vector3.ONE * 0.01)) if not refl_out.is_empty() else "still under her")
+		var nr: float = await water.call(Vector3(2.2, 0, -14.2), 9.0)
+		print("HAND a tap on the water beyond the winch at (2.2, -14.2): her reflection is at ", (refl_out.holder as Node3D).position.snapped(Vector3.ONE * 0.01) if not refl_out.is_empty() else "?", "; it passed ", snappedf(nr, 0.01), " m from the winch's axis (the pedestal is about 0.6 m wide)")
+		var back := Vector3(pos.x - 1.7, 0, pos.z + 0.5)
+		tap(cam.unproject_position(back))
+		for i in 200: await get_tree().process_frame
+		print("HAND a tap on the floor: she walks to ", pos.snapped(Vector3.ONE * 0.01), " and her reflection is ", "back under her" if H.has("mir") and refl_out.is_empty() else "still out")
+		await water.call(Vector3(1.6, 0, -12.2), 8.0)
+		print("HAND sent out again to (1.6, -12.2): at ", (refl_out.holder as Node3D).position.snapped(Vector3.ONE * 0.01) if not refl_out.is_empty() else "?")
 		await tap_on.call("winch")
 		print("HAND after a tap on the wheel in the water: at ", pos.snapped(Vector3.ONE * 0.01), " gate C ", snappedf(gate_c.position.y, 0.01), " way west ", rects["Cw"].on, " bridge on ", rects["BR"].on, " bridge angle ", snappedf(bridge.rotation.y, 0.01))
 		await walk.call(Vector3(-13.5, 0, -13.0))
@@ -4961,13 +5100,19 @@ func _solve3(alone := true) -> void:
 ## down and the bridge beyond it swings into line; the reflection comes back under her feet
 func _winch_act() -> void:
 	var rim := Vector3(QX0 - 0.14, 0, PED.z)
-	await wait(0.5)
-	create_tween().tween_property(cam, "size", 5.4, 2.0)
-	go([rim])
-	while pos.x < rim.x - 0.12: await get_tree().process_frame
-	var e: Dictionary = H["mir"]; H.erase("mir")
+	var e: Dictionary
 	var hub := PED + Vector3(-WINCH_HUB.x, WINCH_HUB.y, 0) * WINCH_K     # the hub of the handwheel
-	await _eid_go(e, Vector3(hub.x - 0.56, 0.0, PED.z), 0.72)                 # an arm's length from the wheel
+	create_tween().tween_property(cam, "size", 5.4, 2.0)
+	if refl_out.is_empty():
+		await wait(0.5)
+		go([rim])
+		while pos.x < rim.x - 0.12: await get_tree().process_frame
+		e = H["mir"]; H.erase("mir")
+		await _eid_go(e, Vector3(hub.x - 0.56, 0.0, PED.z), 0.72)                 # an arm's length from the wheel
+	else:      # (play) it is out on this water already: it goes on from where it stands, round the pedestal if that is in its way
+		refl_token += 1; e = refl_out; refl_out = {}
+		for wp in _refl_way(0, (e.holder as Node3D).position, Vector3(hub.x - 0.56, 0.0, PED.z)): await _eid_go(e, Vector3(wp.x, 0.0, wp.z), 0.95)
+		(e.holder as Node3D).rotation.y = PI * 0.5      # it faces the wheel
 	# her reflection lays its hands on the wheel and turns it hand over hand: each hand goes round with the rim for a
 	# part of a turn, lets go, and comes back for the next hold. The gate and the bridge move while the wheel turns
 	var hm: HerMod = null
@@ -5002,7 +5147,7 @@ func _winch_act() -> void:
 	await hd2.finished
 	hm.own = false
 	await wait(0.3)
-	await _eid_go(e, Vector3(pos.x, 0, pos.z), 0.72)
+	for wp in _refl_way(0, (e.holder as Node3D).position, Vector3(pos.x, 0, pos.z)): await _eid_go(e, Vector3(wp.x, 0.0, wp.z), 0.72)
 	var hd3: Node3D = e.holder     # back under her feet it turns to stand as she stands (it used to flip round in one frame)
 	var rt := create_tween(); rt.tween_property(hd3, "rotation:y", hd3.rotation.y + angle_difference(hd3.rotation.y, yaw), 0.5).set_trans(Tween.TRANS_SINE)
 	await rt.finished
@@ -5017,7 +5162,7 @@ func _do_winch() -> void:
 	done["winch"] = true; rects["Cw"].on = true
 	cam_focus_on = false
 	create_tween().tween_property(cam, "size", s0, 1.4)
-	await go([Vector3(QX0 - 0.39, 0, PED.z)])
+	if pos.x < QX0 and absf(pos.z - PED.z) < 0.5: await go([Vector3(QX0 - 0.39, 0, PED.z)])      # back a step from the west rim, if that is where she stood
 
 ## the second puzzle, "the crossing the water keeps", solved. No captions: she walks on toward the winch; at the rim
 ## her body can go no further, and her reflection does not stop
