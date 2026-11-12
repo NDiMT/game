@@ -53,6 +53,7 @@ const PX1 := 0.6
 const PZ0 := -1.0
 const PZ1 := 2.4
 const PED := Vector3(2.7, 0, -14.6)   # the winch of the second court's gate, on its pedestal in that court's pool
+const CROSS_H := 0.06                  # how high over the water the lost crossing's stones lay: its reflection lies that deep, and her reflection walks on it
 const CROSS_X := -0.4                  # the lost crossing to it: from the front rim straight into the pool along this x, then a turn east along the winch's z
 const MYPL := Vector3(PX0 - 0.5, 0, -0.6)   # her own plinth: the empty one in the row at the west rim of the pool
 const CX0 := -3.4   # the second court, and its pool
@@ -692,6 +693,7 @@ var refl_token := 0        # each order to the reflection carries the next numbe
 var refl_ring: MeshInstance3D
 var refl_p := 1.0
 var water_hinted := false
+var turn_hinted := false
 var hold_id := -1           # the finger that is down (-1: none), where it is, and for how long: held, it leads her
 var hold_at := Vector2.ZERO
 var hold_t := 0.0
@@ -855,37 +857,6 @@ func crenels(a: Vector3, b: Vector3, step := 0.3, sz := 0.13, p := "stone") -> v
 	for i in n + 1:
 		var c := a.lerp(b, float(i) / maxf(n, 1))
 		blk(c - Vector3(sz, 0, sz) * 0.5, c + Vector3(sz * 0.5, sz * 0.9, sz * 0.5), p)
-
-## a small sign that always faces the eye: a round arrow in gold with a dark edge, for "this turns"
-var _turn_tex: ImageTexture
-func _sign_turn() -> MeshInstance3D:
-	if _turn_tex == null:
-		var n := 96; var im := Image.create(n, n, false, Image.FORMAT_RGBA8)
-		var gold := Color(1.0, 0.86, 0.5); var edge := Color(0.24, 0.17, 0.2)
-		var tip := Vector2(cos(-0.35), sin(-0.35)) * 0.62      # where the arrow's head sits, and the way it points (on round the circle)
-		var fw := Vector2(-sin(-0.35), cos(-0.35))
-		for y in n:
-			for x in n:
-				var a := 0.0; var e := 0.0
-				for sy in 3:
-					for sx in 3:
-						var q := Vector2((x + (sx + 0.5) / 3.0) / n, (y + (sy + 0.5) / 3.0) / n) * 2.0 - Vector2.ONE
-						var r := q.length(); var ang := fposmod(atan2(q.y, q.x) + 0.35, TAU)
-						var on_arc := ang > 0.75      # the ring is open before the arrow's head
-						var d_ring := absf(r - 0.62) if on_arc else 9.0
-						var rel := q - tip; var along := rel.dot(fw); var side := absf(rel.dot(Vector2(fw.y, -fw.x)))
-						var d_head := maxf(-along - 0.02, maxf(along - 0.42, side - (0.42 - along) * 0.62))      # a triangle: wide at its back, a point at its front
-						var d := minf(d_ring - 0.105, d_head)
-						if d < 0.0: a += 1.0
-						if d < 0.075: e += 1.0
-				a /= 9.0; e /= 9.0
-				im.set_pixel(x, y, Color(lerpf(edge.r, gold.r, a), lerpf(edge.g, gold.g, a), lerpf(edge.b, gold.b, a), maxf(a, e * 0.85)))
-		im.generate_mipmaps(); _turn_tex = ImageTexture.create_from_image(im)
-	var q2 := QuadMesh.new(); q2.size = Vector2(0.5, 0.5)
-	var m := StandardMaterial3D.new(); m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; m.albedo_texture = _turn_tex
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; m.render_priority = 3
-	var mi := MeshInstance3D.new(); mi.mesh = q2; mi.material_override = m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	return mi
 
 func halo(size: float, c: Color) -> MeshInstance3D:
 	var g := Gradient.new(); g.offsets = PackedFloat32Array([0.0, 0.35, 1.0])
@@ -3225,6 +3196,20 @@ func _pool_c() -> void:
 		blk(Vector3(CROSS_X - 0.3, 0.0, QZ1 - 0.2), Vector3(CROSS_X + 0.3, 0.07, QZ1), "stone", both)   # the stub of the crossing at the front rim
 		for rb3 in [[Vector3(CROSS_X - 0.16, 0.035, QZ1 - 0.27), 0.5 + PI * 0.5], [Vector3(CROSS_X + 0.2, 0.03, QZ1 - 0.24), -0.4 + PI * 0.5]]:
 			var bk3 := blk(Vector3(-0.07, -0.035, -0.1), Vector3(0.07, 0.035, 0.1), "stone", both); bk3.position = rb3[0]; bk3.rotation.y = rb3[1]
+		if both == mroot:      # in the water only: the crossing itself, stone by stone, as it lay before it fell. Above the water there is nothing
+			var z_a := QZ1 - 0.2; var z_b := PED.z - 0.3; var n1 := 6
+			var stones := []      # each: its middle, its half size along x and along z
+			for k in n1:      # the first leg, from the rim into the pool (its last stone is the corner)
+				var s0 := z_a + (z_b - z_a) * k / n1; var s1 := z_a + (z_b - z_a) * (k + 1) / n1
+				stones.append([Vector3(CROSS_X, 0, (s0 + s1) * 0.5), 0.3 - 0.02 * (k % 2), absf(s1 - s0) * 0.5 - 0.045])
+			var x_a := CROSS_X + 0.3; var x_b := PED.x - 0.46; var n2 := 4
+			for k in n2:      # the second leg, east to the winch
+				var t0 := x_a + (x_b - x_a) * k / n2; var t1 := x_a + (x_b - x_a) * (k + 1) / n2
+				stones.append([Vector3((t0 + t1) * 0.5, 0, PED.z), absf(t1 - t0) * 0.5 - 0.045, 0.3 - 0.02 * ((k + 1) % 2)])
+			for k in stones.size():      # stones with water between them, none quite square to the next: old work, long under the water's memory
+				var st: Array = stones[k]
+				var sb := blk(Vector3(-st[1], 0.0, -st[2]), Vector3(st[1], CROSS_H, st[2]), "stone", both)
+				sb.position = (st[0] as Vector3) + Vector3(0, CROSS_H * 0.5, 0); sb.rotation.y = 0.035 * sin(k * 2.3 + 0.7)
 		for cx3 in [CROSS_X - 1.05, CROSS_X + 1.05]:   # two low posts on the front rim: the head of the old crossing
 			var cp := Vector3(cx3, 0, QZ1 + 0.22)
 			# each a turned post: a square foot, a moulded base, a shaft with a necking, a cap, and a bronze ball (they were three plain drums)
@@ -3235,9 +3220,9 @@ func _pool_c() -> void:
 	if OS.get_environment("NOMIR") == "1": mroot.visible = false
 	var wq := QuadMesh.new(); wq.size = Vector2(QX1 - QX0, QZ1 - QZ0); wq.orientation = PlaneMesh.FACE_Y
 	glass2 = ShaderMaterial.new(); glass2.shader = shaders["glass"]; timed.append(glass2)
-	glass2.set_shader_parameter("lost_rect", Vector4(CROSS_X - 0.3, PED.z - 0.3, CROSS_X + 0.3, QZ1 - 0.16)); glass2.set_shader_parameter("lost_a", 1.0); glass2.set_shader_parameter("lost_x", 0.0)      # from the front rim into the pool
+	glass2.set_shader_parameter("lost_rect", Vector4(CROSS_X - 0.3, PED.z - 0.3, CROSS_X + 0.3, QZ1 - 0.16)); glass2.set_shader_parameter("lost_a", 0.0); glass2.set_shader_parameter("lost_x", 0.0)      # from the front rim into the pool
 	glass2.set_shader_parameter("lost_rect2", Vector4(CROSS_X - 0.3, PED.z - 0.3, PED.x - 0.46, PED.z + 0.3)); glass2.set_shader_parameter("lost_x2", 1.0)      # and, turning, east to the winch
-	glass2.set_shader_parameter("blur_px", 4.4); glass2.set_shader_parameter("lod", 2.0)   # what this water shows is soft
+	glass2.set_shader_parameter("blur_px", 1.7); glass2.set_shader_parameter("lod", 0.7)   # what this water shows is a little soft, but the stones of the crossing can be told apart
 	prim(wq, Vector3((QX0 + QX1) * 0.5, 0.012, (QZ0 + QZ1) * 0.5), glass2).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# the west gate: two piers, a lintel, and a bronze grille until the winch is turned
 	for gz in [-13.86, -12.14]:
@@ -3814,8 +3799,7 @@ func _actors() -> void:
 	for k in objs:
 		var n := Node3D.new(); add_child(n); n.position = objs[k].at + Vector3(0, 0.55 if k != "mirror" else 1.35, 0)
 		var quiet: bool = k == "plinth" or k == "winch"      # these two give themselves away only when she is near: a small gold mark
-		if k.begins_with("turn"):      # over a turning statue: a round arrow, so that one sees what a tap will do
-			n.add_child(_sign_turn()); n.add_child(halo(0.62, Color(1.0, 0.8, 0.42, 0.34)))
+		if k.begins_with("turn"):      # nothing floats over a turning statue (the place is kept: a tap up there still counts as a tap on it)
 			markers[k] = n; continue
 		var d := blk(Vector3(-0.05, -0.05, -0.05), Vector3(0.05, 0.05, 0.05), "crim", n)
 		d.material_override = mat(Color("ffd36b") if quiet else Color("ff5a62")); d.rotation = Vector3(0.6155, PI * 0.25, 0)
@@ -4078,9 +4062,10 @@ func _keep_smooth() -> void:
 	else: return
 	get_viewport().scaling_3d_scale = RES_STEPS[res_level]
 
-## the still waters her reflection can walk on: the pool of the second court and the pool of the third (x0, z0, x1, z1)
+## the still waters in which her reflection has something to walk on (x0, z0, x1, z1): the pool of the second court,
+## where the lost crossing still stands in the water. On open water, where nothing is reflected underfoot, it does not walk
 func _pools() -> Array:
-	return [[QX0, QZ0, QX1, QZ1], [RX0, RZ0, RX1, RZ1]]
+	return [[QX0, QZ0, QX1, QZ1]]
 
 func _rect_dist(p: Vector3, r: Array) -> float:
 	return Vector2(maxf(maxf(r[0] - p.x, p.x - r[2]), 0.0), maxf(maxf(r[1] - p.z, p.z - r[3]), 0.0)).length()
@@ -4149,6 +4134,7 @@ func _send_reflection(pi: int, to: Vector3, sp: Vector2) -> void:
 		face_to = Vector3(to.x, 0, to.z)
 		var e0: Dictionary = H["mir"]; H.erase("mir"); refl_out = e0
 	var e: Dictionary = refl_out; var hd: Node3D = e.holder
+	if pi == 0: hd.position.y = CROSS_H      # on the stones of the crossing, not on the water
 	(e.ap as AnimationPlayer).play("walk", 0.25); (e.ap as AnimationPlayer).speed_scale = 1.15
 	for wp in _refl_way(pi, hd.position, to):
 		var d: Vector3 = wp - hd.position; d.y = 0.0
@@ -4181,6 +4167,7 @@ func _refl_return() -> void:
 		await get_tree().process_frame
 	if refl_token != my: return
 	(e.ap as AnimationPlayer).play("walk" if walk_on else "idle", 0.3)
+	hd.position.y = 0.0
 	H["mir"] = e; refl_out = {}
 
 ## does a tap at sp fall on the thing k: anywhere along it, from its foot (or the points it names in "hits") up to
@@ -4478,9 +4465,13 @@ func _process(dt: float) -> void:
 	tap_p = move_toward(tap_p, 1.0, dt * 1.6); (tapring.material_override as ShaderMaterial).set_shader_parameter("p", tap_p)
 	use_p = move_toward(use_p, 1.0, dt * 1.1); (usering.material_override as ShaderMaterial).set_shader_parameter("p", use_p)
 	refl_p = move_toward(refl_p, 1.0, dt * 1.3); (refl_ring.material_override as ShaderMaterial).set_shader_parameter("p", refl_p)
+	for gi in turn_gem.size():      # the stud on a turning statue's base beats while she is near enough to use it
+		var nearg: bool = hand_play and started and not turned_done and not busy and Vector2(pos.x - TURN_AT[gi].x, pos.z - TURN_AT[gi].z).length() < NEAR_MARK
+		(turn_gem[gi] as Node3D).scale = Vector3.ONE * (1.0 + (0.45 * (0.5 + 0.5 * sin(t * 4.2)) if nearg else 0.0))
+		if nearg and not turn_hinted: turn_hinted = true; say("tap a statue to turn it")
 	if hand_play and started and not water_hinted and not busy and H.has("mir"):
 		for pr in _pools():
-			if _rect_dist(pos, pr) < 0.8: water_hinted = true; say("tap the water: her reflection goes where you point")
+			if _rect_dist(pos, pr) < 0.8: water_hinted = true; say("tap the water: her reflection can cross where you cannot")
 	if lamp_held:
 		lamp_vel += ((-vel * 0.045 - lamp_off) * 40.0 - lamp_vel * 4.0) * dt
 		lamp_off += lamp_vel * dt
@@ -4516,8 +4507,7 @@ func _process(dt: float) -> void:
 			n.scale = Vector3.ONE * move_toward(n.scale.x, 1.0 if nearby else 0.001, dt * 2.5)
 			if n.scale.x < 0.01: n.visible = false
 		n.position.y = objs[k].at.y + (0.55 if k != "mirror" else 1.35) + 0.05 * sin(t * 2.4)
-		if k.begins_with("turn"): n.scale = Vector3.ONE * (1.0 + 0.07 * sin(t * 2.4 + n.position.x))
-		else: n.rotation.y = t * 1.2
+		n.rotation.y = t * 1.2
 	if cam_focus_on: cam_t = cam_t.lerp(cam_focus, 1.0 - exp(-1.8 * dt))
 	elif rig_file != "": cam_t = cam_t.lerp(pos + vel * 0.25, 1.0 - exp(-4.0 * dt))
 	else: cam_t = cam_t.lerp(pos + vel * 0.55, 1.0 - exp(-2.4 * dt))
@@ -5140,11 +5130,11 @@ func _winch_act() -> void:
 		go([rim])
 		while pos.z > rim.z + 0.12: await get_tree().process_frame
 		e = H["mir"]; H.erase("mir")
-		for wp in _refl_way(0, (e.holder as Node3D).position, Vector3(hub.x - 0.56, 0.0, PED.z)): await _eid_go(e, Vector3(wp.x, 0.0, wp.z), 0.8)      # along the crossing and round its turn, to an arm's length from the wheel
+		for wp in _refl_way(0, (e.holder as Node3D).position, Vector3(hub.x - 0.56, 0.0, PED.z)): await _eid_go(e, Vector3(wp.x, CROSS_H, wp.z), 0.8)      # along the crossing and round its turn, to an arm's length from the wheel
 		(e.holder as Node3D).rotation.y = PI * 0.5
 	else:      # (play) it is out on this water already: it goes on from where it stands, round the pedestal if that is in its way
 		refl_token += 1; e = refl_out; refl_out = {}
-		for wp in _refl_way(0, (e.holder as Node3D).position, Vector3(hub.x - 0.56, 0.0, PED.z)): await _eid_go(e, Vector3(wp.x, 0.0, wp.z), 0.95)
+		for wp in _refl_way(0, (e.holder as Node3D).position, Vector3(hub.x - 0.56, 0.0, PED.z)): await _eid_go(e, Vector3(wp.x, CROSS_H, wp.z), 0.95)
 		(e.holder as Node3D).rotation.y = PI * 0.5      # it faces the wheel
 	# her reflection lays its hands on the wheel and turns it hand over hand: each hand goes round with the rim for a
 	# part of a turn, lets go, and comes back for the next hold. The gate and the bridge move while the wheel turns
@@ -5180,7 +5170,7 @@ func _winch_act() -> void:
 	await hd2.finished
 	hm.own = false
 	await wait(0.3)
-	for wp in _refl_way(0, (e.holder as Node3D).position, _cross_line()[0]): await _eid_go(e, Vector3(wp.x, 0.0, wp.z), 0.8)      # back along the crossing to its head
+	for wp in _refl_way(0, (e.holder as Node3D).position, _cross_line()[0]): await _eid_go(e, Vector3(wp.x, CROSS_H, wp.z), 0.8)      # back along the crossing to its head
 	await _eid_go(e, Vector3(pos.x, 0, pos.z), 0.8)
 	var hd3: Node3D = e.holder     # back under her feet it turns to stand as she stands (it used to flip round in one frame)
 	var rt := create_tween(); rt.tween_property(hd3, "rotation:y", hd3.rotation.y + angle_difference(hd3.rotation.y, yaw), 0.5).set_trans(Tween.TRANS_SINE)
