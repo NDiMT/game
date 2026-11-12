@@ -27,6 +27,7 @@ const TURN_GOAL := [1, 3, 2]      # how many quarter turns (clockwise from above
 const TURN_YAW0 := 0.0            # the way a statue faces before any turn
 const WINCH_K := 1.55                       # the capstan's size: its model is one unit tall
 const WINCH_HUB := Vector2(0.497, 0.731)    # where the hub of its handwheel sits in the model: out along the axle, and up
+const STICK := false        # how she is walked in play: false = by taps on the ground and on things (as now), true = a floating joystick and an interact button
 const WORLD_DEPTH := 0.4   # how much deeper the stone of the world is than the palette says (0 = as written, 1 = far too dark)
 var sea_c := Color("3c7d92")
 var mist_c := Color("cdb8c6")
@@ -3563,7 +3564,7 @@ func _ui() -> void:
 		(quote_glow if lay[3] else quote_box).add_child(ql); quote_lbls.append(ql)
 	quote_box.move_child(quote_glow, quote_box.get_child_count() - 2)   # the light lies under the letters, over the haze
 	title_box = _card("EIDOLON", "demo  ·  tap to begin", cl, qfont)
-	if hand_play:
+	if hand_play and STICK:
 		ctl = Joy.new(); add_child(ctl)
 		ctl.interact.connect(func() -> void:
 			if reach != "" and not busy: use(reach))
@@ -3632,7 +3633,7 @@ func tap(sp: Vector2) -> void:
 		var dd := cam.unproject_position(c).distance_to(sp)
 		if dd < bd: bd = dd; best = n; bp = c
 	if best == "" or bd > 150.0 * px: return
-	for b in blockers:   # sent into a lamp stand, she stops beside it: on the side of the tap if that is floor, else towards the middle of the place
+	for b in blockers + solids:   # sent into a lamp stand or a plinth, she stops beside it: on the side of the tap if that is floor, else towards the middle of the place
 		var bc := Vector3(b.x, 0, b.y); var off: Vector3 = bp - bc; var br: float = b.z
 		if off.length() >= br: continue
 		var rr: Dictionary = rects[best]
@@ -4098,6 +4099,37 @@ func _auto() -> void:
 ## button as a player would, through the first two puzzles and west over the bridge; says what each step did
 func _hand_test() -> void:
 	started = true; title_box.hide(); hint.hide()
+	if ctl == null:      # play by taps: on the ground to walk, on a thing to use it
+		var walk := func(to: Vector3) -> void:
+			var ok := walk_to(to)
+			var n := 0
+			while ok and pos.distance_to(to) > 0.15 and n < 1500: n += 1; await get_tree().process_frame
+			for i in 20: await get_tree().process_frame
+		var tap_on := func(k: String) -> void:
+			cam_t = pos
+			for i in 60: await get_tree().process_frame
+			tap(cam.unproject_position(objs[k].at))
+			var n := 0
+			while not done.has(k) and n < 2400: n += 1; await get_tree().process_frame
+			while busy: await get_tree().process_frame
+		await wait(0.5)
+		print("HAND (taps) start: at ", pos.snapped(Vector3.ONE * 0.01), " gate A ", gate_a.position.y, " | a walk beyond gate A is ", "possible" if not find_path(pos, Vector3(0, 0, -7.0)).is_empty() else "shut")
+		await tap_on.call("plinth")
+		print("HAND after a tap on the empty plinth: at ", pos.snapped(Vector3.ONE * 0.01), " gate A ", snappedf(gate_a.position.y, 0.01), " way north ", rects["B1"].on)
+		await walk.call(Vector3(-2.0, 0, -11.0))
+		print("HAND walked by taps to court C: at ", pos.snapped(Vector3.ONE * 0.01), " | onto its pool: ", "possible (wrong)" if rect_of(Vector3(0.5, 0, -13.5)) != "" else "not possible", " | beyond gate C: ", "possible" if not find_path(pos, Vector3(-3.9, 0, -13.0)).is_empty() else "shut")
+		await tap_on.call("winch")
+		print("HAND after a tap on the wheel in the water: at ", pos.snapped(Vector3.ONE * 0.01), " gate C ", snappedf(gate_c.position.y, 0.01), " way west ", rects["Cw"].on, " bridge on ", rects["BR"].on, " bridge angle ", snappedf(bridge.rotation.y, 0.01))
+		await walk.call(Vector3(-13.5, 0, -13.0))
+		print("HAND walked by taps west over the bridge: at ", pos.snapped(Vector3.ONE * 0.01))
+		await walk.call(Vector3(-15.0, 0, -15.5))
+		cam_t = pos
+		for i in 60: await get_tree().process_frame
+		tap(cam.unproject_position(markers["turn3"].position))
+		for i in 400: await get_tree().process_frame
+		while busy: await get_tree().process_frame
+		print("HAND after a tap on the third statue's mark: it has been turned ", turn_q[2], " quarter(s)")
+		get_tree().quit(); return
 	var cb := cam.global_transform.basis
 	var gr := Vector3(cb.x.x, 0, cb.x.z).normalized(); var gu := Vector3(cb.y.x, 0, cb.y.z).normalized()
 	var stick := func(to: Vector3, secs: float) -> void:      # hold the stick toward a point on the ground, until she is there or the time is up
