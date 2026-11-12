@@ -1882,7 +1882,7 @@ func _shots() -> void:
 		{"n": "24-statue-row", "p": Vector3(-0.5, 0, MYPL.z), "y": -PI * 0.5, "c": Vector3(-2.2, 0.3, -0.5), "s": 6.0},
 		{"n": "25-crossing-court", "p": Vector3(CROSS_X, 0, QZ1 + 0.3), "y": PI, "c": Vector3(1.2, 0.3, -13.7), "s": 10.2},
 		{"n": "28-turned-ones", "p": Vector3(-16.32, 0, -14.4), "y": -PI * 0.5, "c": Vector3(-17.9, 0.2, -13.0), "s": 9.8},
-		{"n": "30-crane-court", "p": Vector3(-18.93, 0, -36.5), "y": 1.047, "c": Vector3(-17.3, 0.2, -36.6), "s": 10.0},
+		{"n": "30-crane-court", "p": Vector3(-18.8, 0, -37.0), "y": PI * 0.5, "c": Vector3(-17.3, 0.2, -36.6), "s": 10.0},
 		{"n": "26-causeway-mirrors", "p": Vector3(0, 0, -7.0), "y": -PI * 0.6, "c": Vector3(-0.8, 1.75, -7.8), "s": 8.6, "quote": true},   # framed as the run frames it
 		{"n": "22-covered-pool", "p": Vector3(1.37, 0, -13.2), "y": -PI * 0.5, "c": Vector3(-1.0, 0.4, -13.0), "s": 7.5},
 		{"n": "23-door-in-water", "p": Vector3(0.25, 0, -12.4), "y": -PI * 0.6, "c": Vector3(-1.2, 0.4, -13.0), "s": 6.2, "nosheet": true},
