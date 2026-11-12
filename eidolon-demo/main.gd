@@ -395,14 +395,43 @@ const SH_WATER := """shader_type spatial;
 render_mode unshaded, cull_disabled;
 uniform vec3 deep : source_color; uniform vec3 shallow : source_color; uniform float time_s = 0.0;
 uniform vec2 flow = vec2(0.0); uniform float vert = 0.0;
+uniform vec4 rect = vec4(0.0); uniform vec3 ring0 = vec3(0.0); uniform vec3 ring1 = vec3(0.0); uniform vec3 ring2 = vec3(0.0);   // rect: the basin (x0, z0, x1, z1). ring: where a ring opens (x, z) and how wide it grows
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment(){
 	vec2 p = wp.xz * 2.4 + flow * time_s;
-	if (vert > 0.5) { p = vec2((wp.x - wp.z) * 5.0, (wp.y - (wp.x + wp.z) * 0.5) * 1.6 + time_s * 2.6); }
-	float w = sin(p.x * 1.7 + time_s * 0.9) * sin(p.y * 2.3 - time_s * 0.7);
-	float lines = smoothstep(0.86, 0.99, sin(p.x * 3.1 + sin(p.y * 2.0 + time_s * 0.6) * 1.6) * 0.5 + 0.5);
-	ALBEDO = mix(deep, shallow, 0.5 + 0.3 * w) + vec3(0.45, 0.55, 0.5) * lines * 0.55;
+	if (vert > 0.5) {
+		p = vec2((wp.x - wp.z) * 5.0, (wp.y - (wp.x + wp.z) * 0.5) * 1.6 + time_s * 2.6);
+		float w = sin(p.x * 1.7 + time_s * 0.9) * sin(p.y * 2.3 - time_s * 0.7);
+		float lines = smoothstep(0.86, 0.99, sin(p.x * 3.1 + sin(p.y * 2.0 + time_s * 0.6) * 1.6) * 0.5 + 0.5);
+		ALBEDO = mix(deep, shallow, 0.5 + 0.3 * w) + vec3(0.45, 0.55, 0.5) * lines * 0.55;
+	} else {
+		// still water in a basin: a calm swell of two near tones, a fine net of light on its floor, deeper under the
+		// kerb, and slow rings that open round the lily pads. (It used to be one bold snaking line across the pool.)
+		float sw = sin(wp.x * 1.3 + time_s * 0.31) * sin(wp.z * 1.7 - time_s * 0.26);
+		vec3 col = mix(deep, shallow, 0.4 + 0.1 * sw);
+		vec2 q = wp.xz * 5.2 + vec2(sin(wp.z * 3.1 + time_s * 0.42), cos(wp.x * 2.7 - time_s * 0.36)) * 0.55 + flow * time_s;
+		float net = smoothstep(0.9, 1.0, 1.0 - abs(sin(q.x) * 0.5 + sin(q.y + sin(q.x * 0.5) * 0.9) * 0.5));
+		float gap = smoothstep(-0.2, 0.5, sin(q.x * 0.37 + 1.0) * sin(q.y * 0.41 - 0.6));     // the net is broken into short strokes
+		col += vec3(0.42, 0.5, 0.44) * net * gap * 0.3;
+		float rings = 0.0;
+		for (int i = 0; i < 3; i++) {
+			vec3 c = i == 0 ? ring0 : (i == 1 ? ring1 : ring2);
+			if (c.z <= 0.0) continue;
+			float d = distance(wp.xz, c.xy);
+			for (int k = 0; k < 2; k++) {
+				float ph = fract(time_s * 0.11 + float(i) * 0.37 + float(k) * 0.5);
+				rings += smoothstep(0.022, 0.0, abs(d - 0.1 - ph * c.z)) * (1.0 - ph) * (1.0 - ph);
+			}
+		}
+		col += vec3(0.5, 0.56, 0.5) * min(rings, 1.0) * 0.36;
+		if (rect.z > rect.x) {     // the water under the kerb lies in its shade, and a thin bright line runs where it meets the stone
+			float e = min(min(wp.x - rect.x, rect.z - wp.x), min(wp.z - rect.y, rect.w - wp.z));
+			col *= mix(0.8, 1.0, smoothstep(0.0, 0.2, e));
+			col += vec3(0.5, 0.56, 0.52) * smoothstep(0.03, 0.012, e) * 0.5;
+		}
+		ALBEDO = col;
+	}
 }"""
 const SH_CLOTH := """shader_type spatial;
 render_mode unshaded, cull_disabled;
@@ -495,6 +524,23 @@ void fragment(){
 	if (use_tex > 0.5) { vec3 tx = vcol > 0.5 ? mix(vec3(0.77, 0.765, 0.76), vec3(0.59, 0.246, 0.162), smoothstep(0.47, 0.53, COLOR.a)) : texture(albedo_tex, UV).rgb; float rw = smoothstep(0.08, 0.2, tx.r - tx.b); c = mix(tx * 0.92, clamp(tx * gain, 0.0, 1.0), rw); }
 	ALBEDO = mix(under_col, c, fade);
 }"""
+## glints on water: short bright strokes that lie level across the picture (the eye looks along the diagonal of the
+## map, so "level" is the line x - z), each coming and going in its own time. p: a place on the water in metres,
+## cell: how far apart they lie (along the stroke, and into the picture), dens: how many of the cells hold one
+const GLSL_GLINT := """float glints(vec2 p, float tm, vec2 cell, float dens){
+	vec2 g = vec2(p.x - p.y, p.x + p.y) * 0.7071 / cell;
+	g.x += floor(g.y) * 0.37;
+	vec2 id = floor(g); vec2 f = fract(g) - 0.5;
+	float h = fract(sin(dot(id, vec2(12.9898, 78.233))) * 43758.5453);
+	float h2 = fract(h * 91.7);
+	f.x += (h2 - 0.5) * 0.3;
+	float len = 0.1 + 0.22 * fract(h * 7.3);
+	float along = 1.0 - clamp(abs(f.x) / len, 0.0, 1.0);
+	float w = 0.1 * (0.35 + 0.65 * along); float wy = max(w, fwidth(g.y) * 1.2);      // never thinner than a pixel: a stroke seen from far grows faint instead of flickering
+	float d = smoothstep(0.0, 0.5, along) * smoothstep(wy, wy * 0.3, abs(f.y)) * (w / wy);
+	return step(1.0 - dens, h) * d * smoothstep(0.25, 0.85, sin(tm * (0.45 + h2 * 0.5) + h * 40.0) * 0.5 + 0.5);
+}
+"""
 ## the still water of the mirror pool: almost clear, with a few slow glints
 const SH_GLASS := """shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never;
@@ -502,6 +548,7 @@ uniform float time_s = 0.0; uniform float blur_px = 3.2; uniform float wave = 1.
 uniform vec4 lost_rect = vec4(0.0); uniform float lost_a = 0.0; uniform float lost_x = 0.0;   // lost_x: the crossing runs along x
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap, repeat_disable;
 varying vec3 wp;
+//GLINT
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment(){
 	vec2 px = 1.0 / VIEWPORT_SIZE;
@@ -514,7 +561,7 @@ void fragment(){
 		c += textureLod(screen_tex, uv + vec2(cos(a), sin(a)) * px * blur_px * (1.0 + 0.5 * float(i % 2)), lod).rgb * 0.1;
 	}
 	float l = smoothstep(0.9, 1.0, sin(wp.x * 2.3 + sin(wp.z * 1.7 + time_s * 0.45) * 1.8 + time_s * 0.22) * 0.5 + 0.5);
-	float l2 = smoothstep(0.965, 1.0, sin((wp.x - wp.z) * 5.1 + time_s * 0.6) * sin(wp.z * 3.3 - time_s * 0.4) * 0.5 + 0.5);
+	float l2 = glints(wp.xz, time_s * 0.8, vec2(1.1, 0.42), 0.34);   // a few level strokes of light (they were pale ovals, like flakes of snow on the water)
 	if (lost_a > 0.0) {   // the lost crossing: no clear shape, only a soft shadow that the water still holds
 		vec2 q2 = wp.xz + vec2(sin(wp.z * 9.0 + time_s * 1.2) + 0.5 * sin(wp.z * 21.0 - time_s * 0.7), sin(wp.x * 7.0 + time_s * 0.9)) * 0.03 * wave;
 		vec4 lr = lost_rect;
@@ -539,19 +586,22 @@ const SH_SEA := """shader_type spatial;
 render_mode unshaded, cull_disabled;
 uniform vec3 near_col : source_color; uniform vec3 far_col : source_color; uniform vec3 centre; uniform float mist_r = 7.0; uniform float time_s = 0.0; uniform float mist_k = 1.0;
 varying vec3 wp;
+//GLINT
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment(){
 	if (((wp.x > -6.0 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 5.0) || (wp.x > -2.9 && wp.x < 3.0 && wp.z > -15.9 && wp.z < -10.5) || (wp.x > -21.8 && wp.x < -13.5 && wp.z > -16.4 && wp.z < -10.0)) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
 	vec3 d3 = wp - centre; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
 	float m = smoothstep(mist_r * 0.8, mist_r * 1.75, md) * mist_k;
 	vec2 p = wp.xz * 1.1;
-	float lines = smoothstep(0.93, 0.995, sin(p.x * 2.3 + sin(p.y * 1.7 + time_s * 0.45) * 1.9 + time_s * 0.2) * 0.5 + 0.5);
-	float sp = smoothstep(0.985, 1.0, sin(p.x * 9.1 + time_s * 1.3) * sin(p.y * 8.3 - time_s * 1.1));
+	float lines = smoothstep(0.93, 0.995, sin(p.x * 2.3 + sin(p.y * 1.7 + time_s * 0.45) * 1.9 + sin(p.x * 0.31 - p.y * 0.53) * 2.3 + time_s * 0.2) * 0.5 + 0.5);   // (the third wave keeps the lines from repeating like a wallpaper when the whole map is in view)
+	// the light on the swell: short level strokes, some long and some short, that come and go. (They were round dots
+	// on a square grid, which read as snow lying on the water.)
+	float sp = glints(wp.xz, time_s, vec2(0.86, 0.3), 0.3) + 0.7 * glints(wp.xz + 3.7, time_s * 1.3, vec2(0.47, 0.21), 0.16);
 	float brk = smoothstep(0.35, 0.75, sin(p.x * 0.63 + p.y * 0.41) * sin(p.y * 0.57 - p.x * 0.29 + 1.3) * 0.5 + 0.5);
 	float road = smoothstep(2.4, 0.0, abs((wp.x - wp.z) - (centre.x - centre.z) - 4.2));
-	vec2 cell = floor(wp.xz * 11.0);
-	float tw = fract(sin(dot(cell, vec2(12.9898, 78.233)) + floor(time_s * 2.5) * 0.37) * 43758.5453);
-	float glit = step(0.93, tw) * road * smoothstep(0.38, 0.08, length(fract(wp.xz * 11.0) - 0.5));
+	// the sun's road across the water: the same strokes, smaller, closer and quicker (it too was dots on a grid)
+	float glit = road * glints(wp.xz + 11.3, time_s * 2.8, vec2(0.26, 0.115), 0.85);
+	lines *= smoothstep(21.0, 11.0, mist_r);   // with the whole map in view the long lines only made a pattern: there the sea lies plain
 	vec3 col = mix(near_col, far_col, m) + vec3(0.5, 0.6, 0.6) * (lines * 0.1 * brk + sp * 0.35) * (1.0 - m);
 	col += (vec3(1.0, 0.93, 0.78) * glit * 0.55 + vec3(0.9, 0.8, 0.7) * road * 0.07) * (1.0 - m * 0.6);
 	ALBEDO = col; ALPHA = mix(0.6, 1.0, m);
@@ -592,6 +642,17 @@ void fragment(){
 	float a = mix(0.72, 1.0, n) * dens * smoothstep(far_a, far_b, md);
 	if (clear_r > 0.0) a *= smoothstep(clear_r * 0.3, clear_r, distance(wp.xz, hero.xz));
 	ALBEDO = col; ALPHA = a;
+}"""
+## the glass of the great mirror in the garden wall, laid over its dark niche: light added to what is behind it
+const SH_PANE := """shader_type spatial;
+render_mode unshaded, cull_disabled, blend_add, depth_draw_never;
+uniform float time_s = 0.0;
+void fragment(){
+	float d = UV.x * 0.5 + UV.y * 0.34 + time_s * 0.01;
+	float g = smoothstep(0.1, 0.075, abs(fract(d) - 0.42)) * 0.5 + smoothstep(0.024, 0.014, abs(fract(d) - 0.62)) * 0.85;
+	vec2 e = min(UV, 1.0 - UV);
+	float edge = smoothstep(0.0, 0.05, min(e.x * 1.8, e.y));
+	ALBEDO = vec3(0.5, 0.78, 0.9) * (0.035 + 0.17 * smoothstep(0.75, 0.0, UV.y) * smoothstep(0.75, 0.0, UV.y) + g * 0.2) * edge;
 }"""
 const SH_SHARD := """shader_type spatial;
 render_mode unshaded, cull_disabled;
@@ -847,6 +908,9 @@ func meander(x0: float, z0: float, x1: float, z1: float, p := "shade") -> void:
 	bb_end(p)
 
 func foam(x0: float, z0: float, x1: float, z1: float, wdt := 0.42) -> MeshInstance3D:
+	# round things (a column, a pile, the pivot of the bridge) are asked for as a small square: they get a round ring,
+	# not a square of foam standing off from a round shaft
+	if absf((x1 - x0) - (z1 - z0)) < 0.001 and x1 - x0 < 0.75: return foam_ring(Vector3((x0 + x1) * 0.5, 0, (z0 + z1) * 0.5), (x1 - x0) * 0.5, wdt)
 	var v := PackedVector3Array(); var uv := PackedVector2Array()
 	var y := WATER + 0.012
 	var inn := [Vector3(x0, y, z0), Vector3(x1, y, z0), Vector3(x1, y, z1), Vector3(x0, y, z1)]
@@ -855,6 +919,19 @@ func foam(x0: float, z0: float, x1: float, z1: float, wdt := 0.42) -> MeshInstan
 		var j := (i + 1) % 4
 		for q in [[inn[i], 0.0], [inn[j], 0.0], [out[j], 1.0], [inn[i], 0.0], [out[j], 1.0], [out[i], 1.0]]:
 			v.append(q[0]); uv.append(Vector2(q[1], i * 0.25))
+	var arr := []; arr.resize(Mesh.ARRAY_MAX); arr[Mesh.ARRAY_VERTEX] = v; arr[Mesh.ARRAY_TEX_UV] = uv
+	var am := ArrayMesh.new(); am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	return prim(am, Vector3.ZERO, foam_mat)
+
+## the same round a round thing: rings that open from it and fade
+func foam_ring(c: Vector3, r: float, wdt := 0.3) -> MeshInstance3D:
+	var v := PackedVector3Array(); var uv := PackedVector2Array()
+	var y := WATER + 0.012; var n := 28
+	for i in n:
+		var a0 := TAU * i / n; var a1 := TAU * (i + 1) / n
+		var d0 := Vector3(cos(a0), 0, sin(a0)); var d1 := Vector3(cos(a1), 0, sin(a1)); var o := Vector3(c.x, y, c.z)
+		for q in [[o + d0 * r, 0.0], [o + d1 * r, 0.0], [o + d1 * (r + wdt), 1.0], [o + d0 * r, 0.0], [o + d1 * (r + wdt), 1.0], [o + d0 * (r + wdt), 1.0]]:
+			v.append(q[0]); uv.append(Vector2(q[1], 0.0))
 	var arr := []; arr.resize(Mesh.ARRAY_MAX); arr[Mesh.ARRAY_VERTEX] = v; arr[Mesh.ARRAY_TEX_UV] = uv
 	var am := ArrayMesh.new(); am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
 	return prim(am, Vector3.ZERO, foam_mat)
@@ -1070,16 +1147,37 @@ func tiles(x0: float, z0: float, x1: float, z1: float, step := 0.8) -> void:
 		else: blk(Vector3(x0 + 0.1, 0, z - 0.008), Vector3(x1 - 0.1, 0.003, z + 0.008), "shade")
 		z += step
 
+## a flat triangle of inlay, for bb_end
+func inlay(a: Vector3, b: Vector3, c: Vector3) -> void:
+	for q in [a, b, c]:
+		bv.append(q); bn.append(Vector3.UP)
+
+## the rosette of the garden floor: a wind rose inlaid in the paving. A border ring, eight long points in two tones
+## of stone (each point split down its middle, light and dark), eight short bronze points between them, a red lozenge
+## at the head of every other long point, and in the middle a small round basin with a bronze rim
 func rosette(c: Vector3, r: float) -> void:
-	var names := ["shade", "stone", "rose", "stone", "crim"]
-	var radii := [1.0, 0.9, 0.62, 0.5, 0.16]
+	cyl(c, r, r, 0.005, pal("shade"), 48); cyl(c + Vector3(0, 0.002, 0), r * 0.93, r * 0.93, 0.005, pal("stone"), 48)
+	cyl(c + Vector3(0, 0.004, 0), r * 0.8, r * 0.8, 0.004, pal("shade"), 48); cyl(c + Vector3(0, 0.005, 0), r * 0.775, r * 0.775, 0.004, pal("stone"), 48)   # a thin line round the points
+	var y0 := 0.0095; var y1 := 0.0105; var y2 := 0.0115
+	var at := func(a: float, k: float, y: float) -> Vector3: return c + Vector3(cos(a) * r * k, y, sin(a) * r * k)
+	for i in 8:      # the short points lie under the long ones
+		var a := TAU * (i + 0.5) / 8.0
+		inlay(at.call(a - 0.2, 0.3, y0), at.call(a, 0.56, y0), at.call(a + 0.2, 0.3, y0))
+	bb_end("gold")
+	for half in 2:
+		for i in 8:
+			var a := TAU * i / 8.0; var sd := -1.0 if half == 0 else 1.0
+			inlay(at.call(a, 0.22, y1), at.call(a, 0.74 if i % 2 == 0 else 0.66, y1), at.call(a + sd * TAU / 16.0, 0.34, y1))
+		bb_end("rose" if half == 0 else "shade")
 	for i in 4:
-		cyl(c + Vector3(0, 0.002 * i, 0), r * radii[i], r * radii[i], 0.005, pal(names[i]), 48)
-	cyl(c + Vector3(0, 0.008, 0), r * 0.3, r * 0.3, 0.004, pal("gold"), 40); cyl(c + Vector3(0, 0.01, 0), r * 0.25, r * 0.25, 0.004, water(), 40)
-	for i in 8:
-		var a := TAU * i / 8.0
-		var d := blk(Vector3(-0.07, 0.008, -0.07), Vector3(0.07, 0.014, 0.07), "crim" if i % 2 == 0 else "gold")
-		d.position = c + Vector3(cos(a), 0, sin(a)) * r * 0.76 + Vector3(0, 0.011, 0); d.rotation.y = PI * 0.25 - a
+		var a := TAU * i / 4.0
+		inlay(at.call(a, 0.815, y2), at.call(a + 0.045, 0.865, y2), at.call(a, 0.915, y2)); inlay(at.call(a, 0.815, y2), at.call(a, 0.915, y2), at.call(a - 0.045, 0.865, y2))
+	bb_end("crim")
+	for i in 4:
+		var a := TAU * (i + 0.5) / 4.0
+		inlay(at.call(a, 0.83, y2), at.call(a + 0.035, 0.865, y2), at.call(a, 0.9, y2)); inlay(at.call(a, 0.83, y2), at.call(a, 0.9, y2), at.call(a - 0.035, 0.865, y2))
+	bb_end("gold")
+	cyl(c + Vector3(0, 0.008, 0), r * 0.27, r * 0.27, 0.008, pal("gold"), 40); cyl(c + Vector3(0, 0.0165, 0), r * 0.225, r * 0.225, 0.003, water(), 40)
 
 func parapet(a: Vector3, b: Vector3, h := 0.34) -> void:
 	var w := 0.06
@@ -1135,12 +1233,14 @@ func lily(p: Vector3, r: float, yaw: float, bud: bool) -> void:
 		var bd := Vector3(cos(yaw + PI), 0, sin(yaw + PI)) * r * 0.3
 		cyl(p + bd, 0.03, 0.012, 0.045, pal("rose"), 6); cyl(p + bd, 0.045, 0.03, 0.012, pal("leaf3"), 6)
 
-func pool(x0: float, z0: float, x1: float, z1: float, flow := Vector2.ZERO) -> void:
+func pool(x0: float, z0: float, x1: float, z1: float, flow := Vector2.ZERO) -> ShaderMaterial:
 	var q := QuadMesh.new(); q.size = Vector2(x1 - x0, z1 - z0); q.orientation = PlaneMesh.FACE_Y
-	prim(q, Vector3((x0 + x1) * 0.5, 0.012, (z0 + z1) * 0.5), water(flow))
+	var wm := water(flow); wm.set_shader_parameter("rect", Vector4(x0, z0, x1, z1))
+	prim(q, Vector3((x0 + x1) * 0.5, 0.012, (z0 + z1) * 0.5), wm)
 	var r := 0.07
 	blk(Vector3(x0 - r, 0, z0 - r), Vector3(x1 + r, 0.05, z0), "shade"); blk(Vector3(x0 - r, 0, z1), Vector3(x1 + r, 0.05, z1 + r), "shade")
 	blk(Vector3(x0 - r, 0, z0), Vector3(x0, 0.05, z1), "shade"); blk(Vector3(x1, 0, z0), Vector3(x1 + r, 0.05, z1), "shade")
+	return wm
 
 func strip(x0: float, z0: float, x1: float, z1: float, flow: Vector2) -> void:
 	var q := QuadMesh.new(); q.size = Vector2(x1 - x0, z1 - z0); q.orientation = PlaneMesh.FACE_Y
@@ -1328,8 +1428,8 @@ func model(nm: String, pos: Vector3, height: float, yaw := 0.0, tilt := Vector3.
 func _ready() -> void:
 	for k in [["base", SH], ["two", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;")],
 			["mir", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled, shadows_disabled;")],
-			["water", SH_WATER], ["cloth", SH_CLOTH], ["sheet", SH_SHEET], ["mirror", SH_MIRROR], ["ring", SH_RING], ["sea", SH_SEA], ["refl", SH_REFL], ["glass", SH_GLASS], ["pit", SH_PIT], ["face", SH_FACE], ["foam", SH_FOAM], ["fog", SH_FOG], ["shard", SH_SHARD]]:
-		var s := Shader.new(); s.code = k[1]; shaders[k[0]] = s
+			["water", SH_WATER], ["cloth", SH_CLOTH], ["sheet", SH_SHEET], ["mirror", SH_MIRROR], ["ring", SH_RING], ["sea", SH_SEA], ["refl", SH_REFL], ["glass", SH_GLASS], ["pit", SH_PIT], ["face", SH_FACE], ["foam", SH_FOAM], ["fog", SH_FOG], ["shard", SH_SHARD], ["pane", SH_PANE]]:
+		var s := Shader.new(); s.code = (k[1] as String).replace("//GLINT", GLSL_GLINT); shaders[k[0]] = s
 	# the joined world (see _lighten): one material for every still piece, whatever its colour. The three tones of its
 	# palette and its marble, tone and flat-face settings ride in the vertices instead of in the material
 	for two in [false, true]:
@@ -1481,6 +1581,7 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 		if c != world: c.reparent(world)
 	_refl_margins(world)
 	_lighten(world)
+	_join_foam(world)
 	# the old upside-down copy of the whole world under the sea is gone: it fought with the dark reflections
 	# that now lie on the water, and it doubled the scene. The node stays for the few things made only for it
 	refl = world.duplicate() if OS.get_environment("OLDREFL") == "1" else Node3D.new()
@@ -2441,7 +2542,7 @@ func _env() -> void:
 	cam.rotation_degrees = Vector3(-35.264, 45, 0)
 	add_child(cam); cam.current = true
 	var sq := QuadMesh.new(); sq.size = Vector2(260, 260); sq.orientation = PlaneMesh.FACE_Y
-	foam_mat = ShaderMaterial.new(); foam_mat.shader = shaders["foam"]; timed.append(foam_mat)
+	foam_mat = ShaderMaterial.new(); foam_mat.shader = shaders["foam"]; foam_mat.render_priority = 1; timed.append(foam_mat)
 	sea_mat = ShaderMaterial.new(); sea_mat.shader = shaders["sea"]
 	sea_mat.set_shader_parameter("near_col", sea_c); sea_mat.set_shader_parameter("far_col", mist_c); sea_mat.set_shader_parameter("mist_k", clampf(mist_k + 0.15, 0.0, 1.0))
 	prim(sq, Vector3(0, WATER, 0), sea_mat)
@@ -2469,14 +2570,29 @@ func _particles(n: int, life: float, ext: Vector3, size: float, c: Color, grav: 
 func _fit() -> void:
 	pass
 
+## one stone of an arch that stands in the plane of x and y: the wedge between two angles and two radii, hz deep either way
+func wedge(c: Vector3, r0: float, r1: float, th0: float, th1: float, hz: float) -> void:
+	var d0 := Vector3(cos(th0), sin(th0), 0); var d1 := Vector3(cos(th1), sin(th1), 0); var dm := Vector3(cos((th0 + th1) * 0.5), sin((th0 + th1) * 0.5), 0)
+	var zf := Vector3(0, 0, hz)
+	var a := c + d0 * r0; var b := c + d0 * r1; var e := c + d1 * r1; var f := c + d1 * r0
+	for q in [[[a + zf, b + zf, e + zf, f + zf], Vector3.BACK], [[a - zf, b - zf, e - zf, f - zf], Vector3.FORWARD], [[b - zf, b + zf, e + zf, e - zf], dm], [[a - zf, a + zf, f + zf, f - zf], -dm],
+			[[a - zf, a + zf, b + zf, b - zf], Vector3(d0.y, -d0.x, 0)], [[f - zf, f + zf, e + zf, e - zf], Vector3(-d1.y, d1.x, 0)]]:
+		for i in [0, 1, 2, 0, 2, 3]:
+			bv.append(q[0][i]); bn.append(q[1])
+
+## the ring gate: an arch of cut stones that springs from two round piers in the sea, over the way to the garden. Its
+## stones are wedges that meet face to face (they were square blocks turned on a circle, with gaps between their
+## corners), in two tones by turns, with a keystone that stands a little proud
 func ring_gate(c: Vector3, rad: float, n := 17) -> void:
-	for i in n:
-		var th := PI * (i + 0.5) / n
-		var bx := blk(Vector3(-0.21, -0.2, -0.21), Vector3(0.21, 0.2, 0.21), "stone" if i % 2 == 0 else "shade")
-		bx.position = c + Vector3(cos(th) * rad, sin(th) * rad, 0); bx.rotation.z = th
-		bx.scale = Vector3(1.0, PI * rad / n / 0.4 * 1.02, 1.0)
+	for tone in 2:
+		for i in n:
+			if i % 2 != tone or i == n / 2: continue
+			wedge(c, rad - 0.2, rad + 0.2, PI * i / n, PI * (i + 1) / n, 0.21)
+		bb_end("stone" if tone == 0 else "shade")
+	wedge(c, rad - 0.22, rad + 0.29, PI * (n / 2) / n, PI * (n / 2 + 1) / n, 0.25); bb_end("stone")
 	for sx in [-1.0, 1.0]:
 		cyl(c + Vector3(sx * rad, -1.2, 0), 0.34, 0.3, 1.25, pal("shade"), 16); foam(c.x + sx * rad - 0.34, c.z - 0.34, c.x + sx * rad + 0.34, c.z + 0.34, 0.3)
+		blk(c + Vector3(sx * rad - 0.26, 0.05, -0.26), c + Vector3(sx * rad + 0.26, 0.13, 0.26), "stone")      # the impost each side springs from
 
 func plinth_head(nm: String, fp: Vector3, yaw: float) -> void:
 	blk(fp + Vector3(-0.19, 0, -0.19), fp + Vector3(0.19, 0.72, 0.19), "stone")
@@ -2627,6 +2743,29 @@ func _lighten(root: Node3D) -> void:
 		for mi3 in g.list:
 			joined += 1; (mi3 as Node).get_parent().remove_child(mi3); (mi3 as Node).queue_free()
 	print("LIGHTEN ", seen, " still pieces; ", stripped, " lose their sea reflection (and ", own, " statues and models); ", joined, " joined into ", made, " meshes")
+
+## Every ring of foam in the sea was a mesh of its own, drawn by a call of its own (some forty of them). None of them
+## moves and all share one material: they become one mesh. It is drawn after the sea, always (render_priority): each
+## ring used to be sorted against the sea by its own distance, so those beyond the middle of the map lay under the
+## sea's own colour and were fainter than the near ones
+func _join_foam(root: Node3D) -> void:
+	if OS.get_environment("LIGHTEN") == "0": return
+	var v := PackedVector3Array(); var uv := PackedVector2Array(); var n := 0
+	var inv := root.global_transform.affine_inverse()
+	for mm in root.find_children("*", "MeshInstance3D", true, false):
+		var mi := mm as MeshInstance3D
+		if mi.material_override != foam_mat or mi.mesh == null: continue
+		var xf := inv * mi.global_transform
+		var a := mi.mesh.surface_get_arrays(0); var av: PackedVector3Array = a[Mesh.ARRAY_VERTEX]; var au: PackedVector2Array = a[Mesh.ARRAY_TEX_UV]
+		for i in av.size():
+			v.append(xf * av[i]); uv.append(au[i])
+		mi.get_parent().remove_child(mi); mi.queue_free(); n += 1
+	if v.is_empty(): return
+	var arr := []; arr.resize(Mesh.ARRAY_MAX); arr[Mesh.ARRAY_VERTEX] = v; arr[Mesh.ARRAY_TEX_UV] = uv
+	var am := ArrayMesh.new(); am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	var out := MeshInstance3D.new(); out.mesh = am; out.material_override = foam_mat; out.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(out)
+	print("FOAM ", n, " rings joined into one mesh")
 
 ## the same material without the second drawing on the sea (kept among the materials that follow the lights and the mist)
 func _norefl(m: ShaderMaterial) -> ShaderMaterial:
@@ -3078,6 +3217,7 @@ func _turned_ones() -> void:
 		var made := _turn_plinth(self, TURN_AT[i], 0, pose)
 		turn_n.append(made[0]); turn_pin.append(made[1]); turn_girth.append(_statue_girth(made[0]))
 		var gem := ball(TURN_AT[i] + Vector3(0.341 * PLINTH_K, 0.048 * PLINTH_K + 0.03, 0.341 * PLINTH_K), 0.036, mat(Color("ff5a62"))); turn_gem.append(gem)
+		cyl(TURN_AT[i] + Vector3(0.341 * PLINTH_K, 0.048 * PLINTH_K, 0.341 * PLINTH_K), 0.056, 0.048, 0.016, pal("gold"), 12)      # the stud sits in a bronze collar
 		_turn_plinth(mroot, TURN_AT[i], TURN_GOAL[i], pose)      # in the water she stands as she should
 	_strip_refl(mroot, m0, "mir", 0.3)
 	var wq := QuadMesh.new(); wq.size = Vector2(RX1 - RX0, RZ1 - RZ0); wq.orientation = PlaneMesh.FACE_Y
@@ -3087,6 +3227,8 @@ func _turned_ones() -> void:
 	# the south gate: two piers, a lintel, and a bronze grille that sinks into its slot when the three stand right
 	for gx in [-17.02, -15.58]:
 		blk(Vector3(gx - 0.14, 0, EZ0 - 0.04), Vector3(gx + 0.14, 2.1, EZ0 + 0.24), "stone"); blk(Vector3(gx - 0.17, 0, EZ0 - 0.07), Vector3(gx + 0.17, 0.1, EZ0 + 0.27), "shade")
+		blk(Vector3(gx - 0.155, 0.1, EZ0 - 0.055), Vector3(gx + 0.155, 0.16, EZ0 + 0.255), "stone")      # a second step to its foot, a necking band and a capital under the lintel
+		blk(Vector3(gx - 0.155, 1.86, EZ0 - 0.055), Vector3(gx + 0.155, 1.9, EZ0 + 0.255), "shade"); blk(Vector3(gx - 0.17, 2.0, EZ0 - 0.07), Vector3(gx + 0.17, 2.1, EZ0 + 0.27), "shade")
 	blk(Vector3(-17.16, 2.1, EZ0 - 0.04), Vector3(-15.44, 2.42, EZ0 + 0.24), "stone")
 	cornice(-17.16, EZ0 - 0.04, -15.44, EZ0 + 0.24, 2.42, 0.04, 0.06); dentils(-17.16, EZ0 - 0.04, -15.44, EZ0 + 0.24, 2.42)
 	gate_slot(Vector3(-16.3, 0, EZ0 + 0.1), 0.58, true)
@@ -3272,12 +3414,19 @@ func _world() -> void:
 	slab(-1.7, -0.6, 1.7, 0.6, 0.0, "stone", bridge)
 	blk(Vector3(-1.6, 0, -0.03), Vector3(1.6, 0.004, 0.03), "crim", bridge)
 	for e in [-1.0, 1.0]: blk(Vector3(-1.65, 0, e * 0.54 - 0.03), Vector3(1.65, 0.06, e * 0.54 + 0.03), "shade", bridge)
+	# where it turns: a bronze boss let into the deck over the pivot, and under the deck the bronze collar it rides on
+	# (the boss is round and sits on the axis, so it need not turn with the deck: it is part of the still world)
+	cyl(PIV, 0.17, 0.17, 0.007, pal("gold"), 24); cyl(PIV + Vector3(0, 0.007, 0), 0.115, 0.115, 0.004, pal("shade"), 24); cyl(PIV + Vector3(0, 0.011, 0), 0.05, 0.04, 0.012, pal("gold"), 12)
 	cyl(PIV + Vector3(0, -2.45, 0), 0.26, 0.24, 2.25, pal("stone"), 24); cyl(PIV + Vector3(0, -2.45, 0), 0.34, 0.34, 2.45 + WATER + 0.06, pal("shade"), 24)
+	cyl(PIV + Vector3(0, -0.42, 0), 0.25, 0.33, 0.09, pal("stone"), 24); cyl(PIV + Vector3(0, -0.33, 0), 0.36, 0.36, 0.06, pal("gold"), 24); cyl(PIV + Vector3(0, -0.27, 0), 0.3, 0.3, 0.09, pal("shade"), 24)
 	foam(PIV.x - 0.34, PIV.z - 0.34, PIV.x + 0.34, PIV.z + 0.34, 0.3)
 	slab(-13.0, -13.6, -7.6, -12.4, 0.0)
 	for px in [-8.6, -10.3, -12.0]: pier(px, -13.0, -0.18, 0.7)
+	for e in [-1.0, 1.0]: blk(Vector3(-12.94, 0, -13.0 + e * 0.54 - 0.03), Vector3(-7.66, 0.06, -13.0 + e * 0.54 + 0.03), "shade")   # the long walk: a low kerb along either edge and the joints of its paving, as on the causeway and the bridge
+	for jx in [-8.6, -9.45, -10.3, -11.15, -12.0]: blk(Vector3(jx - 0.008, 0, -13.51), Vector3(jx + 0.008, 0.003, -12.49), "shade")
 	slab(-11.1, -10.6, -9.5, -9.0, 0.0); under(-11.1, -10.6, -9.5, -9.0, 0.2, "sand")
-	model("statue_veiled_broken", Vector3(-10.3, 0, -9.8), 2.0, 0.6)
+	# the broken statue: headless on its drum, her veiled head and two splinters of her lying on the floor beside it
+	thing("broken_statue", Vector3(-10.3, 0, -9.8), 2.0, "stone:marble", -PI * 0.5)
 	# ---- E. the court of the turned ones (9.3 x 7.4 m): three statues on turning plinths at the far rim of a wide pool
 	_pool_court(EX0, EZ0, EX1, EZ1, RX0, RZ0, RX1, RZ1, "stone", "PoolSky3")
 	tile_hole = Rect2(RX0 - 0.08, RZ0 - 0.08, RX1 - RX0 + 0.16, RZ1 - RZ0 + 0.16); tiles(EX0, EZ0, EX1, EZ1, 1.0); tile_hole = Rect2(); meander(EX0 + 0.55, -16.35, -13.2, EZ1 - 0.2)
@@ -3292,6 +3441,8 @@ func _world() -> void:
 	tree(Vector3(-21.912, 0, -16.251), 1.1, "leaf3"); lantern(Vector3(-20.3, 0, -10.12), 4, 1.0); cypress(Vector3(-13.5, 0, -16.41), 2.2)
 	urn(Vector3(-21.0, 0, -16.4), 1.0); urn(Vector3(-20.75, 0, -16.25), 0.7, "rose")
 	slab(-16.9, -20.0, -15.7, -16.9, 0.0); pier(-16.3, -18.4, -0.18, 0.8)
+	for e in [-1.0, 1.0]: blk(Vector3(-16.3 + e * 0.54 - 0.03, 0, -19.94), Vector3(-16.3 + e * 0.54 + 0.03, 0.06, -16.97), "shade")   # its kerbs, from the gate's piers to the garden
+	for jz in [-17.6, -18.4, -19.2]: blk(Vector3(-16.81, 0, jz - 0.008), Vector3(-15.79, 0.003, jz + 0.008), "shade")
 	ring_gate(Vector3(-16.3, WATER, -18.4), 2.5)
 	# ---- F. the mirror garden (8 x 7 m)
 	slab(-20.5, -27.0, -12.5, -20.0, 0.0); under(-20.5, -27.0, -12.5, -20.0)
@@ -3303,7 +3454,14 @@ func _world() -> void:
 	for fz in [MZ - 0.64, MZ + 0.6]: blk(Vector3(MX - 0.02, 0, fz), Vector3(MX + 0.03, 2.24, fz + 0.04), "gold")
 	blk(Vector3(MX - 0.02, 2.2, MZ - 0.64), Vector3(MX + 0.03, 2.24, MZ + 0.64), "gold")
 	var gq := QuadMesh.new(); gq.size = Vector2(1.2, 2.2)
-	prim(gq, Vector3(MX - 0.012, 1.1, MZ), mat(Color(0.62, 0.86, 0.92, 0.09))).rotation.y = PI * 0.5
+	var gpm := ShaderMaterial.new(); gpm.shader = shaders["pane"]; timed.append(gpm)      # the glass of the great mirror: dark, with a pale head and two slow glints across it (it was an empty dark doorway)
+	prim(gq, Vector3(MX - 0.012, 1.1, MZ), gpm).rotation.y = PI * 0.5
+	blk(Vector3(MX - 0.02, 0, MZ - 0.64), Vector3(MX + 0.05, 0.035, MZ + 0.64), "gold")      # the foot of its frame
+	# and its head, as on the standing mirrors: a gilt cornice, a low pediment and a red stone in it
+	blk(Vector3(MX - 0.02, 2.24, MZ - 0.7), Vector3(MX + 0.06, 2.3, MZ + 0.7), "gold")
+	var mpd := PrismMesh.new(); mpd.size = Vector3(1.4, 0.26, 0.07)
+	prim(mpd, Vector3(MX + 0.015, 2.43, MZ), pal("gold")).rotation.y = PI * 0.5
+	var mgem := blk(Vector3(-0.012, -0.045, -0.045), Vector3(0.022, 0.045, 0.045), "crim"); mgem.position = Vector3(MX + 0.05, 2.39, MZ); mgem.rotation.x = PI * 0.25
 	blk(Vector3(MX - 1.1, 0, -27.0), Vector3(MX, 2.2, MZ - 0.95), "stone"); blk(Vector3(MX - 1.1, 0, MZ + 0.95), Vector3(MX, 1.2, -20.0), "stone")
 	cornice(MX - 1.1, MZ + 0.95, MX, -20.0, 1.2, 0.03, 0.05); cornice(MX - 1.1, -27.0, MX, MZ - 0.95, 2.2, 0.03, 0.05)
 	bush(Vector3(MX - 0.5, 1.2, -20.5), 1.1); bush(Vector3(MX - 0.55, 1.2, -21.4), 0.9, "leaf3"); cypress(Vector3(MX - 0.55, 1.2, -22.1), 2.0)
@@ -3320,14 +3478,32 @@ func _world() -> void:
 	door = blk(Vector3(DX - 0.47, 0, -26.84), Vector3(DX + 0.47, 2.1, -26.76), "crim"); door.name = "Door"
 	for py in [0.25, 1.15]:
 		for px in [-0.36, 0.04]: blk(Vector3(px, py - 1.05, 0.04), Vector3(px + 0.32, py - 0.35, 0.05), "crim2", door)
+	# its furniture: a bronze plate along the foot, and a ring to pull it by
+	bb(Vector3(-0.45, -1.05, 0.04), Vector3(0.45, -0.93, 0.05)); bb(Vector3(0.3, -0.07, 0.04), Vector3(0.36, -0.01, 0.066))
+	for rg in [[0.272, -0.2, 0.388, -0.178], [0.272, -0.09, 0.388, -0.068], [0.272, -0.2, 0.294, -0.068], [0.366, -0.2, 0.388, -0.068]]: bb(Vector3(rg[0], rg[1], 0.05), Vector3(rg[2], rg[3], 0.066))
+	bb_end("gold", door)      # (one mesh: the door is a thing that moves, and every piece of it is drawn on its own)
+	# the doorway's surround: jambs on small feet, and an arch of stones round its head with a keystone
+	for e in [-1.0, 1.0]:
+		blk(Vector3(DX + e * 0.49 - 0.04, 0, -26.6), Vector3(DX + e * 0.49 + 0.04, 1.6, -26.572), "shade"); blk(Vector3(DX + e * 0.49 - 0.06, 0, -26.6), Vector3(DX + e * 0.49 + 0.06, 0.12, -26.556), "stone")
+		blk(Vector3(DX + e * 0.49 - 0.055, 1.54, -26.6), Vector3(DX + e * 0.49 + 0.055, 1.6, -26.56), "stone")
+	for i in 9:
+		var th := PI * (i + 0.5) / 9.0; var key := i == 4
+		var vb := blk(Vector3(-0.04, -0.089, -0.014), Vector3(0.04 + (0.03 if key else 0.0), 0.089, 0.014 + (0.012 if key else 0.0)), "stone" if key else "shade")
+		vb.position = Vector3(DX + cos(th) * 0.49, 1.6 + sin(th) * 0.49, -26.586); vb.rotation.z = th
 	banner(Vector3(-14.3, 2.25, -26.585), 0.34, 1.15); banner(Vector3(-18.3, 2.25, -26.585), 0.34, 1.15)
 	for wx in [-13.3, -17.5]: win_z(wx, 0.3, -26.6, 0.4, 0.9)
-	statue_on("statue_veiled_mourning", Vector3(-18.9, 0, -20.45), 1.8, 0.8); statue_on("statue_veiled_praying", Vector3(-15.2, 0, -26.3), 1.8, 0.2)
+	statue_on("statue_veiled_mourning", Vector3(-19.05, 0, -20.5), 1.8, 0.8); statue_on("statue_veiled_praying", Vector3(-15.2, 0, -26.3), 1.8, 0.2)      # (the mourner stands in the corner of wall and rail)
+	# the garden is railed on its two open sides like the courts: the north rail on either side of the way in, the east rail down to the south wall
+	parapet(Vector3(-19.4, 0, -20.1), Vector3(-17.0, 0, -20.1)); parapet(Vector3(-15.6, 0, -20.1), Vector3(-12.6, 0, -20.1)); parapet(Vector3(-12.6, 0, -26.6), Vector3(-12.6, 0, -20.1))
+	blk(Vector3(-12.67, 0.05, -20.17), Vector3(-12.53, 0.34, -20.03), "stone")      # the post of their corner
 	plinth_head("kit_face5", Vector3(-19.0, 0, -26.25), 0.6)
-	pool(-14.4, -25.4, -13.2, -22.0); model("statue_veiled_kneeling", Vector3(-14.72, 0, -23.7), 1.1, PI * 0.5)
+	var gpool := pool(-14.4, -25.4, -13.2, -22.0); model("statue_veiled_kneeling", Vector3(-14.72, 0.06, -23.7), 1.1, PI * 0.5)
+	cyl(Vector3(-14.72, 0, -23.7), 0.245, 0.235, 0.03, pal("shade"), 20); cyl(Vector3(-14.72, 0.03, -23.7), 0.2, 0.2, 0.03, pal("stone"), 20)      # she too stands on a foot of stone, a low one: she was set straight on the paving
+	var lpi := 0
 	for lp in [Vector3(-13.9, 0.021, -24.6), Vector3(-13.6, 0.021, -23.2), Vector3(-14.1, 0.021, -22.5)]:   # lily pads on the pool, in twos, one of each pair in bud
 		lily(lp, 0.13, lp.z * 2.3, true); lily(lp + Vector3(0.19 * cos(lp.z * 1.7), 0, 0.19 * sin(lp.z * 1.7)), 0.085, lp.z * 5.1, false)
-	lantern(Vector3(-15.2, 0, -20.38), 5, -1.0); cypress(Vector3(-12.95, 0, -26.2), 2.3)
+		gpool.set_shader_parameter("ring%d" % lpi, Vector3(lp.x, lp.z, 0.42)); lpi += 1      # a slow ring opens on the water round each pair
+	lantern(Vector3(-14.9, 0, -20.62), 5, -1.0); cypress(Vector3(-13.0, 0, -26.2), 2.3)      # the lamp's paws stand clear of the north rail, the cypress of the east one
 	blk(Vector3(MX + 0.1, 0, MZ - 0.45), Vector3(MX + 0.95, 0.004, MZ + 0.45), "shade"); blk(Vector3(MX + 0.15, 0, MZ - 0.4), Vector3(MX + 0.9, 0.006, MZ + 0.4), "stone")
 	blk(Vector3(DX - 0.03, 0, -26.6), Vector3(DX + 0.03, 0.005, -25.2), "crim")
 	slab(-20.5, -28.8, -12.5, -27.0, 0.0, "sand"); under(-20.5, -28.8, -12.5, -27.0, 0.22, "sand")
@@ -3570,21 +3746,50 @@ func _ui() -> void:
 			if reach != "" and not busy: use(reach))
 	end_box = _card("EIDOLON", "end of the demo  ·  tap to play again", cl, qfont); end_box.modulate.a = 0.0; end_box.visible = false
 
-## the title and the end card. f: the typeface of the lines of the story (EB Garamond italic), so that the cards and those lines are set alike
+## the title and the end card. f: the typeface of the lines of the story (EB Garamond italic), so that the cards and those lines are set alike.
+## The scene stays clear behind the card and is veiled only where the words stand: dusk at the head and the foot of the
+## picture and a band of it behind the title (it used to be one flat grey wash over everything, which made the scene
+## muddy and left the words hard to read over pale stone). The title has the same haze and warm light about its letters
+## as the lines of the story; under it a red rule with a lozenge at its middle, and the small line, which breathes
 func _card(big: String, small: String, cl: CanvasLayer, f: Font = null) -> Control:
 	var c := Control.new(); c.set_anchors_preset(Control.PRESET_FULL_RECT); c.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(c)
-	var bg := ColorRect.new(); bg.color = Color(0.09, 0.12, 0.25, 0.5); bg.set_anchors_preset(Control.PRESET_FULL_RECT); bg.mouse_filter = Control.MOUSE_FILTER_IGNORE; c.add_child(bg)
-	var a := Label.new(); a.text = big; a.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	a.add_theme_font_size_override("font_size", 76 if f == null else 92); a.add_theme_color_override("font_color", Color(0.98, 0.95, 0.88))
+	var top := 0.3
+	var vg := Gradient.new(); vg.offsets = PackedFloat32Array([0.0, 0.17, 0.3, 0.38, 0.47, 0.64, 1.0])
+	var vcol := PackedColorArray()
+	for va in [0.7, 0.3, 0.6, 0.7, 0.58, 0.22, 0.62]: vcol.append(Color(0.07, 0.1, 0.23, va))
+	vg.colors = vcol
+	var vt := GradientTexture2D.new(); vt.gradient = vg; vt.fill_from = Vector2(0.5, 0.0); vt.fill_to = Vector2(0.5, 1.0); vt.width = 8; vt.height = 256
+	var bg := TextureRect.new(); bg.texture = vt; bg.stretch_mode = TextureRect.STRETCH_SCALE; bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT); bg.mouse_filter = Control.MOUSE_FILTER_IGNORE; c.add_child(bg)
+	var tf: Font = null
 	if f != null:
-		var tf := FontVariation.new(); tf.base_font = (f as FontVariation).base_font; tf.variation_opentype = {"wght": 500}; tf.spacing_glyph = 7; a.add_theme_font_override("font", tf)
-	a.anchor_left = 0; a.anchor_right = 1; a.anchor_top = 0.33; a.anchor_bottom = 0.33; a.offset_bottom = 110; c.add_child(a)
-	var ln := ColorRect.new(); ln.color = Color("dc3d46"); ln.anchor_left = 0.5; ln.anchor_right = 0.5; ln.anchor_top = 0.33; ln.anchor_bottom = 0.33
-	ln.offset_left = -60; ln.offset_right = 60; ln.offset_top = 118; ln.offset_bottom = 121; c.add_child(ln)
-	var b := Label.new(); b.text = small; b.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	b.add_theme_font_size_override("font_size", 24 if f == null else 34); b.add_theme_color_override("font_color", Color(0.98, 0.92, 0.84, 0.9))
+		var tfv := FontVariation.new(); tfv.base_font = (f as FontVariation).base_font; tfv.variation_opentype = {"wght": 500}; tfv.spacing_glyph = 7; tf = tfv
+	var navy := Color(0.05, 0.08, 0.22)
+	# [width of the edge, its colour, added to the picture?]: a dark haze, then warm light, then the letters
+	for lay in [[34, Color(navy, 0.05), false], [24, Color(navy, 0.07), false], [15, Color(navy, 0.09), false], [8, Color(navy, 0.12), false], [3, Color(navy, 0.18), false],
+			[26, Color(1.0, 0.8, 0.5, 0.04), true], [13, Color(1.0, 0.86, 0.6, 0.07), true], [5, Color(1.0, 0.92, 0.76, 0.1), true], [0, Color(0.99, 0.965, 0.9), false]]:
+		var a := Label.new(); a.text = big; a.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; a.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		a.add_theme_font_size_override("font_size", 76 if f == null else 92)
+		if tf != null: a.add_theme_font_override("font", tf)
+		if lay[0] > 0:
+			a.add_theme_color_override("font_color", Color(lay[1].r, lay[1].g, lay[1].b, 0.0))
+			a.add_theme_color_override("font_outline_color", lay[1]); a.add_theme_constant_override("outline_size", lay[0])
+		else: a.add_theme_color_override("font_color", lay[1])
+		if lay[2]:
+			var am := CanvasItemMaterial.new(); am.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD; a.material = am
+		a.anchor_left = 0; a.anchor_right = 1; a.anchor_top = top; a.anchor_bottom = top; a.offset_bottom = 110; c.add_child(a)
+	for e in [-1.0, 1.0]:      # the rule: two red strokes and a lozenge between them
+		var ln := ColorRect.new(); ln.color = Color("dc3d46"); ln.anchor_left = 0.5; ln.anchor_right = 0.5; ln.anchor_top = top; ln.anchor_bottom = top; ln.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ln.offset_left = -74.0 if e < 0.0 else 14.0; ln.offset_right = -14.0 if e < 0.0 else 74.0; ln.offset_top = 122; ln.offset_bottom = 124; c.add_child(ln)
+	var lz := ColorRect.new(); lz.color = Color("e8525a"); lz.anchor_left = 0.5; lz.anchor_right = 0.5; lz.anchor_top = top; lz.anchor_bottom = top; lz.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lz.offset_left = -4.5; lz.offset_right = 4.5; lz.offset_top = 118.5; lz.offset_bottom = 127.5; lz.pivot_offset = Vector2(4.5, 4.5); lz.rotation = PI * 0.25; c.add_child(lz)
+	var b := Label.new(); b.text = small; b.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_theme_font_size_override("font_size", 24 if f == null else 34); b.add_theme_color_override("font_color", Color(0.99, 0.94, 0.86))
+	b.add_theme_color_override("font_outline_color", Color(navy, 0.5)); b.add_theme_constant_override("outline_size", 14)
 	if f != null: b.add_theme_font_override("font", f)
-	b.anchor_left = 0; b.anchor_right = 1; b.anchor_top = 0.33; b.anchor_bottom = 0.33; b.offset_top = 140; b.offset_bottom = 180; c.add_child(b)
+	b.anchor_left = 0; b.anchor_right = 1; b.anchor_top = top; b.anchor_bottom = top; b.offset_top = 144; b.offset_bottom = 186; c.add_child(b)
+	var bt := create_tween().set_loops()      # the small line breathes: it asks for a tap
+	bt.tween_property(b, "modulate:a", 0.72, 1.3).set_trans(Tween.TRANS_SINE); bt.tween_property(b, "modulate:a", 1.0, 1.3).set_trans(Tween.TRANS_SINE)
 	return c
 
 ## a line of the story, once: it comes up over the scene, stays long enough to be read, and goes
