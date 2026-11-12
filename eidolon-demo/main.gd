@@ -129,6 +129,126 @@ var GT := {"lean": 0.0, "trail": 0.06, "stride": 0.9, "arm": 0.15, "step": 0.56,
 var gait := 0.0
 
 ## arms that reach for a point and a spine that bows, on top of whatever animation is playing
+## Touch controls, as in the other Eidolon: a floating joystick (it appears where the thumb lands, on the left part
+## of the screen) and a round interact button at the lower right, which shows only while something is in reach.
+## The mouse arrives as touch (project setting), so a desktop drag drives the same code.
+class Joy extends CanvasLayer:
+	signal interact
+	const JOY_R := 54.0
+	const BTN_R := 36.0
+	var vec := Vector2.ZERO            # the stick: screen space (x right, y down), length <= 1
+	var enabled := false
+	var joy_index := -1
+	var joy_base := Vector2.ZERO
+	var joy_knob := Vector2.ZERO
+	var joy_alpha := 0.0
+	var icon := ""
+	var want_icon := false
+	var icon_alpha := 0.0
+	var press := 0.0
+	var t := 0.0
+	var canvas: JoyPad
+
+	func _ready() -> void:
+		layer = 6
+		canvas = JoyPad.new(); canvas.ctl = self
+		canvas.set_anchors_preset(Control.PRESET_FULL_RECT); canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(canvas)
+
+	func btn_center() -> Vector2:
+		return Vector2(canvas.size.x - 66.0, canvas.size.y - 118.0)
+
+	func show_interact(name: String) -> void:
+		want_icon = name != ""
+		if name != "": icon = name
+
+	func reset() -> void:
+		joy_index = -1; vec = Vector2.ZERO
+
+	func _input(e: InputEvent) -> void:
+		if not enabled: return
+		if e is InputEventScreenTouch:
+			var p: Vector2 = canvas.get_global_transform_with_canvas().affine_inverse() * e.position
+			if e.pressed:
+				if icon_alpha > 0.3 and p.distance_to(btn_center()) < BTN_R + 14.0:
+					press = 1.0; interact.emit(); get_viewport().set_input_as_handled(); return
+				if joy_index < 0 and p.x < canvas.size.x * 0.75:
+					joy_index = e.index; joy_base = p; joy_knob = p; vec = Vector2.ZERO
+			elif e.index == joy_index: reset()
+		elif e is InputEventScreenDrag and e.index == joy_index:
+			var p2: Vector2 = canvas.get_global_transform_with_canvas().affine_inverse() * e.position
+			var off := p2 - joy_base
+			if off.length() > JOY_R:      # the base follows a thumb that wanders too far
+				joy_base = p2 - off.normalized() * JOY_R; off = p2 - joy_base
+			joy_knob = p2
+			vec = off / JOY_R
+			if vec.length() < 0.12: vec = Vector2.ZERO
+
+	func _process(dt: float) -> void:
+		t += dt
+		if not enabled and joy_index >= 0: reset()
+		joy_alpha = move_toward(joy_alpha, 1.0 if joy_index >= 0 else 0.0, dt * (6.0 if joy_index >= 0 else 3.0))
+		icon_alpha = move_toward(icon_alpha, 1.0 if (enabled and want_icon) else 0.0, dt * 4.0)
+		press = move_toward(press, 0.0, dt * 4.0)
+		if joy_alpha > 0.0 or icon_alpha > 0.0: canvas.queue_redraw()
+		elif canvas.drawn: canvas.drawn = false; canvas.queue_redraw()
+
+class JoyPad extends Control:
+	var ctl: Joy
+	var drawn := false
+	const INK := Color(0.97, 0.96, 0.92)
+	const CY := Color("e8525a")
+	const FROST := Color(0.965, 0.95, 0.915)
+	const DARK := Color(0.16, 0.13, 0.13)
+
+	func _draw() -> void:
+		if ctl == null: return
+		if ctl.joy_alpha > 0.0:
+			drawn = true
+			var a := ctl.joy_alpha; var b := ctl.joy_base
+			draw_circle(b, Joy.JOY_R + 6.0, Color(FROST, 0.12 * a))
+			draw_arc(b, Joy.JOY_R, 0, TAU, 64, Color(INK, 0.55 * a), 1.2, true)
+			draw_arc(b, Joy.JOY_R - 6.0, 0, TAU, 64, Color(INK, 0.16 * a), 1.0, true)
+			for k in 4:
+				var dir := Vector2(cos(PI * 0.5 * k), sin(PI * 0.5 * k))
+				draw_line(b + dir * (Joy.JOY_R - 3.0), b + dir * (Joy.JOY_R + 4.0), Color(INK, 0.5 * a), 1.0, true)
+			var kp := b + (ctl.joy_knob - b).limit_length(Joy.JOY_R)
+			draw_circle(kp, 21.0, Color(FROST, 0.5 * a))
+			draw_arc(kp, 21.0, 0, TAU, 40, Color(CY, 0.85 * a), 1.2, true)
+			draw_circle(kp, 3.0, Color(CY, 0.8 * a))
+		if ctl.icon_alpha > 0.0:
+			drawn = true
+			var a2 := ctl.icon_alpha; var c2 := ctl.btn_center()
+			var breathe := 0.5 + 0.5 * sin(ctl.t * 2.6)
+			var r := Joy.BTN_R * (1.0 + ctl.press * 0.08)
+			for i in 6: draw_circle(c2, r + 4.0 + i * 3.0, Color(CY, (0.035 + 0.02 * breathe) * a2 * (1.0 - i / 6.0)))
+			draw_circle(c2, r, Color(FROST, 0.72 * a2))
+			draw_arc(c2, r, 0, TAU, 64, Color(CY, (0.7 + 0.25 * breathe) * a2), 1.2, true)
+			draw_arc(c2, r - 5.0, 0, TAU, 64, Color(CY, 0.18 * a2), 1.0, true)
+			for k in 4:
+				var dv := Vector2(cos(PI * 0.5 * k), sin(PI * 0.5 * k))
+				draw_line(c2 + dv * (r + 2.0), c2 + dv * (r + 8.0), Color(CY, (0.6 + 0.3 * breathe) * a2), 1.4, true)
+			var s := 13.0; var col := Color(DARK, 0.92 * a2); var cy := Color(CY, a2)
+			match ctl.icon:
+				"turn":      # a circular arrow round a pivot
+					draw_arc(c2, s * 0.82, -PI * 0.95, PI * 0.6, 32, col, 2.2, true)
+					var tip := c2 + Vector2(cos(PI * 0.6), sin(PI * 0.6)) * s * 0.82
+					var tg := Vector2(-sin(PI * 0.6), cos(PI * 0.6))
+					draw_colored_polygon(PackedVector2Array([tip + tg * s * 0.42, tip - tg.orthogonal() * s * 0.3 - tg * s * 0.05, tip + tg.orthogonal() * s * 0.3 - tg * s * 0.05]), col)
+					draw_circle(c2, s * 0.16, cy)
+				"touch":     # an open hand against a pane
+					draw_line(c2 + Vector2(s * 0.75, -s), c2 + Vector2(s * 0.75, s), cy, 1.4, true)
+					draw_arc(c2 + Vector2(-s * 0.05, s * 0.35), s * 0.42, 0, TAU, 20, col, 1.3, true)
+					for k in 4:
+						var x := -s * 0.38 + k * s * 0.24
+						draw_line(Vector2(c2.x + x, c2.y), Vector2(c2.x + x + s * 0.03, c2.y - s * (0.7 + (0.18 if k in [1, 2] else 0.0))), col, 1.3, true)
+				"wait":      # a figure standing still between two marks
+					draw_circle(c2 + Vector2(0, -s * 0.62), s * 0.22, col)
+					draw_line(c2 + Vector2(0, -s * 0.35), c2 + Vector2(0, s * 0.85), col, 1.6, true)
+					draw_line(c2 + Vector2(-s * 0.85, -s * 0.8), c2 + Vector2(-s * 0.85, s * 0.85), cy, 1.2, true)
+					draw_line(c2 + Vector2(s * 0.85, -s * 0.8), c2 + Vector2(s * 0.85, s * 0.85), cy, 1.2, true)
+				_: draw_circle(c2, s * 0.3, col)
+
 class HerMod extends SkeletonModifier3D:
 	var main
 	var own := false     # this copy reaches for points of its own (her reflection at the winch) instead of doing as she does
@@ -516,6 +636,7 @@ var boat: Node3D
 var fogs: Array = []
 var red_cloth: ShaderMaterial
 var shard_mats: Array = []
+var solids: Array = []     # things that stand on walkable floor and that she walks round with the stick: x, z and a radius
 var blockers: Array = []   # things that stand on walkable floor (the lamp stands): x, z and a radius she does not stop within
 var pulse_p := 1.0
 var tap_p := 1.0
@@ -528,6 +649,8 @@ var lamp_off := Vector3.ZERO
 var lamp_vel := Vector3.ZERO
 var pushing := false
 var busy := false
+var ctl: Joy                # (play by hand) the joystick and the interact button
+var reach := ""            # the thing in reach of her now: what the interact button would do
 var hand_play := false     # no arguments: the game as a player plays it, with the first two courts' gates shut until their puzzles are solved
 var started := false
 var ended := false
@@ -3325,10 +3448,22 @@ func _nav() -> void:
 			["T1", -19.34, -15.1, -19.2, -14.3], ["T2", -17.84, -15.1, -17.7, -14.3], ["T3", -16.34, -15.1, -16.2, -14.3], ["G1", -16.55, -20.35, -16.05, -15.88], ["F", -18.9, -26.2, -15.0, -20.35], ["G", -16.5, -28.3, -16.1, -26.2]]:
 		rects[r[0]] = {"x0": r[1], "z0": r[2], "x1": r[3], "z1": r[4], "on": true}
 	rects["BR"].on = false; rects["G"].on = false; rects["G1"].on = false
+	for i in 5: solids.append(Vector3(MYPL.x, MYPL.z + 0.9 * (i - 2), 0.5))      # the row of plinths of the first court
+	solids.append(Vector3(1.45, -3.0, 0.32))      # the urn by its gate
 	if hand_play:      # played by hand, the first two courts are shut until their puzzles are solved
 		gate_a.position.y = 0.0; gate_c.position.y = 0.0
 		rects["B1"].on = false; rects["Cw"].on = false
 	else: done["plinth"] = true; done["winch"] = true      # in the scripted runs and the stills these are not things to tap
+
+## floor she may stand on: inside a walkable area that is open, and not in a lamp stand
+func _walkable(p: Vector3) -> bool:
+	for b in blockers:
+		if Vector2(p.x - b.x, p.z - b.y).length() < 0.34: return false
+	for b in solids:
+		if Vector2(p.x - b.x, p.z - b.y).length() < b.z: return false
+	for n in rects:
+		if rects[n].on and in_rect(rects[n], p): return true
+	return false
 
 func in_rect(r: Dictionary, p: Vector3, m := 0.0) -> bool:
 	return p.x >= r.x0 - m and p.x <= r.x1 + m and p.z >= r.z0 - m and p.z <= r.z1 + m
@@ -3428,6 +3563,10 @@ func _ui() -> void:
 		(quote_glow if lay[3] else quote_box).add_child(ql); quote_lbls.append(ql)
 	quote_box.move_child(quote_glow, quote_box.get_child_count() - 2)   # the light lies under the letters, over the haze
 	title_box = _card("EIDOLON", "demo  ·  tap to begin", cl, qfont)
+	if hand_play:
+		ctl = Joy.new(); add_child(ctl)
+		ctl.interact.connect(func() -> void:
+			if reach != "" and not busy: use(reach))
 	end_box = _card("EIDOLON", "end of the demo  ·  tap to play again", cl, qfont); end_box.modulate.a = 0.0; end_box.visible = false
 
 ## the title and the end card. f: the typeface of the lines of the story (EB Garamond italic), so that the cards and those lines are set alike
@@ -3472,9 +3611,10 @@ func tap(sp: Vector2) -> void:
 	if not started:
 		started = true
 		var tw2 := create_tween(); tw2.tween_property(title_box, "modulate:a", 0.0, 0.7); tw2.tween_callback(title_box.hide)
-		say("tap the ground to walk")
+		say("drag to walk" if ctl != null else "tap the ground to walk")
 		return
 	if busy: return
+	if ctl != null: return      # with the stick, a touch is the thumb landing: she walks by the stick and acts by the button
 	var px := get_viewport().get_visible_rect().size.x / 720.0
 	for k in objs:
 		if done.has(k): continue
@@ -3607,7 +3747,37 @@ func _process(dt: float) -> void:
 		quote("mirrors", "He hid every mirror.\nAs long as she had not seen her face,\nshe was still only what he had made.")
 	var target := 0.0
 	var want_yaw := yaw
-	if not route.is_empty():
+	var jv := Vector3.ZERO      # where the stick (or the arrow keys) sends her, on the ground
+	if ctl != null:
+		ctl.enabled = started and not ended and not busy
+		if ctl.enabled:
+			var sv: Vector2 = ctl.vec
+			var kv := Vector2(float(Input.is_key_pressed(KEY_RIGHT) or Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_LEFT) or Input.is_key_pressed(KEY_A)), float(Input.is_key_pressed(KEY_DOWN) or Input.is_key_pressed(KEY_S)) - float(Input.is_key_pressed(KEY_UP) or Input.is_key_pressed(KEY_W)))
+			if kv != Vector2.ZERO: sv = kv.normalized()
+			if sv != Vector2.ZERO:
+				var cb := cam.global_transform.basis
+				jv = Vector3(cb.x.x, 0, cb.x.z).normalized() * sv.x - Vector3(cb.y.x, 0, cb.y.z).normalized() * sv.y
+			# what is in reach: the nearest thing not yet done, close to where she would stand for it
+			reach = ""; var rb := 1.45
+			for k in objs:
+				if done.has(k): continue
+				var rd := Vector2(pos.x - objs[k].stand.x, pos.z - objs[k].stand.z).length()
+				if rd < rb: rb = rd; reach = k
+			ctl.show_interact("" if reach == "" else ("wait" if reach == "plinth" else ("touch" if reach == "mirror" else "turn")))
+			if reach != "" and (Input.is_key_pressed(KEY_E) or Input.is_key_pressed(KEY_SPACE) or Input.is_key_pressed(KEY_ENTER)): use(reach)
+		else: ctl.show_interact("")
+	if jv.length() > 0.01 and (route.is_empty() or pending == ""):
+		route.clear(); pending = ""; face_to = null; rem_dist = 1.0
+		var jd := jv.normalized()
+		want_yaw = atan2(jd.x, jd.z)
+		target = (2.1 if jv.length() > 0.9 else WALK * clampf(jv.length() * 1.3, 0.45, 1.0)) * clampf(1.25 - absf(angle_difference(yaw, want_yaw)) * 0.8, 0.25, 1.0)
+		spd = move_toward(spd, target, 2.6 * dt)
+		var js := spd * dt
+		for tr in [Vector3(jd.x, 0, jd.z), Vector3(jd.x, 0, 0), Vector3(0, 0, jd.z)]:      # straight on, or sliding along an edge
+			var np: Vector3 = pos + tr * js
+			if _walkable(np): pos.x = np.x; pos.z = np.z; break
+		vel = Vector3(sin(yaw), 0, cos(yaw)) * spd
+	elif not route.is_empty():
 		var p3: Vector3 = route[0].p
 		var to := Vector3(p3.x - pos.x, 0, p3.z - pos.z)
 		var left := to.length()
@@ -3924,26 +4094,54 @@ func _auto() -> void:
 	print("AUTO done ended=", ended, " done=", done)
 	get_tree().quit()
 
-## a check of play by hand (run with HAND=1 and the argument handtest): taps as a player would, on the empty plinth,
-## then on the wheel in the water, then walks west over the bridge; says what each tap changed
+## a check of play by hand (run with HAND=1 and the argument handtest): holds the stick and presses the interact
+## button as a player would, through the first two puzzles and west over the bridge; says what each step did
 func _hand_test() -> void:
 	started = true; title_box.hide(); hint.hide()
+	var cb := cam.global_transform.basis
+	var gr := Vector3(cb.x.x, 0, cb.x.z).normalized(); var gu := Vector3(cb.y.x, 0, cb.y.z).normalized()
+	var stick := func(to: Vector3, secs: float) -> void:      # hold the stick toward a point on the ground, until she is there or the time is up
+		for i in int(secs * 30.0):
+			var d := Vector3(to.x - pos.x, 0, to.z - pos.z)
+			if d.length() < 0.2: break
+			ctl.vec = Vector2(d.normalized().dot(gr), -d.normalized().dot(gu)).normalized()
+			ctl.joy_index = 0; ctl.joy_base = Vector2(ctl.canvas.size.x * 0.28, ctl.canvas.size.y * 0.78); ctl.joy_knob = ctl.joy_base + ctl.vec * Joy.JOY_R   # drawn as a thumb would hold it
+			await get_tree().process_frame
+		ctl.reset()
+		for i in 25: await get_tree().process_frame
+	var press := func() -> void:      # the interact button
+		if reach == "": print("HAND   (nothing in reach: the button is not there)"); return
+		ctl.interact.emit()
+		await settled
 	await wait(0.5)
-	print("HAND start: at ", pos.snapped(Vector3.ONE * 0.01), " gate A ", gate_a.position.y, " way north ", rects["B1"].on, " | a walk beyond gate A is ", "possible" if not find_path(pos, Vector3(0, 0, -7.0)).is_empty() else "shut")
-	tap(cam.unproject_position(objs["plinth"].at))
-	await settled
-	print("HAND after the plinth: at ", pos.snapped(Vector3.ONE * 0.01), " gate A ", snappedf(gate_a.position.y, 0.01), " way north ", rects["B1"].on, " done ", done.has("plinth"))
-	print("HAND a walk onto the pool of court C is ", "possible (wrong)" if rect_of(Vector3(0.5, 0, -13.5)) != "" else "not possible", " | beyond gate C is ", "possible" if not find_path(pos, Vector3(-3.9, 0, -13.0)).is_empty() else "shut")
-	walk_to(Vector3(-2.0, 0, -11.0)); await settled
-	cam_t = pos
-	await wait(1.5)
-	tap(cam.unproject_position(objs["winch"].at))
-	await settled
-	print("HAND after the wheel: at ", pos.snapped(Vector3.ONE * 0.01), " gate C ", snappedf(gate_c.position.y, 0.01), " way west ", rects["Cw"].on, " bridge on ", rects["BR"].on, " bridge angle ", snappedf(bridge.rotation.y, 0.01), " done ", done.has("winch"))
-	var ok := walk_to(Vector3(-13.5, 0, -13.0)); print("HAND the walk west to the third court starts: ", ok)
-	var n := 0
-	while ok and pos.distance_to(Vector3(-13.5, 0, -13.0)) > 0.3 and n < 1800: n += 1; await get_tree().process_frame
-	print("HAND end: at ", pos.snapped(Vector3.ONE * 0.01))
+	print("HAND start: at ", pos.snapped(Vector3.ONE * 0.01), " gate A ", gate_a.position.y, " way north ", rects["B1"].on)
+	await stick.call(Vector3(0.0, 0, -6.0), 7.0)
+	print("HAND stick north against the shut gate A: stops at ", pos.snapped(Vector3.ONE * 0.01), " (the gate is at z -3.9)")
+	await stick.call(Vector3(MYPL.x - 1.0, 0, MYPL.z + 0.9), 6.0)
+	print("HAND stick west into the row of statues: stops at ", pos.snapped(Vector3.ONE * 0.01), " (the plinths stand at x ", MYPL.x, ")")
+	await stick.call(MYPL + Vector3(0.9, 0, 0), 5.0)
+	print("HAND stick to the empty plinth: at ", pos.snapped(Vector3.ONE * 0.01), " in reach '", reach, "' icon ", ctl.icon)
+	await press.call()
+	print("HAND after the button: at ", pos.snapped(Vector3.ONE * 0.01), " gate A ", snappedf(gate_a.position.y, 0.01), " way north ", rects["B1"].on, " done ", done.has("plinth"))
+	await stick.call(Vector3(0, 0, -3.0), 8.0)
+	await stick.call(Vector3(0, 0, -10.6), 12.0)
+	print("HAND stick north through the open gate and up the causeway: at ", pos.snapped(Vector3.ONE * 0.01))
+	await stick.call(Vector3(-2.0, 0, -11.0), 5.0)
+	await stick.call(Vector3(-1.8, 0, -13.2), 5.0)
+	print("HAND by the pool of court C: at ", pos.snapped(Vector3.ONE * 0.01), " in reach '", reach, "' icon ", ctl.icon)
+	await stick.call(Vector3(1.0, 0, -13.2), 3.0)
+	print("HAND stick east at the pool: stops at ", pos.snapped(Vector3.ONE * 0.01), " (the water begins at x ", QX0, ")")
+	print("HAND beyond gate C is ", "possible" if not find_path(pos, Vector3(-3.9, 0, -13.0)).is_empty() else "shut", "; in reach '", reach, "'")
+	await press.call()
+	print("HAND after the button: at ", pos.snapped(Vector3.ONE * 0.01), " gate C ", snappedf(gate_c.position.y, 0.01), " way west ", rects["Cw"].on, " bridge on ", rects["BR"].on, " bridge angle ", snappedf(bridge.rotation.y, 0.01), " done ", done.has("winch"))
+	await stick.call(Vector3(-2.3, 0, -13.0), 4.0)
+	await stick.call(Vector3(-13.6, 0, -13.0), 14.0)
+	print("HAND stick west through gate C and over the bridge: at ", pos.snapped(Vector3.ONE * 0.01), " in reach '", reach, "'")
+	await stick.call(Vector3(-13.6, 0, -14.6), 4.0)
+	await stick.call(TURN_AT[2] + Vector3(TURN_STAND + 0.3, 0, 0), 6.0)
+	print("HAND by the third statue: at ", pos.snapped(Vector3.ONE * 0.01), " in reach '", reach, "' icon ", ctl.icon)
+	await press.call()
+	print("HAND after the button: statue 3 has been turned ", turn_q[2], " quarter(s)")
 	get_tree().quit()
 
 ## the act of the first puzzle, the same in the scripted run and in play: from before her own plinth she steps up
