@@ -44,6 +44,64 @@ var gate_a: Node3D
 var mroot: Node3D
 var winch_m: Node3D
 var tile_hole := Rect2()
+# the court of the crane (fourth puzzle), north of the garden, behind its door
+const KX0 := -22.2
+const KZ0 := -40.2
+const KX1 := -13.2
+const KZ1 := -32.6
+const WX0 := -19.8      # its pool: it lies up to the foot of the north wall
+const WZ0 := -39.8
+const WX1 := -14.6
+const WZ1 := -34.6
+const KWALL_H := 2.6
+const KPIV := Vector3(-19.8, 0, -37.0)      # the crane turns here, on a round quay at the pool's west rim
+const KQUAY := 1.15      # the radius of that quay
+const KANG := [30.0, 0.0, -38.2]      # the ways its arm can point (degrees, from east through south): at open water, at the islet, at the door the water keeps
+const KISLE := Vector3(-15.9, 0, -37.0)
+const KDOOR_X := -17.1      # the door the water keeps: the arm's third way leads to the step before it
+const KDOOR_H := 2.08
+const BEAM_R0 := 1.2      # the timber that hangs from the arm just over the water: from here to here along the arm
+const BEAM_R1 := 3.3
+const BEAM_TOP := 0.25
+const KSTAND := 0.72      # how far from the crane's axis she stands, under its arm, to send her reflection out
+const KPOST := Vector3(-20.3, 0, -37.0)      # the crank post beside the turntable
+const KSTEP := 0.7      # how far the door's step (in the water) stands out from the wall
+const KGEAR := 6.0      # turns of the crank post for one of the crane
+const KJIB_Y := 2.85      # the underside of the arm, where the chains hang from
+const KBENCH := Vector3(-14.1, 0, -33.3)
+var crane_n: Node3D
+var crane_m: Node3D
+var crane_i := 0
+var kpin: Node3D
+var kcrank: Node3D
+var kcrank_bench: Node3D
+var kplug: Node3D
+var kdoor_m: Node3D
+var kledge: Array = []
+var kkey: Node3D
+var kribbon: Node3D
+var kglow: MeshInstance3D
+var crank_on := false
+var kkey_top := Vector3.ZERO      # the hand of the islet's statue: in the water the key hangs from it
+var pocket: Array = []      # what she carries: at most three things, each used once
+var pocket_ui: Control
+var carry := {}      # a thing held in a hand (hers or her reflection's): {"node", "sk", "bone", "flip"}
+var khalo: MeshInstance3D
+var looks := {}      # things to look at, not to use: name -> {"foot": its place on the ground, "top": its head, "lines": what there is to read or notice, "i": which comes next, "big": the sculptor's own words (shown as the lines of the story are)}
+var look_n := 0
+const LOOK_LINES := {      # what she notices in the things he made, by kind
+	"statue_veiled_mourning": ["this one he made to grieve", "veiled, like all of them"],
+	"statue_veiled_praying": ["this one he made to ask", "veiled, like all of them"],
+	"statue_veiled_unfinished": ["this one holds out its hands", "he stopped before the face"],
+	"statue_veiled_kneeling": ["this one he made to kneel", "it looks down into the water"],
+	"observer_veiled": ["her own shape, in stone", "under the veil the face is smooth"],
+	"head": ["a face he tried, and put aside", "not her face. one he wished for her"],
+	"mirror": ["a mirror. it shows the court, and no one in it"],
+	"shroud": ["a mirror under a cloth", "the cloth is tied on the far side"],
+}
+const STELE_PARTS := "stone:marble,shade:shade,dark:dark,gold:gold"
+const QUIET := ["plinth", "winch", "bench", "crane"]      # things that show a small gold mark only when she is near
+const NOMARK := ["turn1", "turn2", "turn3", "wkey", "wdoor"]      # things with no mark at all: a statue to turn, and what is seen only in the water
 const AX0 := -6.5   # the first court, now wide and open around the pool
 const AZ0 := -4.0
 const AX1 := 3.5
@@ -256,6 +314,44 @@ class JoyPad extends Control:
 					draw_line(c2 + Vector2(s * 0.85, -s * 0.8), c2 + Vector2(s * 0.85, s * 0.85), cy, 1.2, true)
 				_: draw_circle(c2, s * 0.3, col)
 
+## What she carries, drawn at the foot of the screen: up to three small slots, each with a line drawing of the thing in
+## it. Nothing is shown until she has picked something up
+class Pocket extends Control:
+	var items: Array = []
+	var seen := 0.0      # fades in with the first thing
+	var pop := 0.0       # the newest thing swells for a moment
+	func _process(dt: float) -> void:
+		var want := 1.0 if not items.is_empty() else 0.0
+		if absf(seen - want) > 0.001 or pop > 0.0:
+			seen = move_toward(seen, want, dt * 2.0); pop = maxf(pop - dt * 2.2, 0.0); queue_redraw()
+	func _draw() -> void:
+		if seen <= 0.001: return
+		var k := size.x / 720.0
+		var w := 78.0 * k; var gap := 14.0 * k
+		var n := 3
+		var x0 := (size.x - (w * n + gap * (n - 1))) * 0.5; var y0 := size.y - 212.0 * k
+		for i in n:
+			var r := Rect2(x0 + i * (w + gap), y0, w, w)
+			draw_style_box(_box(Color(0.06, 0.1, 0.22, 0.34 * seen), Color(1.0, 0.93, 0.78, (0.5 if i < items.size() else 0.22) * seen), k), r)
+			if i >= items.size(): continue
+			var c := r.get_center(); var u := w * 0.5 * (1.0 + (0.22 * pop if i == items.size() - 1 else 0.0))
+			var col := Color(1.0, 0.84, 0.48, seen); var lw := 3.2 * k
+			match items[i]:
+				"crank":      # a square socket, an arm, a grip standing at its end
+					draw_rect(Rect2(c + Vector2(-0.62, 0.18) * u, Vector2(0.3, 0.3) * u), col, false, lw)
+					draw_line(c + Vector2(-0.32, 0.33) * u, c + Vector2(0.42, 0.33) * u, col, lw * 1.25)
+					draw_line(c + Vector2(0.42, 0.4) * u, c + Vector2(0.42, -0.5) * u, col, lw * 1.9)
+					draw_circle(c + Vector2(0.42, -0.5) * u, lw * 1.3, col)
+				"key":      # a ring, a shank, two wards
+					draw_arc(c + Vector2(-0.36, -0.36) * u, 0.22 * u, 0.0, TAU, 24, col, lw)
+					draw_line(c + Vector2(-0.2, -0.2) * u, c + Vector2(0.5, 0.5) * u, col, lw * 1.2)
+					draw_line(c + Vector2(0.5, 0.5) * u, c + Vector2(0.66, 0.34) * u, col, lw * 1.2)
+					draw_line(c + Vector2(0.3, 0.3) * u, c + Vector2(0.44, 0.16) * u, col, lw * 1.2)
+	func _box(fill: Color, edge: Color, k: float) -> StyleBoxFlat:
+		var sb := StyleBoxFlat.new(); sb.bg_color = fill; sb.border_color = edge
+		sb.set_border_width_all(int(maxf(2.0 * k, 1.0))); sb.set_corner_radius_all(int(14.0 * k)); sb.anti_aliasing = true
+		return sb
+
 class HerMod extends SkeletonModifier3D:
 	var main
 	var own := false     # this copy reaches for points of its own (her reflection at the winch) instead of doing as she does
@@ -350,7 +446,7 @@ const SH := """shader_type spatial;
 render_mode ambient_light_disabled, specular_disabled;
 uniform vec3 c_top : source_color; uniform vec3 c_z : source_color; uniform vec3 c_x : source_color;
 uniform vec3 fog_col : source_color;
-uniform vec4 l0; uniform vec4 l1; uniform vec4 l2; uniform vec4 l3; uniform vec4 l4; uniform vec4 l5;
+uniform vec4 l0; uniform vec4 l1; uniform vec4 l2; uniform vec4 l3; uniform vec4 l4; uniform vec4 l5; uniform vec4 l6;
 uniform float sway = 0.0; uniform float time_s = 0.0; uniform float marble = 0.0; uniform float tone_var = 0.0; uniform float rim = 0.0; uniform float flat_n = 0.0; uniform vec3 shadow_col = vec3(0.66, 0.66, 0.86); uniform float mist_k = 0.96; uniform vec3 centre; uniform float mist_r = 7.0; uniform vec3 mist_col : source_color;
 varying vec3 wp; varying vec3 wn;
 float h3(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
@@ -386,7 +482,7 @@ void fragment(){
 		}
 	}
 	if (rim > 0.0) { float ndv = clamp(dot(n, vec3(0.57735)), 0.0, 1.0); col *= mix(1.0 - 0.2 * rim, 1.0, smoothstep(0.0, 0.55, ndv)); }
-	float l = lit(l0, wp) + lit(l1, wp) + lit(l2, wp) + lit(l3, wp) + lit(l4, wp) + lit(l5, wp);
+	float l = lit(l0, wp) + lit(l1, wp) + lit(l2, wp) + lit(l3, wp) + lit(l4, wp) + lit(l5, wp) + lit(l6, wp);
 	col = mix(col, col * vec3(1.06, 0.97, 0.80) + vec3(0.09, 0.055, 0.0), clamp(l, 0.0, 1.0) * 0.85);
 	col = mix(col, fog_col, smoothstep(-1.35, -4.6, wp.y) * 0.9);
 	vec3 d3 = wp - centre; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
@@ -522,7 +618,7 @@ void vertex(){
 }
 void fragment(){
 	if (hh < 0.03) discard;
-	if ((q.x > -6.0 && q.x < 3.0 && q.z > -3.5 && q.z < 5.0) || (q.x > -2.9 && q.x < 5.5 && q.z > -18.1 && q.z < -10.5) || (q.x > -21.8 && q.x < -13.5 && q.z > -16.4 && q.z < -10.0)) discard;   // nothing lies on the sea inside the hollow of a court with a pool
+	if ((q.x > -6.0 && q.x < 3.0 && q.z > -3.5 && q.z < 5.0) || (q.x > -2.9 && q.x < 5.5 && q.z > -18.1 && q.z < -10.5) || (q.x > -21.8 && q.x < -13.5 && q.z > -16.4 && q.z < -10.0) || (q.x > -21.7 && q.x < -13.7 && q.z > -40.3 && q.z < -33.1)) discard;   // nothing lies on the sea inside the hollow of a court with a pool
 	// the reflection thins out with height by blending into the colour of the deep water. (It used to be cut
 	// into a pattern of dots, which shimmered whenever the camera moved.)
 	float fade = mix(1.0, 0.3, smoothstep(1.6, 6.5, hh)) * strength * fade_a;
@@ -602,7 +698,7 @@ varying vec3 wp;
 //GLINT
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment(){
-	if (((wp.x > -6.0 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 5.0) || (wp.x > -2.9 && wp.x < 5.5 && wp.z > -18.1 && wp.z < -10.5) || (wp.x > -21.8 && wp.x < -13.5 && wp.z > -16.4 && wp.z < -10.0)) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
+	if (((wp.x > -6.0 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 5.0) || (wp.x > -2.9 && wp.x < 5.5 && wp.z > -18.1 && wp.z < -10.5) || (wp.x > -21.8 && wp.x < -13.5 && wp.z > -16.4 && wp.z < -10.0) || (wp.x > -21.7 && wp.x < -13.7 && wp.z > -40.3 && wp.z < -33.1)) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
 	vec3 d3 = wp - centre; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
 	float m = smoothstep(mist_r * 0.8, mist_r * 1.75, md) * mist_k;
 	vec2 p = wp.xz * 1.1;
@@ -648,7 +744,7 @@ uniform float clear_r = 0.0; uniform vec3 col : source_color; uniform float far_
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment(){
-	if (((wp.x > -6.0 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 5.0) || (wp.x > -2.9 && wp.x < 5.5 && wp.z > -18.1 && wp.z < -10.5) || (wp.x > -21.8 && wp.x < -13.5 && wp.z > -16.4 && wp.z < -10.0)) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
+	if (((wp.x > -6.0 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 5.0) || (wp.x > -2.9 && wp.x < 5.5 && wp.z > -18.1 && wp.z < -10.5) || (wp.x > -21.8 && wp.x < -13.5 && wp.z > -16.4 && wp.z < -10.0) || (wp.x > -21.7 && wp.x < -13.7 && wp.z > -40.3 && wp.z < -33.1)) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
 	vec2 uv = wp.xz * scale;
 	float n = texture(noise_tex, uv + vel * time_s).r * 0.62 + texture(noise_tex, uv * 2.3 - vel.yx * time_s * 1.7 + 0.37).r * 0.38;
 	vec3 d3 = wp - hero; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
@@ -677,7 +773,7 @@ var shaders := {}
 var pmats := {}
 var umats := {}
 var timed: Array = []
-var lights: Array = [Vector4.ZERO, Vector4.ZERO, Vector4.ZERO, Vector4.ZERO, Vector4.ZERO, Vector4.ZERO]
+var lights: Array = [Vector4.ZERO, Vector4.ZERO, Vector4.ZERO, Vector4.ZERO, Vector4.ZERO, Vector4.ZERO, Vector4.ZERO]
 var fig: Node3D
 var ghost: Node3D
 var lamp: Node3D
@@ -1707,6 +1803,7 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 		get_viewport().msaa_3d = Viewport.MSAA_2X
 		_tour(true)
 	if "handtest" in OS.get_cmdline_user_args(): _hand_test()
+	if "handtest4" in OS.get_cmdline_user_args(): _hand_test4()
 	if "pantest" in OS.get_cmdline_user_args(): _pan_test()
 	if "turndiag" in OS.get_cmdline_user_args(): _turn_diag()
 	if "refltest" in OS.get_cmdline_user_args(): _refl_test()
@@ -1716,6 +1813,9 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	if "solve3" in OS.get_cmdline_user_args():
 		get_viewport().msaa_3d = Viewport.MSAA_2X
 		_solve3()
+	if "solve4" in OS.get_cmdline_user_args():
+		get_viewport().msaa_3d = Viewport.MSAA_2X
+		_solve4()
 	if "covered" in OS.get_cmdline_user_args() and COVERED:
 		get_viewport().msaa_3d = Viewport.MSAA_2X
 		_solve_covered()
@@ -1782,6 +1882,7 @@ func _shots() -> void:
 		{"n": "24-statue-row", "p": Vector3(-0.5, 0, MYPL.z), "y": -PI * 0.5, "c": Vector3(-2.2, 0.3, -0.5), "s": 6.0},
 		{"n": "25-crossing-court", "p": Vector3(CROSS_X, 0, QZ1 + 0.3), "y": PI, "c": Vector3(1.2, 0.3, -13.7), "s": 10.2},
 		{"n": "28-turned-ones", "p": Vector3(-16.32, 0, -14.4), "y": -PI * 0.5, "c": Vector3(-17.9, 0.2, -13.0), "s": 9.8},
+		{"n": "30-crane-court", "p": Vector3(-19.18, 0, -36.64), "y": 1.047, "c": Vector3(-17.3, 0.2, -36.6), "s": 10.0},
 		{"n": "26-causeway-mirrors", "p": Vector3(0, 0, -7.0), "y": -PI * 0.6, "c": Vector3(-0.8, 1.75, -7.8), "s": 8.6, "quote": true},   # framed as the run frames it
 		{"n": "22-covered-pool", "p": Vector3(1.37, 0, -13.2), "y": -PI * 0.5, "c": Vector3(-1.0, 0.4, -13.0), "s": 7.5},
 		{"n": "23-door-in-water", "p": Vector3(0.25, 0, -12.4), "y": -PI * 0.6, "c": Vector3(-1.2, 0.4, -13.0), "s": 6.2, "nosheet": true},
@@ -2748,12 +2849,32 @@ func ring_gate(c: Vector3, rad: float, n := 17) -> void:
 		cyl(c + Vector3(sx * rad, -1.2, 0), 0.34, 0.3, 1.25, pal("shade"), 16); foam(c.x + sx * rad - 0.34, c.z - 0.34, c.x + sx * rad + 0.34, c.z + 0.34, 0.3)
 		blk(c + Vector3(sx * rad - 0.26, 0.05, -0.26), c + Vector3(sx * rad + 0.26, 0.13, 0.26), "stone")      # the impost each side springs from
 
+## a thing to look at: its place on the ground, how tall it stands, and the lines it gives (one at each look, in turn)
+func _look_add(key: String, foot: Vector3, h: float, lines: Array, big := false) -> void:
+	if key == "": look_n += 1; key = "look%d" % look_n
+	looks[key] = {"foot": foot, "top": foot + Vector3(0, h, 0), "lines": lines, "i": 0, "big": big}
+
+## a stele of the sculptor's: an upright slab with lines of his writing on it
+func stele(key: String, p: Vector3, yaw: float, lines: Array) -> void:
+	if FileAccess.file_exists("res://props/stele.glb"): thing("stele", p, 0.0, STELE_PARTS, yaw)
+	else:
+		var n := Node3D.new(); n.position = p; n.rotation.y = yaw; add_child(n)
+		blk(Vector3(-0.34, 0, -0.16), Vector3(0.34, 0.07, 0.16), "shade", n); blk(Vector3(-0.29, 0.07, -0.12), Vector3(0.29, 0.13, 0.12), "stone", n)
+		blk(Vector3(-0.24, 0.13, -0.07), Vector3(0.24, 1.12, 0.07), "marble", n)
+		var pd := PrismMesh.new(); pd.size = Vector3(0.56, 0.16, 0.16); prim(pd, Vector3(0, 1.2, 0), pal("stone", "flat"), n)
+		for r in 6:
+			for c in 4: blk(Vector3(-0.19 + 0.1 * c, 0.92 - 0.12 * r, 0.07), Vector3(-0.12 + 0.1 * c - 0.02 * ((r + c) % 2), 0.935 - 0.12 * r, 0.074), "dark", n)
+	solids.append(Vector3(p.x, p.z, 0.36))
+	_look_add(key, p, 1.25, lines, true)
+
 func plinth_head(nm: String, fp: Vector3, yaw: float) -> void:
+	_look_add("", fp, 1.3, LOOK_LINES["head"])
 	pedestal(fp)
 	model(nm, fp + Vector3(0, 0.78, 0), 0.62, yaw)
 	decal(fp + Vector3(0.12, 0, -0.12), 0.9, 0.7, 0.2, 0.78)
 
 func statue_on(nm: String, sp: Vector3, h: float, yaw: float) -> void:
+	_look_add("", sp, 0.17 + h, LOOK_LINES.get(nm, LOOK_LINES["observer_veiled"]))
 	cyl(sp, 0.32, 0.3, 0.07, pal("shade"), 20); cyl(sp + Vector3(0, 0.07, 0), 0.26, 0.26, 0.1, pal("stone"), 20)
 	model(nm, sp + Vector3(0, 0.17, 0), h, yaw)
 	decal(sp + Vector3(0.15, 0, -0.15), 1.1, 0.8, 0.2, 0.78)
@@ -2984,22 +3105,25 @@ func _strip_refl(root: Node, skip := 0, sh := "two", k := 0.38) -> void:
 
 ## the arrival court: its floor has an opening for the mirror pool and its base is hollow, so that
 ## the court can stand upside down inside it
-func _pool_court(x0: float, z0: float, x1: float, z1: float, qx0: float, qz0: float, qx1: float, qz1: float, wall_p := "stone", sky_name := "PoolSky") -> void:
+## open_n: the pool lies up to a wall on the court's north edge, and that wall is mirrored in it: the hollow has no
+## north wall of its own (the mirrored one stands there), and it is deep enough for what stands tall over the water
+func _pool_court(x0: float, z0: float, x1: float, z1: float, qx0: float, qz0: float, qx1: float, qz1: float, wall_p := "stone", sky_name := "PoolSky", open_n := false) -> void:
 	floors.append([x0, z0, x1, z1, -0.18])   # the pool's hollow hides the sea as the floor does
-	for r in [[x0, z0, x1, qz0], [x0, qz1, x1, z1], [x0, qz0, qx0, qz1], [qx1, qz0, x1, qz1]]:
+	for r in ([[x0, z0, qx0, qz0], [qx1, z0, x1, qz0]] if open_n else [[x0, z0, x1, qz0]]) + [[x0, qz1, x1, z1], [x0, qz0, qx0, qz1], [qx1, qz0, x1, qz1]]:
 		blk(Vector3(r[0], -0.13, r[1]), Vector3(r[2], 0.0, r[3]), "stone")
-	for r in [[x0 - 0.03, z0 - 0.03, x1 + 0.03, qz0], [x0 - 0.03, qz1, x1 + 0.03, z1 + 0.03], [x0 - 0.03, qz0, qx0, qz1], [qx1, qz0, x1 + 0.03, qz1]]:
+	for r in ([[x0 - 0.03, z0 - 0.03, qx0, qz0], [qx1, z0 - 0.03, x1 + 0.03, qz0]] if open_n else [[x0 - 0.03, z0 - 0.03, x1 + 0.03, qz0]]) + [[x0 - 0.03, qz1, x1 + 0.03, z1 + 0.03], [x0 - 0.03, qz0, qx0, qz1], [qx1, qz0, x1 + 0.03, qz1]]:
 		blk(Vector3(r[0], -0.18, r[1]), Vector3(r[2], -0.13, r[3]), "shade")
 	dentils(x0, z0, x1, z1, -0.18)
 	var kr := 0.07   # the kerb of the pool
 	blk(Vector3(qx0 - kr, 0, qz0 - kr), Vector3(qx1 + kr, 0.04, qz0), "shade"); blk(Vector3(qx0 - kr, 0, qz1), Vector3(qx1 + kr, 0.04, qz1 + kr), "shade")
 	blk(Vector3(qx0 - kr, 0, qz0), Vector3(qx0, 0.04, qz1), "shade"); blk(Vector3(qx1, 0, qz0), Vector3(qx1 + kr, 0.04, qz1), "shade")
 	var ins := 0.22; var a := Vector3(x0 + ins, -2.45, z0 + ins); var b := Vector3(x1 - ins, -0.18, z1 - ins); var th := 0.3
-	for w in [[a.x, a.z, b.x, a.z + th], [a.x, b.z - th, b.x, b.z], [a.x, a.z + th, a.x + th, b.z - th], [b.x - th, a.z + th, b.x, b.z - th]]:
+	for w in ([] if open_n else [[a.x, a.z, b.x, a.z + th]]) + [[a.x, b.z - th, b.x, b.z], [a.x, a.z + (0.0 if open_n else th), a.x + th, b.z - th], [b.x - th, a.z + (0.0 if open_n else th), b.x, b.z - th]]:
 		blk(Vector3(w[0], a.y, w[1]), Vector3(w[2], b.y, w[3]), wall_p)
-	for w in [[a.x - 0.1, a.z - 0.1, b.x + 0.1, a.z + th], [a.x - 0.1, b.z - th, b.x + 0.1, b.z + 0.1], [a.x - 0.1, a.z + th, a.x + th, b.z - th], [b.x - th, a.z + th, b.x + 0.1, b.z - th]]:
+	var ring := ([] if open_n else [[a.x - 0.1, a.z - 0.1, b.x + 0.1, a.z + th]]) + [[a.x - 0.1, b.z - th, b.x + 0.1, b.z + 0.1], [a.x - 0.1, a.z + (-0.1 if open_n else th), a.x + th, b.z - th], [b.x - th, a.z + (-0.1 if open_n else th), b.x + 0.1, b.z - th]]
+	for w in ring:
 		blk(Vector3(w[0], -2.45, w[1]), Vector3(w[2], WATER + 0.07, w[3]), "shade")
-	for w in [[a.x - 0.1, a.z - 0.1, b.x + 0.1, a.z + th], [a.x - 0.1, b.z - th, b.x + 0.1, b.z + 0.1], [a.x - 0.1, a.z + th, a.x + th, b.z - th], [b.x - th, a.z + th, b.x + 0.1, b.z - th]]:
+	for w in ring:
 		blk(Vector3(w[0], -0.42, w[1]), Vector3(w[2], -0.3, w[3]), "shade")   # the cornice, as a ring: a full plate would close the pool from below
 	foam(a.x - 0.1, a.z - 0.1, b.x + 0.1, b.z + 0.1)
 	var nx := maxi(1, int((b.x - a.x) / 1.05)); var nz := maxi(1, int((b.z - a.z) / 1.05))
@@ -3007,6 +3131,9 @@ func _pool_court(x0: float, z0: float, x1: float, z1: float, qx0: float, qz0: fl
 	for i in nz: win_x(b.x, -1.2, a.z + (b.z - a.z) * (i + 0.5) / nz, 0.4, 0.74)
 	var pit := MeshInstance3D.new(); pit.name = sky_name; var pm := BoxMesh.new(); pm.size = Vector3(b.x - a.x - th * 2.0 - 0.03, 2.16, b.z - a.z - th * 2.0 - 0.03); pit.mesh = pm
 	pit.position = Vector3((a.x + b.x) * 0.5, -0.185 - 1.08, (a.z + b.z) * 0.5)   # its floor stays above the copy of the court that lies under the sea
+	if open_n:      # up to the middle of the mirrored wall on the north side, and as deep as the tallest thing over this water is high
+		var zn := z0 + 0.1; var zs := b.z - th - 0.015
+		pm.size = Vector3(pm.size.x, 4.4, zs - zn); pit.position = Vector3(pit.position.x, -0.185 - 2.2, (zn + zs) * 0.5)
 	var pmat := ShaderMaterial.new(); pmat.shader = shaders["pit"]; pit.material_override = pmat; pit.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(pit)
 	if OS.get_environment("NOPIT") == "1": pit.visible = false
 
@@ -3237,6 +3364,7 @@ func _shrouds() -> void:
 	for sp in spots:
 		var base := Vector3(sp[0], WATER + 0.22, sp[1])
 		var m := mirror_stand(base, sp[2], self, WATER, sp[4], true); m.scale = Vector3.ONE * sp[3]
+		_look_add("", base, 1.7, LOOK_LINES["shroud"])
 		if sp[4] == "slip" or sp[4] == "wide":   # a long plinth, turned with the mirror
 			var hx := 1.2 if sp[4] == "slip" else 1.0; var hz := 0.74 if sp[4] == "slip" else 0.46
 			blk(Vector3(-hx + 0.06, -1.0, -hz + 0.06), Vector3(hx - 0.06, -0.05, hz - 0.06), "stone", m); blk(Vector3(-hx, -0.05, -hz), Vector3(hx, 0.0, hz), "shade", m)
@@ -3765,6 +3893,7 @@ func _world() -> void:
 	blk(Vector3(DX - 0.03, 0, -26.6), Vector3(DX + 0.03, 0.005, -25.2), "crim")
 	slab(-20.5, -28.8, -12.5, -27.0, 0.0, "sand"); under(-20.5, -28.8, -12.5, -27.0, 0.22, "sand")
 	tree(Vector3(-18.6, 0, -27.8), 1.5); tree(Vector3(-13.6, 0, -27.9), 1.35, "leaf3"); cypress(Vector3(-15.0, 0, -28.2), 2.9); cypress(Vector3(-17.4, 0, -28.3), 2.4)
+	_crane_court()
 	# ---- the sea around: colossi, ruins, vines, mist
 	model("observer_veiled", Vector3(-31.0, WATER - 1.2, -27.0), 11.0, 0.75)
 	model("kit_face5", Vector3(-4.5, WATER - 1.15, -23.7), 4.4, 0.7, Vector3(0.2, 0, -0.15))      # (as far behind the second court's back wall as it was before that court grew)
@@ -3784,6 +3913,19 @@ func _world() -> void:
 			[Vector3(6.6, WATER + 2.3, -4.8), 2.0], [Vector3(-10.2, WATER + 2.7, -18.4), 2.3], [Vector3(-22.6, WATER + 2.5, -8.8), 2.1], [Vector3(CX1 - 0.1, 1.75, CZ0 + 0.1), 1.8]]:
 		streamer(sp[0], sp[1], 0.32)
 		cyl(sp[0] + Vector3(0, -0.2, 0), 0.012, 0.012, 0.4, pal("dark"), 6)
+	for lp in [Vector3(-17.9, 0, -16.5), Vector3(-14.7, 0, -16.5), Vector3(3.05, 0, -14.6) if COVERED else Vector3(-3.05, 0, -14.6)]: _look_add("", lp, 1.8, LOOK_LINES["mirror"])
+	_look_add("", Vector3(-14.72, 0, -23.7), 1.1, LOOK_LINES["statue_veiled_kneeling"]); _look_add("", Vector3(-10.3, 0, -9.8), 1.7, ["broken, and not by the sea"])
+	_look_add("", Vector3(2.99, 0, -1.5), 0.9, ["his tools, laid down in the middle of a stroke", "a small head: he tried her face on it first"])
+	for i in 5:
+		if i != 2: _look_add("", Vector3(MYPL.x, 0, MYPL.z + 0.9 * (i - 2)), 1.8, ["one of five. the fifth place is empty", "veiled, like all of them"])
+	# the sculptor's steles: one in each court. His own words, and in them, sideways, what the court asks
+	stele("stele_a", Vector3(-2.6, 0, -3.5), 0.0, ["I carved her five times for this row.\nFour of them stay where I put them.", "The fifth plinth I left for her.\nShe has only to stand as they stand."])
+	stele("stele_c", Vector3(-3.03, 0, -11.45), PI * 0.5, ["I let the crossing fall, stone by stone,\nso that nothing of hers could reach the wheel.", "Still water forgets nothing.\nIt keeps the stones I took away."])
+	stele("stele_e", Vector3(-21.88, 0, -12.6), PI * 0.5, ["I turned each of them to face where I chose.", "The water would not have it.\nIt shows them as they mean to stand."])
+	stele("stele_f", Vector3(-18.3, 0, -26.32), 0.0, ["One mirror I could not bring myself to break.\nI gave it a wall, and a cloth, and my back.", "A mirror keeps whatever it is shown.\nSo I showed it nothing."])
+	stele("stele_k", Vector3(KX0 + 0.42, 0, -35.2), PI * 0.5, ["The key I gave to no one.\nI hung it where a hand of stone cannot close.", "I walled the door up from this side.\nI forgot the water has a side of its own."])
+	_look_add("", KISLE + Vector3(0.08, 0, 0), 1.5, ["her hand is open, and empty", "in the water the hand is not empty"])
+	_look_add("kwall", Vector3(KDOOR_X, 0.3, WZ0), 1.6, ["a wall of plain stone", "in the water this wall has a door"])
 	mirror_stand(Vector3(-17.9, 0, -16.5), 0.32); mirror_stand(Vector3(-14.7, 0, -16.5), -0.18); mirror_stand(Vector3(3.05, 0, -14.6) if COVERED else Vector3(-3.05, 0, -14.6), -PI * 0.5 if COVERED else PI * 0.5)
 	shard_tree(Vector3(-13.7, 0, -20.9))
 	reeds(Vector3(-2.35, 0, 6.4)); reeds(Vector3(4.4, 0, 3.0), 7); reeds(Vector3(-4.6, 0, -11.2)); reeds(Vector3(-12.2, 0, -10.0), 8); reeds(Vector3(-20.8, 0, -18.6)); reeds(Vector3(-11.8, 0, -21.6), 7)
@@ -3793,6 +3935,180 @@ func _world() -> void:
 		var mh := halo(11.0 + 2.0 * sin(mp.x), Color(mist_c.r, mist_c.g, mist_c.b, 0.14))
 		(mh.material_override as StandardMaterial3D).blend_mode = BaseMaterial3D.BLEND_MODE_MIX
 		mh.position = mp; add_child(mh)
+
+## the way the crane's arm points (a unit vector on the ground) when it stands at its i-th place (-1: where it stands now)
+func _crane_dir(i := -1) -> Vector3:
+	var a := deg_to_rad(KANG[crane_i if i < 0 else i])
+	return Vector3(cos(a), 0, sin(a))
+
+## a toothed wheel lying flat: a disc and n square teeth round it
+func _gear(parent: Node, r: float, n: int, h: float, p := "gold") -> void:
+	cyl(Vector3.ZERO, r - 0.012, r - 0.012, h, pal(p), maxi(n, 16), parent)
+	for i in n:
+		var tb := blk(Vector3(-0.016, 0.0, -r * PI / n * 0.5), Vector3(0.016, h, r * PI / n * 0.5), p, parent)
+		tb.position = Vector3(cos(TAU * i / n) * r, h * 0.5, sin(TAU * i / n) * r); tb.rotation.y = -TAU * i / n
+
+## the crane: a round turntable with a toothed bronze rim, a mast, a long level arm with its brace and its counterweight,
+## and under the arm, on two chains, a squared timber that hangs a hand above the water. All of it turns as one
+func _crane(parent: Node) -> Node3D:
+	var twin := parent == mroot
+	var n := Node3D.new(); n.position = KPIV; n.rotation.y = -deg_to_rad(KANG[0]); parent.add_child(n)
+	var tt := Node3D.new(); tt.position = Vector3(0, 0.05, 0); n.add_child(tt)
+	cyl(Vector3.ZERO, 0.4, 0.4, 0.05, pal("wood"), 28, tt)
+	var gr := Node3D.new(); gr.position = Vector3(0, 0.05, 0); tt.add_child(gr); _gear(gr, 0.42, 48, 0.035)
+	if FileAccess.file_exists("res://props/crane.glb"):
+		prop_model("crane", n, 0.0, 0.0, twin, false, "wood:wood,rope:rope,gold:gold,stone:stone")
+	else:      # (until the model is made) a plain mast, arm, brace and counterweight
+		blk(Vector3(-0.1, 0.1, -0.1), Vector3(0.1, 3.05, 0.1), "wood", n)
+		blk(Vector3(-0.9, 2.85, -0.08), Vector3(3.6, 3.02, 0.08), "wood", n)
+		var br := blk(Vector3(-0.9, -0.05, -0.05), Vector3(0.9, 0.05, 0.05), "wood", n); br.position = Vector3(0.75, 2.2, 0); br.rotation.z = 0.72
+		blk(Vector3(-1.05, 2.45, -0.2), Vector3(-0.65, 2.85, 0.2), "stone", n)
+	# the timber and its chains
+	var tm := blk(Vector3(BEAM_R0, 0.05, -0.15), Vector3(BEAM_R1, BEAM_TOP, 0.15), "wood", n)
+	if twin:      # in the water it keeps a plain, deeper colour of its own: the haze of the world below would leave it pale as the water
+		var um := StandardMaterial3D.new(); um.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; um.cull_mode = BaseMaterial3D.CULL_DISABLED; um.albedo_color = Color("8f6a5c"); tm.material_override = um
+	for bx in [BEAM_R0 + 0.3, BEAM_R1 - 0.3]:
+		blk(Vector3(bx - 0.04, 0.045, -0.158), Vector3(bx + 0.04, BEAM_TOP + 0.006, 0.158), "gold", n)
+		cyl(Vector3(bx, BEAM_TOP, 0), 0.012, 0.012, KJIB_Y - BEAM_TOP, pal("dark"), 6, n)
+		var rg := TorusMesh.new(); rg.inner_radius = 0.022; rg.outer_radius = 0.04
+		prim(rg, Vector3(bx, BEAM_TOP + 0.04, 0), pal("gold"), n).rotation.x = PI * 0.5
+	return n
+
+## K. the court of the crane. A pool that lies up to the foot of a plain north wall; in it an islet with a statue of
+## her; at its east rim, on a round quay, a crane whose timber hangs over the water; a workbench; and beside the
+## turntable the post of the crank that turns it. In the water the wall has a door, and the statue's hand holds a key
+func _crane_court() -> void:
+	# the way from the garden's door: over the strip behind its wall and a short bridge
+	slab(DX - 0.6, KZ1, DX + 0.6, -28.8, 0.0); pier(DX, -30.1, -0.18, 0.7); pier(DX, -31.4, -0.18, 0.7)
+	for e in [-1.0, 1.0]: blk(Vector3(DX + e * 0.54 - 0.03, 0, KZ1 + 0.03), Vector3(DX + e * 0.54 + 0.03, 0.06, -28.83), "shade")
+	for jz in [-29.45, -30.1, -30.75, -31.4, -32.05]: blk(Vector3(DX - 0.51, 0, jz - 0.008), Vector3(DX + 0.51, 0.003, jz + 0.008), "shade")
+	_pool_court(KX0, KZ0, KX1, KZ1, WX0, WZ0, WX1, WZ1, "stone", "PoolSky4", true)
+	tile_hole = Rect2(WX0 - 0.08, WZ0 - 0.5, WX1 - WX0 + 0.16, WZ1 - WZ0 + 0.58); tiles(KX0, WZ0, KX1, KZ1, 1.0); tile_hole = Rect2()
+	meander(KX0 + 0.55, WZ1 + 0.5, KX1 - 0.2, KZ1 - 0.2)
+	var m0 := mroot.get_child_count()
+	for both in [self, mroot]:
+		var twin: bool = both == mroot
+		# (in the water the wall keeps plain colours of its own, a little deeper than the stone above: the haze of the world
+		# below would leave it a grey mass)
+		var wb := func(a: Vector3, b: Vector3, p: String, par: Node) -> void:
+			var mi := blk(a, b, p, par)
+			if par == mroot:
+				var um := StandardMaterial3D.new(); um.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; um.cull_mode = BaseMaterial3D.CULL_DISABLED      # (mirrored things are wound the other way)
+				um.albedo_color = Color({"stone": "d8ccb9", "shade": "b9ab98", "cream": "fff3d2"}.get(p, "d8ccb9")); mi.material_override = um
+				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		# the north wall, in courses of ashlar. Above the water it is whole; in the water it has a doorway
+		wb.call(Vector3(KX0, 0, KZ0), Vector3(KDOOR_X - 0.5, KWALL_H, WZ0), "stone", both)
+		wb.call(Vector3(KDOOR_X + 0.5, 0, KZ0), Vector3(KX1, KWALL_H, WZ0), "stone", both)
+		wb.call(Vector3(KDOOR_X - 0.5, KDOOR_H, KZ0), Vector3(KDOOR_X + 0.5, KWALL_H, WZ0), "stone", both)
+		wb.call(Vector3(KX0 - 0.045, KWALL_H, KZ0 - 0.045), Vector3(KX1 + 0.045, KWALL_H + 0.06, WZ0 + 0.045), "shade", both)
+		var nc := int((KX1 - KX0 - 0.25) / 0.31)
+		for i in nc + 1:
+			var cx := lerpf(KX0 + 0.15, KX1 - 0.1, float(i) / nc)
+			wb.call(Vector3(cx - 0.065, KWALL_H + 0.06, WZ0 - 0.095), Vector3(cx + 0.065, KWALL_H + 0.177, WZ0 + 0.035), "stone", both)
+		for r in 5:
+			var y0 := 0.52 * r
+			if r > 0:
+				for seg in [[KX0, KDOOR_X - 0.5], [KDOOR_X + 0.5, KX1]]: wb.call(Vector3(seg[0], y0 - 0.006, WZ0), Vector3(seg[1], y0 + 0.006, WZ0 + 0.004), "shade", both)
+				if r == 4: wb.call(Vector3(KDOOR_X - 0.5, y0 - 0.006, WZ0), Vector3(KDOOR_X + 0.5, y0 + 0.006, WZ0 + 0.004), "shade", both)
+			var jx := KX0 + 0.5 + (0.52 if r % 2 == 1 else 0.0)
+			while jx < KX1 - 0.2:      # the upright joints, each course half a stone off the one below
+				if absf(jx - KDOOR_X) > 0.5 or r == 4:
+					wb.call(Vector3(jx - 0.006, y0, WZ0), Vector3(jx + 0.006, minf(y0 + 0.52, KWALL_H), WZ0 + 0.004), "shade", both)
+				jx += 1.04
+		wb.call(Vector3(KDOOR_X - 0.47, 0, KZ0 + 0.02), Vector3(KDOOR_X + 0.47, KDOOR_H, KZ0 + 0.04), "cream", both)      # the light behind the door
+		# the crane's quay, and the islet with its drum
+		cyl(KPIV, KQUAY, KQUAY, 0.05, pal("stone", "flat2" if twin else "flat"), 44, both)
+		cyl(KPIV + Vector3(0, 0.05, 0), 0.5, 0.5, 0.012, pal("shade", "flat2" if twin else "flat"), 32, both)
+		cyl(KISLE, 0.57, 0.55, 0.07, pal("stone", "flat2" if twin else "flat"), 28, both)
+		round_plinth(KISLE + Vector3(0.08, 0.07, 0), both)
+		var ist := her_statue(KISLE + Vector3(0.08, 0.24, 0), -PI * 0.5, "point", 0.8, both)
+		if not twin:      # where its pointing hand is: in the water a key hangs from it
+			kkey_top = KISLE + Vector3(-0.42, 1.2, 0)
+			var isk := ist.find_children("*", "Skeleton3D", true, false)
+			if not isk.is_empty() and _bone(isk[0], "RightHand") >= 0:
+				var hp: Vector3 = (isk[0] as Skeleton3D).global_transform * (isk[0] as Skeleton3D).get_bone_global_pose(_bone(isk[0], "RightHand")).origin
+				kkey_top = hp + Vector3(-0.06, -0.05, 0)
+		var cn := _crane(both)
+		if twin: crane_m = cn
+		else: crane_n = cn
+	# above the water only: the stone that closes the doorway, of the wall's own courses (it cannot be told from the wall)
+	kplug = Node3D.new(); kplug.position = Vector3(KDOOR_X, 0, 0); add_child(kplug)
+	blk(Vector3(-0.5, 0, KZ0 + 0.06), Vector3(0.5, KDOOR_H, WZ0), "stone", kplug)
+	for r in range(1, 4): blk(Vector3(-0.5, 0.52 * r - 0.006, WZ0), Vector3(0.5, 0.52 * r + 0.006, WZ0 + 0.004), "shade", kplug)
+	for r in 4:
+		var jx2 := KX0 + 0.5 + (0.52 if r % 2 == 1 else 0.0)
+		while jx2 < KX1 - 0.2:
+			if absf(jx2 - KDOOR_X) <= 0.5: blk(Vector3(jx2 - KDOOR_X - 0.006, 0.52 * r, WZ0), Vector3(jx2 - KDOOR_X + 0.006, 0.52 * r + 0.52, WZ0 + 0.004), "shade", kplug)
+			jx2 += 1.04
+	# in the water only: the door in its frame, and the key that hangs from the statue's hand on a red ribbon
+	for e in [-1.0, 1.0]: blk(Vector3(KDOOR_X + e * 0.53 - 0.045, 0, WZ0), Vector3(KDOOR_X + e * 0.53 + 0.045, KDOOR_H + 0.05, WZ0 + 0.05), "dark", mroot)
+	blk(Vector3(KDOOR_X - 0.62, KDOOR_H + 0.05, WZ0), Vector3(KDOOR_X + 0.62, KDOOR_H + 0.17, WZ0 + 0.06), "gold", mroot)
+	var stp := blk(Vector3(KDOOR_X - 0.6, 0, WZ0), Vector3(KDOOR_X + 0.6, BEAM_TOP, WZ0 + KSTEP), "stone", mroot)      # and its step: the timber comes to its edge
+	var sm := StandardMaterial3D.new(); sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; sm.cull_mode = BaseMaterial3D.CULL_DISABLED; sm.albedo_color = Color("c3b5a1"); stp.material_override = sm
+	kdoor_m = Node3D.new(); kdoor_m.position = Vector3(KDOOR_X - 0.47, 0, WZ0 - 0.035); mroot.add_child(kdoor_m)
+	var leaf := blk(Vector3(0, 0, -0.03), Vector3(0.94, KDOOR_H, 0.03), "crim", kdoor_m)
+	var lm := StandardMaterial3D.new(); lm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; lm.cull_mode = BaseMaterial3D.CULL_DISABLED; lm.albedo_color = Color("c2333d"); leaf.material_override = lm
+	var gm := StandardMaterial3D.new(); gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm.cull_mode = BaseMaterial3D.CULL_DISABLED; gm.albedo_color = Color("d79a2f")
+	for py in [0.25, 1.15]:
+		for px in [0.1, 0.52]:
+			var pn := blk(Vector3(px, py, 0.03), Vector3(px + 0.32, py + 0.7, 0.04), "crim2", kdoor_m)
+			var pm2: StandardMaterial3D = lm.duplicate(); pm2.albedo_color = Color("d84a52"); pn.material_override = pm2
+	for q in [blk(Vector3(0.02, 0.0, 0.03), Vector3(0.92, 0.12, 0.045), "gold", kdoor_m), blk(Vector3(0.74, 0.92, 0.03), Vector3(0.88, 1.16, 0.05), "gold", kdoor_m)]: (q as MeshInstance3D).material_override = gm
+	_strip_refl(mroot, m0, "mir", 0.3)
+	kribbon = Node3D.new(); kribbon.position = kkey_top; mroot.add_child(kribbon)
+	var rb := blk(Vector3(-0.012, -0.3, -0.004), Vector3(0.012, 0.0, 0.004), "crim", kribbon)
+	var rm2: StandardMaterial3D = lm.duplicate(); rm2.albedo_color = Color("d23a44"); rb.material_override = rm2
+	kkey = Node3D.new(); kkey.name = "Key"; add_child(kkey); kkey.position = Vector3(kkey_top.x, -(kkey_top.y - 0.35), kkey_top.z); kkey.rotation.x = PI      # (in the water: upside down, its ring to the ribbon)
+	khalo = halo(2.6, Color(1.0, 0.86, 0.6, 0.5)); khalo.position = Vector3(KDOOR_X, 1.0, WZ0 + 0.1); khalo.scale = Vector3.ONE * 0.001; khalo.visible = false; add_child(khalo)
+	if OS.get_environment("KI") != "":      # (stills) the crane as it stands at another of its places
+		crane_i = int(OS.get_environment("KI"))
+		crane_n.rotation.y = -deg_to_rad(KANG[crane_i]); crane_m.rotation.y = crane_n.rotation.y
+	if FileAccess.file_exists("res://props/key.glb"):
+		prop_model("key", kkey, 0.0, 0.0, false, false, "gold:gold,crim:crim")
+	else:
+		var k1 := cyl(Vector3(0, -0.2, 0), 0.014, 0.014, 0.2, gm, 8, kkey); k1.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var kt := TorusMesh.new(); kt.inner_radius = 0.03; kt.outer_radius = 0.055
+		prim(kt, Vector3(0, 0.05, 0), gm, kkey).rotation.x = PI * 0.5
+		blk(Vector3(0.0, -0.2, -0.006), Vector3(0.06, -0.13, 0.006), "gold", kkey).material_override = gm
+	var wq := QuadMesh.new(); wq.size = Vector2(WX1 - WX0, WZ1 - WZ0); wq.orientation = PlaneMesh.FACE_Y
+	var g4 := ShaderMaterial.new(); g4.shader = shaders["glass"]; timed.append(g4)
+	g4.set_shader_parameter("lost_a", 0.0); g4.set_shader_parameter("blur_px", 0.6); g4.set_shader_parameter("lod", 0.0)
+	prim(wq, Vector3((WX0 + WX1) * 0.5, 0.012, (WZ0 + WZ1) * 0.5), g4).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# the ledge that comes out of the wall's foot when the door opens: six stones, drawn back into the wall until then
+	for i in 6:
+		var lx0 := WX0 + 0.55 * i
+		var st := Node3D.new(); st.position = Vector3(0, 0, -0.66); add_child(st)
+		blk(Vector3(lx0 + 0.012, -0.05, WZ0 - 0.02), Vector3(lx0 + 0.538, 0.045, WZ0 + 0.6), "stone", st)
+		blk(Vector3(lx0 + 0.012, -0.1, WZ0 - 0.02), Vector3(lx0 + 0.538, -0.05, WZ0 + 0.63), "shade", st)
+		kledge.append(st)
+	# the crank post beside the turntable: a stone foot, a bronze shaft with a small wheel in the turntable's teeth, and a
+	# square head for the crank. The crank itself lies on the workbench until she brings it
+	turned(KPOST, [[0.14, 0.05], [0.14, 0.1], [0.1, 0.13], [0.085, 0.16], [0.0, 0.16]], "stone", 16)
+	kpin = Node3D.new(); kpin.position = KPOST; add_child(kpin)
+	var pg := Node3D.new(); pg.position = Vector3(0, 0.1, 0); kpin.add_child(pg); _gear(pg, 0.075, 8, 0.035)
+	cyl(Vector3(0, 0.1, 0), 0.028, 0.028, 0.84, pal("gold"), 10, kpin)
+	blk(Vector3(-0.035, 0.94, -0.035), Vector3(0.035, 1.02, 0.035), "gold", kpin)
+	kcrank = _crank_handle(kpin); kcrank.position = Vector3(0, 0.98, 0); kcrank.visible = false
+	# the workbench in the south-west corner, the crank on it
+	thing("workbench", KBENCH, 0.8, "wood:wood,stone:marble,gold:gold,dark:dark", 0.0)
+	kcrank_bench = _crank_handle(self); kcrank_bench.position = KBENCH + Vector3(0.05, 0.82, 0.25); kcrank_bench.rotation = Vector3(0, 0.6, 0)
+	# rails on the three open sides, the way in between two posts
+	parapet(Vector3(KX0 + 0.1, 0, WZ0 + 0.1), Vector3(KX0 + 0.1, 0, KZ1 - 0.1)); parapet(Vector3(KX0 + 0.1, 0, KZ1 - 0.1), Vector3(DX - 0.75, 0, KZ1 - 0.1))
+	parapet(Vector3(DX + 0.75, 0, KZ1 - 0.1), Vector3(KX1 - 0.1, 0, KZ1 - 0.1)); parapet(Vector3(KX1 - 0.1, 0, WZ0 + 0.1), Vector3(KX1 - 0.1, 0, KZ1 - 0.1))
+	for px in [DX - 0.75, DX + 0.75]: blk(Vector3(px - 0.07, 0.05, KZ1 - 0.17), Vector3(px + 0.07, 0.34, KZ1 - 0.03), "stone")
+	lantern(Vector3(KX0 + 0.75, 0, KZ1 - 0.62), 6, 1.0); cypress(Vector3(KX1 - 0.5, 0, WZ0 + 0.45), 2.2)
+	urn(Vector3(KX1 - 0.55, 0, WZ0 + 1.2), 1.0); urn(Vector3(KX1 - 0.8, 0, WZ0 + 1.05), 0.7, "rose")
+
+## the crank: a square bronze socket, a bronze arm, and a turned wooden grip standing at its end
+func _crank_handle(parent: Node) -> Node3D:
+	var n := Node3D.new(); parent.add_child(n)
+	if FileAccess.file_exists("res://props/crank.glb"):
+		prop_model("crank", n, 0.0, 0.0, false, false, "gold:gold,wood:wood")
+	else:
+		blk(Vector3(-0.045, -0.03, -0.045), Vector3(0.045, 0.03, 0.045), "gold", n)
+		blk(Vector3(0.0, -0.014, -0.02), Vector3(0.3, 0.014, 0.02), "gold", n)
+		cyl(Vector3(0.28, 0.0, 0), 0.022, 0.026, 0.13, pal("wood"), 10, n)
+	return n
 
 func _actors() -> void:
 	var veil := cloth(Color("f1f1f4"), Color("dcdce4"))
@@ -3867,10 +4183,15 @@ func _actors() -> void:
 	objs["plinth"] = {"at": MYPL + Vector3(0, 0.45, 0), "stand": MYPL + Vector3(0.75, 0, 0), "hits": [MYPL + Vector3(0, 0.05, 0), MYPL + Vector3(0, 0.45, 0)]}      # her own empty plinth (first puzzle)
 	objs["winch"] = {"at": PED + Vector3(-WINCH_HUB.x, WINCH_HUB.y, 0) * WINCH_K, "stand": Vector3(CROSS_X, 0, QZ1 + 0.39), "hits": [PED + Vector3(0, 0.15, 0), PED + Vector3(0, WINCH_HUB.y * WINCH_K, 0), PED + Vector3(-WINCH_HUB.x, WINCH_HUB.y, 0) * WINCH_K]}   # the wheel in the water (second puzzle)
 	for i in 3: objs["turn%d" % (i + 1)] = {"at": TURN_AT[i] + Vector3(0, 1.88, 0), "stand": TURN_AT[i] + Vector3(TURN_STAND, 0, 0), "hits": [TURN_AT[i] + Vector3(0, 0.12, 0), TURN_AT[i] + Vector3(0, 1.88, 0)]}   # (its mark floats 0.55 above "at": clear of the statue's head)
+	# the fourth puzzle: the workbench with the crank on it, the crank post of the crane, and in the water the key and the door
+	objs["bench"] = {"at": KBENCH + Vector3(0, 0.8, 0), "stand": KBENCH + Vector3(0, 0, -0.72), "hits": [KBENCH + Vector3(0, 0.3, 0), KBENCH + Vector3(0, 0.8, 0)]}
+	objs["crane"] = {"at": KPOST + Vector3(0, 1.0, 0), "stand": KPOST + Vector3(-0.56, 0, 0), "hits": [KPOST + Vector3(0, 0.2, 0), KPOST + Vector3(0, 1.0, 0), KPIV + Vector3(0, 1.3, 0), KPIV + Vector3(0, 2.7, 0)]}
+	objs["wkey"] = {"at": Vector3(kkey_top.x, -(kkey_top.y - 0.45), kkey_top.z), "stand": KPIV + _crane_dir() * KSTAND, "hits": [Vector3(kkey_top.x, -(kkey_top.y - 0.05), kkey_top.z), Vector3(kkey_top.x, -(kkey_top.y - 0.6), kkey_top.z)]}
+	objs["wdoor"] = {"at": Vector3(KDOOR_X, -1.0, WZ0), "stand": KPIV + _crane_dir() * KSTAND, "hits": [Vector3(KDOOR_X, -0.25, WZ0), Vector3(KDOOR_X, -1.9, WZ0)]}
 	for k in objs:
 		var n := Node3D.new(); add_child(n); n.position = objs[k].at + Vector3(0, 0.55 if k != "mirror" else 1.35, 0)
-		var quiet: bool = k == "plinth" or k == "winch"      # these two give themselves away only when she is near: a small gold mark
-		if k.begins_with("turn"):      # nothing floats over a turning statue (the place is kept: a tap up there still counts as a tap on it)
+		var quiet: bool = k in QUIET      # these give themselves away only when she is near: a small gold mark
+		if k in NOMARK:      # nothing floats over a turning statue (the place is kept: a tap up there still counts as a tap on it)
 			markers[k] = n; continue
 		var d := blk(Vector3(-0.05, -0.05, -0.05), Vector3(0.05, 0.05, 0.05), "crim", n)
 		d.material_override = mat(Color("ffd36b") if quiet else Color("ff5a62")); d.rotation = Vector3(0.6155, PI * 0.25, 0)
@@ -3884,9 +4205,12 @@ func _nav() -> void:
 			["C", -2.65, -11.3, CX1 - 0.5, -10.35], ["Cl", -2.65, CZ0 + 0.75, -1.6, -10.35], ["Cs", -2.65, CZ0 + 0.75, CX1 - 0.5, QZ0 - 0.3], ["Ce", QX1 + 0.3, CZ0 + 0.75, CX1 - 0.5, -10.35],      # round the pool, not over it
 			 ["Cw", -4.2, -13.25, -2.65, -12.75], ["BR", -7.6, -13.25, -4.2, -12.75], ["D", -13.35, -13.25, -7.6, -12.75],
 			["E", -21.2, -10.75, -13.33, -10.64], ["Ee", -13.65, -15.9, -13.33, -10.05], ["Es", -21.1, -15.9, -13.33, -15.08], ["Em", -16.32, -15.1, -13.5, -14.05], ["Ew", -21.5, -15.5, -21.05, -10.6],
-			["T1", -19.34, -15.1, -19.2, -14.3], ["T2", -17.84, -15.1, -17.7, -14.3], ["T3", -16.34, -15.1, -16.2, -14.3], ["G1", -16.55, -20.35, -16.05, -15.88], ["F", -18.9, -26.2, -15.0, -20.35], ["G", -16.5, -28.3, -16.1, -26.2]]:
+			["T1", -19.34, -15.1, -19.2, -14.3], ["T2", -17.84, -15.1, -17.7, -14.3], ["T3", -16.34, -15.1, -16.2, -14.3], ["G1", -16.55, -20.35, -16.05, -15.88], ["F", -18.9, -26.2, -15.0, -20.35], ["G", DX - 0.2, KZ1 - 0.4, DX + 0.2, -26.2],
+			["Ks", KX0 + 0.5, WZ1 + 0.35, KX1 - 0.5, KZ1 + 0.3], ["Kw", KX0 + 0.5, WZ0 + 0.3, KPIV.x - 0.7, KZ1 + 0.3], ["Ke", WX1 + 0.35, WZ0 + 0.5, KX1 - 0.5, KZ1 + 0.3],      # the crane's court: round its pool
+			["Kpn", KPIV.x - 0.7, KPIV.z - 0.75, KPIV.x + 0.85, KPIV.z - 0.45], ["Kps", KPIV.x - 0.7, KPIV.z + 0.45, KPIV.x + 0.85, KPIV.z + 0.75], ["Kpe", KPIV.x + 0.55, KPIV.z - 0.75, KPIV.x + 0.85, KPIV.z + 0.75],      # its quay: round the mast
+			["Kl", KPIV.x - 1.1, WZ0 + 0.18, KDOOR_X + 0.3, WZ0 + 0.42], ["Kd", KDOOR_X - 0.15, KZ0 - 1.2, KDOOR_X + 0.15, WZ0 + 0.42]]:      # the ledge and the doorway (shut until the door opens)
 		rects[r[0]] = {"x0": r[1], "z0": r[2], "x1": r[3], "z1": r[4], "on": true}
-	rects["BR"].on = false; rects["G"].on = false; rects["G1"].on = false
+	rects["BR"].on = false; rects["G"].on = false; rects["G1"].on = false; rects["Kl"].on = false; rects["Kd"].on = false
 	for i in 5: solids.append(Vector3(MYPL.x, MYPL.z + 0.9 * (i - 2), 0.5))      # the row of plinths of the first court
 	solids.append(Vector3(1.45, -3.0, 0.32))      # the urn by its gate
 	solids.append(Vector3(2.86, -3.25, 0.66)); solids.append(Vector3(2.27, -2.6, 0.3)); solids.append(Vector3(2.99, -1.5, 0.5))      # the sculptor's block in its scaffold, and the ladder: she could walk through both
@@ -3894,6 +4218,9 @@ func _nav() -> void:
 		gate_a.position.y = 0.0; gate_c.position.y = 0.0
 		rects["B1"].on = false; rects["Cw"].on = false
 	else: done["plinth"] = true; done["winch"] = true      # in the scripted runs and the stills these are not things to tap
+	solids.append(Vector3(KPIV.x, KPIV.z, 0.45)); solids.append(Vector3(KBENCH.x, KBENCH.z, 0.55))      # the crane's turntable with its crank post, and the workbench
+	if OS.get_environment("START") == "K":      # (to try the fourth court by hand) she begins on the bridge to it, the garden's door open behind her
+		pos = Vector3(DX, 0, -30.4); yaw = PI; cam_t = pos; rects["G"].on = true; done["mirror"] = true; door.position.y -= 2.15
 
 ## floor she may stand on: inside a walkable area that is open, and not in a lamp stand
 func _walkable(p: Vector3) -> bool:
@@ -4002,6 +4329,7 @@ func _ui() -> void:
 		ql.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		(quote_glow if lay[3] else quote_box).add_child(ql); quote_lbls.append(ql)
 	quote_box.move_child(quote_glow, quote_box.get_child_count() - 2)   # the light lies under the letters, over the haze
+	pocket_ui = Pocket.new(); pocket_ui.set_anchors_preset(Control.PRESET_FULL_RECT); pocket_ui.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(pocket_ui)
 	title_box = _card("EIDOLON", "demo  ·  tap to begin", cl, qfont)
 	if hand_play and STICK:
 		ctl = Joy.new(); add_child(ctl)
@@ -4056,8 +4384,8 @@ func _card(big: String, small: String, cl: CanvasLayer, f: Font = null) -> Contr
 	return c
 
 ## a line of the story, once: it comes up over the scene, stays long enough to be read, and goes
-func quote(key: String, text: String, hold := 5.0) -> void:
-	if quotes_shown.has(key): return
+func quote(key: String, text: String, hold := 5.0, again := false) -> void:
+	if quotes_shown.has(key) and not again: return
 	quotes_shown[key] = true
 	for ql in quote_lbls: (ql as Label).text = text
 	var qt := create_tween(); qt.tween_property(quote_box, "modulate:a", 1.0, 1.3); qt.tween_interval(hold); qt.tween_property(quote_box, "modulate:a", 0.0, 1.6)
@@ -4096,6 +4424,8 @@ func tap(sp: Vector2) -> void:
 		if _tap_hits(k, sp, px):
 			usering.position = Vector3(objs[k].at.x, 0.03, objs[k].at.z); use_p = 0.0
 			use(k); return
+	for k in looks:      # a thing to look at: she goes up to it if she can, and looks
+		if _look_hits(k, sp, px): _look(k); return
 	if cam.unproject_position(pos + Vector3(0, 0.9, 0)).distance_to(sp) < 62.0 * px:
 		_self(); return
 	var wu = _water_under(sp)
@@ -4136,7 +4466,13 @@ func _keep_smooth() -> void:
 ## the still waters in which her reflection has something to walk on (x0, z0, x1, z1): the pool of the second court,
 ## where the lost crossing still stands in the water. On open water, where nothing is reflected underfoot, it does not walk
 func _pools() -> Array:
-	return [[QX0, QZ0, QX1, QZ1]]
+	return [[QX0, QZ0, QX1, QZ1], [WX0, WZ0, WX1, WZ1]]
+
+## where she stands to send her reflection out on a water, and how high over that water its way lies
+func _refl_head(pi: int) -> Vector3:
+	return Vector3(CROSS_X, 0, QZ1 + 0.39) if pi == 0 else KPIV + _crane_dir() * KSTAND
+func _refl_h(pi: int) -> float:
+	return CROSS_H if pi == 0 else BEAM_TOP
 
 func _rect_dist(p: Vector3, r: Array) -> float:
 	return Vector2(maxf(maxf(r[0] - p.x, p.x - r[2]), 0.0), maxf(maxf(r[1] - p.z, p.z - r[3]), 0.0)).length()
@@ -4149,18 +4485,24 @@ func _water_under(sp: Vector2):
 	for i in pl.size():
 		var r: Array = pl[i]
 		if g.x > r[0] and g.x < r[2] and g.z > r[1] and g.z < r[3]:
+			if i == 1 and Vector2(g.x - KPIV.x, g.z - KPIV.z).length() < KQUAY + 0.05: return null      # the crane's quay stands in that water: it is floor
+			if i == 1 and rects["Kl"].on and g.z < WZ0 + 0.66 and g.x < KDOOR_X + 0.6: return null      # and so is the ledge, once it has come out of the wall
 			return [i, Vector3(clampf(g.x, r[0] + 0.28, r[2] - 0.28), 0, clampf(g.z, r[1] + 0.28, r[3] - 0.28))]
 	return null
 
 ## the lost crossing of the second court's pool, as the line her reflection walks: from its head at the front rim
 ## into the pool, the turn, and its end an arm's length before the wheel
-func _cross_line() -> Array:
+func _cross_line(pi := 0) -> Array:
+	if pi == 1:      # the fourth court: the timber that hangs from the crane, from the quay's edge to an arm's length short of its end
+		var d := _crane_dir()
+		if crane_i == 2: return [KPIV + d * (KQUAY + 0.12), KPIV + d * (BEAM_R1 - 0.12), Vector3(KDOOR_X, 0, WZ0 + 0.36)]      # ...and on, over the step, to the door
+		return [KPIV + d * (KQUAY + 0.12), KPIV + d * (BEAM_R1 - 0.3)]
 	var hub_x := PED.x - WINCH_HUB.x * WINCH_K
 	return [Vector3(CROSS_X, 0, QZ1 - 0.3), Vector3(CROSS_X, 0, PED.z), Vector3(hub_x - 0.56, 0, PED.z)]
 
 ## how far along the crossing the point of it nearest to p lies (0 at its head), and that point
-func _cross_near(p: Vector3) -> Array:
-	var ln := _cross_line(); var best := [0.0, ln[0]]; var bd := 1e9; var run := 0.0
+func _cross_near(p: Vector3, pi := 0) -> Array:
+	var ln := _cross_line(pi); var best := [0.0, ln[0]]; var bd := 1e9; var run := 0.0
 	for k in ln.size() - 1:
 		var a: Vector3 = ln[k]; var b: Vector3 = ln[k + 1]; var ab := b - a
 		var u := clampf(Vector3(p.x - a.x, 0, p.z - a.z).dot(ab) / maxf(ab.length_squared(), 0.001), 0.0, 1.0)
@@ -4172,12 +4514,11 @@ func _cross_near(p: Vector3) -> Array:
 ## the way of the reflection over a pool from one place to another. On the second court's pool it keeps to the lost
 ## crossing (the water remembers it, and only there can it walk): along it, round its turn. On open water, straight
 func _refl_way(pi: int, from: Vector3, to: Vector3) -> Array:
-	if pi != 0: return [to]
-	var ln := _cross_line(); var a := _cross_near(from); var b := _cross_near(to)
+	var ln := _cross_line(pi); var a := _cross_near(from, pi); var b := _cross_near(to, pi)
 	var turn_at: float = (ln[1] - ln[0]).length()
 	var way := []
 	if Vector2(from.x - (a[1] as Vector3).x, from.z - (a[1] as Vector3).z).length() > 0.05: way.append(a[1])      # first onto the crossing, if it is off it (she stands at its head, on the floor)
-	if (a[0] < turn_at - 0.02 and b[0] > turn_at + 0.02) or (a[0] > turn_at + 0.02 and b[0] < turn_at - 0.02): way.append(ln[1])
+	if ln.size() > 2 and ((a[0] < turn_at - 0.02 and b[0] > turn_at + 0.02) or (a[0] > turn_at + 0.02 and b[0] < turn_at - 0.02)): way.append(ln[1])
 	way.append(b[1])
 	return way
 
@@ -4188,24 +4529,24 @@ func _send_reflection(pi: int, to: Vector3, sp: Vector2) -> void:
 	if busy: return
 	if not refl_out.is_empty() and _rect_dist(pos, r) > 1.2: return      # it is on its way back to her, and she has left the water
 	refl_token += 1; var my := refl_token
-	var head := Vector3(CROSS_X, 0, QZ1 + 0.39)      # (second court) where she stands for it: the head of the lost crossing
-	if pi == 0: to = _cross_near(to)[1]
+	var head := _refl_head(pi)      # where she stands for it: the head of the lost crossing, or under the crane's arm
+	to = _cross_near(to, pi)[1]
 	refl_ring.position = Vector3(to.x, 0.03, to.z); refl_p = 0.0
 	if refl_out.is_empty():
 		if not H.has("mir"): return
-		if (pi == 0 and Vector2(pos.x - head.x, pos.z - head.z).length() > 0.4) or (pi != 0 and _rect_dist(pos, r) > 0.85):
-			var rp = head if pi == 0 else _ground_under(sp)
+		if Vector2(pos.x - head.x, pos.z - head.z).length() > 0.4:
+			var rp = head
 			refl_stay = true
 			var ok: bool = rp != null and walk_to(rp, PLAY_WALK)
 			refl_stay = false
 			if not ok: return
 			pending = ""
 			while not route.is_empty() and refl_token == my: await get_tree().process_frame
-			if refl_token != my or _rect_dist(pos, r) > 1.15 or (pi == 0 and Vector2(pos.x - head.x, pos.z - head.z).length() > 0.5): return
+			if refl_token != my or _rect_dist(pos, r) > 1.15 or Vector2(pos.x - head.x, pos.z - head.z).length() > 0.5: return
 		face_to = Vector3(to.x, 0, to.z)
 		var e0: Dictionary = H["mir"]; H.erase("mir"); refl_out = e0
 	var e: Dictionary = refl_out; var hd: Node3D = e.holder
-	if pi == 0: hd.position.y = CROSS_H      # on the stones of the crossing, not on the water
+	hd.position.y = _refl_h(pi)      # on the stones of the crossing (or on the timber), not on the water
 	(e.ap as AnimationPlayer).play("walk", 0.25); (e.ap as AnimationPlayer).speed_scale = 1.15
 	for wp in _refl_way(pi, hd.position, to):
 		var d: Vector3 = wp - hd.position; d.y = 0.0
@@ -4221,9 +4562,11 @@ func _refl_return() -> void:
 	refl_token += 1; var my := refl_token
 	var e: Dictionary = refl_out; var hd: Node3D = e.holder
 	(e.ap as AnimationPlayer).play("walk", 0.2); (e.ap as AnimationPlayer).speed_scale = 1.9
+	var pi := 0
 	var r0: Array = _pools()[0]
-	if hd.position.x > r0[0] and hd.position.x < r0[2] and hd.position.z > r0[1] and hd.position.z < r0[3]:      # on the second court's pool: back along the crossing to its head, and only then over the floor to her
-		for wp in _refl_way(0, hd.position, _cross_line()[0]):
+	if _rect_dist(hd.position, _pools()[1]) < 0.01: pi = 1; r0 = _pools()[1]
+	if hd.position.x > r0[0] and hd.position.x < r0[2] and hd.position.z > r0[1] and hd.position.z < r0[3]:      # on a pool: back along its crossing to the head of it, and only then over the floor to her
+		for wp in _refl_way(pi, hd.position, _cross_line(pi)[0]):
 			var d0: Vector3 = wp - hd.position; d0.y = 0.0
 			if d0.length() > 0.02: hd.rotation.y = atan2(d0.x, d0.z)
 			while refl_token == my and Vector2(hd.position.x - wp.x, hd.position.z - wp.z).length() > 0.04:
@@ -4240,6 +4583,54 @@ func _refl_return() -> void:
 	(e.ap as AnimationPlayer).play("walk" if walk_on else "idle", 0.3)
 	hd.position.y = 0.0
 	H["mir"] = e; refl_out = {}
+
+func _look_hits(k: String, sp: Vector2, px: float) -> bool:
+	var a := cam.unproject_position(looks[k].foot + Vector3(0, 0.15, 0)); var b := cam.unproject_position(looks[k].top)
+	var ab := b - a
+	var u := clampf((sp - a).dot(ab) / maxf(ab.length_squared(), 0.001), 0.0, 1.0)
+	return sp.distance_to(a + ab * u) < 40.0 * px
+
+## the floor nearest to a thing, a step back from it: where she stands to look at it. Null if no floor is near
+func _floor_by(p: Vector3):
+	var bd := 1e9; var bp := Vector3.ZERO; var br := {}
+	for n in rects:
+		var r: Dictionary = rects[n]
+		if not r.on: continue
+		var c := Vector3(clampf(p.x, r.x0, r.x1), 0, clampf(p.z, r.z0, r.z1))
+		var d := Vector2(c.x - p.x, c.z - p.z).length()
+		if d < bd: bd = d; bp = c; br = r
+	if bd > 1.7: return null
+	if bd < 0.7:      # the nearest floor is at its very foot: a step away from it, toward the middle of that floor
+		var mid := Vector3((br.x0 + br.x1) * 0.5, 0, (br.z0 + br.z1) * 0.5)
+		var dir := Vector3(mid.x - p.x, 0, mid.z - p.z)
+		for dd in [dir.normalized(), Vector3(1, 0, 0), Vector3(0, 0, 1), Vector3(-1, 0, 0), Vector3(0, 0, -1)]:
+			var c2: Vector3 = Vector3(p.x, 0, p.z) + dd * 0.78
+			if in_rect(br, c2) and _walkable(c2): return c2
+	return bp if _walkable(bp) else null
+
+func _look(k: String) -> void:
+	var L: Dictionary = looks[k]
+	tapring.position = Vector3(L.foot.x, maxf(L.foot.y, 0.0) + 0.02, L.foot.z); tap_p = 0.0
+	var c = _floor_by(L.foot)
+	if c != null and Vector2(pos.x - c.x, pos.z - c.z).length() > 0.45 and walk_to(c):
+		pending = "look:" + k; return
+	route.clear(); pending = ""; busy = true
+	await _look_now(k)
+	busy = false; settled.emit()
+
+func _look_now(k: String) -> void:
+	var L: Dictionary = looks[k]
+	await face(Vector3(L.foot.x, 0, L.foot.z))
+	var line: String = L.lines[L.i]; L.i = (L.i + 1) % L.lines.size()
+	if L.big:
+		create_tween().tween_property(self, "a_headp", 0.12, 0.5)
+		quote("look", line, 4.2, true)
+		await wait(1.6)
+		create_tween().tween_property(self, "a_headp", 0.0, 0.6)
+	else:
+		say(line)
+		var h := create_tween().set_trans(Tween.TRANS_SINE); h.tween_property(self, "a_headp", -0.12 if L.top.y > 1.5 else 0.14, 0.4); h.tween_interval(0.7); h.tween_property(self, "a_headp", 0.0, 0.5)
+		await wait(0.9)
 
 ## does a tap at sp fall on the thing k: anywhere along it, from its foot (or the points it names in "hits") up to
 ## its floating mark. A statue is hit on its gear and drum as well as on its body
@@ -4292,6 +4683,19 @@ func use(k: String) -> void:
 		route.clear(); pending = ""; busy = true
 		await _do_winch()
 		busy = false; settled.emit(); return
+	if k == "wkey" or k == "wdoor":      # a thing in the water of the crane's court: she stands under the crane's arm, wherever that points now
+		var hd := KPIV + _crane_dir() * KSTAND
+		objs[k].stand = hd
+		if Vector2(pos.x - hd.x, pos.z - hd.z).length() < 0.45:      # she is there already (her reflection may be out on the timber): no step is needed
+			route.clear(); pending = ""; busy = true
+			await call("_do_" + k)
+			busy = false; settled.emit(); return
+		refl_stay = true
+		var okw := walk_to(hd)
+		refl_stay = false
+		if not okw: say("there is no way there yet")
+		else: pending = k
+		return
 	if not walk_to(objs[k].stand):
 		say("there is no way there yet"); return
 	pending = k
@@ -4302,7 +4706,8 @@ func _arrive() -> void:
 	if pending != "":
 		var k := pending; pending = ""
 		busy = true
-		await call("_do_" + k)
+		if k.begins_with("look:"): await _look_now(k.substr(5))
+		else: await call("_do_" + k)
 		busy = false
 	settled.emit()
 
@@ -4554,7 +4959,7 @@ func _process(dt: float) -> void:
 	lights[1] = Vector4(DX, 0.8, -26.5, door_energy)
 	var cc := cam_t if shot == null else (shot.c as Vector3)
 	for m in pmats.values():
-		for i in 6: m.set_shader_parameter("l%d" % i, lights[i])
+		for i in 7: m.set_shader_parameter("l%d" % i, lights[i])
 		m.set_shader_parameter("centre", cc); m.set_shader_parameter("mist_r", maxf(cam.size * 0.64, 6.5))
 	for fm in fogs:
 		fm.set_shader_parameter("hero", cc); fm.set_shader_parameter("far_a", maxf(cam.size * 0.3, 3.5)); fm.set_shader_parameter("far_b", maxf(cam.size * 0.95, 10.0))
@@ -4573,18 +4978,22 @@ func _process(dt: float) -> void:
 	for k in markers:
 		var n: Node3D = markers[k]
 		n.visible = started and not done.has(k) and shot == null
-		if k == "plinth" or k == "winch":      # seen only from near (a few steps): it grows out of nothing as she comes, and goes as she leaves
+		if k in NOMARK: n.visible = false; continue
+		if k in QUIET:      # seen only from near (a few steps): it grows out of nothing as she comes, and goes as she leaves
 			var nearby := Vector2(pos.x - objs[k].stand.x, pos.z - objs[k].stand.z).length() < NEAR_MARK and not busy
 			n.scale = Vector3.ONE * move_toward(n.scale.x, 1.0 if nearby else 0.001, dt * 2.5)
 			if n.scale.x < 0.01: n.visible = false
 		n.position.y = objs[k].at.y + (0.55 if k != "mirror" else 1.35) + 0.05 * sin(t * 2.4)
 		n.rotation.y = t * 1.2
+	if not carry.is_empty():      # a thing in a hand goes where the hand goes
+		var csk: Skeleton3D = carry.sk
+		(carry.node as Node3D).global_position = csk.global_transform * csk.get_bone_global_pose(carry.bone).origin + Vector3(0, 0.07 if carry.flip else -0.07, 0)
 	if cam_focus_on: cam_t = cam_t.lerp(cam_focus, 1.0 - exp(-1.8 * dt))
 	elif rig_file != "": cam_t = cam_t.lerp(pos + vel * 0.25, 1.0 - exp(-4.0 * dt))
 	else: cam_t = cam_t.lerp(pos + vel * 0.55, 1.0 - exp(-2.4 * dt))
 	cam.position = cam_t + cam.basis.y * (1.9 if cam.size > 5.0 else 0.85) + cam.basis.z * 34.0
 	if shot != null: cam.position = (shot.c as Vector3) + cam.basis.z * maxf(34.0, cam.size * 1.33)   # a very wide still (the map) from further back, or the sea at its foot falls behind the eye and is cut off
-	if started and not ended and pos.z < -27.2: _end()
+	if started and not ended and pos.z < KZ0 - 0.25: _end()
 
 # ---------------------------------------------------------------- what she can do
 func wait(s: float) -> void:
@@ -4734,6 +5143,325 @@ func _end() -> void:
 	ended = true
 	end_box.visible = true
 	create_tween().tween_property(end_box, "modulate:a", 1.0, 1.6)
+
+# ---------------------------------------------------------------- the court of the crane
+func _pocket_add(k: String) -> void:
+	if pocket.size() >= 3: return
+	pocket.append(k); (pocket_ui as Pocket).items = pocket.duplicate(); (pocket_ui as Pocket).pop = 1.0; pocket_ui.queue_redraw()
+func _pocket_take(k: String) -> void:
+	pocket.erase(k); (pocket_ui as Pocket).items = pocket.duplicate(); pocket_ui.queue_redraw()
+
+func _hold(node: Node3D, who: String) -> void:      # a thing goes into her right hand ("main") or her reflection's (an entry of H, or the body that is out)
+	var e: Dictionary = refl_out if who == "out" else H[who]
+	var sk: Skeleton3D = e.sk
+	carry = {"node": node, "sk": sk, "bone": _bone(sk, "RightHand"), "flip": who != "main"}
+	node.visible = true; node.rotation = Vector3(PI if who != "main" else 0.0, 0, 0)
+
+func _hermod(e: Dictionary) -> HerMod:
+	for c in (e.sk as Skeleton3D).get_children():
+		if c is HerMod: return c
+	return null
+
+## her reflection as a body to direct: taken from under her, or from where it already stands on the water
+func _refl_take() -> Dictionary:
+	var e: Dictionary
+	if refl_out.is_empty(): e = H["mir"]; H.erase("mir")
+	else: refl_token += 1; e = refl_out; refl_out = {}
+	if not carry.is_empty() and carry.flip: carry.sk = e.sk
+	return e
+
+func _refl_walk(e: Dictionary, pi: int, to: Vector3, speed := 0.85) -> void:
+	for wp in _refl_way(pi, (e.holder as Node3D).position, to): await _eid_go(e, Vector3(wp.x, _refl_h(pi), wp.z), speed)
+
+## it walks back along its way to the head of it, then under her feet, turns to stand as she stands, and is hers again
+func _refl_back(e: Dictionary, pi: int) -> void:
+	await _refl_walk(e, pi, _cross_line(pi)[0])
+	await _eid_go(e, Vector3(pos.x, 0, pos.z), 0.8)
+	var hd: Node3D = e.holder
+	var rt := create_tween(); rt.tween_property(hd, "rotation:y", hd.rotation.y + angle_difference(hd.rotation.y, yaw), 0.4).set_trans(Tween.TRANS_SINE)
+	await rt.finished
+	H["mir"] = e
+
+## she takes the crank from the workbench
+func _do_bench() -> void:
+	await face(KBENCH)
+	tgtR = kcrank_bench.global_position + Vector3(0, 0.03, 0)
+	var a := tw(); a.tween_property(self, "a_wR", 1.0, 0.5); a.tween_property(self, "a_lean", 0.3, 0.5); a.tween_property(self, "a_headp", 0.25, 0.5)
+	await a.finished
+	await wait(0.25)
+	kcrank_bench.visible = false
+	var b := tw(); b.tween_property(self, "a_wR", 0.0, 0.5); b.tween_property(self, "a_lean", 0.0, 0.5); b.tween_property(self, "a_headp", 0.0, 0.5)
+	await b.finished
+	_pocket_add("crank"); done["bench"] = true
+
+## the crank post: without the crank there is nothing to turn it by. With it: the first time she fits it; after that
+## each use turns the crane to its next place (the islet, the door, the islet...)
+func _do_crane() -> void:
+	while not refl_out.is_empty(): await get_tree().process_frame
+	await face(KPOST)
+	var head := KPOST + Vector3(0, 1.0, 0)
+	if not crank_on:
+		tgtR = head
+		var a := tw(); a.tween_property(self, "a_wR", 1.0, 0.5); a.tween_property(self, "a_lean", 0.14, 0.5)
+		await a.finished
+		if pocket.has("crank"):
+			_pocket_take("crank"); kcrank.visible = true; crank_on = true
+			kcrank.scale = Vector3.ONE * 1.25; create_tween().tween_property(kcrank, "scale", Vector3.ONE, 0.3)
+		else: say("a square head, and nothing to turn it by")
+		await wait(0.35)
+		var b := tw(); b.tween_property(self, "a_wR", 0.0, 0.5); b.tween_property(self, "a_lean", 0.0, 0.5)
+		await b.finished
+		return
+	await _crane_turn(2 if crane_i == 1 else 1)
+
+## she pushes the crank round; the small wheel on its post drives the turntable, and the crane swings to its i-th place
+func _crane_turn(i: int) -> void:
+	var a0: float = KANG[crane_i]; var a1: float = KANG[i]
+	var grip := func() -> Vector3: return kpin.global_transform * Vector3(0.28, 1.07, 0.0)
+	tgtR = grip.call()
+	var up := tw(); up.tween_property(self, "a_wR", 1.0, 0.45); up.tween_property(self, "a_lean", 0.16, 0.45)
+	await up.finished
+	var p0 := kpin.rotation.y
+	var step := func(a: float) -> void:
+		crane_n.rotation.y = -deg_to_rad(a); crane_m.rotation.y = -deg_to_rad(a)
+		kpin.rotation.y = p0 + deg_to_rad(a - a0) * KGEAR
+		tgtR = grip.call()
+	var rt := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	rt.tween_method(step, a0, a1, 1.2 + absf(a1 - a0) / 22.0)
+	await rt.finished
+	crane_i = i
+	var dn := tw(); dn.tween_property(self, "a_wR", 0.0, 0.45); dn.tween_property(self, "a_lean", 0.0, 0.45)
+	await dn.finished
+
+## she kneels at the quay's edge and puts her right hand to the water; her reflection does the same from below, and
+## their hands meet at the surface. give: the key goes down from her hand to its hand; else it comes up
+func _through_water(give: bool) -> void:
+	var d := _crane_dir()
+	var edge := KPIV + d * (KQUAY - 0.2)
+	await go([edge])
+	await face(KPIV + d * 3.0)
+	if give: _pocket_take("key"); _hold(kkey, "main")
+	tgtR = KPIV + d * (KQUAY + 0.16) + Vector3(0, 0.02, 0)
+	var a := tw()
+	a.tween_property(self, "a_drop", 0.5, 0.8); a.tween_property(self, "a_lean", 0.5, 0.8); a.tween_property(self, "a_headp", 0.3, 0.8); a.tween_property(self, "a_wR", 1.0, 0.8)
+	await a.finished
+	refl_ring.position = Vector3(tgtR.x, 0.03, tgtR.z); refl_p = 0.0
+	await wait(0.3)
+	_hold(kkey, "mir" if give else "main")
+	await wait(0.3)
+	var b := tw()
+	b.tween_property(self, "a_drop", 0.0, 0.8); b.tween_property(self, "a_lean", 0.0, 0.8); b.tween_property(self, "a_headp", 0.0, 0.8); b.tween_property(self, "a_wR", 0.0, 0.8)
+	await b.finished
+	if not give:
+		await wait(0.2); carry = {}; kkey.visible = false; _pocket_add("key")
+	await go([KPIV + d * KSTAND])
+	await face(KPIV + d * 3.0)
+
+## the key that hangs in the water: her reflection goes out along the timber for it. It reaches it only when the
+## timber lies toward the islet; then it brings the key back, and she takes it out of the water
+func _do_wkey() -> void:
+	if not H.has("mir") and refl_out.is_empty(): return
+	var d := _crane_dir()
+	await face(KPIV + d * 3.0)
+	var e := _refl_take(); var hd: Node3D = e.holder
+	await _refl_walk(e, 1, KPIV + d * BEAM_R1)
+	if crane_i != 1:
+		await wait(0.7)
+		say("the key is out of its reach")
+		await _refl_back(e, 1); return
+	hd.rotation.y = atan2(d.x, d.z)
+	var hm := _hermod(e)
+	hm.tR = Vector3(kkey_top.x, -(kkey_top.y - 0.3), kkey_top.z); hm.own = true
+	var up := create_tween().set_parallel(); up.tween_property(hm, "wR", 1.0, 0.6); up.tween_property(hm, "bow", 0.06, 0.6)
+	await up.finished
+	await wait(0.3)
+	kribbon.visible = false
+	carry = {"node": kkey, "sk": e.sk, "bone": _bone(e.sk, "RightHand"), "flip": true}
+	var dn := create_tween().set_parallel(); dn.tween_property(hm, "wR", 0.0, 0.6); dn.tween_property(hm, "bow", 0.0, 0.6)
+	await dn.finished
+	hm.own = false
+	await _refl_back(e, 1)
+	carry.sk = H["mir"].sk
+	await _through_water(false)
+	done["wkey"] = true
+
+## the door that only the water has: her reflection goes to it along the timber when the timber lies that way. With
+## the key (she gives it down through the water first) it opens; and then the wall above opens too
+func _do_wdoor() -> void:
+	if not H.has("mir") and refl_out.is_empty(): return
+	var d := _crane_dir()
+	await face(KPIV + d * 3.0)
+	var has_key := pocket.has("key")
+	if crane_i == 2 and has_key:
+		if not refl_out.is_empty(): await _refl_back(_refl_take(), 1)
+		await _through_water(true)
+	var e := _refl_take(); var hd: Node3D = e.holder
+	if not carry.is_empty(): carry.sk = e.sk
+	await _refl_walk(e, 1, Vector3(KDOOR_X, 0, WZ0 + 0.36) if crane_i == 2 else KPIV + d * BEAM_R1)
+	if crane_i != 2:
+		await wait(0.7)
+		say("the door is out of its reach")
+		await _refl_back(e, 1); return
+	var trn := create_tween(); trn.tween_property(hd, "rotation:y", hd.rotation.y + angle_difference(hd.rotation.y, PI), 0.35)      # it turns to the door
+	await trn.finished
+	var hm := _hermod(e)
+	hm.tR = Vector3(KDOOR_X + 0.34, -1.04, WZ0 + 0.02); hm.own = true
+	var up := create_tween().set_parallel(); up.tween_property(hm, "wR", 1.0, 0.6); up.tween_property(hm, "bow", 0.06, 0.6)
+	await up.finished
+	if not has_key:
+		await wait(0.8)
+		var dn0 := create_tween().set_parallel(); dn0.tween_property(hm, "wR", 0.0, 0.5); dn0.tween_property(hm, "bow", 0.0, 0.5)
+		await dn0.finished
+		hm.own = false
+		say("locked")
+		await _refl_back(e, 1); return
+	await wait(0.4)
+	carry = {}; kkey.visible = false      # the key is in the lock
+	var s0 := cam.size
+	cam_focus = Vector3(KDOOR_X + 0.6, 0.4, WZ0 + 1.6); cam_focus_on = true
+	create_tween().tween_property(cam, "size", minf(s0, 7.6), 1.6).set_trans(Tween.TRANS_SINE)
+	var op := create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	op.tween_property(kdoor_m, "rotation:y", 1.75, 1.8)
+	await wait(0.6)
+	var dn := create_tween().set_parallel(); dn.tween_property(hm, "wR", 0.0, 0.6); dn.tween_property(hm, "bow", 0.0, 0.6)
+	await op.finished
+	hm.own = false
+	await wait(0.4)
+	# above the water the wall answers: the stone that closed the doorway goes down, light comes through, and a
+	# ledge comes out of the wall's foot, stone by stone, from the court's floor to the door
+	khalo.visible = true
+	var pl := create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	pl.tween_property(kplug, "position:y", -(KDOOR_H + 0.1), 2.6); pl.tween_property(khalo, "scale", Vector3.ONE, 2.6)
+	await wait(1.6)
+	for i in kledge.size():
+		create_tween().tween_property(kledge[i], "position:z", 0.0, 0.7).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		await wait(0.28)
+	if pl.is_running(): await pl.finished
+	await wait(0.5)
+	rects["Kl"].on = true; rects["Kd"].on = true
+	done["wdoor"] = true; done["crane"] = true; done["wkey"] = true
+	looks.erase("kwall")
+	await _refl_back(e, 1)
+	cam_focus_on = false
+	create_tween().tween_property(cam, "size", s0, 1.4)
+	say("the wall has opened")
+
+## (test) the fourth court played by taps alone, from the bridge to the end of the demo. Prints what each tap led to
+func _hand_test4() -> void:
+	started = true; title_box.hide(); hint.hide(); cam.size = PLAY_SIZE
+	var settle := func(secs: float) -> void:
+		for i in int(secs * 30.0): await get_tree().process_frame
+		var n := 0
+		while (busy or not route.is_empty() or pending != "") and n < 3000: n += 1; await get_tree().process_frame
+		for i in 10: await get_tree().process_frame
+	var tap_at := func(p: Vector3) -> void:
+		cam_t = pos
+		for i in 40: await get_tree().process_frame
+		tap(cam.unproject_position(p))
+	await wait(0.5)
+	print("HAND4 start at ", pos.snapped(Vector3.ONE * 0.01), " pocket ", pocket)
+	await tap_at.call(looks["stele_k"].foot + Vector3(0, 0.7, 0)); await settle.call(2.0)
+	print("HAND4 a tap on the stele: she stands at ", pos.snapped(Vector3.ONE * 0.01), " (", snappedf(Vector2(pos.x - looks["stele_k"].foot.x, pos.z - looks["stele_k"].foot.z).length(), 0.01), " m from it), its next line is no. ", looks["stele_k"].i)
+	await tap_at.call(objs["crane"].at); await settle.call(1.0)
+	print("HAND4 a tap on the crank post without the crank: crank on ", crank_on, " crane at place ", crane_i)
+	await tap_at.call(Vector3(-17.4, 0.012, -36.0)); await settle.call(6.0)
+	print("HAND4 a tap on the water: she is at ", pos.snapped(Vector3.ONE * 0.01), " her reflection is ", "out, at " + str((refl_out.holder as Node3D).position.snapped(Vector3.ONE * 0.01)) if not refl_out.is_empty() else "not out")
+	await tap_at.call(objs["wkey"].at); await settle.call(2.0)
+	print("HAND4 a tap on the key while the timber points away: pocket ", pocket, " key taken ", done.has("wkey"))
+	await tap_at.call(objs["bench"].at); await settle.call(1.0)
+	print("HAND4 a tap on the workbench: pocket ", pocket)
+	await tap_at.call(objs["crane"].at); await settle.call(1.0)
+	print("HAND4 a tap on the crank post: crank on ", crank_on, " pocket ", pocket, " crane at place ", crane_i)
+	await tap_at.call(objs["crane"].at); await settle.call(1.0)
+	print("HAND4 a second tap on it: crane at place ", crane_i, " (its arm at ", snappedf(rad_to_deg(-crane_n.rotation.y), 0.1), " degrees)")
+	await tap_at.call(objs["wdoor"].at); await settle.call(2.0)
+	print("HAND4 a tap on the door while the timber points at the islet: open ", done.has("wdoor"))
+	await tap_at.call(objs["wkey"].at); await settle.call(2.0)
+	print("HAND4 a tap on the key: pocket ", pocket, " key taken ", done.has("wkey"), " she is at ", pos.snapped(Vector3.ONE * 0.01))
+	await tap_at.call(objs["crane"].at); await settle.call(1.0)
+	print("HAND4 a third tap on the crank post: crane at place ", crane_i)
+	await tap_at.call(objs["wdoor"].at); await settle.call(2.0)
+	print("HAND4 a tap on the door in the water: open ", done.has("wdoor"), " pocket ", pocket, " ledge ", rects["Kl"].on, " plug at ", snappedf(kplug.position.y, 0.01))
+	await tap_at.call(Vector3(KDOOR_X, 0, WZ0 + 0.3)); await settle.call(1.0)
+	print("HAND4 a tap on the ledge before the door: she is at ", pos.snapped(Vector3.ONE * 0.01))
+	await tap_at.call(Vector3(KDOOR_X, 0, KZ0 - 0.6)); await settle.call(2.0)
+	print("HAND4 a tap through the doorway: she is at ", pos.snapped(Vector3.ONE * 0.01), " ended ", ended)
+	get_tree().quit()
+
+## the fourth puzzle, "the crane", solved from the way in to the open wall (for recordings)
+func _solve4() -> void:
+	started = true; title_box.hide(); hint.hide()
+	rects["G"].on = true; door.position.y -= 2.15
+	pos = Vector3(DX, 0, -30.4); yaw = PI; cam_t = pos + Vector3(-0.6, 0, -3.4); cam.size = 10.2
+	cam_focus = Vector3(-17.3, 0.2, -36.6); cam_focus_on = true
+	var from := OS.get_environment("K4_FROM")      # (to look closely) "key": from her place under the arm, the timber at the islet; "door": the same at the door, the key in her pocket
+	if from != "":
+		crank_on = true; kcrank.visible = true; kcrank_bench.visible = false; done["bench"] = true
+		crane_i = 1 if from == "key" else 2
+		crane_n.rotation.y = -deg_to_rad(KANG[crane_i]); crane_m.rotation.y = crane_n.rotation.y
+		pos = KPIV + _crane_dir() * KSTAND; yaw = atan2(_crane_dir().x, _crane_dir().z); cam.size = float(OS.get_environment("K4_SIZE")) if OS.get_environment("K4_SIZE") != "" else 6.0
+		cam_focus = Vector3(-18.0, 0.2, -37.6) if from == "key" else Vector3(-17.9, 0.2, -38.3); cam_t = cam_focus
+		await wait(0.6)
+		if from == "key": await _do_wkey()
+		else:
+			kribbon.visible = false; kkey.visible = false; done["wkey"] = true; _pocket_add("key")
+			await _do_wdoor()
+			await wait(0.6)
+			await go([Vector3(KPIV.x + 0.4, 0, KPIV.z - 0.6), Vector3(KPIV.x - 0.9, 0, KPIV.z - 0.6), Vector3(KPIV.x - 0.9, 0, WZ0 + 0.3), Vector3(KDOOR_X, 0, WZ0 + 0.3), Vector3(KDOOR_X, 0, KZ0 - 0.6)])
+		await wait(1.5)
+		get_tree().quit(); return
+	await wait(0.8)
+	if OS.get_environment("K4LOG") == "1": print("K4 step 1 at ", pos, " frame ", Engine.get_frames_drawn())
+	await go([Vector3(DX, 0, KZ1 - 0.9), Vector3(DX - 0.2, 0, WZ1 + 0.7)])
+	if OS.get_environment("K4LOG") == "1": print("K4 step 2 at ", pos, " frame ", Engine.get_frames_drawn())
+	await face(Vector3(-17.2, 0, -38.0))
+	if OS.get_environment("K4LOG") == "1": print("K4 step 3 at ", pos, " frame ", Engine.get_frames_drawn())
+	await wait(2.2)
+	if OS.get_environment("K4LOG") == "1": print("K4 step 4 at ", pos, " frame ", Engine.get_frames_drawn())
+	await go([Vector3((objs["bench"].stand as Vector3).x, 0, WZ1 + 0.9), objs["bench"].stand])
+	if OS.get_environment("K4LOG") == "1": print("K4 step 5 at ", pos, " frame ", Engine.get_frames_drawn())
+	await _do_bench()
+	if OS.get_environment("K4LOG") == "1": print("K4 step 6 at ", pos, " frame ", Engine.get_frames_drawn())
+	await wait(0.4)
+	if OS.get_environment("K4LOG") == "1": print("K4 step 7 at ", pos, " frame ", Engine.get_frames_drawn())
+	await go([Vector3(-18.0, 0, WZ1 + 0.9), Vector3(KPIV.x - 1.2, 0, WZ1 + 0.9), Vector3(KPIV.x - 1.2, 0, KPIV.z + 0.3), objs["crane"].stand])
+	if OS.get_environment("K4LOG") == "1": print("K4 step 8 at ", pos, " frame ", Engine.get_frames_drawn())
+	await _do_crane()
+	if OS.get_environment("K4LOG") == "1": print("K4 step 9 at ", pos, " frame ", Engine.get_frames_drawn())
+	await wait(0.3)
+	if OS.get_environment("K4LOG") == "1": print("K4 step 10 at ", pos, " frame ", Engine.get_frames_drawn())
+	await _do_crane()
+	if OS.get_environment("K4LOG") == "1": print("K4 step 11 at ", pos, " frame ", Engine.get_frames_drawn())
+	await wait(0.4)
+	if OS.get_environment("K4LOG") == "1": print("K4 step 12 at ", pos, " frame ", Engine.get_frames_drawn())
+	var way := func(i: int) -> Array:      # from the crank post round the mast to her place under the arm
+		var h := KPIV + _crane_dir(i) * KSTAND
+		var side := -0.6 if h.z < KPIV.z else 0.6
+		return [Vector3(KPIV.x - 0.6, 0, KPIV.z + side), Vector3(h.x, 0, KPIV.z + side) if absf(h.z - KPIV.z) < 0.45 else h, h]
+	await go(way.call(1))
+	if OS.get_environment("K4LOG") == "1": print("K4 step 13 at ", pos, " frame ", Engine.get_frames_drawn())
+	await _do_wkey()
+	if OS.get_environment("K4LOG") == "1": print("K4 step 14 at ", pos, " frame ", Engine.get_frames_drawn())
+	await wait(0.5)
+	if OS.get_environment("K4LOG") == "1": print("K4 step 15 at ", pos, " frame ", Engine.get_frames_drawn())
+	var back := func() -> Array:
+		var side := -0.6 if pos.z < KPIV.z else 0.6
+		return [Vector3(pos.x, 0, KPIV.z + side), Vector3(KPIV.x - 0.6, 0, KPIV.z + side), objs["crane"].stand]
+	await go(back.call())
+	if OS.get_environment("K4LOG") == "1": print("K4 step 16 at ", pos, " frame ", Engine.get_frames_drawn())
+	await _do_crane()
+	if OS.get_environment("K4LOG") == "1": print("K4 step 17 at ", pos, " frame ", Engine.get_frames_drawn())
+	await wait(0.4)
+	if OS.get_environment("K4LOG") == "1": print("K4 step 18 at ", pos, " frame ", Engine.get_frames_drawn())
+	await go(way.call(2))
+	if OS.get_environment("K4LOG") == "1": print("K4 step 19 at ", pos, " frame ", Engine.get_frames_drawn())
+	await _do_wdoor()
+	if OS.get_environment("K4LOG") == "1": print("K4 step 20 at ", pos, " frame ", Engine.get_frames_drawn())
+	await wait(0.8)
+	if OS.get_environment("K4LOG") == "1": print("K4 step 21 at ", pos, " frame ", Engine.get_frames_drawn())
+	await go([Vector3(KPIV.x - 0.1, 0, KPIV.z - 0.6), Vector3(KPIV.x - 0.9, 0, KPIV.z - 0.6), Vector3(KPIV.x - 0.9, 0, WZ0 + 0.3), Vector3(KDOOR_X, 0, WZ0 + 0.3), Vector3(KDOOR_X, 0, KZ0 - 0.6)])
+	if OS.get_environment("K4LOG") == "1": print("K4 step 22 at ", pos, " frame ", Engine.get_frames_drawn())
+	if DisplayServer.get_name() == "headless": print("SOLVE4 end at ", pos, " ended ", ended, " pocket ", pocket, " crane at ", crane_i, " done ", done.keys())
 
 # ---------------------------------------------------------------- scripted run (for recordings and tests)
 func _auto() -> void:
