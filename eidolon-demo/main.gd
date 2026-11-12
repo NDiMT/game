@@ -3302,7 +3302,7 @@ func _actors() -> void:
 		SHP["main"] = spawn_shape(self, "main"); SHP["refl"] = spawn_shape(wm, "crim"); SHP["ghost"] = spawn_shape(mir, "flat")
 		fig.visible = false; wfig.visible = false
 	# things to tap
-	objs["capstan"] = {"at": CAP + Vector3(0, 0.9, 0), "stand": CAP + Vector3(0, 0, 0.66)}
+	if SHOW_CAPSTAN: objs["capstan"] = {"at": CAP + Vector3(0, 0.9, 0), "stand": CAP + Vector3(0, 0, 0.66)}   # the old capstan is gone, and its red mark with it
 	objs["mirror"] = {"at": Vector3(MX, 1.2, MZ), "stand": Vector3(MX + 0.52, 0, MZ)}
 	for i in 3: objs["turn%d" % (i + 1)] = {"at": TURN_AT[i] + Vector3(0, 1.88, 0), "stand": TURN_AT[i] + Vector3(TURN_STAND, 0, 0)}   # (its mark floats 0.55 above "at": clear of the statue's head)
 	for k in objs:
@@ -3318,7 +3318,10 @@ func _nav() -> void:
 			["E", -21.2, -10.75, -13.33, -10.64], ["Ee", -13.65, -15.9, -13.33, -10.05], ["Es", -21.1, -15.9, -13.33, -15.08], ["Em", -16.32, -15.1, -13.5, -14.05], ["Ew", -21.5, -15.5, -21.05, -10.6],
 			["T1", -19.34, -15.1, -19.2, -14.3], ["T2", -17.84, -15.1, -17.7, -14.3], ["T3", -16.34, -15.1, -16.2, -14.3], ["G1", -16.55, -20.35, -16.05, -15.88], ["F", -18.9, -26.2, -15.0, -20.35], ["G", -16.5, -28.3, -16.1, -26.2]]:
 		rects[r[0]] = {"x0": r[1], "z0": r[2], "x1": r[3], "z1": r[4], "on": true}
-	rects["BR"].on = false; rects["G"].on = false; rects["G1"].on = false   # (G1: the way south, behind the third court's gate)
+	rects["BR"].on = false; rects["G"].on = false; rects["G1"].on = false
+	var av := OS.get_cmdline_user_args()
+	if not SHOW_CAPSTAN and bridge != null and not ("shots" in av or "solve2" in av or "tour" in av or "flow" in av):
+		bridge.rotation.y = 0.0; rects["BR"].on = true      # in free play the second court stands solved: its gate is down, and the bridge the winch turns is in line   # (G1: the way south, behind the third court's gate)
 
 func in_rect(r: Dictionary, p: Vector3, m := 0.0) -> bool:
 	return p.x >= r.x0 - m and p.x <= r.x1 + m and p.z >= r.z0 - m and p.z <= r.z1 + m
@@ -3904,7 +3907,7 @@ func _auto() -> void:
 	_self(); await settled
 	await _a_walk(Vector3(4.4, 0, 1.0))
 	await wait(0.5)
-	await _a_use("capstan")
+	if objs.has("capstan"): await _a_use("capstan")
 	await _a_walk(Vector3(-16.3, 0, -13.5), 2.7)
 	_self(); await settled
 	await _a_use("mirror")
