@@ -1480,8 +1480,12 @@ func her_statue(p: Vector3, yaw: float, pose := "calm", sc := 1.0, parent: Node 
 			_bend(sk, "Head", left, 0.3)
 		"reach":
 			_aim(sk, "RightArm", "RightForeArm", up * 0.9 + fwd * 0.45); _bend(sk, "Head", left, -0.25)
-		"point":     # one arm held straight out before her: the way she faces is plain from any side
-			_aim(sk, "RightArm", "RightForeArm", fwd * 1.0 + up * 0.08 + left * 0.05); _aim(sk, "RightForeArm", "RightHand", fwd * 1.0 + up * 0.08)
+		"point", "pointl", "point2":     # an arm held straight out before her (the right, the left, or both): the way she faces is plain from any side
+			var lift := 0.08
+			for side in (["Right"] if pose == "point" else ["Left"] if pose == "pointl" else ["Right", "Left"]):
+				var out: Vector3 = left * (0.05 if side == "Right" else -0.05)
+				_aim(sk, side + "Arm", side + "ForeArm", fwd * 1.0 + up * lift + out); _aim(sk, side + "ForeArm", side + "Hand", fwd * 1.0 + up * lift)
+				_gild_arm(holder, sk, side)
 		"mourn", "kneel":
 			_bend(sk, "Spine", left, 0.3 if pose == "mourn" else 0.45)
 			_aim(sk, "LeftArm", "LeftForeArm", fwd * 0.7 + up * 0.25 - left * 0.3); _aim(sk, "RightArm", "RightForeArm", fwd * 0.7 + up * 0.25 + left * 0.3)
@@ -2229,6 +2233,71 @@ func _aim(sk: Skeleton3D, bone: String, child: String, want: Vector3) -> void:
 	if bi < 0 or ci < 0: return
 	var g := sk.get_bone_global_pose(bi); var c := sk.get_bone_global_pose(ci).origin
 	sk.set_bone_global_pose(bi, Transform3D(Basis(Quaternion((c - g.origin).normalized(), want.normalized())) * g.basis, g.origin))
+
+## The arm a statue points with is gilded from above the elbow to the fingertips, so that the way it points is plain
+## at any size, and in the water too. The gilding is the arm's own faces (those that follow its bones), set where the
+## pose has put them and stood a little off the marble
+func _gild_arm(holder: Node3D, sk: Skeleton3D, side: String) -> void:
+	var ai := _bone(sk, side + "Arm"); var ei := _bone(sk, side + "ForeArm"); var hi := _bone(sk, side + "Hand")
+	if ai < 0 or ei < 0 or hi < 0: return
+	var from_k := 0.45      # of the way from shoulder to elbow
+	var fat := 0.16      # how far off the marble it stands, in forearms
+	var sh := sk.get_bone_global_pose(ai).origin; var el := sk.get_bone_global_pose(ei).origin; var wr := sk.get_bone_global_pose(hi).origin
+	var fl := (wr - el).length()
+	var a := sh.lerp(el, from_k); var b := wr + (wr - el).normalized() * fl * 1.5
+	for m in holder.find_children("*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		if mi.skin == null or mi.mesh == null: continue
+		var skin := mi.skin
+		var xf: Array = []; var arm: Array = []      # for each bind of the skin: where its bone has taken it, and whether it is of this arm
+		for bi in skin.get_bind_count():
+			var bone := skin.get_bind_bone(bi)
+			if bone < 0: bone = sk.find_bone(skin.get_bind_name(bi))
+			if bone < 0: xf.append(Transform3D.IDENTITY); arm.append(false); continue
+			xf.append(sk.get_bone_global_pose(bone) * skin.get_bind_pose(bi))
+			var bn := sk.get_bone_name(bone)
+			var cut := bn.find(side)
+			var tail := bn.substr(cut + side.length()) if cut >= 0 else ""
+			arm.append(cut >= 0 and (tail.begins_with("Arm") or tail.begins_with("ForeArm") or tail.begins_with("Hand")))
+		var st := SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var got := 0
+		for si in mi.mesh.get_surface_count():
+			var arr := mi.mesh.surface_get_arrays(si)
+			var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+			if arr[Mesh.ARRAY_BONES] == null or arr[Mesh.ARRAY_WEIGHTS] == null: continue
+			var bs: PackedInt32Array = arr[Mesh.ARRAY_BONES]; var ws: PackedFloat32Array = arr[Mesh.ARRAY_WEIGHTS]
+			var per := bs.size() / v.size()
+			var ix: PackedInt32Array = arr[Mesh.ARRAY_INDEX] if arr[Mesh.ARRAY_INDEX] != null else PackedInt32Array(range(v.size()))
+			var at := PackedVector3Array(); at.resize(v.size()); var of_arm := PackedFloat32Array(); of_arm.resize(v.size())
+			for j in v.size():
+				var p := Vector3.ZERO; var wsum := 0.0; var wa := 0.0
+				for k in per:
+					var w := ws[j * per + k]
+					if w <= 0.0: continue
+					var bi2 := bs[j * per + k]
+					if bi2 >= xf.size(): continue
+					p += ((xf[bi2] as Transform3D) * v[j]) * w; wsum += w
+					if arm[bi2]: wa += w
+				at[j] = p / wsum if wsum > 0.0 else v[j]; of_arm[j] = wa / wsum if wsum > 0.0 else 0.0
+			for t in range(0, ix.size() - 2, 3):
+				var ok := true
+				var outp := []
+				for q in 3:
+					var j2 := ix[t + q]; var p2 := at[j2]
+					if of_arm[j2] < 0.5 or (p2 - a).dot(b - a) < 0.0: ok = false; break
+					var c := Geometry3D.get_closest_point_to_segment(p2, a, b)
+					outp.append(p2 + (p2 - c).normalized() * fl * fat)
+				if not ok: continue
+				for p3 in outp: st.add_vertex(p3)
+				got += 1
+		if got == 0: continue
+		st.generate_normals()
+		var gm := MeshInstance3D.new(); gm.mesh = st.commit(); gm.material_override = pal("gold", "flat")
+		if mroot != null and mroot.is_ancestor_of(holder):      # in the water the haze of the world below would take its colour: there it keeps a plain gold
+			var um := StandardMaterial3D.new(); um.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; um.cull_mode = BaseMaterial3D.CULL_DISABLED
+			um.albedo_color = Color("d79a2f")
+			gm.material_override = um; gm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		gm.transform = mi.transform; mi.get_parent().add_child(gm)
 
 func _bend(sk: Skeleton3D, bone: String, axis: Vector3, ang: float) -> void:
 	var bi := _bone(sk, bone)
@@ -3354,7 +3423,7 @@ func _girth_at(i: int, wy: float) -> Vector3:
 func _turned_ones() -> void:
 	var m0 := mroot.get_child_count()
 	for i in 3:
-		var pose: String = ["point", "mourn", "offer"][i]
+		var pose: String = ["point", "pointl", "point2"][i]
 		var made := _turn_plinth(self, TURN_AT[i], 0, pose)
 		turn_n.append(made[0]); turn_pin.append(made[1]); turn_girth.append(_statue_girth(made[0]))
 		var gem := ball(TURN_AT[i] + Vector3(0.341 * PLINTH_K, 0.048 * PLINTH_K + 0.03, 0.341 * PLINTH_K), 0.036, mat(Color("ff5a62"))); turn_gem.append(gem)
@@ -3363,7 +3432,7 @@ func _turned_ones() -> void:
 	_strip_refl(mroot, m0, "mir", 0.3)
 	var wq := QuadMesh.new(); wq.size = Vector2(RX1 - RX0, RZ1 - RZ0); wq.orientation = PlaneMesh.FACE_Y
 	var g3 := ShaderMaterial.new(); g3.shader = shaders["glass"]; timed.append(g3)
-	g3.set_shader_parameter("lost_a", 0.0); g3.set_shader_parameter("blur_px", 1.2); g3.set_shader_parameter("lod", 0.4)   # this water shows them clearly
+	g3.set_shader_parameter("lost_a", 0.0); g3.set_shader_parameter("blur_px", 0.6); g3.set_shader_parameter("lod", 0.0)   # this water shows them clearly
 	prim(wq, Vector3((RX0 + RX1) * 0.5, 0.012, (RZ0 + RZ1) * 0.5), g3).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# the south gate: two piers, a lintel, and a bronze grille that sinks into its slot when the three stand right
 	for gx in [-17.02, -15.58]:
