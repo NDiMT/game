@@ -52,16 +52,17 @@ const PX0 := -3.4
 const PX1 := 0.6
 const PZ0 := -1.0
 const PZ1 := 2.4
-const PED := Vector3(0.9, 0, -13.2)   # the winch of the second court's gate, on its pedestal in that court's pool
+const PED := Vector3(2.7, 0, -14.6)   # the winch of the second court's gate, on its pedestal in that court's pool
+const CROSS_X := -0.4                  # the lost crossing to it: from the front rim straight into the pool along this x, then a turn east along the winch's z
 const MYPL := Vector3(PX0 - 0.5, 0, -0.6)   # her own plinth: the empty one in the row at the west rim of the pool
 const CX0 := -3.4   # the second court, and its pool
-const CZ0 := -16.4
-const CX1 := 3.5
+const CZ0 := -18.6
+const CX1 := 6.0
 const CZ1 := -10.0
 const COVERED := false   # the second court built as "the mirror he covered" (kept aside for a later puzzle) instead of the crossing
 const QX0 := -2.15 if COVERED else -1.3   # the pool of the second court
-const QX1 := -0.15 if COVERED else 2.5
-const QZ0 := -15.0
+const QX1 := -0.15 if COVERED else 4.4
+const QZ0 := -17.0
 const QZ1 := -11.4 if COVERED else -11.6
 const WALLX := -2.85   # the face of the west wall
 const WALLH := 2.3
@@ -520,7 +521,7 @@ void vertex(){
 }
 void fragment(){
 	if (hh < 0.03) discard;
-	if ((q.x > -6.0 && q.x < 3.0 && q.z > -3.5 && q.z < 5.0) || (q.x > -2.9 && q.x < 3.0 && q.z > -15.9 && q.z < -10.5) || (q.x > -21.8 && q.x < -13.5 && q.z > -16.4 && q.z < -10.0)) discard;   // nothing lies on the sea inside the hollow of a court with a pool
+	if ((q.x > -6.0 && q.x < 3.0 && q.z > -3.5 && q.z < 5.0) || (q.x > -2.9 && q.x < 5.5 && q.z > -18.1 && q.z < -10.5) || (q.x > -21.8 && q.x < -13.5 && q.z > -16.4 && q.z < -10.0)) discard;   // nothing lies on the sea inside the hollow of a court with a pool
 	// the reflection thins out with height by blending into the colour of the deep water. (It used to be cut
 	// into a pattern of dots, which shimmered whenever the camera moved.)
 	float fade = mix(1.0, 0.3, smoothstep(1.6, 6.5, hh)) * strength * fade_a;
@@ -550,6 +551,7 @@ const SH_GLASS := """shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never;
 uniform float time_s = 0.0; uniform float blur_px = 3.2; uniform float wave = 1.0; uniform float lod = 1.0;
 uniform vec4 lost_rect = vec4(0.0); uniform float lost_a = 0.0; uniform float lost_x = 0.0;   // lost_x: the crossing runs along x
+uniform vec4 lost_rect2 = vec4(0.0); uniform float lost_x2 = 0.0;   // a second leg of it (none if the rectangle is empty)
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap, repeat_disable;
 varying vec3 wp;
 //GLINT
@@ -566,14 +568,20 @@ void fragment(){
 	}
 	float l = smoothstep(0.9, 1.0, sin(wp.x * 2.3 + sin(wp.z * 1.7 + time_s * 0.45) * 1.8 + time_s * 0.22) * 0.5 + 0.5);
 	float l2 = glints(wp.xz, time_s * 0.8, vec2(1.1, 0.42), 0.34);   // a few level strokes of light (they were pale ovals, like flakes of snow on the water)
-	if (lost_a > 0.0) {   // the lost crossing: no clear shape, only a soft shadow that the water still holds
-		vec2 q2 = wp.xz + vec2(sin(wp.z * 9.0 + time_s * 1.2) + 0.5 * sin(wp.z * 21.0 - time_s * 0.7), sin(wp.x * 7.0 + time_s * 0.9)) * 0.03 * wave;
-		vec4 lr = lost_rect;
-		if (lost_x > 0.5) { q2 = q2.yx; lr = lost_rect.yxwz; }
-		float sx = smoothstep(lr.x - 0.12, lr.x + 0.1, q2.x) * (1.0 - smoothstep(lr.z - 0.1, lr.z + 0.12, q2.x));
-		float sz = smoothstep(lr.y - 0.02, lr.y + 0.1, q2.y) * (1.0 - smoothstep(lr.w - 0.12, lr.w + 0.04, q2.y));
-		float seg = 0.86 + 0.14 * smoothstep(-0.3, 0.5, sin((q2.y - lr.y) * 19.6));
-		c = mix(c, vec3(0.12, 0.29, 0.39), sx * sz * seg * lost_a * 0.62);
+	if (lost_a > 0.0) {   // the lost crossing: no clear shape, only a soft shadow that the water still holds (one leg, or two that meet)
+		float ls = 0.0;
+		for (int k = 0; k < 2; k++) {
+			vec4 r0 = k == 0 ? lost_rect : lost_rect2; float ax = k == 0 ? lost_x : lost_x2;
+			if (r0.z - r0.x < 0.01) continue;
+			vec2 q2 = wp.xz + vec2(sin(wp.z * 9.0 + time_s * 1.2) + 0.5 * sin(wp.z * 21.0 - time_s * 0.7), sin(wp.x * 7.0 + time_s * 0.9)) * 0.03 * wave;
+			vec4 lr = r0;
+			if (ax > 0.5) { q2 = q2.yx; lr = r0.yxwz; }
+			float sx = smoothstep(lr.x - 0.12, lr.x + 0.1, q2.x) * (1.0 - smoothstep(lr.z - 0.1, lr.z + 0.12, q2.x));
+			float sz = smoothstep(lr.y - 0.06, lr.y + 0.08, q2.y) * (1.0 - smoothstep(lr.w - 0.08, lr.w + 0.06, q2.y));
+			float seg = 0.86 + 0.14 * smoothstep(-0.3, 0.5, sin((q2.y - lr.y) * 19.6));
+			ls = max(ls, sx * sz * seg);
+		}
+		c = mix(c, vec3(0.12, 0.29, 0.39), ls * lost_a * 0.62);
 	}
 	c = mix(c, vec3(0.6, 0.85, 0.88), 0.24);
 	c = mix(c, vec3(1.0), clamp(l * 0.3 + l2 * 0.45, 0.0, 1.0));
@@ -593,7 +601,7 @@ varying vec3 wp;
 //GLINT
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment(){
-	if (((wp.x > -6.0 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 5.0) || (wp.x > -2.9 && wp.x < 3.0 && wp.z > -15.9 && wp.z < -10.5) || (wp.x > -21.8 && wp.x < -13.5 && wp.z > -16.4 && wp.z < -10.0)) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
+	if (((wp.x > -6.0 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 5.0) || (wp.x > -2.9 && wp.x < 5.5 && wp.z > -18.1 && wp.z < -10.5) || (wp.x > -21.8 && wp.x < -13.5 && wp.z > -16.4 && wp.z < -10.0)) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
 	vec3 d3 = wp - centre; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
 	float m = smoothstep(mist_r * 0.8, mist_r * 1.75, md) * mist_k;
 	vec2 p = wp.xz * 1.1;
@@ -639,7 +647,7 @@ uniform float clear_r = 0.0; uniform vec3 col : source_color; uniform float far_
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment(){
-	if (((wp.x > -6.0 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 5.0) || (wp.x > -2.9 && wp.x < 3.0 && wp.z > -15.9 && wp.z < -10.5) || (wp.x > -21.8 && wp.x < -13.5 && wp.z > -16.4 && wp.z < -10.0)) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
+	if (((wp.x > -6.0 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 5.0) || (wp.x > -2.9 && wp.x < 5.5 && wp.z > -18.1 && wp.z < -10.5) || (wp.x > -21.8 && wp.x < -13.5 && wp.z > -16.4 && wp.z < -10.0)) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
 	vec2 uv = wp.xz * scale;
 	float n = texture(noise_tex, uv + vel * time_s).r * 0.62 + texture(noise_tex, uv * 2.3 - vel.yx * time_s * 1.7 + 0.37).r * 0.38;
 	vec3 d3 = wp - hero; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
@@ -1782,7 +1790,7 @@ func _shots() -> void:
 		{"n": "03-colossus", "p": Vector3(4.4, 0, 1.0), "y": 1.3, "c": Vector3(6.2, 0.9, 1.0), "s": 10.5},
 		{"n": "04-steps-and-boat", "p": Vector3(0.3, 0, 2.9), "y": 0.3, "c": Vector3(1.0, 0.0, 3.8), "s": 7.0},
 		{"n": "05-bridge-only-in-the-water", "p": Vector3(0.0, 0, -5.5), "y": PI, "c": Vector3(0.0, 0.0, -6.8), "s": 8.5},
-		{"n": "06-lever-court", "p": Vector3(0.4, 0, -11.1), "y": -1.2, "c": Vector3(-0.6, 0.4, -13.2), "s": 12.5},
+		{"n": "06-lever-court", "p": Vector3(0.4, 0, -10.9), "y": -1.2, "c": Vector3(0.6, 0.4, -13.8), "s": 13.5},
 		{"n": "07-turning-bridge", "p": Vector3(-2.6, 0, -13.0), "y": -1.57, "c": Vector3(-7.0, 0.2, -13.0), "s": 11.0},
 		{"n": "08-half-gate", "p": Vector3(-16.3, 0, -15.0), "y": PI, "c": Vector3(-16.3, 0.4, -16.6), "s": 12.5},
 		{"n": "09-mirror-garden", "p": Vector3(MX + 0.52, 0, MZ), "y": -PI * 0.5, "c": Vector3(-16.6, 0.8, -23.6), "s": 12.5, "touch": true},
@@ -1797,7 +1805,7 @@ func _shots() -> void:
 		{"n": "19-mirror-pool-wide", "p": Vector3(-1.4, 0, -1.14), "y": 0.0, "c": Vector3(-1.4, 0.3, 0.7), "s": 13.5},
 		{"n": "21-sea-check", "p": Vector3(-4.9, 0, 0.4), "y": PI, "c": Vector3(-4.9, 1.9, 0.4), "s": 6.2},
 		{"n": "24-statue-row", "p": Vector3(-0.5, 0, MYPL.z), "y": -PI * 0.5, "c": Vector3(-2.2, 0.3, -0.5), "s": 6.0},
-		{"n": "25-crossing-court", "p": Vector3(QX0 - 0.14, 0, PED.z), "y": PI * 0.5, "c": Vector3(0.2, 0.3, -12.8), "s": 7.5},
+		{"n": "25-crossing-court", "p": Vector3(CROSS_X, 0, QZ1 + 0.3), "y": PI, "c": Vector3(1.2, 0.3, -13.7), "s": 10.2},
 		{"n": "28-turned-ones", "p": Vector3(-16.32, 0, -14.4), "y": -PI * 0.5, "c": Vector3(-17.9, 0.2, -13.0), "s": 9.8},
 		{"n": "26-causeway-mirrors", "p": Vector3(0, 0, -7.0), "y": -PI * 0.6, "c": Vector3(-0.8, 1.75, -7.8), "s": 8.6, "quote": true},   # framed as the run frames it
 		{"n": "22-covered-pool", "p": Vector3(1.37, 0, -13.2), "y": -PI * 0.5, "c": Vector3(-1.0, 0.4, -13.0), "s": 7.5},
@@ -3185,7 +3193,7 @@ func _shrouds() -> void:
 	if not FileAccess.file_exists("res://props/mirror_tied.glb"): return
 	# x, z, turn, size, kind. Those whose sheet lies spread on the ground stand on a wider footing
 	var spots := [[-2.6, -5.9, 0.75, 1.0, "slip"], [-5.7, -5.3, 0.3, 1.04, "oval"], [-4.6, -7.7, 0.4, 1.08, "tied"], [-2.3, -8.9, 0.62, 1.0, "low"], [-7.2, -8.1, 1.15, 1.05, "round"],
-		[2.4, -6.2, 0.95, 1.0, "wide"], [3.9, -8.0, 1.3, 1.1, "tied"], [7.3, -8.3, 0.5, 1.0, "hem"], [4.3, -10.2, 1.0, 1.0, "ovalh"]]   # no two of a kind turned alike
+		[2.4, -6.2, 0.95, 1.0, "wide"], [3.9, -8.0, 1.3, 1.1, "tied"], [7.3, -8.3, 0.5, 1.0, "hem"], [6.95, -10.3, 1.0, 1.0, "ovalh"]]   # no two of a kind turned alike
 	for sp in spots:
 		var base := Vector3(sp[0], WATER + 0.22, sp[1])
 		var m := mirror_stand(base, sp[2], self, WATER, sp[4], true); m.scale = Vector3.ONE * sp[3]
@@ -3214,11 +3222,11 @@ func _pool_c() -> void:
 		prop_model("winch_wheel", wn, 0.0, 0.0, both == mroot, false, parts).scale = Vector3.ONE * WINCH_K
 		if both == self: winch_a = wn; ped_a = pg
 		else: winch_m = wn; ped_m = pg
-		blk(Vector3(QX0, 0.0, PED.z - 0.3), Vector3(QX0 + 0.2, 0.07, PED.z + 0.3), "stone", both)   # the stub of the crossing at the west rim
-		for rb3 in [[Vector3(QX0 + 0.27, 0.035, PED.z - 0.16), 0.5], [Vector3(QX0 + 0.24, 0.03, PED.z + 0.2), -0.4]]:
+		blk(Vector3(CROSS_X - 0.3, 0.0, QZ1 - 0.2), Vector3(CROSS_X + 0.3, 0.07, QZ1), "stone", both)   # the stub of the crossing at the front rim
+		for rb3 in [[Vector3(CROSS_X - 0.16, 0.035, QZ1 - 0.27), 0.5 + PI * 0.5], [Vector3(CROSS_X + 0.2, 0.03, QZ1 - 0.24), -0.4 + PI * 0.5]]:
 			var bk3 := blk(Vector3(-0.07, -0.035, -0.1), Vector3(0.07, 0.035, 0.1), "stone", both); bk3.position = rb3[0]; bk3.rotation.y = rb3[1]
-		for cz in [PED.z - 1.05, PED.z + 1.05]:   # two low posts on the west rim: the head of the old crossing
-			var cp := Vector3(QX0 - 0.22, 0, cz)
+		for cx3 in [CROSS_X - 1.05, CROSS_X + 1.05]:   # two low posts on the front rim: the head of the old crossing
+			var cp := Vector3(cx3, 0, QZ1 + 0.22)
 			# each a turned post: a square foot, a moulded base, a shaft with a necking, a cap, and a bronze ball (they were three plain drums)
 			blk(cp + Vector3(-0.18, 0, -0.18), cp + Vector3(0.18, 0.05, 0.18), "shade", both)
 			turned(cp, [[0.165, 0.05], [0.165, 0.085], [0.13, 0.11], [0.13, 0.135], [0.1, 0.16], [0.09, 0.76], [0.108, 0.775], [0.108, 0.8], [0.09, 0.815], [0.09, 0.86], [0.15, 0.9], [0.15, 0.94], [0.07, 0.975], [0.0, 0.975]], "stone", 16, both)
@@ -3227,7 +3235,8 @@ func _pool_c() -> void:
 	if OS.get_environment("NOMIR") == "1": mroot.visible = false
 	var wq := QuadMesh.new(); wq.size = Vector2(QX1 - QX0, QZ1 - QZ0); wq.orientation = PlaneMesh.FACE_Y
 	glass2 = ShaderMaterial.new(); glass2.shader = shaders["glass"]; timed.append(glass2)
-	glass2.set_shader_parameter("lost_rect", Vector4(QX0 + 0.16, PED.z - 0.3, PED.x - 0.46, PED.z + 0.3)); glass2.set_shader_parameter("lost_a", 1.0); glass2.set_shader_parameter("lost_x", 1.0)
+	glass2.set_shader_parameter("lost_rect", Vector4(CROSS_X - 0.3, PED.z - 0.3, CROSS_X + 0.3, QZ1 - 0.16)); glass2.set_shader_parameter("lost_a", 1.0); glass2.set_shader_parameter("lost_x", 0.0)      # from the front rim into the pool
+	glass2.set_shader_parameter("lost_rect2", Vector4(CROSS_X - 0.3, PED.z - 0.3, PED.x - 0.46, PED.z + 0.3)); glass2.set_shader_parameter("lost_x2", 1.0)      # and, turning, east to the winch
 	glass2.set_shader_parameter("blur_px", 4.4); glass2.set_shader_parameter("lod", 2.0)   # what this water shows is soft
 	prim(wq, Vector3((QX0 + QX1) * 0.5, 0.012, (QZ0 + QZ1) * 0.5), glass2).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# the west gate: two piers, a lintel, and a bronze grille until the winch is turned
@@ -3565,33 +3574,34 @@ func _world() -> void:
 	for e in [-1.0, 1.0]: blk(Vector3(e * 0.54 - 0.03, 0, -9.94), Vector3(e * 0.54 + 0.03, 0.06, -4.06), "shade")   # a low kerb along either edge, as on the turning bridge, and the joints of its paving
 	for jz in [-5.0, -6.0, -7.0, -8.0, -9.0]: blk(Vector3(-0.51, 0, jz - 0.008), Vector3(0.51, 0.003, jz + 0.008), "shade")
 	_shrouds()
-	# ---- C. the lever court (6.5 x 6 m)
+	# ---- C. the court of the crossing (9.4 x 8.6 m): a wide pool, the winch deep in it, room to walk all round
 	_pool_court(CX0, CZ0, CX1, CZ1, QX0, QZ0, QX1, QZ1, "sand", "PoolSky2")
-	tile_hole = Rect2(QX0 - 0.08, QZ0 - 0.08, QX1 - QX0 + 0.16, QZ1 - QZ0 + 0.16); tiles(-3.4, -16.4, 3.5, -10.0, 1.0); tile_hole = Rect2()
+	tile_hole = Rect2(QX0 - 0.08, QZ0 - 0.08, QX1 - QX0 + 0.16, QZ1 - QZ0 + 0.16); tiles(CX0, CZ0, CX1, CZ1, 1.0); tile_hole = Rect2()
 	if COVERED: rosette(Vector3(1.3, 0, -13.0), 1.2)
-	# its north wall. The four blind arches are real niches now, a hand deep, each with a sill and a moulding round it
+	# its back wall. The blind arches are real niches now, a hand deep, each with a sill and a moulding round it
 	# (they were dark shapes laid flat on the stone); a skirting runs along its foot
-	var cw := CSGBox3D.new(); cw.size = Vector3(6.9, 1.6, 0.22); cw.position = Vector3(0.05, 0.8, -16.29); cw.material = pal("stone")
-	for wx in [-2.4, -1.0, 0.4, 1.8]:
-		var nb := CSGBox3D.new(); nb.operation = CSGShape3D.OPERATION_SUBTRACTION; nb.size = Vector3(0.5, 0.8, 0.2); nb.position = Vector3(wx - 0.05, -0.15, 0.11); nb.material = pal("shade"); cw.add_child(nb)
+	var cw := CSGBox3D.new(); cw.size = Vector3(CX1 - CX0, 1.6, 0.22); cw.position = Vector3((CX0 + CX1) * 0.5, 0.8, CZ0 + 0.11); cw.material = pal("stone")
+	var wmid := (CX0 + CX1) * 0.5
+	for wx in [-2.2, -0.8, 0.6, 2.0, 3.4, 4.8]:
+		var nb := CSGBox3D.new(); nb.operation = CSGShape3D.OPERATION_SUBTRACTION; nb.size = Vector3(0.5, 0.8, 0.2); nb.position = Vector3(wx - wmid, -0.15, 0.11); nb.material = pal("shade"); cw.add_child(nb)
 		var nc := CSGCylinder3D.new(); nc.operation = CSGShape3D.OPERATION_SUBTRACTION; nc.radius = 0.25; nc.height = 0.2; nc.sides = 24
-		nc.rotation.x = PI * 0.5; nc.position = Vector3(wx - 0.05, 0.25, 0.11); nc.material = pal("shade"); cw.add_child(nc)
-		win_z(wx, 0.25, -16.28, 0.5, 1.05)
-		blk(Vector3(wx - 0.33, 0.19, -16.18), Vector3(wx + 0.33, 0.25, -16.125), "shade")
-		arch_band(Vector3(wx, 1.05, -16.18), 0.25, 0.315, 0.014)
-		bb(Vector3(wx - 0.315, 0.25, -16.18), Vector3(wx - 0.25, 1.05, -16.166)); bb(Vector3(wx + 0.25, 0.25, -16.18), Vector3(wx + 0.315, 1.05, -16.166))
+		nc.rotation.x = PI * 0.5; nc.position = Vector3(wx - wmid, 0.25, 0.11); nc.material = pal("shade"); cw.add_child(nc)
+		win_z(wx, 0.25, CZ0 + 0.12, 0.5, 1.05)
+		blk(Vector3(wx - 0.33, 0.19, CZ0 + 0.22), Vector3(wx + 0.33, 0.25, CZ0 + 0.275), "shade")
+		arch_band(Vector3(wx, 1.05, CZ0 + 0.22), 0.25, 0.315, 0.014)
+		bb(Vector3(wx - 0.315, 0.25, CZ0 + 0.22), Vector3(wx - 0.25, 1.05, CZ0 + 0.234)); bb(Vector3(wx + 0.25, 0.25, CZ0 + 0.22), Vector3(wx + 0.315, 1.05, CZ0 + 0.234))
 	bb_end("shade"); add_child(cw)
-	blk(Vector3(-3.4, 0, -16.18), Vector3(3.5, 0.09, -16.15), "shade")
-	cornice(-3.4, -16.4, 3.5, -16.18, 1.6); dentils(-3.4, -16.4, 3.5, -16.18, 1.6)
-	crenels(Vector3(-3.3, 1.66, -16.22), Vector3(3.4, 1.66, -16.22), 0.335)
-	meander(-2.72, -15.55, 2.82, -10.97)      # a Greek key round its floor, as in the other courts
-	banner(Vector3(-0.3, 1.5, -16.132), 0.34, 0.95); banner(Vector3(2.55, 1.5, -16.132), 0.34, 0.95)   # clear of the wall by more than the cloth waves: it used to dip into the stone
-	plinth_head("kit_face6", Vector3(-2.42, 0, -15.72) if COVERED else Vector3(-2.95, 0, -15.95), 0.5); plinth_head("kit_face4", Vector3(3.05, 0, -15.9), -0.4)
+	blk(Vector3(CX0, 0, CZ0 + 0.22), Vector3(CX1, 0.09, CZ0 + 0.25), "shade")
+	cornice(CX0, CZ0, CX1, CZ0 + 0.22, 1.6); dentils(CX0, CZ0, CX1, CZ0 + 0.22, 1.6)
+	crenels(Vector3(CX0 + 0.1, 1.66, CZ0 + 0.18), Vector3(CX1 - 0.1, 1.66, CZ0 + 0.18), 0.335)
+	meander(CX0 + 0.68, CZ0 + 0.85, CX1 - 0.68, CZ1 - 0.97)      # a Greek key round its floor, as in the other courts
+	banner(Vector3(-0.1, 1.5, CZ0 + 0.268), 0.34, 0.95); banner(Vector3(2.7, 1.5, CZ0 + 0.268), 0.34, 0.95)   # clear of the wall by more than the cloth waves: it used to dip into the stone
+	plinth_head("kit_face6", Vector3(-2.42, 0, -15.72) if COVERED else Vector3(-2.95, 0, CZ0 + 0.45), 0.5); plinth_head("kit_face4", Vector3(CX1 - 0.45, 0, CZ0 + 0.5), -0.4)
 	if COVERED: parapet(Vector3(-3.3, 0, -11.6), Vector3(-3.3, 0, -10.1))
-	else: parapet(Vector3(-3.3, 0, -16.0), Vector3(-3.3, 0, -13.82)); parapet(Vector3(-3.3, 0, -12.18), Vector3(-3.3, 0, -10.1))   # they end inside the gate's piers (their ends used to stick out into the gateway)
-	parapet(Vector3(3.4, 0, -16.0), Vector3(3.4, 0, -10.1))
-	parapet(Vector3(-3.3, 0, -10.1), Vector3(-0.85, 0, -10.1)); parapet(Vector3(0.85, 0, -10.1), Vector3(3.4, 0, -10.1))
-	lantern(Vector3(3.1, 0, -10.56), 3, -1.0); cypress(Vector3(-3.0, 0, -10.5), 2.1); urn(Vector3(2.2, 0, -15.9), 0.9); urn(Vector3(2.45, 0, -15.75), 0.65, "rose")   # (the lamp stands in the court's near corner, clear of both rails)
+	else: parapet(Vector3(-3.3, 0, CZ0 + 0.4), Vector3(-3.3, 0, -13.82)); parapet(Vector3(-3.3, 0, -12.18), Vector3(-3.3, 0, -10.1))   # they end inside the gate's piers (their ends used to stick out into the gateway)
+	parapet(Vector3(CX1 - 0.1, 0, CZ0 + 0.4), Vector3(CX1 - 0.1, 0, -10.1))
+	parapet(Vector3(-3.3, 0, -10.1), Vector3(-0.85, 0, -10.1)); parapet(Vector3(0.85, 0, -10.1), Vector3(CX1 - 0.1, 0, -10.1))
+	lantern(Vector3(CX1 - 0.4, 0, -10.56), 3, -1.0); cypress(Vector3(-3.0, 0, -10.5), 2.1); urn(Vector3(CX1 - 1.3, 0, CZ0 + 0.5), 0.9); urn(Vector3(CX1 - 1.05, 0, CZ0 + 0.65), 0.65, "rose")   # (the lamp stands in the court's near corner, clear of both rails)
 	cyl(CAP, 0.3, 0.26, 0.05, pal("shade"), 32).visible = SHOW_CAPSTAN; cyl(CAP + Vector3(0, 0.05, 0), 0.065, 0.05, 0.95, pal("stone"), 16).visible = SHOW_CAPSTAN
 	cap_rot = Node3D.new(); cap_rot.name = "Cap"; cap_rot.position = CAP + Vector3(0, 0.98, 0); cap_rot.rotation.y = -0.42; cap_rot.visible = SHOW_CAPSTAN; add_child(cap_rot)
 	blk(Vector3(-0.022, -0.022, -0.2), Vector3(0.022, 0.022, 0.84), "dark", cap_rot)
@@ -3701,7 +3711,7 @@ func _world() -> void:
 	tree(Vector3(-18.6, 0, -27.8), 1.5); tree(Vector3(-13.6, 0, -27.9), 1.35, "leaf3"); cypress(Vector3(-15.0, 0, -28.2), 2.9); cypress(Vector3(-17.4, 0, -28.3), 2.4)
 	# ---- the sea around: colossi, ruins, vines, mist
 	model("observer_veiled", Vector3(-31.0, WATER - 1.2, -27.0), 11.0, 0.75)
-	model("kit_face5", Vector3(-4.5, WATER - 1.15, -21.5), 4.4, 0.7, Vector3(0.2, 0, -0.15))
+	model("kit_face5", Vector3(-4.5, WATER - 1.15, -23.7), 4.4, 0.7, Vector3(0.2, 0, -0.15))      # (as far behind the second court's back wall as it was before that court grew)
 	model("kit_face2", Vector3(-10.0, WATER - 1.15, -4.2), 4.1, 0.5, Vector3(-0.15, 0, 0.12))
 	# the fallen pediment off the first court: a broken gable with its cornice, dentils and rosette, and two drums of a
 	# column beside it, lying half in the sea (props/pediment, made in Tripo; it was one plain prism)
@@ -3711,11 +3721,11 @@ func _world() -> void:
 		cyl(Vector3(cp.x, -2.45, cp.z), 0.3, 0.3, 2.45 + WATER + 0.12, pal("shade"), 20)
 		column(Vector3(cp.x, WATER + 0.12, cp.z), 2.6 + 0.9 * sin(cp.x * 3.0), 0.19, int(absf(cp.x * 10.0)) % 2 == 0)
 		foam(cp.x - 0.3, cp.z - 0.3, cp.x + 0.3, cp.z + 0.3, 0.3)
-	vine(-3.6, AZ1 - 0.08, true, 1.8); vine(3.52, -3.4, false, 1.4); vine(-3.2, -9.98, true, 1.6); vine(3.52, -15.6, false, 2.0)
+	vine(-3.6, AZ1 - 0.08, true, 1.8); vine(3.52, -3.4, false, 1.4); vine(-3.2, -9.98, true, 1.6); vine(CX1 + 0.02, CZ0 + 0.8, false, 2.0)
 	vine(-21.4, EZ1 + 0.02, true, 2.4); vine(-12.98, -16.4, false, 1.6); vine(-20.2, -19.98, true, 2.6); vine(-12.48, -25.6, false, 2.2)
 	# crimson veils in the wind, mirrors, the tree of shards, reeds and rocks
 	for sp in [[Vector3(-9.9, 2.92, 1.9), 2.6], [Vector3(0.0, 2.95, -3.9), 1.9], [Vector3(-16.3, WATER + 2.72, -18.4), 2.4], [Vector3(MX - 0.5, 3.12, MZ + 0.9), 2.2],
-			[Vector3(6.6, WATER + 2.3, -4.8), 2.0], [Vector3(-10.2, WATER + 2.7, -18.4), 2.3], [Vector3(-22.6, WATER + 2.5, -8.8), 2.1], [Vector3(3.4, 1.75, -16.3), 1.8]]:
+			[Vector3(6.6, WATER + 2.3, -4.8), 2.0], [Vector3(-10.2, WATER + 2.7, -18.4), 2.3], [Vector3(-22.6, WATER + 2.5, -8.8), 2.1], [Vector3(CX1 - 0.1, 1.75, CZ0 + 0.1), 1.8]]:
 		streamer(sp[0], sp[1], 0.32)
 		cyl(sp[0] + Vector3(0, -0.2, 0), 0.012, 0.012, 0.4, pal("dark"), 6)
 	mirror_stand(Vector3(-17.9, 0, -16.5), 0.32); mirror_stand(Vector3(-14.7, 0, -16.5), -0.18); mirror_stand(Vector3(3.05, 0, -14.6) if COVERED else Vector3(-3.05, 0, -14.6), -PI * 0.5 if COVERED else PI * 0.5)
@@ -3799,7 +3809,7 @@ func _actors() -> void:
 	if SHOW_CAPSTAN: objs["capstan"] = {"at": CAP + Vector3(0, 0.9, 0), "stand": CAP + Vector3(0, 0, 0.66)}   # the old capstan is gone, and its red mark with it
 	objs["mirror"] = {"at": Vector3(MX, 1.2, MZ), "stand": Vector3(MX + 0.52, 0, MZ), "hits": [Vector3(MX, 0.2, MZ), Vector3(MX, 1.2, MZ)]}
 	objs["plinth"] = {"at": MYPL + Vector3(0, 0.45, 0), "stand": MYPL + Vector3(0.75, 0, 0), "hits": [MYPL + Vector3(0, 0.05, 0), MYPL + Vector3(0, 0.45, 0)]}      # her own empty plinth (first puzzle)
-	objs["winch"] = {"at": PED + Vector3(-WINCH_HUB.x, WINCH_HUB.y, 0) * WINCH_K, "stand": Vector3(QX0 - 0.39, 0, PED.z), "hits": [PED + Vector3(0, 0.15, 0), PED + Vector3(0, WINCH_HUB.y * WINCH_K, 0), PED + Vector3(-WINCH_HUB.x, WINCH_HUB.y, 0) * WINCH_K]}   # the wheel in the water (second puzzle)
+	objs["winch"] = {"at": PED + Vector3(-WINCH_HUB.x, WINCH_HUB.y, 0) * WINCH_K, "stand": Vector3(CROSS_X, 0, QZ1 + 0.39), "hits": [PED + Vector3(0, 0.15, 0), PED + Vector3(0, WINCH_HUB.y * WINCH_K, 0), PED + Vector3(-WINCH_HUB.x, WINCH_HUB.y, 0) * WINCH_K]}   # the wheel in the water (second puzzle)
 	for i in 3: objs["turn%d" % (i + 1)] = {"at": TURN_AT[i] + Vector3(0, 1.88, 0), "stand": TURN_AT[i] + Vector3(TURN_STAND, 0, 0), "hits": [TURN_AT[i] + Vector3(0, 0.12, 0), TURN_AT[i] + Vector3(0, 1.88, 0)]}   # (its mark floats 0.55 above "at": clear of the statue's head)
 	for k in objs:
 		var n := Node3D.new(); add_child(n); n.position = objs[k].at + Vector3(0, 0.55 if k != "mirror" else 1.35, 0)
@@ -3816,7 +3826,7 @@ func _actors() -> void:
 
 func _nav() -> void:
 	for r in [["A", AX0 + 0.85, -3.15, 3.15, AZ1 - 0.35], ["S", 3.15, 0.7, 4.6, 1.3], ["B1", -0.25, -5.8, 0.25, -3.15], ["Bg", -0.25, -7.8, 0.25, -5.8], ["B2", -0.25, -10.35, 0.25, -7.8],
-			["C", -2.65, -11.3, 3.0, -10.35], ["Cl", -2.65, -15.65, -1.6, -10.35], ["Cs", -2.65, -15.65, 3.0, -15.3],      # round the pool, not over it
+			["C", -2.65, -11.3, CX1 - 0.5, -10.35], ["Cl", -2.65, CZ0 + 0.75, -1.6, -10.35], ["Cs", -2.65, CZ0 + 0.75, CX1 - 0.5, QZ0 - 0.3], ["Ce", QX1 + 0.3, CZ0 + 0.75, CX1 - 0.5, -10.35],      # round the pool, not over it
 			 ["Cw", -4.2, -13.25, -2.65, -12.75], ["BR", -7.6, -13.25, -4.2, -12.75], ["D", -13.35, -13.25, -7.6, -12.75],
 			["E", -21.2, -10.75, -13.33, -10.64], ["Ee", -13.65, -15.9, -13.33, -10.05], ["Es", -21.1, -15.9, -13.33, -15.08], ["Em", -16.32, -15.1, -13.5, -14.05], ["Ew", -21.5, -15.5, -21.05, -10.6],
 			["T1", -19.34, -15.1, -19.2, -14.3], ["T2", -17.84, -15.1, -17.7, -14.3], ["T3", -16.34, -15.1, -16.2, -14.3], ["G1", -16.55, -20.35, -16.05, -15.88], ["F", -18.9, -26.2, -15.0, -20.35], ["G", -16.5, -28.3, -16.1, -26.2]]:
@@ -4086,23 +4096,34 @@ func _water_under(sp: Vector2):
 			return [i, Vector3(clampf(g.x, r[0] + 0.28, r[2] - 0.28), 0, clampf(g.z, r[1] + 0.28, r[3] - 0.28))]
 	return null
 
-## the way of the reflection over a pool from one place to another: straight, but round the winch that stands in the
-## second court's pool (she cannot walk through its pedestal, and neither can her reflection through its reflection)
+## the lost crossing of the second court's pool, as the line her reflection walks: from its head at the front rim
+## into the pool, the turn, and its end an arm's length before the wheel
+func _cross_line() -> Array:
+	var hub_x := PED.x - WINCH_HUB.x * WINCH_K
+	return [Vector3(CROSS_X, 0, QZ1 - 0.3), Vector3(CROSS_X, 0, PED.z), Vector3(hub_x - 0.56, 0, PED.z)]
+
+## how far along the crossing the point of it nearest to p lies (0 at its head), and that point
+func _cross_near(p: Vector3) -> Array:
+	var ln := _cross_line(); var best := [0.0, ln[0]]; var bd := 1e9; var run := 0.0
+	for k in ln.size() - 1:
+		var a: Vector3 = ln[k]; var b: Vector3 = ln[k + 1]; var ab := b - a
+		var u := clampf(Vector3(p.x - a.x, 0, p.z - a.z).dot(ab) / maxf(ab.length_squared(), 0.001), 0.0, 1.0)
+		var q := a + ab * u; var dd := Vector2(p.x - q.x, p.z - q.z).length()
+		if dd < bd: bd = dd; best = [run + ab.length() * u, q]
+		run += ab.length()
+	return best
+
+## the way of the reflection over a pool from one place to another. On the second court's pool it keeps to the lost
+## crossing (the water remembers it, and only there can it walk): along it, round its turn. On open water, straight
 func _refl_way(pi: int, from: Vector3, to: Vector3) -> Array:
 	if pi != 0: return [to]
-	var c := Vector3(PED.x, 0, PED.z); var keep := 0.95
-	if Vector2(to.x - c.x, to.z - c.z).length() < keep:
-		var out := Vector3(to.x - c.x, 0, to.z - c.z); to = c + (out.normalized() if out.length() > 0.01 else Vector3(-1, 0, 0)) * keep
-	var ab := Vector3(to.x - from.x, 0, to.z - from.z)
-	var u := clampf(Vector3(c.x - from.x, 0, c.z - from.z).dot(ab) / maxf(ab.length_squared(), 0.001), 0.0, 1.0)
-	var near := Vector3(from.x, 0, from.z) + ab * u
-	var off := near - c
-	if off.length() >= keep - 0.02 or u <= 0.02 or u >= 0.98: return [to]
-	var side := off.normalized() if off.length() > 0.01 else Vector3(ab.z, 0, -ab.x).normalized()
-	var r: Array = _pools()[0]
-	var via := c + side * (keep + 0.25)
-	via = Vector3(clampf(via.x, r[0] + 0.25, r[2] - 0.25), 0, clampf(via.z, r[1] + 0.25, r[3] - 0.25))
-	return [via, to]
+	var ln := _cross_line(); var a := _cross_near(from); var b := _cross_near(to)
+	var turn_at: float = (ln[1] - ln[0]).length()
+	var way := []
+	if Vector2(from.x - (a[1] as Vector3).x, from.z - (a[1] as Vector3).z).length() > 0.05: way.append(a[1])      # first onto the crossing, if it is off it (she stands at its head, on the floor)
+	if (a[0] < turn_at - 0.02 and b[0] > turn_at + 0.02) or (a[0] > turn_at + 0.02 and b[0] < turn_at - 0.02): way.append(ln[1])
+	way.append(b[1])
+	return way
 
 ## (play) a tap on still water: her reflection leaves her and walks to that place on it. She has to stand at the
 ## pool's rim for it; if she does not, she goes to the rim nearest the place first. A newer order overtakes this one
@@ -4111,18 +4132,20 @@ func _send_reflection(pi: int, to: Vector3, sp: Vector2) -> void:
 	if busy: return
 	if not refl_out.is_empty() and _rect_dist(pos, r) > 1.2: return      # it is on its way back to her, and she has left the water
 	refl_token += 1; var my := refl_token
+	var head := Vector3(CROSS_X, 0, QZ1 + 0.39)      # (second court) where she stands for it: the head of the lost crossing
+	if pi == 0: to = _cross_near(to)[1]
 	refl_ring.position = Vector3(to.x, 0.03, to.z); refl_p = 0.0
 	if refl_out.is_empty():
 		if not H.has("mir"): return
-		if _rect_dist(pos, r) > 0.85:
-			var rp = _ground_under(sp)
+		if (pi == 0 and Vector2(pos.x - head.x, pos.z - head.z).length() > 0.4) or (pi != 0 and _rect_dist(pos, r) > 0.85):
+			var rp = head if pi == 0 else _ground_under(sp)
 			refl_stay = true
 			var ok: bool = rp != null and walk_to(rp, PLAY_WALK)
 			refl_stay = false
 			if not ok: return
 			pending = ""
 			while not route.is_empty() and refl_token == my: await get_tree().process_frame
-			if refl_token != my or _rect_dist(pos, r) > 1.15: return
+			if refl_token != my or _rect_dist(pos, r) > 1.15 or (pi == 0 and Vector2(pos.x - head.x, pos.z - head.z).length() > 0.5): return
 		face_to = Vector3(to.x, 0, to.z)
 		var e0: Dictionary = H["mir"]; H.erase("mir"); refl_out = e0
 	var e: Dictionary = refl_out; var hd: Node3D = e.holder
@@ -4141,6 +4164,15 @@ func _refl_return() -> void:
 	refl_token += 1; var my := refl_token
 	var e: Dictionary = refl_out; var hd: Node3D = e.holder
 	(e.ap as AnimationPlayer).play("walk", 0.2); (e.ap as AnimationPlayer).speed_scale = 1.9
+	var r0: Array = _pools()[0]
+	if hd.position.x > r0[0] and hd.position.x < r0[2] and hd.position.z > r0[1] and hd.position.z < r0[3]:      # on the second court's pool: back along the crossing to its head, and only then over the floor to her
+		for wp in _refl_way(0, hd.position, _cross_line()[0]):
+			var d0: Vector3 = wp - hd.position; d0.y = 0.0
+			if d0.length() > 0.02: hd.rotation.y = atan2(d0.x, d0.z)
+			while refl_token == my and Vector2(hd.position.x - wp.x, hd.position.z - wp.z).length() > 0.04:
+				hd.position = hd.position.move_toward(Vector3(wp.x, hd.position.y, wp.z), 2.8 * get_process_delta_time())
+				await get_tree().process_frame
+			if refl_token != my: return
 	while refl_token == my:
 		var d := Vector3(pos.x - hd.position.x, 0, pos.z - hd.position.z)
 		if d.length() < 0.18: break
@@ -4667,12 +4699,12 @@ func _auto() -> void:
 func _refl_test() -> void:
 	started = true; title_box.hide(); hint.hide(); cam.size = PLAY_SIZE
 	rects["B1"].on = true; gate_a.position.y = -2.4
-	pos = Vector3(-0.4, 0, -10.9); yaw = PI; cam_t = pos
+	pos = Vector3(0.6, 0, -10.8); yaw = PI; cam_t = pos
 	for i in 30: await get_tree().process_frame
-	tap(cam.unproject_position(Vector3(0.1, 0.012, -12.5)))
-	for i in 110: await get_tree().process_frame
-	tap(cam.unproject_position(Vector3(2.1, 0.012, -14.2)))
-	for i in 150: await get_tree().process_frame
+	tap(cam.unproject_position(Vector3(-0.2, 0.012, -13.0)))
+	for i in 130: await get_tree().process_frame
+	tap(cam.unproject_position(Vector3(1.2, 0.012, -14.4)))
+	for i in 130: await get_tree().process_frame
 	tap(cam.unproject_position(Vector3(-2.0, 0, -10.8)))
 	for i in 90: await get_tree().process_frame
 	get_tree().quit()
@@ -4830,16 +4862,16 @@ func _hand_test() -> void:
 				await get_tree().process_frame
 				if not refl_out.is_empty(): nearest = minf(nearest, Vector2((refl_out.holder as Node3D).position.x - PED.x, (refl_out.holder as Node3D).position.z - PED.z).length())
 			return nearest
-		await water.call(Vector3(0.0, 0, -12.2), 7.0)
-		print("HAND a tap on the water at (0.0, -12.2): she stands at ", pos.snapped(Vector3.ONE * 0.01), " (", snappedf(_rect_dist(pos, _pools()[0]), 0.01), " m from the water), her reflection is ", "out, at " + str((refl_out.holder as Node3D).position.snapped(Vector3.ONE * 0.01)) if not refl_out.is_empty() else "still under her")
-		var nr: float = await water.call(Vector3(2.2, 0, -14.2), 9.0)
-		print("HAND a tap on the water beyond the winch at (2.2, -14.2): her reflection is at ", (refl_out.holder as Node3D).position.snapped(Vector3.ONE * 0.01) if not refl_out.is_empty() else "?", "; it passed ", snappedf(nr, 0.01), " m from the winch's axis (the pedestal is about 0.6 m wide)")
+		await water.call(Vector3(0.0, 0, -12.6), 8.0)
+		print("HAND a tap on the water at (0.0, -12.6): she stands at ", pos.snapped(Vector3.ONE * 0.01), " (", snappedf(_rect_dist(pos, _pools()[0]), 0.01), " m from the water), her reflection is ", "out, at " + str((refl_out.holder as Node3D).position.snapped(Vector3.ONE * 0.01)) if not refl_out.is_empty() else "still under her")
+		var nr: float = await water.call(Vector3(3.6, 0, -16.2), 9.0)
+		print("HAND a tap on open water far from the crossing at (3.6, -16.2): her reflection keeps to the crossing, at ", (refl_out.holder as Node3D).position.snapped(Vector3.ONE * 0.01) if not refl_out.is_empty() else "?", " (its end is ", (_cross_line()[2] as Vector3).snapped(Vector3.ONE * 0.01), "); nearest it came to the winch's axis ", snappedf(nr, 0.01), " m")
 		var back := Vector3(pos.x - 1.7, 0, pos.z + 0.5)
 		tap(cam.unproject_position(back))
 		for i in 200: await get_tree().process_frame
 		print("HAND a tap on the floor: she walks to ", pos.snapped(Vector3.ONE * 0.01), " and her reflection is ", "back under her" if H.has("mir") and refl_out.is_empty() else "still out")
-		await water.call(Vector3(1.6, 0, -12.2), 8.0)
-		print("HAND sent out again to (1.6, -12.2): at ", (refl_out.holder as Node3D).position.snapped(Vector3.ONE * 0.01) if not refl_out.is_empty() else "?")
+		await water.call(Vector3(-0.4, 0, -13.6), 8.0)
+		print("HAND sent out again to (-0.4, -13.6): at ", (refl_out.holder as Node3D).position.snapped(Vector3.ONE * 0.01) if not refl_out.is_empty() else "?")
 		await tap_on.call("winch")
 		print("HAND after a tap on the wheel in the water: at ", pos.snapped(Vector3.ONE * 0.01), " gate C ", snappedf(gate_c.position.y, 0.01), " way west ", rects["Cw"].on, " bridge on ", rects["BR"].on, " bridge angle ", snappedf(bridge.rotation.y, 0.01))
 		await walk.call(Vector3(-13.5, 0, -13.0))
@@ -5099,16 +5131,17 @@ func _solve3(alone := true) -> void:
 ## go no further; her reflection walks on across the water, lays its hands on the wheel and turns it; the gate goes
 ## down and the bridge beyond it swings into line; the reflection comes back under her feet
 func _winch_act() -> void:
-	var rim := Vector3(QX0 - 0.14, 0, PED.z)
+	var rim := Vector3(CROSS_X, 0, QZ1 + 0.14)      # the head of the lost crossing, at the front rim of the pool
 	var e: Dictionary
 	var hub := PED + Vector3(-WINCH_HUB.x, WINCH_HUB.y, 0) * WINCH_K     # the hub of the handwheel
-	create_tween().tween_property(cam, "size", 5.4, 2.0)
+	create_tween().tween_property(cam, "size", 6.8, 2.0)
 	if refl_out.is_empty():
 		await wait(0.5)
 		go([rim])
-		while pos.x < rim.x - 0.12: await get_tree().process_frame
+		while pos.z > rim.z + 0.12: await get_tree().process_frame
 		e = H["mir"]; H.erase("mir")
-		await _eid_go(e, Vector3(hub.x - 0.56, 0.0, PED.z), 0.72)                 # an arm's length from the wheel
+		for wp in _refl_way(0, (e.holder as Node3D).position, Vector3(hub.x - 0.56, 0.0, PED.z)): await _eid_go(e, Vector3(wp.x, 0.0, wp.z), 0.8)      # along the crossing and round its turn, to an arm's length from the wheel
+		(e.holder as Node3D).rotation.y = PI * 0.5
 	else:      # (play) it is out on this water already: it goes on from where it stands, round the pedestal if that is in its way
 		refl_token += 1; e = refl_out; refl_out = {}
 		for wp in _refl_way(0, (e.holder as Node3D).position, Vector3(hub.x - 0.56, 0.0, PED.z)): await _eid_go(e, Vector3(wp.x, 0.0, wp.z), 0.95)
@@ -5135,8 +5168,8 @@ func _winch_act() -> void:
 	var wt := create_tween().set_parallel(); wt.tween_property(winch_a, "rotation:x", PI * 3.5, 5.6).set_trans(Tween.TRANS_SINE); wt.tween_property(winch_m, "rotation:x", PI * 3.5, 5.6).set_trans(Tween.TRANS_SINE)
 	wt.tween_method(crank, 0.0, 1.0, 5.6)
 	await wait(1.4)
-	cam_focus = Vector3(-2.3, 0.5, -12.6)                 # the view opens on the gate and the whole of the bridge beyond it
-	create_tween().tween_property(cam, "size", 7.8, 1.6)
+	cam_focus = Vector3(-1.9, 0.5, -13.3)                 # the view opens on the gate and the whole of the bridge beyond it, with the wheel still in it
+	create_tween().tween_property(cam, "size", 9.4, 1.6)
 	await wait(1.0)
 	var gt := create_tween(); gt.tween_property(gate_c, "position:y", -2.4, 2.6).set_trans(Tween.TRANS_SINE)
 	create_tween().tween_property(bridge, "rotation:y", 0.0, 3.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)   # and the bridge beyond it swings into place
@@ -5147,7 +5180,8 @@ func _winch_act() -> void:
 	await hd2.finished
 	hm.own = false
 	await wait(0.3)
-	for wp in _refl_way(0, (e.holder as Node3D).position, Vector3(pos.x, 0, pos.z)): await _eid_go(e, Vector3(wp.x, 0.0, wp.z), 0.72)
+	for wp in _refl_way(0, (e.holder as Node3D).position, _cross_line()[0]): await _eid_go(e, Vector3(wp.x, 0.0, wp.z), 0.8)      # back along the crossing to its head
+	await _eid_go(e, Vector3(pos.x, 0, pos.z), 0.8)
 	var hd3: Node3D = e.holder     # back under her feet it turns to stand as she stands (it used to flip round in one frame)
 	var rt := create_tween(); rt.tween_property(hd3, "rotation:y", hd3.rotation.y + angle_difference(hd3.rotation.y, yaw), 0.5).set_trans(Tween.TRANS_SINE)
 	await rt.finished
@@ -5157,12 +5191,12 @@ func _winch_act() -> void:
 ## (play) a tap on the wheel in the water: she goes to the rim and it happens as in the scripted run
 func _do_winch() -> void:
 	var s0 := cam.size
-	cam_focus = Vector3(0.1, 0.1, -12.7); cam_focus_on = true
+	cam_focus = Vector3(1.2, 0.1, -13.5); cam_focus_on = true
 	await _winch_act()
 	done["winch"] = true; rects["Cw"].on = true
 	cam_focus_on = false
 	create_tween().tween_property(cam, "size", s0, 1.4)
-	if pos.x < QX0 and absf(pos.z - PED.z) < 0.5: await go([Vector3(QX0 - 0.39, 0, PED.z)])      # back a step from the west rim, if that is where she stood
+	if pos.z < QZ1 + 0.3: await go([Vector3(CROSS_X, 0, QZ1 + 0.39)])      # back a step from the rim
 
 ## the second puzzle, "the crossing the water keeps", solved. No captions: she walks on toward the winch; at the rim
 ## her body can go no further, and her reflection does not stop
@@ -5170,22 +5204,22 @@ func _solve2(alone := true) -> void:
 	started = true; title_box.hide(); hint.hide()
 	gate_c.position.y = 0.0
 	done["capstan"] = true        # (no mark over the old capstan of this court: it is not there any more)
-	var rim := Vector3(QX0 - 0.14, 0, PED.z)
+	var head := Vector3(CROSS_X, 0, QZ1 + 0.39)      # before the head of the lost crossing, at the pool's front rim
 	if alone:
-		pos = Vector3(0.0, 0, -10.3); yaw = PI; cam_t = pos; cam.size = 6.4
+		pos = Vector3(0.0, 0, -10.3); yaw = PI; cam_t = pos; cam.size = 7.4
 		await wait(1.0)
-		cam_focus = Vector3(0.1, 0.1, -12.7); cam_focus_on = true
-		await go([Vector3(-1.95, 0, -11.0), Vector3(-2.0, 0, PED.z), Vector3(rim.x - 0.25, 0, PED.z)])
+		cam_focus = Vector3(1.2, 0.1, -13.5); cam_focus_on = true
+		await go([Vector3(CROSS_X, 0, -10.75), head])
 	else:   # she comes in from the causeway: the camera closes on the court as she reaches it
-		go([Vector3(0, 0, -10.2), Vector3(-1.95, 0, -11.0), Vector3(-2.0, 0, PED.z), Vector3(rim.x - 0.25, 0, PED.z)])
+		go([Vector3(0, 0, -10.2), Vector3(CROSS_X, 0, -10.75), head])
 		while pos.z > -9.3: await get_tree().process_frame
-		cam_focus = Vector3(0.1, 0.1, -12.7); cam_focus_on = true
-		create_tween().tween_property(cam, "size", 6.4, 2.4).set_trans(Tween.TRANS_SINE)
+		cam_focus = Vector3(1.2, 0.1, -13.5); cam_focus_on = true
+		create_tween().tween_property(cam, "size", 7.4, 2.4).set_trans(Tween.TRANS_SINE)
 		await arrived
 	await _winch_act()
 	cam_focus_on = false
 	create_tween().tween_property(cam, "size", 6.4, 1.4)
-	await go([Vector3(-2.3, 0, -13.0), Vector3(-3.95, 0, -13.0)])
+	await go([Vector3(-2.1, 0, -11.0), Vector3(-2.3, 0, -13.0), Vector3(-3.95, 0, -13.0)])
 	if alone:
 		await wait(0.8)
 		get_tree().quit()
