@@ -83,6 +83,7 @@ var kribbon: Node3D
 var kglow: MeshInstance3D
 var crank_on := false
 var kkey_top := Vector3.ZERO      # the hand of the islet's statue: in the water the key hangs from it
+var old_world := true      # false in a world built by a script that extends this one: what belongs to the old courts is then left out
 var pocket: Array = []      # what she carries: at most three things, each used once
 var pocket_ui: Control
 var carry := {}      # a thing held in a hand (hers or her reflection's): {"node", "sk", "bone", "flip"}
@@ -618,7 +619,7 @@ void vertex(){
 }
 void fragment(){
 	if (hh < 0.03) discard;
-	if ((q.x > -6.0 && q.x < 3.0 && q.z > -3.5 && q.z < 5.0) || (q.x > -2.9 && q.x < 5.5 && q.z > -18.1 && q.z < -10.5) || (q.x > -21.8 && q.x < -13.5 && q.z > -16.4 && q.z < -10.0) || (q.x > -21.7 && q.x < -13.7 && q.z > -40.3 && q.z < -33.1)) discard;   // nothing lies on the sea inside the hollow of a court with a pool
+	if (HOLLOW_Q) discard;   // nothing lies on the sea inside the hollow of a court with a pool
 	// the reflection thins out with height by blending into the colour of the deep water. (It used to be cut
 	// into a pattern of dots, which shimmered whenever the camera moved.)
 	float fade = mix(1.0, 0.3, smoothstep(1.6, 6.5, hh)) * strength * fade_a;
@@ -698,7 +699,7 @@ varying vec3 wp;
 //GLINT
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment(){
-	if (((wp.x > -6.0 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 5.0) || (wp.x > -2.9 && wp.x < 5.5 && wp.z > -18.1 && wp.z < -10.5) || (wp.x > -21.8 && wp.x < -13.5 && wp.z > -16.4 && wp.z < -10.0) || (wp.x > -21.7 && wp.x < -13.7 && wp.z > -40.3 && wp.z < -33.1)) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
+	if ((HOLLOW_WP) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
 	vec3 d3 = wp - centre; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
 	float m = smoothstep(mist_r * 0.8, mist_r * 1.75, md) * mist_k;
 	vec2 p = wp.xz * 1.1;
@@ -744,7 +745,7 @@ uniform float clear_r = 0.0; uniform vec3 col : source_color; uniform float far_
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment(){
-	if (((wp.x > -6.0 && wp.x < 3.0 && wp.z > -3.5 && wp.z < 5.0) || (wp.x > -2.9 && wp.x < 5.5 && wp.z > -18.1 && wp.z < -10.5) || (wp.x > -21.8 && wp.x < -13.5 && wp.z > -16.4 && wp.z < -10.0) || (wp.x > -21.7 && wp.x < -13.7 && wp.z > -40.3 && wp.z < -33.1)) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
+	if ((HOLLOW_WP) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
 	vec2 uv = wp.xz * scale;
 	float n = texture(noise_tex, uv + vel * time_s).r * 0.62 + texture(noise_tex, uv * 2.3 - vel.yx * time_s * 1.7 + 0.37).r * 0.38;
 	vec3 d3 = wp - hero; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
@@ -1605,11 +1606,21 @@ func model(nm: String, pos: Vector3, height: float, yaw := 0.0, tilt := Vector3.
 	return null
 
 # ---------------------------------------------------------------- setup
+## the hollows under the courts that have a pool (x0, z0, x1, z1): nothing of the sea is drawn inside them. A world
+## built by a script that extends this one names its own
+func _hollows() -> Array:
+	return [[-6.0, -3.5, 3.0, 5.0], [-2.9, -18.1, 5.5, -10.5], [-21.8, -16.4, -13.5, -10.0], [-21.7, -40.3, -13.7, -33.1]]
+
+func _hollow_glsl(v: String) -> String:
+	var parts := []
+	for h in _hollows(): parts.append("(%s.x > %.3f && %s.x < %.3f && %s.z > %.3f && %s.z < %.3f)" % [v, h[0], v, h[2], v, h[1], v, h[3]])
+	return " || ".join(parts) if not parts.is_empty() else "false"
+
 func _ready() -> void:
 	for k in [["base", SH], ["two", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;")],
 			["mir", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled, shadows_disabled;")],
 			["water", SH_WATER], ["cloth", SH_CLOTH], ["sheet", SH_SHEET], ["mirror", SH_MIRROR], ["ring", SH_RING], ["sea", SH_SEA], ["refl", SH_REFL], ["glass", SH_GLASS], ["pit", SH_PIT], ["face", SH_FACE], ["foam", SH_FOAM], ["fog", SH_FOG], ["shard", SH_SHARD], ["pane", SH_PANE]]:
-		var s := Shader.new(); s.code = (k[1] as String).replace("//GLINT", GLSL_GLINT); shaders[k[0]] = s
+		var s := Shader.new(); s.code = (k[1] as String).replace("//GLINT", GLSL_GLINT).replace("HOLLOW_Q", _hollow_glsl("q")).replace("HOLLOW_WP", _hollow_glsl("wp")); shaders[k[0]] = s
 	# the joined world (see _lighten): one material for every still piece, whatever its colour. The three tones of its
 	# palette and its marble, tone and flat-face settings ride in the vertices instead of in the material
 	for two in [false, true]:
@@ -1772,8 +1783,9 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 		var extra := refl.get_node_or_null(nm)
 		if extra != null: refl.remove_child(extra); extra.queue_free()
 	refl.scale = Vector3(1, -1, 1); refl.position.y = 2.0 * WATER
-	slab(-0.6, -7.8, 0.6, -5.8, 0.0, "stone", refl)
-	for e in [-1.0, 1.0]: blk(Vector3(e * 0.54 - 0.03, 0, -7.8), Vector3(e * 0.54 + 0.03, 0.06, -5.8), "shade", refl)
+	if old_world:
+		slab(-0.6, -7.8, 0.6, -5.8, 0.0, "stone", refl)
+		for e in [-1.0, 1.0]: blk(Vector3(e * 0.54 - 0.03, 0, -7.8), Vector3(e * 0.54 + 0.03, 0.06, -5.8), "shade", refl)
 	_actors(); _fog(); _nav(); _ui()
 	cam_t = pos
 	get_viewport().size_changed.connect(_fit)
@@ -4180,7 +4192,21 @@ func _actors() -> void:
 	if shape_file != "":
 		SHP["main"] = spawn_shape(self, "main"); SHP["refl"] = spawn_shape(wm, "crim"); SHP["ghost"] = spawn_shape(mir, "flat")
 		fig.visible = false; wfig.visible = false
-	# things to tap
+	_things()
+	for k in objs:
+		var n := Node3D.new(); add_child(n); n.position = objs[k].at + Vector3(0, 0.55 if k != "mirror" else 1.35, 0)
+		var quiet: bool = k in QUIET      # these give themselves away only when she is near: a small gold mark
+		if k in NOMARK or not objs[k].get("mark", true):      # nothing floats over a turning statue (the place is kept: a tap up there still counts as a tap on it)
+			markers[k] = n; continue
+		var d := blk(Vector3(-0.05, -0.05, -0.05), Vector3(0.05, 0.05, 0.05), "crim", n)
+		d.material_override = mat(Color("ffd36b") if quiet else Color("ff5a62")); d.rotation = Vector3(0.6155, PI * 0.25, 0)
+		if quiet: d.scale = Vector3.ONE * 0.8
+		var h := halo(0.5, Color(1.0, 0.82, 0.45, 0.5) if quiet else Color(1.0, 0.4, 0.42, 0.5)); n.add_child(h)
+		if quiet: n.scale = Vector3.ONE * 0.001
+		markers[k] = n
+
+## the things to tap
+func _things() -> void:
 	if SHOW_CAPSTAN: objs["capstan"] = {"at": CAP + Vector3(0, 0.9, 0), "stand": CAP + Vector3(0, 0, 0.66)}   # the old capstan is gone, and its red mark with it
 	objs["mirror"] = {"at": Vector3(MX, 1.2, MZ), "stand": Vector3(MX + 0.52, 0, MZ), "hits": [Vector3(MX, 0.2, MZ), Vector3(MX, 1.2, MZ)]}
 	objs["plinth"] = {"at": MYPL + Vector3(0, 0.45, 0), "stand": MYPL + Vector3(0.75, 0, 0), "hits": [MYPL + Vector3(0, 0.05, 0), MYPL + Vector3(0, 0.45, 0)]}      # her own empty plinth (first puzzle)
@@ -4191,17 +4217,6 @@ func _actors() -> void:
 	objs["crane"] = {"at": KPOST + Vector3(0, 1.0, 0), "stand": KPOST + Vector3(-0.47, 0, 0.3), "hits": [KPOST + Vector3(0, 0.2, 0), KPOST + Vector3(0, 1.0, 0), KPIV + Vector3(0, 1.3, 0), KPIV + Vector3(0, 2.7, 0)]}
 	objs["wkey"] = {"at": Vector3(kkey_top.x, -(kkey_top.y - 0.45), kkey_top.z), "stand": KPIV + _crane_dir() * KSTAND, "hits": [Vector3(kkey_top.x, -(kkey_top.y - 0.05), kkey_top.z), Vector3(kkey_top.x, -(kkey_top.y - 0.6), kkey_top.z)]}
 	objs["wdoor"] = {"at": Vector3(KDOOR_X, -1.0, WZ0), "stand": KPIV + _crane_dir() * KSTAND, "hits": [Vector3(KDOOR_X, -0.25, WZ0), Vector3(KDOOR_X, -1.9, WZ0)]}
-	for k in objs:
-		var n := Node3D.new(); add_child(n); n.position = objs[k].at + Vector3(0, 0.55 if k != "mirror" else 1.35, 0)
-		var quiet: bool = k in QUIET      # these give themselves away only when she is near: a small gold mark
-		if k in NOMARK:      # nothing floats over a turning statue (the place is kept: a tap up there still counts as a tap on it)
-			markers[k] = n; continue
-		var d := blk(Vector3(-0.05, -0.05, -0.05), Vector3(0.05, 0.05, 0.05), "crim", n)
-		d.material_override = mat(Color("ffd36b") if quiet else Color("ff5a62")); d.rotation = Vector3(0.6155, PI * 0.25, 0)
-		if quiet: d.scale = Vector3.ONE * 0.8
-		var h := halo(0.5, Color(1.0, 0.82, 0.45, 0.5) if quiet else Color(1.0, 0.4, 0.42, 0.5)); n.add_child(h)
-		if quiet: n.scale = Vector3.ONE * 0.001
-		markers[k] = n
 
 func _nav() -> void:
 	for r in [["A", AX0 + 0.85, -3.15, 3.15, AZ1 - 0.35], ["S", 3.15, 0.7, 4.6, 1.3], ["B1", -0.25, -5.8, 0.25, -3.15], ["Bg", -0.25, -7.8, 0.25, -5.8], ["B2", -0.25, -10.35, 0.25, -7.8],
@@ -4789,7 +4804,7 @@ func _process(dt: float) -> void:
 	if Engine.get_frames_drawn() == 45 and OS.get_environment("STATS") == "1":
 		print("STATS objects ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME), " triangles ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME), " draw calls ", RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME), " texture MB ", snappedf(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TEXTURE_MEM_USED) / 1048576.0, 0.1), " mesh instances ", find_children("*", "MeshInstance3D", true, false).size())
 	t += dt
-	if started and absf(pos.x) < 0.8 and pos.z < -5.2 and pos.z > -9.6:   # on the causeway, among the hidden mirrors
+	if old_world and started and absf(pos.x) < 0.8 and pos.z < -5.2 and pos.z > -9.6:   # on the causeway, among the hidden mirrors
 		quote("mirrors", "He hid every mirror.\nAs long as she had not seen her face,\nshe was still only what he had made.")
 	if hold_id >= 0 and started and not ended and not busy and ctl == null and pending == "":
 		hold_t += dt
@@ -4894,7 +4909,7 @@ func _process(dt: float) -> void:
 	fig.apply(st); wfig.apply(st)
 	for k in ["Bridge", "Cap", "Door", "Boat"]:
 		if refl.has_node(k): (refl.get_node(k) as Node3D).transform = (world.get_node(k) as Node3D).transform
-	var near := smoothstep(MX + 2.2, MX + 1.5, pos.x) * smoothstep(MZ - 0.8, MZ - 0.5, pos.z) * smoothstep(MZ + 0.8, MZ + 0.5, pos.z)
+	var near := smoothstep(MX + 2.2, MX + 1.5, pos.x) * smoothstep(MZ - 0.8, MZ - 0.5, pos.z) * smoothstep(MZ + 0.8, MZ + 0.5, pos.z) * float(old_world)
 	ghost.visible = (not hero_real) and shape_file == "" and near > 0.01
 	if shape_file != "":
 		var R := rig_of(shape_file)
@@ -4939,7 +4954,8 @@ func _process(dt: float) -> void:
 	flash = move_toward(flash, 0.0, dt * 0.7)
 	ghost_flat.albedo_color = TEAL_D.lerp(CRIMSON, near * (0.3 + 0.7 * prox)).lerp(Color("ff5a62"), flash)
 	ghost.ghost_mat.albedo_color = ghost_flat.albedo_color
-	ripple_p = move_toward(ripple_p, 1.0, dt * 0.75); (ripple.material_override as ShaderMaterial).set_shader_parameter("p", ripple_p)
+	ripple_p = move_toward(ripple_p, 1.0, dt * 0.75)
+	if ripple != null: (ripple.material_override as ShaderMaterial).set_shader_parameter("p", ripple_p)
 	pulse_p = move_toward(pulse_p, 1.0, dt * 0.6); (pulse.material_override as ShaderMaterial).set_shader_parameter("p", pulse_p)
 	tap_p = move_toward(tap_p, 1.0, dt * 1.6); (tapring.material_override as ShaderMaterial).set_shader_parameter("p", tap_p)
 	use_p = move_toward(use_p, 1.0, dt * 1.1); (usering.material_override as ShaderMaterial).set_shader_parameter("p", use_p)
@@ -4976,12 +4992,12 @@ func _process(dt: float) -> void:
 		gn.rotation.y = -ga
 		var flap := sin(t * 5.0 + i) * 0.45
 		(gn.get_child(0) as Node3D).rotation.z = -flap; (gn.get_child(1) as Node3D).rotation.z = flap
-	boat.position.y = WATER - 0.12 + 0.03 * sin(t * 1.1); boat.rotation.z = 0.04 * sin(t * 0.8)
+	if boat != null: boat.position.y = WATER - 0.12 + 0.03 * sin(t * 1.1); boat.rotation.z = 0.04 * sin(t * 0.8)
 	blob.visible = false
 	for k in markers:
 		var n: Node3D = markers[k]
 		n.visible = started and not done.has(k) and shot == null
-		if k in NOMARK: n.visible = false; continue
+		if k in NOMARK or not objs[k].get("mark", true): n.visible = false; continue
 		if k in QUIET:      # seen only from near (a few steps): it grows out of nothing as she comes, and goes as she leaves
 			var nearby := Vector2(pos.x - objs[k].stand.x, pos.z - objs[k].stand.z).length() < NEAR_MARK and not busy
 			n.scale = Vector3.ONE * move_toward(n.scale.x, 1.0 if nearby else 0.001, dt * 2.5)
@@ -4996,7 +5012,7 @@ func _process(dt: float) -> void:
 	else: cam_t = cam_t.lerp(pos + vel * 0.55, 1.0 - exp(-2.4 * dt))
 	cam.position = cam_t + cam.basis.y * (1.9 if cam.size > 5.0 else 0.85) + cam.basis.z * 34.0
 	if shot != null: cam.position = (shot.c as Vector3) + cam.basis.z * maxf(34.0, cam.size * 1.33)   # a very wide still (the map) from further back, or the sea at its foot falls behind the eye and is cut off
-	if started and not ended and pos.z < KZ0 - 0.25: _end()
+	if old_world and started and not ended and pos.z < KZ0 - 0.25: _end()
 
 # ---------------------------------------------------------------- what she can do
 func wait(s: float) -> void:
