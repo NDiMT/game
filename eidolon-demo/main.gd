@@ -599,9 +599,8 @@ void fragment(){
 	float sp = glints(wp.xz, time_s, vec2(0.86, 0.3), 0.3) + 0.7 * glints(wp.xz + 3.7, time_s * 1.3, vec2(0.47, 0.21), 0.16);
 	float brk = smoothstep(0.35, 0.75, sin(p.x * 0.63 + p.y * 0.41) * sin(p.y * 0.57 - p.x * 0.29 + 1.3) * 0.5 + 0.5);
 	float road = smoothstep(2.4, 0.0, abs((wp.x - wp.z) - (centre.x - centre.z) - 4.2));
-	vec2 cell = floor(wp.xz * 11.0);
-	float tw = fract(sin(dot(cell, vec2(12.9898, 78.233)) + floor(time_s * 2.5) * 0.37) * 43758.5453);
-	float glit = step(0.93, tw) * road * smoothstep(0.38, 0.08, length(fract(wp.xz * 11.0) - 0.5));
+	// the sun's road across the water: the same strokes, smaller, closer and quicker (it too was dots on a grid)
+	float glit = road * glints(wp.xz + 11.3, time_s * 2.8, vec2(0.26, 0.115), 0.85);
 	lines *= smoothstep(21.0, 11.0, mist_r);   // with the whole map in view the long lines only made a pattern: there the sea lies plain
 	vec3 col = mix(near_col, far_col, m) + vec3(0.5, 0.6, 0.6) * (lines * 0.1 * brk + sp * 0.35) * (1.0 - m);
 	col += (vec3(1.0, 0.93, 0.78) * glit * 0.55 + vec3(0.9, 0.8, 0.7) * road * 0.07) * (1.0 - m * 0.6);
