@@ -528,6 +528,7 @@ var lamp_off := Vector3.ZERO
 var lamp_vel := Vector3.ZERO
 var pushing := false
 var busy := false
+var hand_play := false     # no arguments: the game as a player plays it, with the first two courts' gates shut until their puzzles are solved
 var started := false
 var ended := false
 var auto := false
@@ -1347,6 +1348,7 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	shaders["tex"] = st2
 	var st3 := Shader.new(); st3.code = st2.code.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;"); shaders["tex2"] = st3
 	auto = "auto" in OS.get_cmdline_user_args()
+	hand_play = OS.get_cmdline_user_args().is_empty() or OS.get_environment("HAND") == "1"
 	_env()
 	var n0 := get_child_count()
 	_world()
@@ -1393,6 +1395,7 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	if "flow" in OS.get_cmdline_user_args():
 		get_viewport().msaa_3d = Viewport.MSAA_2X
 		_tour(true)
+	if "handtest" in OS.get_cmdline_user_args(): _hand_test()
 	if "solve2" in OS.get_cmdline_user_args():
 		get_viewport().msaa_3d = Viewport.MSAA_2X
 		_solve2()
@@ -3304,6 +3307,8 @@ func _actors() -> void:
 	# things to tap
 	if SHOW_CAPSTAN: objs["capstan"] = {"at": CAP + Vector3(0, 0.9, 0), "stand": CAP + Vector3(0, 0, 0.66)}   # the old capstan is gone, and its red mark with it
 	objs["mirror"] = {"at": Vector3(MX, 1.2, MZ), "stand": Vector3(MX + 0.52, 0, MZ)}
+	objs["plinth"] = {"at": MYPL + Vector3(0, 0.45, 0), "stand": MYPL + Vector3(0.75, 0, 0)}      # her own empty plinth (first puzzle)
+	objs["winch"] = {"at": PED + Vector3(-WINCH_HUB.x, WINCH_HUB.y, 0) * WINCH_K, "stand": Vector3(QX0 - 0.39, 0, PED.z)}   # the wheel in the water (second puzzle)
 	for i in 3: objs["turn%d" % (i + 1)] = {"at": TURN_AT[i] + Vector3(0, 1.88, 0), "stand": TURN_AT[i] + Vector3(TURN_STAND, 0, 0)}   # (its mark floats 0.55 above "at": clear of the statue's head)
 	for k in objs:
 		var n := Node3D.new(); add_child(n); n.position = objs[k].at + Vector3(0, 0.55 if k != "mirror" else 1.35, 0)
@@ -3314,14 +3319,16 @@ func _actors() -> void:
 
 func _nav() -> void:
 	for r in [["A", AX0 + 0.85, -3.15, 3.15, AZ1 - 0.35], ["S", 3.15, 0.7, 4.6, 1.3], ["B1", -0.25, -5.8, 0.25, -3.15], ["Bg", -0.25, -7.8, 0.25, -5.8], ["B2", -0.25, -10.35, 0.25, -7.8],
-			["C", -2.65, -15.65, 3.0, -10.35], ["Cw", -4.2, -13.25, -2.65, -12.75], ["BR", -7.6, -13.25, -4.2, -12.75], ["D", -13.35, -13.25, -7.6, -12.75],
+			["C", -2.65, -11.3, 3.0, -10.35], ["Cl", -2.65, -15.65, -1.6, -10.35], ["Cs", -2.65, -15.65, 3.0, -15.3],      # round the pool, not over it
+			 ["Cw", -4.2, -13.25, -2.65, -12.75], ["BR", -7.6, -13.25, -4.2, -12.75], ["D", -13.35, -13.25, -7.6, -12.75],
 			["E", -21.2, -10.75, -13.33, -10.64], ["Ee", -13.65, -15.9, -13.33, -10.05], ["Es", -21.1, -15.9, -13.33, -15.08], ["Em", -16.32, -15.1, -13.5, -14.05], ["Ew", -21.5, -15.5, -21.05, -10.6],
 			["T1", -19.34, -15.1, -19.2, -14.3], ["T2", -17.84, -15.1, -17.7, -14.3], ["T3", -16.34, -15.1, -16.2, -14.3], ["G1", -16.55, -20.35, -16.05, -15.88], ["F", -18.9, -26.2, -15.0, -20.35], ["G", -16.5, -28.3, -16.1, -26.2]]:
 		rects[r[0]] = {"x0": r[1], "z0": r[2], "x1": r[3], "z1": r[4], "on": true}
 	rects["BR"].on = false; rects["G"].on = false; rects["G1"].on = false
-	var av := OS.get_cmdline_user_args()
-	if not SHOW_CAPSTAN and bridge != null and not ("shots" in av or "solve2" in av or "tour" in av or "flow" in av):
-		bridge.rotation.y = 0.0; rects["BR"].on = true      # in free play the second court stands solved: its gate is down, and the bridge the winch turns is in line   # (G1: the way south, behind the third court's gate)
+	if hand_play:      # played by hand, the first two courts are shut until their puzzles are solved
+		gate_a.position.y = 0.0; gate_c.position.y = 0.0
+		rects["B1"].on = false; rects["Cw"].on = false
+	else: done["plinth"] = true; done["winch"] = true      # in the scripted runs and the stills these are not things to tap
 
 func in_rect(r: Dictionary, p: Vector3, m := 0.0) -> bool:
 	return p.x >= r.x0 - m and p.x <= r.x1 + m and p.z >= r.z0 - m and p.z <= r.z1 + m
@@ -3738,7 +3745,7 @@ func _process(dt: float) -> void:
 	blob.visible = false
 	for k in markers:
 		var n: Node3D = markers[k]
-		n.visible = started and not done.has(k) and shot == null
+		n.visible = started and not done.has(k) and shot == null and k != "plinth" and k != "winch"      # no mark over the first two puzzles: one has to think of them
 		n.position.y = objs[k].at.y + (0.55 if k != "mirror" else 1.35) + 0.05 * sin(t * 2.4)
 		n.rotation.y = t * 1.2
 	if cam_focus_on: cam_t = cam_t.lerp(cam_focus, 1.0 - exp(-1.8 * dt))
@@ -3917,32 +3924,32 @@ func _auto() -> void:
 	print("AUTO done ended=", ended, " done=", done)
 	get_tree().quit()
 
-## the solution of the first puzzle, played out: she stands on the carved feet, her reflection
-## leaves her, crosses on the reflection of the lost footbridge and turns the winch in the water
-func _eid_go(e: Dictionary, to: Vector3, speed := 0.8) -> void:
-	var hd: Node3D = e.holder; var d := to - hd.position; d.y = 0.0
-	hd.rotation.y = atan2(d.x, d.z)
-	(e.ap as AnimationPlayer).play("walk", 0.25); (e.ap as AnimationPlayer).speed_scale = clampf(speed / 1.1, 0.45, 2.3)
-	var t := create_tween(); t.tween_property(hd, "position", to, d.length() / speed)
-	await t.finished
-	(e.ap as AnimationPlayer).play("idle", 0.4); (e.ap as AnimationPlayer).speed_scale = 1.0
-
-## the first puzzle, "become the statue", solved. No captions: the gate is shut and the pool is empty of any way
-## across. The water shows the row of statues whole, the fifth with one arm raised, where her own plinth stands
-## empty. She goes back up onto it, raises her arm, and is still. Then the winch rises out of the water
-func _solve_statue(alone := true) -> void:
+## a check of play by hand (run with HAND=1 and the argument handtest): taps as a player would, on the empty plinth,
+## then on the wheel in the water, then walks west over the bridge; says what each tap changed
+func _hand_test() -> void:
 	started = true; title_box.hide(); hint.hide()
-	gate_a.position.y = 0.0
-	done["capstan"] = true        # (no mark over the old capstan of the second court: it is not there any more)
+	await wait(0.5)
+	print("HAND start: at ", pos.snapped(Vector3.ONE * 0.01), " gate A ", gate_a.position.y, " way north ", rects["B1"].on, " | a walk beyond gate A is ", "possible" if not find_path(pos, Vector3(0, 0, -7.0)).is_empty() else "shut")
+	tap(cam.unproject_position(objs["plinth"].at))
+	await settled
+	print("HAND after the plinth: at ", pos.snapped(Vector3.ONE * 0.01), " gate A ", snappedf(gate_a.position.y, 0.01), " way north ", rects["B1"].on, " done ", done.has("plinth"))
+	print("HAND a walk onto the pool of court C is ", "possible (wrong)" if rect_of(Vector3(0.5, 0, -13.5)) != "" else "not possible", " | beyond gate C is ", "possible" if not find_path(pos, Vector3(-3.9, 0, -13.0)).is_empty() else "shut")
+	walk_to(Vector3(-2.0, 0, -11.0)); await settled
+	cam_t = pos
+	await wait(1.5)
+	tap(cam.unproject_position(objs["winch"].at))
+	await settled
+	print("HAND after the wheel: at ", pos.snapped(Vector3.ONE * 0.01), " gate C ", snappedf(gate_c.position.y, 0.01), " way west ", rects["Cw"].on, " bridge on ", rects["BR"].on, " bridge angle ", snappedf(bridge.rotation.y, 0.01), " done ", done.has("winch"))
+	var ok := walk_to(Vector3(-13.5, 0, -13.0)); print("HAND the walk west to the third court starts: ", ok)
+	var n := 0
+	while ok and pos.distance_to(Vector3(-13.5, 0, -13.0)) > 0.3 and n < 1800: n += 1; await get_tree().process_frame
+	print("HAND end: at ", pos.snapped(Vector3.ONE * 0.01))
+	get_tree().quit()
+
+## the act of the first puzzle, the same in the scripted run and in play: from before her own plinth she steps up
+## onto it, takes the pose of the statue beside her, and is still. The row is whole, and the court's gate goes down
+func _statue_act() -> void:
 	var twin: Node3D = H["mir"].holder
-	pos = Vector3(0.9, 0, 3.4); yaw = PI * 1.2; cam_t = pos; cam.size = 6.6
-	await wait(1.0)
-	cam_focus = Vector3(-2.2, 0.3, -0.5); cam_focus_on = true
-	await go([Vector3(-0.35, 0, 1.2), Vector3(-0.5, 0, MYPL.z)])
-	await face(Vector3(-3.0, 0, MYPL.z))
-	create_tween().tween_property(cam, "size", 5.2, 1.8)
-	await wait(2.6)                                     # four statues, and one plinth with nobody on it
-	# back to her own plinth, across the rug, and up onto it: one walk, with the step up in it
 	create_tween().tween_property(cam, "size", 5.8, 1.6)
 	go([Vector3(MYPL.x, 0, MYPL.z)], 0.8)
 	while pos.x > MYPL.x + 0.66: await get_tree().process_frame
@@ -3969,13 +3976,55 @@ func _solve_statue(alone := true) -> void:
 	var dn := tw(); dn.tween_property(self, "a_wR", 0.0, 0.8); dn.tween_property(self, "a_wL", 0.0, 0.8)
 	await dn.finished
 	await wait(0.4)
+
+## she steps down off the plinth during the walk that has just been started
+func _statue_down() -> void:
+	while pos.x < MYPL.x + 0.14: await get_tree().process_frame
+	create_tween().tween_property(self, "pos:y", 0.0, 0.55).set_trans(Tween.TRANS_SINE)
+	(H["mir"].holder as Node3D).visible = true
+
+## (play) a tap on the empty plinth: she goes to it and does as the scripted run does
+func _do_plinth() -> void:
+	var s0 := cam.size
+	cam_focus = Vector3(-2.2, 0.3, -0.5); cam_focus_on = true
+	await _statue_act()
+	done["plinth"] = true; rects["B1"].on = true
+	cam_focus_on = false
+	create_tween().tween_property(cam, "size", s0, 1.4)
+	go([MYPL + Vector3(0.75, 0, 0)])
+	await _statue_down()
+	await arrived
+
+## the solution of the first puzzle, played out: she stands on the carved feet, her reflection
+## leaves her, crosses on the reflection of the lost footbridge and turns the winch in the water
+func _eid_go(e: Dictionary, to: Vector3, speed := 0.8) -> void:
+	var hd: Node3D = e.holder; var d := to - hd.position; d.y = 0.0
+	hd.rotation.y = atan2(d.x, d.z)
+	(e.ap as AnimationPlayer).play("walk", 0.25); (e.ap as AnimationPlayer).speed_scale = clampf(speed / 1.1, 0.45, 2.3)
+	var t := create_tween(); t.tween_property(hd, "position", to, d.length() / speed)
+	await t.finished
+	(e.ap as AnimationPlayer).play("idle", 0.4); (e.ap as AnimationPlayer).speed_scale = 1.0
+
+## the first puzzle, "become the statue", solved. No captions: the gate is shut and the pool is empty of any way
+## across. The water shows the row of statues whole, the fifth with one arm raised, where her own plinth stands
+## empty. She goes back up onto it, raises her arm, and is still. Then the winch rises out of the water
+func _solve_statue(alone := true) -> void:
+	started = true; title_box.hide(); hint.hide()
+	gate_a.position.y = 0.0
+	done["capstan"] = true        # (no mark over the old capstan of the second court: it is not there any more)
+	pos = Vector3(0.9, 0, 3.4); yaw = PI * 1.2; cam_t = pos; cam.size = 6.6
+	await wait(1.0)
+	cam_focus = Vector3(-2.2, 0.3, -0.5); cam_focus_on = true
+	await go([Vector3(-0.35, 0, 1.2), Vector3(-0.5, 0, MYPL.z)])
+	await face(Vector3(-3.0, 0, MYPL.z))
+	create_tween().tween_property(cam, "size", 5.2, 1.8)
+	await wait(2.6)                                     # four statues, and one plinth with nobody on it
+	await _statue_act()
 	# down from the plinth and out through the gate, in one walk
 	cam_focus_on = false
 	create_tween().tween_property(cam, "size", 6.4, 1.4)
 	go([Vector3(MYPL.x + 0.7, 0, MYPL.z), Vector3(-0.4, 0, -2.2), Vector3(0, 0, -3.1), Vector3(0, 0, -4.9 if alone else -7.0)])
-	while pos.x < MYPL.x + 0.14: await get_tree().process_frame
-	create_tween().tween_property(self, "pos:y", 0.0, 0.55).set_trans(Tween.TRANS_SINE)
-	twin.visible = true
+	await _statue_down()
 	if not alone:   # on to the causeway: the view opens on the sea and what stands in it
 		while pos.z > -3.6: await get_tree().process_frame
 		create_tween().tween_property(cam, "size", 8.6, 3.0).set_trans(Tween.TRANS_SINE)
@@ -4094,24 +4143,11 @@ func _solve3(alone := true) -> void:
 		await wait(0.8)
 		get_tree().quit()
 
-## the second puzzle, "the crossing the water keeps", solved. No captions: she walks on toward the winch; at the rim
-## her body can go no further, and her reflection does not stop
-func _solve2(alone := true) -> void:
-	started = true; title_box.hide(); hint.hide()
-	gate_c.position.y = 0.0
-	done["capstan"] = true        # (no mark over the old capstan of this court: it is not there any more)
+## the act of the second puzzle, the same in the scripted run and in play: she goes to the rim of the pool and can
+## go no further; her reflection walks on across the water, lays its hands on the wheel and turns it; the gate goes
+## down and the bridge beyond it swings into line; the reflection comes back under her feet
+func _winch_act() -> void:
 	var rim := Vector3(QX0 - 0.14, 0, PED.z)
-	if alone:
-		pos = Vector3(0.0, 0, -10.3); yaw = PI; cam_t = pos; cam.size = 6.4
-		await wait(1.0)
-		cam_focus = Vector3(0.1, 0.1, -12.7); cam_focus_on = true
-		await go([Vector3(-1.95, 0, -11.0), Vector3(-2.0, 0, PED.z), Vector3(rim.x - 0.25, 0, PED.z)])
-	else:   # she comes in from the causeway: the camera closes on the court as she reaches it
-		go([Vector3(0, 0, -10.2), Vector3(-1.95, 0, -11.0), Vector3(-2.0, 0, PED.z), Vector3(rim.x - 0.25, 0, PED.z)])
-		while pos.z > -9.3: await get_tree().process_frame
-		cam_focus = Vector3(0.1, 0.1, -12.7); cam_focus_on = true
-		create_tween().tween_property(cam, "size", 6.4, 2.4).set_trans(Tween.TRANS_SINE)
-		await arrived
 	await wait(0.5)
 	create_tween().tween_property(cam, "size", 5.4, 2.0)
 	go([rim])
@@ -4159,6 +4195,36 @@ func _solve2(alone := true) -> void:
 	await rt.finished
 	H["mir"] = e
 	await wait(0.5)
+
+## (play) a tap on the wheel in the water: she goes to the rim and it happens as in the scripted run
+func _do_winch() -> void:
+	var s0 := cam.size
+	cam_focus = Vector3(0.1, 0.1, -12.7); cam_focus_on = true
+	await _winch_act()
+	done["winch"] = true; rects["Cw"].on = true
+	cam_focus_on = false
+	create_tween().tween_property(cam, "size", s0, 1.4)
+	await go([Vector3(QX0 - 0.39, 0, PED.z)])
+
+## the second puzzle, "the crossing the water keeps", solved. No captions: she walks on toward the winch; at the rim
+## her body can go no further, and her reflection does not stop
+func _solve2(alone := true) -> void:
+	started = true; title_box.hide(); hint.hide()
+	gate_c.position.y = 0.0
+	done["capstan"] = true        # (no mark over the old capstan of this court: it is not there any more)
+	var rim := Vector3(QX0 - 0.14, 0, PED.z)
+	if alone:
+		pos = Vector3(0.0, 0, -10.3); yaw = PI; cam_t = pos; cam.size = 6.4
+		await wait(1.0)
+		cam_focus = Vector3(0.1, 0.1, -12.7); cam_focus_on = true
+		await go([Vector3(-1.95, 0, -11.0), Vector3(-2.0, 0, PED.z), Vector3(rim.x - 0.25, 0, PED.z)])
+	else:   # she comes in from the causeway: the camera closes on the court as she reaches it
+		go([Vector3(0, 0, -10.2), Vector3(-1.95, 0, -11.0), Vector3(-2.0, 0, PED.z), Vector3(rim.x - 0.25, 0, PED.z)])
+		while pos.z > -9.3: await get_tree().process_frame
+		cam_focus = Vector3(0.1, 0.1, -12.7); cam_focus_on = true
+		create_tween().tween_property(cam, "size", 6.4, 2.4).set_trans(Tween.TRANS_SINE)
+		await arrived
+	await _winch_act()
 	cam_focus_on = false
 	create_tween().tween_property(cam, "size", 6.4, 1.4)
 	await go([Vector3(-2.3, 0, -13.0), Vector3(-3.95, 0, -13.0)])
