@@ -246,6 +246,22 @@ func _wing_things() -> void:
 func _wing_nav() -> void:
 	pass
 
+## water runs along a dry channel: from point to point (each leg along x or along z), a band of running water grows
+## at walking pace. Returns when it has reached the last point
+func chan_run(pts: Array, speed := 2.2, w := 0.42) -> void:
+	for i in pts.size() - 1:
+		var a: Vector3 = pts[i]; var b: Vector3 = pts[i + 1]
+		var d := b - a; var l := d.length()
+		if l < 0.01: continue
+		var along_x := absf(d.x) > absf(d.z)
+		var n := Node3D.new(); n.position = Vector3(a.x, 0.02, a.z); add_child(n)
+		var q := QuadMesh.new(); q.size = Vector2(l, w * 2.0) if along_x else Vector2(w * 2.0, l); q.orientation = PlaneMesh.FACE_Y
+		var mi := prim(q, Vector3(d.x * 0.5, 0, d.z * 0.5), water(Vector2(signf(d.x) * 0.5, 0) if along_x else Vector2(0, signf(d.z) * 0.5)), n)
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		n.scale = Vector3(0.001, 1, 1) if along_x else Vector3(1, 1, 0.001)
+		var g := create_tween(); g.tween_property(n, "scale", Vector3.ONE, l / speed)
+		await g.finished
+
 ## a wing's water has been set free: it runs down its channel into the great basin of the atrium
 func _wing_done(id: String) -> void:
 	if id in wings_done: return
