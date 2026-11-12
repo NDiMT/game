@@ -833,7 +833,7 @@ func dentils(x0: float, z0: float, x1: float, z1: float, y: float, parent: Node 
 
 ## a Greek key border laid into the floor along the inside of a rectangle
 func meander(x0: float, z0: float, x1: float, z1: float, p := "shade") -> void:
-	var u := 0.26; var h := 0.13; var w := 0.022; var y0 := 0.0; var y1 := 0.004
+	var u := 0.26; var h := 0.13; var w := 0.022; var y1 := 0.004
 	for side in 4:
 		var horiz := side % 2 == 0
 		var a0 := (x0 if horiz else z0) + 0.0; var a1 := (x1 if horiz else z1)
@@ -843,8 +843,10 @@ func meander(x0: float, z0: float, x1: float, z1: float, p := "shade") -> void:
 		for i in n:
 			var o := a0 + i * uu
 			for seg in [[0.0, 0.0, uu, w], [0.0, 0.0, w, h], [0.0, h - w, uu * 0.72, h], [uu * 0.72 - w, h * 0.38, uu * 0.72, h], [uu * 0.32, h * 0.38, uu * 0.72, h * 0.38 + w]]:
-				if horiz: bb(Vector3(o + seg[0], y0, base + seg[1]), Vector3(o + seg[2], y1, base + seg[3]))
-				else: bb(Vector3(base + seg[1], y0, o + seg[0]), Vector3(base + seg[3], y1, o + seg[2]))
+				# only the top of each stroke is made: at 4 mm thick its sides are never seen, and they were four fifths of the border's triangles
+				var c0 := Vector3(o + seg[0], y1, base + seg[1]) if horiz else Vector3(base + seg[1], y1, o + seg[0])
+				var c1 := Vector3(o + seg[2], y1, base + seg[3]) if horiz else Vector3(base + seg[3], y1, o + seg[2])
+				face_q([c0, Vector3(c1.x, y1, c0.z), c1, Vector3(c0.x, y1, c1.z)], Vector3.UP)
 	bb_end(p)
 
 func foam(x0: float, z0: float, x1: float, z1: float, wdt := 0.42) -> MeshInstance3D:
@@ -1001,7 +1003,8 @@ func rock(p: Vector3, s := 1.0) -> void:
 ## red strake (props/boat, made in Tripo; it was a hull of seven ribs and two boards)
 func build_boat(parent: Node3D) -> void:
 	var h := prop_model("boat", parent, 0.0, 1.85, false, false, "wood:wood,crim:crim,rope:linen,gold:trunk")
-	h.rotation.y = PI * 0.5; h.scale = Vector3(1.2, 0.85, 1.0); h.position.y = -0.08      # its bow to the mooring pile; a little longer and lower than as made
+	h.rotation.y = PI * 0.5; h.scale = Vector3(1.2, 0.85, 1.0); h.position.y = 0.07      # its bow to the mooring pile; a little longer and lower than as made, and riding so that its boards stay above the plane of the sea (lower, the sea showed through them: a flooded boat)
+	for m in h.find_children("*", "MeshInstance3D", true, false): (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF   # the sea takes no shadow
 
 func _lowball(r: float) -> SphereMesh:
 	var m := SphereMesh.new(); m.radius = r; m.height = r * 2.0; m.radial_segments = 7; m.rings = 4
@@ -1057,12 +1060,23 @@ func round_plinth(sp: Vector3, parent: Node = self) -> void:
 ## a turned piece (a bollard, a moulded base, a vase): a profile of [radius, height] pairs spun round the upright
 ## axis. Every edge of the profile is kept crisp, so that it reads as turned stone and not as something soft
 func turned(p: Vector3, prof: Array, pl := "stone", seg := 16, parent: Node = self) -> MeshInstance3D:
-	var cs := PackedVector3Array(); var rs := PackedFloat32Array()
-	for i in prof.size():
-		for k in (1 if i == 0 or i == prof.size() - 1 else 2):
-			cs.append(Vector3(0, prof[i][1], 0)); rs.append(prof[i][0])
-	var am := ArrayMesh.new(); am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, Fig.lathe(cs, rs, seg))
-	return prim(am, p, pal(pl), parent)
+	var v := PackedVector3Array(); var n := PackedVector3Array()
+	for i in prof.size() - 1:
+		var r0: float = prof[i][0]; var y0: float = prof[i][1]; var r1: float = prof[i + 1][0]; var y1: float = prof[i + 1][1]
+		for j in seg:
+			var d0 := Vector3(cos(TAU * j / seg), 0, sin(TAU * j / seg)); var d1 := Vector3(cos(TAU * (j + 1) / seg), 0, sin(TAU * (j + 1) / seg))
+			var n0 := (d0 * (y1 - y0) + Vector3.UP * (r0 - r1)).normalized(); var n1 := (d1 * (y1 - y0) + Vector3.UP * (r0 - r1)).normalized()
+			var q := [Vector3(0, y0, 0) + d0 * r0, Vector3(0, y1, 0) + d0 * r1, Vector3(0, y1, 0) + d1 * r1, Vector3(0, y0, 0) + d1 * r0]; var qn := [n0, n0, n1, n1]
+			for k in ([0, 1, 2] if r0 <= 0.0 else ([0, 2, 3] if r1 <= 0.0 else [0, 1, 2, 0, 2, 3])):
+				v.append(q[k]); n.append(qn[k])
+	var arr := []; arr.resize(Mesh.ARRAY_MAX); arr[Mesh.ARRAY_VERTEX] = v; arr[Mesh.ARRAY_NORMAL] = n
+	var am := ArrayMesh.new(); am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	return prim(am, p, pal(pl, "2"), parent)
+
+## a bronze point on the head of a bar (added to the mesh that bb_end closes)
+func spear(c: Vector3, w := 0.03, h := 0.075) -> void:
+	var q := [c + Vector3(-w, 0, -w), c + Vector3(w, 0, -w), c + Vector3(w, 0, w), c + Vector3(-w, 0, w)]
+	for i in 4: face_q([q[i], q[(i + 1) % 4], c + Vector3(0, h, 0)], (q[i] + q[(i + 1) % 4]) * 0.5 - c + Vector3(0, w, 0))
 
 func decal(p: Vector3, sx: float, sz: float, a := 0.26, rot := 0.0) -> void:
 	return
@@ -1126,7 +1140,11 @@ func parapet(a: Vector3, b: Vector3, h := 0.34) -> void:
 		var c := lo + (Vector3(ln * i / n, 0, 0) if along_x else Vector3(0, 0, ln * i / n))
 		if i % 6 == 0 or i == n: bb(c + Vector3(-0.07, 0.05, -0.07), c + Vector3(0.07, h, 0.07))   # (a post at either end: the rail used to end on a thin baluster, or on none)
 		else:
-			bb(c + Vector3(-0.022, 0.05, -0.022), c + Vector3(0.022, h, 0.022)); bb(c + Vector3(-0.04, 0.13, -0.04), c + Vector3(0.04, 0.2, 0.04))
+			# a baluster with a belly: it swells from its foot, narrows to a neck, and carries a small block under the rail (it was a stick through a cube)
+			for sec in [[0.05, 0.024, 0.135, 0.047], [0.135, 0.047, 0.28, 0.019], [0.28, 0.036, h, 0.036]]:
+				for sd in [Vector3(1, 0, 0), Vector3(0, 0, 1), Vector3(-1, 0, 0), Vector3(0, 0, -1)]:
+					var tn := Vector3(sd.z, 0, -sd.x)
+					face_q([c + sd * sec[1] - tn * sec[1] + Vector3(0, sec[0], 0), c + sd * sec[1] + tn * sec[1] + Vector3(0, sec[0], 0), c + sd * sec[3] + tn * sec[3] + Vector3(0, sec[2], 0), c + sd * sec[3] - tn * sec[3] + Vector3(0, sec[2], 0)], sd)
 	bb_end("stone")
 
 func tree(p: Vector3, s := 1.0, leaf := "leaf") -> void:
@@ -2848,10 +2866,12 @@ func _start_zone() -> void:
 	# the gate of the court is a bronze grille until the row of statues is whole
 	gate_slot(Vector3(0, 0, -3.9), 0.58, true)
 	gate_a = Node3D.new(); gate_a.position = Vector3(0, 0, -3.9); add_child(gate_a)
-	for i in 7: blk(Vector3(-0.54 + 0.18 * i - 0.018, 0, -0.018), Vector3(-0.54 + 0.18 * i + 0.018, 2.02, 0.018), "dark", gate_a)
-	for gy in [0.5, 1.2, 1.9]: blk(Vector3(-0.58, gy, -0.024), Vector3(0.58, gy + 0.04, 0.024), "gold", gate_a)
-	for i in 7:   # a bronze point on every bar
-		var fn := blk(Vector3(-0.022, -0.022, -0.022), Vector3(0.022, 0.022, 0.022), "gold", gate_a); fn.position = Vector3(-0.54 + 0.18 * i, 1.995, 0); fn.rotation = Vector3(0.6155, PI * 0.25, 0)
+	# its bars are one mesh, its rails and the bronze point on every bar another (each bar and each rail used to be drawn by itself)
+	for i in 7: bb(Vector3(-0.54 + 0.18 * i - 0.018, 0, -0.018), Vector3(-0.54 + 0.18 * i + 0.018, 1.965, 0.018))
+	bb_end("dark", gate_a)
+	for gy in [0.5, 1.2, 1.9]: bb(Vector3(-0.58, gy, -0.024), Vector3(0.58, gy + 0.04, 0.024))
+	for i in 7: spear(Vector3(-0.54 + 0.18 * i, 1.955, 0))
+	bb_end("gold", gate_a)
 	if not ("shots" in OS.get_cmdline_user_args()) or OS.get_environment("GATE_A") == "open": gate_a.position.y = -2.4
 	vine(AX0 + 0.7, AZ1 - 0.08, true, 2.0); vine(1.2, AZ1 - 0.08, true, 1.9)
 
@@ -3035,10 +3055,11 @@ func _pool_c() -> void:
 	var gpd := cyl(Vector3(CX0 + 0.238, 2.48 + 0.07, -13.0), 0.04, 0.04, 0.014, pal("gold"), 12); gpd.rotation.z = PI * 0.5
 	gate_slot(Vector3(CX0 + 0.1, 0, -13.0), 0.7, false)
 	gate_c = Node3D.new(); gate_c.position = Vector3(CX0 + 0.1, 0, -13.0); add_child(gate_c)
-	for i in 8: blk(Vector3(-0.018, 0, -0.63 + 0.18 * i - 0.018), Vector3(0.018, 2.02, -0.63 + 0.18 * i + 0.018), "dark", gate_c)
-	for gy in [0.5, 1.2, 1.9]: blk(Vector3(-0.024, gy, -0.7), Vector3(0.024, gy + 0.04, 0.7), "gold", gate_c)
-	for i in 8:
-		var fn := blk(Vector3(-0.022, -0.022, -0.022), Vector3(0.022, 0.022, 0.022), "gold", gate_c); fn.position = Vector3(0, 1.995, -0.63 + 0.18 * i); fn.rotation = Vector3(0.6155, PI * 0.25, 0)
+	for i in 8: bb(Vector3(-0.018, 0, -0.63 + 0.18 * i - 0.018), Vector3(0.018, 1.965, -0.63 + 0.18 * i + 0.018))
+	bb_end("dark", gate_c)       # as at the first gate: one mesh for the bars, one for the rails and the points
+	for gy in [0.5, 1.2, 1.9]: bb(Vector3(-0.024, gy, -0.7), Vector3(0.024, gy + 0.04, 0.7))
+	for i in 8: spear(Vector3(0, 1.955, -0.63 + 0.18 * i))
+	bb_end("gold", gate_c)
 	if not ("shots" in args or "solve2" in args or "tour" in args or "flow" in args): gate_c.position.y = -2.4
 
 ## A turning plinth with a statue of her on it. Fixed: a stone base and a bronze ring ticked at the four quarters.
@@ -3313,7 +3334,7 @@ func _world() -> void:
 		var nw := Vector3(e * 0.93, 0, AZ1 - 0.1)
 		blk(nw + Vector3(-0.11, 0, -0.11), nw + Vector3(0.11, 0.47, 0.11), "stone"); pier_panels(nw.x, nw.z, 0.11, 0.1, 0.4, 0.055)
 		blk(nw + Vector3(-0.135, 0.47, -0.135), nw + Vector3(0.135, 0.51, 0.135), "shade"); blk(nw + Vector3(-0.1, 0.51, -0.1), nw + Vector3(0.1, 0.54, 0.1), "stone")
-		ball(nw + Vector3(0, 0.6, 0), 0.068, pal("gold"))
+		prim(_lowball(0.068), nw + Vector3(0, 0.6, 0), pal("gold", "flat"))
 	blk(Vector3(-1.04, -2.45, AZ1 + 0.05), Vector3(1.04, WATER + 0.035, AZ1 + 1.42), "shade")   # the foot of the stair at the water
 	foam(-1.04, AZ1 + 0.05, 1.04, AZ1 + 1.42, 0.3)
 	boat = Node3D.new(); boat.name = "Boat"; boat.position = Vector3(2.5, WATER - 0.12, AZ1 + 1.4); boat.rotation.y = 1.0; add_child(boat)
@@ -3322,14 +3343,14 @@ func _world() -> void:
 	cyl(Vector3(1.32, -2.45, AZ1 + 0.72), 0.065, 0.055, 2.45 - 0.5, pal("wood"), 8); cyl(Vector3(1.32, -0.5, AZ1 + 0.72), 0.068, 0.05, 0.03, pal("trunk"), 8)
 	for ry in 3: cyl(Vector3(1.32, -0.78 + 0.035 * ry, AZ1 + 0.72), 0.074, 0.074, 0.03, pal("rope"), 8)
 	foam(1.32 - 0.06, AZ1 + 0.72 - 0.06, 1.32 + 0.06, AZ1 + 0.72 + 0.06, 0.22)
-	stick(Vector3(1.36, -0.75, AZ1 + 0.735), Vector3(1.6, -1.04, AZ1 + 0.815), 0.011, "rope")      # and the line itself, from the pile down to the boat's bow
+	stick(Vector3(1.36, -0.75, AZ1 + 0.735), Vector3(1.6, -0.9, AZ1 + 0.815), 0.011, "rope")      # and the line itself, from the pile down to the boat's bow
 	slab(3.5, -0.3, 5.1, 2.3, 0.0); under(3.5, -0.3, 5.1, 2.3, 0.2, "sand"); parapet(Vector3(5.0, 0, -0.2), Vector3(5.0, 0, 2.2))
 	parapet(Vector3(3.4, 0, -0.2), Vector3(5.0, 0, -0.2)); parapet(Vector3(3.4, 0, 2.2), Vector3(5.0, 0, 2.2))   # the landing is a lookout now: railed on its two open sides as well
 	for bz in [2.005, -0.005]:   # a stone bench along either rail (there was one plain block), a medallion in the floor between them, a pair of jars at the far rail
 		for bx in [3.98, 4.42]: blk(Vector3(bx, 0, bz - 0.085), Vector3(bx + 0.1, 0.2, bz + 0.085), "shade")
 		blk(Vector3(3.88, 0.2, bz - 0.115), Vector3(4.62, 0.255, bz + 0.115), "stone")
 	var mc := Vector3(4.2, 0, 1.0)
-	for i in 4: cyl(mc + Vector3(0, 0.002 * i, 0), 0.5 * [1.0, 0.9, 0.62, 0.5][i], 0.5 * [1.0, 0.9, 0.62, 0.5][i], 0.005, pal(["shade", "stone", "rose", "stone"][i]), 40)
+	for i in 4: cyl(mc + Vector3(0, 0.002 * i, 0), 0.5 * [1.0, 0.9, 0.62, 0.5][i], 0.5 * [1.0, 0.9, 0.62, 0.5][i], 0.005, pal(["shade", "stone", "rose", "stone"][i]), 28)
 	cyl(mc + Vector3(0, 0.008, 0), 0.13, 0.13, 0.004, pal("gold"), 24); cyl(mc + Vector3(0, 0.01, 0), 0.085, 0.085, 0.004, pal("stone"), 24)
 	for i in 8:
 		var ma := TAU * i / 8.0
@@ -3339,7 +3360,8 @@ func _world() -> void:
 	# (the great veiled head that lay here is taken out of this view: it is kept for another place)
 	slab(-10.6, -2.2, -9.2, 2.2, 0.0); under(-10.6, -2.2, -9.2, 2.2, 0.18, "sand")
 	for cz in [-1.6, -0.55, 0.55, 1.6]: column(Vector3(-9.9, 0, cz), 2.4, 0.15)
-	blk(Vector3(-10.14, 2.45, -1.9), Vector3(-9.66, 2.66, 1.9), "stone"); cornice(-10.14, -1.9, -9.66, 1.9, 2.66, 0.04, 0.06); dentils(-10.14, -1.9, -9.66, 1.9, 2.45)
+	blk(Vector3(-10.14, 2.45, -1.9), Vector3(-9.66, 2.66, 1.9), "stone"); cornice(-10.14, -1.9, -9.66, 1.9, 2.66, 0.04, 0.06); dentils(-10.14, -1.9, -9.66, 1.9, 2.66)   # the dentils under the cornice (they hung under the beam itself), and a fillet between architrave and frieze
+	blk(Vector3(-10.14, 2.52, -1.9), Vector3(-9.648, 2.545, 1.912), "shade")
 	# ---- B. the causeway between the two courts, whole. On either side of it, in the sea, stand the mirrors he hid
 	slab(-0.6, -10.0, 0.6, -4.0, 0.0)
 	pier(0.0, -5.0, -0.18, 0.7); pier(0.0, -7.0, -0.18, 0.7); pier(0.0, -8.9, -0.18, 0.7)
@@ -3365,7 +3387,7 @@ func _world() -> void:
 	blk(Vector3(-3.4, 0, -16.18), Vector3(3.5, 0.09, -16.15), "shade")
 	cornice(-3.4, -16.4, 3.5, -16.18, 1.6); dentils(-3.4, -16.4, 3.5, -16.18, 1.6)
 	crenels(Vector3(-3.3, 1.66, -16.22), Vector3(3.4, 1.66, -16.22), 0.335)
-	meander(-2.72, -15.55, 2.86, -10.84)      # a Greek key round its floor, as in the other courts
+	meander(-2.72, -15.55, 2.82, -10.97)      # a Greek key round its floor, as in the other courts
 	banner(Vector3(-0.3, 1.5, -16.132), 0.34, 0.95); banner(Vector3(2.55, 1.5, -16.132), 0.34, 0.95)   # clear of the wall by more than the cloth waves: it used to dip into the stone
 	plinth_head("kit_face6", Vector3(-2.42, 0, -15.72) if COVERED else Vector3(-2.95, 0, -15.95), 0.5); plinth_head("kit_face4", Vector3(3.05, 0, -15.9), -0.4)
 	if COVERED: parapet(Vector3(-3.3, 0, -11.6), Vector3(-3.3, 0, -10.1))
@@ -3452,7 +3474,7 @@ func _world() -> void:
 	model("kit_face2", Vector3(-10.0, WATER - 1.15, -4.2), 4.1, 0.5, Vector3(-0.15, 0, 0.12))
 	# the fallen pediment off the first court: a broken gable with its cornice, dentils and rosette, and two drums of a
 	# column beside it, lying half in the sea (props/pediment, made in Tripo; it was one plain prism)
-	thing("pediment", Vector3(5.3, WATER - 0.24, 5.95), 0.0, "stone:stone", 0.35, 2.7)
+	for m in thing("pediment", Vector3(5.3, WATER - 0.24, 5.95), 0.0, "stone:stone", 0.35, 2.7).find_children("*", "MeshInstance3D", true, false): (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	model("column_fallen", Vector3(-24.5, WATER - 0.25, -12.5), 0.6, 0.9)
 	for cp in [Vector3(6.6, 0, -4.8), Vector3(7.6, 0, -6.0), Vector3(-4.6, 0, -9.2), Vector3(-9.0, 0, -17.4), Vector3(-10.2, 0, -18.4), Vector3(-22.6, 0, -8.8), Vector3(-23.6, 0, -19.6), Vector3(-9.0, 0, -24.4)]:
 		cyl(Vector3(cp.x, -2.45, cp.z), 0.3, 0.3, 2.45 + WATER + 0.12, pal("shade"), 20)
