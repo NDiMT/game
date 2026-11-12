@@ -27,6 +27,10 @@ const TURN_GOAL := [1, 3, 2]      # how many quarter turns (clockwise from above
 const TURN_YAW0 := 0.0            # the way a statue faces before any turn
 const WINCH_K := 1.55                       # the capstan's size: its model is one unit tall
 const WINCH_HUB := Vector2(0.497, 0.731)    # where the hub of its handwheel sits in the model: out along the axle, and up
+const NEAR_MARK := 2.8      # from how near the gold marks of the first two puzzles show (metres from where she would stand)
+const PLAY_WALK := 1.7      # her pace in play when sent by a tap (the scripted runs keep the slower WALK); a double tap or a far-held finger makes her run
+const RES_STEPS := [1.0, 0.85, 0.72, 0.6, 0.5]      # steps of 3D resolution the game falls back through when the frame rate drops
+const PLAY_SIZE := 8.6      # how much of the world the view holds in play (metres across): the title shows more, and the view closes in when the game begins
 const STICK := false        # how she is walked in play: false = by taps on the ground and on things (as now), true = a floating joystick and an interact button
 const WORLD_DEPTH := 0.4   # how much deeper the stone of the world is than the palette says (0 = as written, 1 = far too dark)
 var sea_c := Color("3c7d92")
@@ -673,6 +677,15 @@ var door_halo: MeshInstance3D
 var blob: MeshInstance3D
 var pulse: MeshInstance3D
 var tapring: MeshInstance3D
+var usering: MeshInstance3D
+var hold_id := -1           # the finger that is down (-1: none), where it is, and for how long: held, it leads her
+var hold_at := Vector2.ZERO
+var hold_t := 0.0
+var hold_next := 0.0
+var res_level := 0         # (play) how far the 3D picture's resolution has been lowered to keep the game smooth: an index into RES_STEPS
+var res_t := 0.0; var res_frames := 0; var res_hold := 3.0; var res_top := 0; var res_probe := false
+var use_p := 1.0
+var sun_light: DirectionalLight3D
 var ripple: MeshInstance3D
 var door: MeshInstance3D
 var cap_rot: Node3D
@@ -1624,9 +1637,11 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 	var st3 := Shader.new(); st3.code = st2.code.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;"); shaders["tex2"] = st3
 	auto = "auto" in OS.get_cmdline_user_args()
 	hand_play = OS.get_cmdline_user_args().is_empty() or OS.get_environment("HAND") == "1"
+	if OS.get_environment("RES") != "": get_viewport().scaling_3d_scale = float(OS.get_environment("RES"))      # (to look at a lowered 3D resolution)
 	_env()
 	var n0 := get_child_count()
 	_world()
+	if OS.get_environment("COPLANAR") == "1": _coplanar_check()
 	world = Node3D.new(); world.name = "World"; add_child(world)
 	for c in get_children().slice(n0):
 		if c != world: c.reparent(world)
@@ -1672,6 +1687,7 @@ uniform float pelv = 0.0; uniform float shtw = 0.0; uniform vec2 leg_sig = vec2(
 		get_viewport().msaa_3d = Viewport.MSAA_2X
 		_tour(true)
 	if "handtest" in OS.get_cmdline_user_args(): _hand_test()
+	if "pantest" in OS.get_cmdline_user_args(): _pan_test()
 	if "solve2" in OS.get_cmdline_user_args():
 		get_viewport().msaa_3d = Viewport.MSAA_2X
 		_solve2()
@@ -2587,7 +2603,7 @@ func _env() -> void:
 	sunl.look_at_from_position(Vector3.ZERO, Vector3(0.62, -0.56, -0.5), Vector3.UP)
 	sunl.light_energy = 1.0; sunl.shadow_enabled = true; sunl.shadow_blur = 0.8; sunl.shadow_bias = 0.04; sunl.shadow_normal_bias = 1.2
 	sunl.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL; sunl.directional_shadow_max_distance = 70.0
-	add_child(sunl)
+	add_child(sunl); sun_light = sunl
 	cam = Camera3D.new(); cam.projection = Camera3D.PROJECTION_ORTHOGONAL
 	cam.keep_aspect = Camera3D.KEEP_WIDTH; cam.size = 11.0; cam.near = 0.1; cam.far = 150.0
 	cam.rotation_degrees = Vector3(-35.264, 45, 0)
@@ -3139,7 +3155,7 @@ func _shrouds() -> void:
 			blk(Vector3(-hx + 0.06, -1.0, -hz + 0.06), Vector3(hx - 0.06, -0.05, hz - 0.06), "stone", m); blk(Vector3(-hx, -0.05, -hz), Vector3(hx, 0.0, hz), "shade", m)
 		else:
 			var r: float = 0.66 * sp[3]
-			cyl(Vector3(sp[0], WATER - 0.5, sp[1]), r - 0.06, r + 0.02, 0.72, pal("stone"), 14); cyl(base - Vector3(0, 0.05, 0), r, r, 0.05, pal("shade"), 14)
+			cyl(Vector3(sp[0], WATER - 0.5, sp[1]), r - 0.06, r + 0.02, 0.67, pal("stone"), 14); cyl(base - Vector3(0, 0.05, 0), r, r, 0.05, pal("shade"), 14)   # (the cap lies on the drum: with both tops level the two surfaces fought, and flickered as the view moved)
 
 ## the second court, "the crossing the water keeps". In its pool stands the winch of the west gate, on a pedestal no
 ## one can reach: the crossing to it fell long ago. The water still holds its shadow, and her reflection can walk it
@@ -3696,6 +3712,8 @@ func _actors() -> void:
 	pulse = prim(pq, Vector3.ZERO, ring_mat(Vector3(1.0, 0.8, 0.45)))
 	var tq := QuadMesh.new(); tq.size = Vector2(1.1, 1.1); tq.orientation = PlaneMesh.FACE_Y
 	tapring = prim(tq, Vector3.ZERO, ring_mat(Vector3(1.0, 0.9, 0.7)))
+	var uq := QuadMesh.new(); uq.size = Vector2(2.4, 2.4); uq.orientation = PlaneMesh.FACE_Y
+	usering = prim(uq, Vector3(0, -50, 0), ring_mat(Vector3(1.0, 0.74, 0.3)))      # the answer to a tap on a thing that can be used: a wide gold ripple at its foot
 	lamp = Node3D.new(); add_child(lamp); lamp.position = Vector3(0, -50, 0); lamp.visible = false; lamp_energy = 0.0
 	ball(Vector3.ZERO, 0.055, mat(Color("ffd98a")), lamp)
 	cyl(Vector3(0, 0.055, 0), 0.07, 0.01, 0.055, pal("gold"), 16, lamp); cyl(Vector3(0, -0.082, 0), 0.04, 0.055, 0.028, pal("gold"), 16, lamp)
@@ -3744,9 +3762,12 @@ func _actors() -> void:
 	for i in 3: objs["turn%d" % (i + 1)] = {"at": TURN_AT[i] + Vector3(0, 1.88, 0), "stand": TURN_AT[i] + Vector3(TURN_STAND, 0, 0)}   # (its mark floats 0.55 above "at": clear of the statue's head)
 	for k in objs:
 		var n := Node3D.new(); add_child(n); n.position = objs[k].at + Vector3(0, 0.55 if k != "mirror" else 1.35, 0)
+		var quiet: bool = k == "plinth" or k == "winch"      # these two give themselves away only when she is near: a small gold mark
 		var d := blk(Vector3(-0.05, -0.05, -0.05), Vector3(0.05, 0.05, 0.05), "crim", n)
-		d.material_override = mat(Color("ff5a62")); d.rotation = Vector3(0.6155, PI * 0.25, 0)
-		var h := halo(0.5, Color(1.0, 0.4, 0.42, 0.5)); n.add_child(h)
+		d.material_override = mat(Color("ffd36b") if quiet else Color("ff5a62")); d.rotation = Vector3(0.6155, PI * 0.25, 0)
+		if quiet: d.scale = Vector3.ONE * 0.8
+		var h := halo(0.5, Color(1.0, 0.82, 0.45, 0.5) if quiet else Color(1.0, 0.4, 0.42, 0.5)); n.add_child(h)
+		if quiet: n.scale = Vector3.ONE * 0.001
 		markers[k] = n
 
 func _nav() -> void:
@@ -3941,7 +3962,12 @@ func say(s: String) -> void:
 
 # ---------------------------------------------------------------- input
 func _unhandled_input(ev: InputEvent) -> void:
-	if ev is InputEventScreenTouch and ev.pressed: tap(ev.position)
+	if ev is InputEventScreenTouch:
+		if ev.pressed:
+			hold_id = ev.index; hold_at = ev.position; hold_t = 0.0; hold_next = 0.0
+			tap(ev.position)
+		elif ev.index == hold_id: hold_id = -1
+	elif ev is InputEventScreenDrag and ev.index == hold_id: hold_at = ev.position
 
 func tap(sp: Vector2) -> void:
 	if ended:
@@ -3950,7 +3976,8 @@ func tap(sp: Vector2) -> void:
 	if not started:
 		started = true
 		var tw2 := create_tween(); tw2.tween_property(title_box, "modulate:a", 0.0, 0.7); tw2.tween_callback(title_box.hide)
-		say("drag to walk" if ctl != null else "tap the ground to walk")
+		if hand_play: create_tween().tween_property(cam, "size", PLAY_SIZE, 2.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		say("drag to walk" if ctl != null else "tap to walk  ·  hold to keep walking")
 		return
 	if busy: return
 	if ctl != null: return      # with the stick, a touch is the thumb landing: she walks by the stick and acts by the button
@@ -3958,9 +3985,45 @@ func tap(sp: Vector2) -> void:
 	for k in objs:
 		if done.has(k): continue
 		if cam.unproject_position(objs[k].at).distance_to(sp) < 70.0 * px or cam.unproject_position(markers[k].position).distance_to(sp) < 60.0 * px:
+			usering.position = Vector3(objs[k].at.x, 0.03, objs[k].at.z); use_p = 0.0
 			use(k); return
 	if cam.unproject_position(pos + Vector3(0, 0.9, 0)).distance_to(sp) < 62.0 * px:
 		_self(); return
+	var run := (t - last_tap) < 0.38
+	last_tap = t
+	var bp2 = _ground_under(sp)
+	if bp2 == null: return
+	pending = ""
+	walk_to(bp2, 2.7 if run else PLAY_WALK)
+	tapring.position = (bp2 as Vector3) + Vector3(0, 0.02, 0); tap_p = 0.0
+
+## (play) keeps the game smooth on slow devices: it watches the real frame rate, and when that falls it draws the 3D
+## picture at a lower resolution (the screen furniture stays sharp), step by step; when there is room again it tries
+## one step back up, and remembers if that did not hold
+var _res_last := 0
+func _keep_smooth() -> void:
+	var now := Time.get_ticks_usec()
+	if _res_last == 0: _res_last = now; return
+	var real := (now - _res_last) / 1000000.0; _res_last = now
+	if real > 0.5: return      # a pause (the tab was hidden): not a slow frame
+	if res_hold > 0.0: res_hold -= real; res_t = 0.0; res_frames = 0; return
+	res_t += real; res_frames += 1
+	if res_t < 1.2: return
+	var fps := res_frames / res_t
+	res_t = 0.0; res_frames = 0
+	if fps < 44.0 and res_level < RES_STEPS.size() - 1:
+		if res_probe: res_top = res_level + 1      # the step back up did not hold: the step below it is as high as it goes from now on
+		res_level += 1; res_probe = false; res_hold = 1.5
+		if res_level == RES_STEPS.size() - 1: RenderingServer.directional_shadow_atlas_set_size(2048, true); get_viewport().msaa_3d = Viewport.MSAA_DISABLED
+	elif fps > 57.0 and res_level > res_top:
+		res_level -= 1; res_probe = true; res_hold = 4.0      # room to spare: one careful step back up
+	else: return
+	get_viewport().scaling_3d_scale = RES_STEPS[res_level]
+
+## the place on walkable floor that a point of the screen names (the nearest such place, if the point is off the
+## floor; never inside a lamp stand or a plinth), or null if there is none near it
+func _ground_under(sp: Vector2):
+	var px := get_viewport().get_visible_rect().size.x / 720.0
 	var o := cam.project_ray_origin(sp); var d := cam.project_ray_normal(sp)
 	var g := o + d * (-o.y / d.y)
 	var best := ""; var bp := Vector3.ZERO; var bd := 1e9
@@ -3970,7 +4033,7 @@ func tap(sp: Vector2) -> void:
 		var c := Vector3(clampf(g.x, r.x0, r.x1), 0, clampf(g.z, r.z0, r.z1))
 		var dd := cam.unproject_position(c).distance_to(sp)
 		if dd < bd: bd = dd; best = n; bp = c
-	if best == "" or bd > 150.0 * px: return
+	if best == "" or bd > 150.0 * px: return null
 	for b in blockers + solids:   # sent into a lamp stand or a plinth, she stops beside it: on the side of the tap if that is floor, else towards the middle of the place
 		var bc := Vector3(b.x, 0, b.y); var off: Vector3 = bp - bc; var br: float = b.z
 		if off.length() >= br: continue
@@ -3978,11 +4041,7 @@ func tap(sp: Vector2) -> void:
 		var cand: Vector3 = bc + off.normalized() * br
 		if off.length() < 0.01 or not in_rect(rr, cand): cand = bc + (Vector3((rr.x0 + rr.x1) * 0.5, 0, (rr.z0 + rr.z1) * 0.5) - bc).normalized() * br
 		if in_rect(rr, cand): bp = cand
-	var run := (t - last_tap) < 0.38
-	last_tap = t
-	pending = ""
-	walk_to(bp, 2.7 if run else WALK)
-	tapring.position = bp + Vector3(0, 0.02, 0); tap_p = 0.0
+	return bp
 
 func walk_to(p: Vector3, cap := WALK) -> bool:
 	var pts := find_path(pos, p)
@@ -4084,6 +4143,15 @@ func _process(dt: float) -> void:
 	t += dt
 	if started and absf(pos.x) < 0.8 and pos.z < -5.2 and pos.z > -9.6:   # on the causeway, among the hidden mirrors
 		quote("mirrors", "He hid every mirror.\nAs long as she had not seen her face,\nshe was still only what he had made.")
+	if hold_id >= 0 and started and not ended and not busy and ctl == null and pending == "":
+		hold_t += dt
+		if hold_t > 0.24 and hold_t >= hold_next:      # held: every tenth of a second she is sent again to where the finger is
+			hold_next = hold_t + 0.1
+			var hp = _ground_under(hold_at)
+			if hp != null:
+				var far := Vector2((hp as Vector3).x - pos.x, (hp as Vector3).z - pos.z).length()
+				if far > 0.25: walk_to(hp, clampf(far * 0.95, WALK, 2.7))
+	if hand_play and OS.get_environment("HAND") == "": _keep_smooth()
 	var target := 0.0
 	var want_yaw := yaw
 	var jv := Vector3.ZERO      # where the stick (or the arrow keys) sends her, on the ground
@@ -4125,7 +4193,8 @@ func _process(dt: float) -> void:
 		target = minf(speed_cap, sqrt(2.0 * (2.4 if shape_file != "" else 1.25 if rig_file != "" else 1.1) * left) + 0.03)   # she slows over a good pace or two, not in one
 		if to.length() > 0.02: want_yaw = atan2(to.x, to.z)
 		target *= clampf(1.25 - absf(angle_difference(yaw, want_yaw)) * 0.8, 0.25, 1.0)
-		spd = move_toward(spd, target, (3.4 if shape_file != "" else (1.5 if speed_cap <= WALK else 2.6)) * dt)
+		spd = move_toward(spd, target, (3.4 if shape_file != "" else (3.0 if hand_play else (1.5 if speed_cap <= WALK else 2.6))) * dt)
+		if hand_play and route.size() > 1 and to.length() < 0.2: route.pop_front()      # (play) a corner of the way is rounded, not walked into and out of
 		var step := spd * dt
 		if step >= to.length():
 			pos.x = p3.x; pos.z = p3.z
@@ -4225,6 +4294,7 @@ func _process(dt: float) -> void:
 	ripple_p = move_toward(ripple_p, 1.0, dt * 0.75); (ripple.material_override as ShaderMaterial).set_shader_parameter("p", ripple_p)
 	pulse_p = move_toward(pulse_p, 1.0, dt * 0.6); (pulse.material_override as ShaderMaterial).set_shader_parameter("p", pulse_p)
 	tap_p = move_toward(tap_p, 1.0, dt * 1.6); (tapring.material_override as ShaderMaterial).set_shader_parameter("p", tap_p)
+	use_p = move_toward(use_p, 1.0, dt * 1.1); (usering.material_override as ShaderMaterial).set_shader_parameter("p", use_p)
 	if lamp_held:
 		lamp_vel += ((-vel * 0.045 - lamp_off) * 40.0 - lamp_vel * 4.0) * dt
 		lamp_off += lamp_vel * dt
@@ -4254,7 +4324,11 @@ func _process(dt: float) -> void:
 	blob.visible = false
 	for k in markers:
 		var n: Node3D = markers[k]
-		n.visible = started and not done.has(k) and shot == null and k != "plinth" and k != "winch"      # no mark over the first two puzzles: one has to think of them
+		n.visible = started and not done.has(k) and shot == null
+		if k == "plinth" or k == "winch":      # seen only from near (a few steps): it grows out of nothing as she comes, and goes as she leaves
+			var nearby := Vector2(pos.x - objs[k].stand.x, pos.z - objs[k].stand.z).length() < NEAR_MARK and not busy
+			n.scale = Vector3.ONE * move_toward(n.scale.x, 1.0 if nearby else 0.001, dt * 2.5)
+			if n.scale.x < 0.01: n.visible = false
 		n.position.y = objs[k].at.y + (0.55 if k != "mirror" else 1.35) + 0.05 * sin(t * 2.4)
 		n.rotation.y = t * 1.2
 	if cam_focus_on: cam_t = cam_t.lerp(cam_focus, 1.0 - exp(-1.8 * dt))
@@ -4433,6 +4507,93 @@ func _auto() -> void:
 	print("AUTO done ended=", ended, " done=", done)
 	get_tree().quit()
 
+## a search for surfaces that fight for the same pixels (COPLANAR=1 on any run): two boxes or drums of different
+## colour whose tops lie level and overlap flicker in stripes whenever the view moves. Lists every such pair
+func _coplanar_check() -> void:
+	var tops := []
+	for mm in find_children("*", "MeshInstance3D", true, false):
+		var mi := mm as MeshInstance3D
+		if not mi.is_visible_in_tree() or mi.material_override == null: continue
+		var gt := mi.global_transform
+		if absf(gt.basis.y.normalized().y) < 0.999: continue      # tilted: not a level top
+		var hx := 0.0; var hz := 0.0; var hy := 0.0; var round := false
+		if mi.mesh is BoxMesh:
+			var sz := (mi.mesh as BoxMesh).size; hy = sz.y * 0.5 * gt.basis.y.length()
+			var ex := gt.basis.x * sz.x * 0.5; var ez := gt.basis.z * sz.z * 0.5
+			hx = absf(ex.x) + absf(ez.x); hz = absf(ex.z) + absf(ez.z)
+			if absf(gt.basis.x.normalized().x) < 0.999 and absf(gt.basis.x.normalized().z) < 0.999: round = true      # turned: its bounding square is too generous, so count it like a drum
+		elif mi.mesh is CylinderMesh:
+			var cm := mi.mesh as CylinderMesh; hy = cm.height * 0.5 * gt.basis.y.length(); hx = cm.top_radius * gt.basis.x.length(); hz = hx; round = true
+			if cm.top_radius < 0.01: continue
+		else: continue
+		for up in [1.0, -1.0] if gt.basis.y.y > 0.0 else [-1.0, 1.0]:
+			tops.append({"y": gt.origin.y + hy * up, "x0": gt.origin.x - hx, "x1": gt.origin.x + hx, "z0": gt.origin.z - hz, "z1": gt.origin.z + hz, "m": mi.material_override, "top": up > 0.0, "round": round, "who": str(mi.get_path()).right(46), "c": gt.origin})
+			break      # only the upper face
+	tops.sort_custom(func(a, b): return a.y < b.y)
+	var found := []
+	for i in tops.size():
+		var a: Dictionary = tops[i]
+		var j := i + 1
+		while j < tops.size() and tops[j].y - a.y < 0.0008:
+			var b: Dictionary = tops[j]; j += 1
+			if a.m == b.m: continue
+			var ox := minf(a.x1, b.x1) - maxf(a.x0, b.x0); var oz := minf(a.z1, b.z1) - maxf(a.z0, b.z0)
+			if ox <= 0.01 or oz <= 0.01: continue
+			var area := ox * oz * (0.6 if (a.round or b.round) else 1.0)
+			if area < 0.004: continue
+			found.append([area, "y %.3f  area %.3f  at (%.2f, %.2f)  %s  |  %s" % [a.y, area, (maxf(a.x0, b.x0) + minf(a.x1, b.x1)) * 0.5, (maxf(a.z0, b.z0) + minf(a.z1, b.z1)) * 0.5, a.who, b.who]])
+	# and the upright faces that look toward the eye (+x and +z) of boxes that stand square to the world
+	for ax in 2:
+		var faces := []
+		for mm in find_children("*", "MeshInstance3D", true, false):
+			var mi := mm as MeshInstance3D
+			if not (mi.mesh is BoxMesh) or not mi.is_visible_in_tree() or mi.material_override == null: continue
+			var gt := mi.global_transform
+			if absf(gt.basis.y.normalized().y) < 0.999 or absf(gt.basis.x.normalized().x) < 0.999: continue
+			var h := (mi.mesh as BoxMesh).size * 0.5 * Vector3(gt.basis.x.length(), gt.basis.y.length(), gt.basis.z.length())
+			var o := gt.origin
+			if ax == 0: faces.append({"c": o.x + h.x, "u0": o.z - h.z, "u1": o.z + h.z, "v0": o.y - h.y, "v1": o.y + h.y, "m": mi.material_override, "who": str(mi.get_path()).right(46), "o": o})
+			else: faces.append({"c": o.z + h.z, "u0": o.x - h.x, "u1": o.x + h.x, "v0": o.y - h.y, "v1": o.y + h.y, "m": mi.material_override, "who": str(mi.get_path()).right(46), "o": o})
+		faces.sort_custom(func(a, b): return a.c < b.c)
+		for i in faces.size():
+			var a: Dictionary = faces[i]
+			var j := i + 1
+			while j < faces.size() and faces[j].c - a.c < 0.0008:
+				var b: Dictionary = faces[j]; j += 1
+				if a.m == b.m: continue
+				var ou := minf(a.u1, b.u1) - maxf(a.u0, b.u0); var ov := minf(a.v1, b.v1) - maxf(a.v0, b.v0)
+				if ou <= 0.01 or ov <= 0.01 or ou * ov < 0.004: continue
+				found.append([ou * ov, "%s-face at %s %.3f  area %.3f  near (%.2f, %.2f, %.2f)  %s  |  %s" % ["+x" if ax == 0 else "+z", "x" if ax == 0 else "z", a.c, ou * ov, a.o.x, (maxf(a.v0, b.v0) + minf(a.v1, b.v1)) * 0.5, a.o.z, a.who, b.who]])
+	found.sort_custom(func(a, b): return a[0] > b[0])
+	print("COPLANAR ", found.size(), " pairs of level tops or upright faces of different colour that overlap (of ", tops.size(), " tops)")
+	for f in found.slice(0, 70): print("COPLANAR ", f[1])
+
+## a check of how steady the shadows are while the view moves (argument pantest, recorded with --write-movie): the
+## camera glides slowly past a mirror on its footing in the sea; each frame it says where that footing is on the screen,
+## so that the frames can be cut round it and laid side by side
+func _pan_test() -> void:
+	started = true; title_box.hide(); hint.hide()
+	pos = Vector3(0, 0, -4.4); cam.size = 5.0
+	var ev := func(k: String, dflt: float) -> float: return float(OS.get_environment(k)) if OS.get_environment(k) != "" else dflt
+	cam.near = ev.call("SH_NEAR", cam.near); sun_light.directional_shadow_max_distance = ev.call("SH_MAX", sun_light.directional_shadow_max_distance)
+	sun_light.shadow_blur = ev.call("SH_BLUR", sun_light.shadow_blur); sun_light.shadow_bias = ev.call("SH_BIAS", sun_light.shadow_bias); sun_light.shadow_normal_bias = ev.call("SH_NB", sun_light.shadow_normal_bias)
+	if OS.get_environment("SH_OFF") == "1": sun_light.shadow_enabled = false
+	if OS.get_environment("SH_MODE") != "": sun_light.directional_shadow_mode = int(OS.get_environment("SH_MODE")) as DirectionalLight3D.ShadowMode
+	if OS.get_environment("SH_Q") != "": RenderingServer.directional_soft_shadow_filter_set_quality(int(OS.get_environment("SH_Q")) as RenderingServer.ShadowQuality)
+	if OS.get_environment("SH_ATLAS") != "": RenderingServer.directional_shadow_atlas_set_size(int(OS.get_environment("SH_ATLAS")), true)
+	var at := Vector3(2.4, WATER + 0.9, -6.2)
+	cam_focus = Vector3(2.6, -0.6, -5.6); cam_focus_on = true; cam_t = cam_focus
+	var still := OS.get_environment("PAN_STILL") != ""      # PAN_STILL="x,z": the view holds still on the waterline at that place
+	if still:
+		var pv := OS.get_environment("PAN_STILL").split(","); at = Vector3(float(pv[0]), WATER + 0.1, float(pv[1])); cam_focus = at + Vector3(0, -1.2, 0); cam_t = cam_focus; cam.size = float(pv[2]) if pv.size() > 2 else 4.0
+	for i in 20: await get_tree().process_frame
+	for i in 60:
+		if not still or OS.get_environment("PAN_MOVE") == "1": cam_focus += Vector3(-0.012, 0, -0.02); cam_t = cam_focus      # (PAN_MOVE=1 with PAN_STILL: glide past that place)
+		await get_tree().process_frame
+		var sp := cam.unproject_position(at)
+		print("PAN ", i, " ", int(sp.x), " ", int(sp.y))
+	get_tree().quit()
+
 ## a check of play by hand (run with HAND=1 and the argument handtest): holds the stick and presses the interact
 ## button as a player would, through the first two puzzles and west over the bridge; says what each step did
 func _hand_test() -> void:
@@ -4450,8 +4611,17 @@ func _hand_test() -> void:
 			var n := 0
 			while not done.has(k) and n < 2400: n += 1; await get_tree().process_frame
 			while busy: await get_tree().process_frame
+		cam.size = PLAY_SIZE
 		await wait(0.5)
 		print("HAND (taps) start: at ", pos.snapped(Vector3.ONE * 0.01), " gate A ", gate_a.position.y, " | a walk beyond gate A is ", "possible" if not find_path(pos, Vector3(0, 0, -7.0)).is_empty() else "shut")
+		var far_pt := Vector3(2.6, 0, 4.4)
+		cam_t = pos
+		for i in 40: await get_tree().process_frame
+		hold_id = 0; hold_at = cam.unproject_position(far_pt); hold_t = 0.0; hold_next = 0.0
+		for i in 100: await get_tree().process_frame
+		hold_id = -1
+		for i in 30: await get_tree().process_frame
+		print("HAND a finger held on the floor at ", far_pt, " for 3.3 s leads her to ", pos.snapped(Vector3.ONE * 0.01), " (", snappedf(pos.distance_to(far_pt), 0.01), " m from it)")
 		await tap_on.call("plinth")
 		print("HAND after a tap on the empty plinth: at ", pos.snapped(Vector3.ONE * 0.01), " gate A ", snappedf(gate_a.position.y, 0.01), " way north ", rects["B1"].on)
 		await walk.call(Vector3(-2.0, 0, -11.0))
