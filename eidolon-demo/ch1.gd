@@ -95,6 +95,8 @@ var on_ramp := false
 var refl_busy := 0      # how many orders to her reflection are still being carried out
 var woke := false
 var flags := {}
+var wing_open := {"W": false, "N": false, "S": false}      # which wings are built: a script that extends this one and builds a wing sets its own to true in _init (after super._init())
+var wings_done: Array = []      # the wings whose water has been set free, in the order it was done
 
 func _init() -> void:
 	old_world = false
@@ -230,8 +232,24 @@ func channel(a: Vector3, b: Vector3, w := 0.5) -> void:
 func _world() -> void:
 	mroot = Node3D.new(); mroot.name = "MirrorPool"; mroot.transform = Transform3D(Basis(Vector3(1, 0, 0), Vector3(0, -1, 0), Vector3(0, 0, 1)), Vector3.ZERO); add_child(mroot)
 	_harbour(); _causeway(); _basin(); _well(); _fountain(); _forecourt(); _atrium()
+	_wings()
 	_strip_refl(mroot)
 	pos = HERPL + Vector3(0, 0.17, 0); yaw = 0.0
+
+## the wings of the atrium. A script that extends this one builds its wing here (and calls super._wings() first);
+## likewise _wing_things() for what can be tapped there and _wing_nav() for its floor
+func _wings() -> void:
+	pass
+func _wing_things() -> void:
+	pass
+func _wing_nav() -> void:
+	pass
+
+## a wing's water has been set free: it runs down its channel into the great basin of the atrium
+func _wing_done(id: String) -> void:
+	if id in wings_done: return
+	wings_done.append(id)
+	print("WING done ", id, " (", wings_done.size(), " of 3)")
 
 ## I.1 the shore. The sea stands still inside a small harbour. A quay on the north side; from it a mole runs south
 ## into the basin, broken in the middle. The wheel of the first sluice was left on the far piece. In the water the
@@ -263,7 +281,7 @@ func _harbour() -> void:
 			var n1 := 4
 			for k in n1:
 				var s0 := MOLE_A + (MOLE_B - MOLE_A) * k / n1; var s1 := MOLE_A + (MOLE_B - MOLE_A) * (k + 1) / n1
-				var sb := blk(Vector3(-MOLE_W + 0.02 * (k % 2), 0, -(s1 - s0) * 0.5 + 0.035), Vector3(MOLE_W - 0.02 * ((k + 1) % 2), 0.05, (s1 - s0) * 0.5 - 0.035), "stone", both)
+				var sb := blk(Vector3(-MOLE_W + 0.03 + 0.03 * (k % 2), 0, -(s1 - s0) * 0.5 + 0.07), Vector3(MOLE_W - 0.03 - 0.03 * ((k + 1) % 2), 0.05, (s1 - s0) * 0.5 - 0.07), "stone", both)
 				sb.material_override = under_mat(Color("857fa4")); sb.position += Vector3(0, 0, (s0 + s1) * 0.5); sb.rotation.y = 0.03 * sin(k * 2.3 + 0.7)
 	# the quay: a low wall to the sea on three sides, lamps, her boat outside
 	parapet(Vector3(HX0 + 0.1, 0, HZ0 + 0.1), Vector3(HX0 + 0.1, 0, HZ1 - 0.1)); parapet(Vector3(HX0 + 0.1, 0, HZ1 - 0.1), Vector3(HX1 - 0.1, 0, HZ1 - 0.1)); parapet(Vector3(HX1 - 0.1, 0, HZ0 + 0.1), Vector3(HX1 - 0.1, 0, HZ1 - 0.1))
@@ -535,6 +553,7 @@ func _things() -> void:
 	var pl := Vector3(ROW_X[HERS], 0, ROW_Z)
 	objs["place6w"] = {"at": pl + Vector3(0, -1.0, 0), "stand": pl + Vector3(0, 0, -0.72), "mark": false, "water": "G", "rstand": pl + Vector3(0.75, 0, -0.72),
 		"hits": [pl + Vector3(0, -0.2, 0), pl + Vector3(0, -1.9, 0)]}
+	_wing_things()
 	objs["gate"] = {"at": Vector3(UC.x, POD_H + 1.6, UZ0 + 0.9), "stand": Vector3(UC.x, 0, UZ0 + 1.5), "mark": false, "hits": [Vector3(UC.x, POD_H + 0.3, UZ0 + 0.9), Vector3(UC.x, POD_H + 3.4, UZ0 + 0.9)]}
 	objs["place6"] = {"at": pl + Vector3(0, 0.3, 0), "stand": pl + Vector3(0, 0, -0.72), "mark": false, "hits": [pl + Vector3(0, 0.02, 0), pl + Vector3(0, 0.5, 0)]}
 
@@ -566,6 +585,11 @@ func _nav() -> void:
 	rects["Ust"] = R(UC.x - 0.85, POD_Z - 0.05, UC.x + 0.85, STAIR_Z + 0.25); rects["Upod"] = R(UC.x - 2.0, UZ0 + 1.25, UC.x + 2.0, POD_Z - 0.05)
 	ramps = [{"r": rects["Ust"], "z0": POD_Z, "z1": STAIR_Z, "y0": POD_H, "y1": 0.0}, {"r": rects["Upod"], "z0": 0.0, "z1": 1.0, "y0": POD_H, "y1": POD_H}]
 	solids.append(Vector3(UC.x + 2.2, STAIR_Z + 0.5, 0.45))
+	# the doors of the wings: open from the start where a wing is built
+	rects["DW"] = R(UX0 - 0.7, UC.z - 0.25, UX0 + 0.8, UC.z + 0.25, wing_open["W"]); rects["DN"] = R(-19.75, UZ0 - 0.7, -19.25, UZ0 + 0.8, wing_open["N"]); rects["DS"] = R(-30.25, UZ1 - 0.65, -29.75, UZ1 + 0.7, wing_open["S"])
+	for wk in [["W", "doorW"], ["N", "doorN"], ["S", "doorS"]]:
+		if wing_open[wk[0]]: (N[wk[1]] as Node3D).position.y = -(float(N[wk[1] + "_h"]) + 0.25)
+	_wing_nav()
 	for i in ROW_X.size(): solids.append(Vector3(ROW_X[i], ROW_Z, 0.45))
 	for i in ROWW_Z.size(): solids.append(Vector3(ROWW_X, ROWW_Z[i], 0.45))
 	posing = true; pose_k = 1.0
