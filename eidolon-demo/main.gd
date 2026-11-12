@@ -3199,6 +3199,7 @@ func _pool_c() -> void:
 		if both == mroot:      # in the water only: the crossing itself, stone by stone, as it lay before it fell. Above the water there is nothing
 			var z_a := QZ1 - 0.2; var z_b := PED.z - 0.3; var n1 := 6
 			var stones := []      # each: its middle, its half size along x and along z
+			var cross_mat := StandardMaterial3D.new(); cross_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; cross_mat.albedo_color = Color("857fa4")
 			for k in n1:      # the first leg, from the rim into the pool (its last stone is the corner)
 				var s0 := z_a + (z_b - z_a) * k / n1; var s1 := z_a + (z_b - z_a) * (k + 1) / n1
 				stones.append([Vector3(CROSS_X, 0, (s0 + s1) * 0.5), 0.3 - 0.02 * (k % 2), absf(s1 - s0) * 0.5 - 0.045])
@@ -3209,6 +3210,7 @@ func _pool_c() -> void:
 			for k in stones.size():      # stones with water between them, none quite square to the next: old work, long under the water's memory
 				var st: Array = stones[k]
 				var sb := blk(Vector3(-st[1], 0.0, -st[2]), Vector3(st[1], CROSS_H, st[2]), "stone", both)
+				sb.material_override = cross_mat      # a darker stone than the court's, in its own plain colour (the haze of the water pales everything else that lies in it): it stands out in the pale water
 				sb.position = (st[0] as Vector3) + Vector3(0, CROSS_H * 0.5, 0); sb.rotation.y = 0.035 * sin(k * 2.3 + 0.7)
 		for cx3 in [CROSS_X - 1.05, CROSS_X + 1.05]:   # two low posts on the front rim: the head of the old crossing
 			var cp := Vector3(cx3, 0, QZ1 + 0.22)
