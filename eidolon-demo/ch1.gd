@@ -123,7 +123,7 @@ var cs_courts: Array = []    # the courts with such waters: in them her ordinary
 
 func _init() -> void:
 	old_world = false
-	title_sub = "I  ·  The Veiled Gate\ntap to begin"; end_sub = "the three wings are still being built\ntap to begin again"
+	title_sub = "I  ·  The Veiled Gate\ntap to begin"; end_sub = "end of the first chapter\ntap to begin again"
 
 func _hollows() -> Array:
 	return [[HX0 + 0.5, HZ0 + 0.5, HX1 - 0.5, HZ1 - 0.5], [TX0 + 0.5, TZ0 + 0.5, TX1 - 0.5, TZ1 - 0.5], [VX0 + 0.5, VZ0 + 0.5, VX1 - 0.5, VZ1 - 0.5],
@@ -2103,6 +2103,7 @@ func _ready() -> void:
 	if OS.get_environment("HUB") != "": _hub_instant(int(OS.get_environment("HUB")))
 	if "hub" in args: _play_hub()
 	if "gate" in args: _play_gate()
+	if OS.get_environment("GATE_AT") != "": _gate_state(int(OS.get_environment("GATE_AT")))
 	if OS.get_environment("PATHCHK") != "":      # (a check of the floor's ways: "x,z,x,z")
 		var pc := OS.get_environment("PATHCHK").split(",")
 		print("PATH ", find_path(Vector3(float(pc[0]), 0, float(pc[1])), Vector3(float(pc[2]), 0, float(pc[3]))).size(), " points")
@@ -2212,6 +2213,38 @@ func _play_hub() -> void:
 		await _tap_wait(Vector3(GATE_X + 1.0, POD_H - 2.0 * (POD_H - float(N["U_level"])), LAND_Z - 0.3))      # the landing, as the water shows it
 		print("HUB ", id, " to the landing: reflection ", (refl_out.holder as Node3D).position if not refl_out.is_empty() else "under her")
 	get_tree().quit()
+
+## (for stills) the Gate's puzzle as it stands after so many of its steps: 1 the lamps capped and the stone turned in,
+## 2 she on the empty place and the bar up, 3 the cloth on the water, 4 the Gate open
+func _gate_state(n: int) -> void:
+	_hub_instant(3)
+	var pl := Vector3(ROW3_X, 0, ROW3_Z[HERS3]); var lvl: float = N["U_level"]
+	if n >= 1:
+		var li := 5
+		for key in ["lampW", "lampE"]:
+			var c: Vector3 = N[key + "_c"]
+			flags[key] = false; (N[key + "_cap"] as Node3D).position.y = c.y - 0.02; (N[key + "_glow"] as Node3D).scale = Vector3.ONE * 0.05; (N[key + "_halo"] as Node3D).scale = Vector3.ONE * 0.01
+			lights[li] = Vector4(c.x, 0.2, c.z, 0.0); li += 1
+		for k in ["turn3", "turn3_m", "turn3_tt"]: (N[k] as Node3D).rotation.y = N["turn3_in"]
+		flags["turn3"] = true
+	if n >= 2:
+		_wake_now(); pos = pl + Vector3(0, 0.17, 0); yaw = PI * 0.5; cam_t = pos
+		tgtL = pl + Vector3(0.21, 1.61, -0.03); tgtR = pl + Vector3(0.21, 1.61, 0.03); a_wL = 1.0; a_wR = 1.0; posing = true; flags["posed3"] = true
+		for sfx in ["", "_m"]: (N["bar" + sfx] as Node3D).position.y = 2.95
+	if n >= 3:
+		flags["untied"] = true; done["knots"] = true
+		for sfx in ["", "_m"]:
+			for i in 3: (N["cord%d%s" % [i, sfx]] as Node3D).position = Vector3(GATE_X, POD_H + 0.02, UZ0 + 1.12)
+			(N["veil" + sfx] as Node3D).visible = false
+		var fcl: Node3D = N["u_cloth"]; fcl.position = Vector3(UB.x, lvl + 0.03, UB.z); fcl.scale = Vector3.ONE * (UBR - 0.12); fcl.visible = true
+		flags["stone3"] = true; W["U"].wet = false; done.erase("bronze")
+	if n >= 4:
+		for sfx in ["", "_m"]:
+			(N["bar" + sfx] as Node3D).rotation.z = -1.45; (N["leafL" + sfx] as Node3D).rotation.y = 1.42; (N["leafR" + sfx] as Node3D).rotation.y = -1.42
+		(N["u_cloth"] as Node3D).visible = false; W["U"].wet = true; flags["stone3"] = false; posing = false; flags["posed3"] = false; a_wL = 0.0; a_wR = 0.0
+		pos = pl + Vector3(-0.72, 0, 0); rects["Ugate"].on = true; flags["gate_open"] = true; done["gate"] = true; done["bronze"] = true; done.erase("through")
+		_pocket_add("cloth")
+	_u_foot(); _u_glares(0.1)
 
 ## the run that tries the Gate: the obvious plans first, then the way that works
 func _play_gate() -> void:
