@@ -357,6 +357,7 @@ func _cs_deep_pit(sky: String, depth: float) -> void:
 func _world() -> void:
 	mroot = Node3D.new(); mroot.name = "MirrorPool"; mroot.transform = Transform3D(Basis(Vector3(1, 0, 0), Vector3(0, -1, 0), Vector3(0, 0, 1)), Vector3.ZERO); add_child(mroot)
 	_harbour(); _causeway(); _basin(); _well(); _fountain(); _forecourt(); _atrium()
+	_temple()
 	_wings()
 	_strip_refl(mroot)
 	_island()
@@ -411,13 +412,14 @@ func _land_h(x: float, z: float) -> float:
 	return y + 0.05 * (n2 - 0.5) + (0.05 * (_hash2(int(x * 2.0), int(z * 2.0)) - 0.5) if d > 0.7 else 0.0)
 
 var land_bridges: Array = []
+var land_paths: Array = []      # narrow floors that are paths over land, not bridges: no inlet under them
 var land_rects: Array = []
 func _island() -> void:
 	land_rects = []; land_bridges = []
 	var x0 := 1e9; var z0 := 1e9; var x1 := -1e9; var z1 := -1e9
 	for f in floors:
 		land_rects.append([f[0], f[1], f[2], f[3]])
-		if minf(f[2] - f[0], f[3] - f[1]) <= 2.6: land_bridges.append([f[0], f[1], f[2], f[3]])
+		if minf(f[2] - f[0], f[3] - f[1]) <= 2.6 and not ([f[0], f[1], f[2], f[3]] in land_paths): land_bridges.append([f[0], f[1], f[2], f[3]])
 		x0 = minf(x0, f[0]); z0 = minf(z0, f[1]); x1 = maxf(x1, f[2]); z1 = maxf(z1, f[3])
 	x0 = floor(x0) - 30.0; z0 = floor(z0) - 30.0; x1 = ceil(x1) + 7.0; z1 = ceil(z1) + 7.0
 	var nx := int(x1 - x0); var nz := int(z1 - z0)
@@ -493,24 +495,37 @@ func _island() -> void:
 			gz += 2.6
 		gx += 2.6
 
+## off the way: a garden path runs south from the fountain's court to a round temple without a roof, in the meadow.
+## Nothing there is needed. Eight columns, three of them broken; in the middle, a statue of her, mourning
+const TEMPLE := Vector3(-11.0, 0, -10.5)
+func _temple() -> void:
+	floor_plain(ARCH_X - 0.8, FZ1, ARCH_X + 0.8, TEMPLE.z - 4.0, 0.8); land_paths.append([ARCH_X - 0.8, FZ1, ARCH_X + 0.8, TEMPLE.z - 4.0])
+	floor_plain(TEMPLE.x - 4.0, TEMPLE.z - 4.0, TEMPLE.x + 4.0, TEMPLE.z + 4.0, 1.0)
+	for e in [-1.0, 1.0]:      # the path is marked by low posts
+		for k in 3: blk(Vector3(ARCH_X + e * 0.74 - 0.07, 0, FZ1 + 0.4 + 1.1 * k), Vector3(ARCH_X + e * 0.74 + 0.07, 0.32, FZ1 + 0.54 + 1.1 * k), "shade")
+	var tc := TEMPLE
+	cyl(tc, 2.6, 2.7, 0.16, pal("shade"), 32); cyl(tc + Vector3(0, 0.16, 0), 2.4, 2.45, 0.14, pal("stone"), 32)
+	for i in 8:
+		var a := TAU * i / 8.0 + 0.2
+		var cp := tc + Vector3(cos(a) * 2.0, 0.3, sin(a) * 2.0)
+		var broken: bool = i in [1, 4, 6]
+		column(cp, 1.0 + 0.6 * _hash2(i, 7) if broken else 2.7, 0.17, broken)
+	for i in [7, 2]:      # what is left of its ring beam, on the columns that still stand side by side
+		var a0: float = TAU * float(i) / 8.0 + 0.2; var a1: float = TAU * float(i + 1) / 8.0 + 0.2
+		var m := tc + Vector3((cos(a0) + cos(a1)) * 1.0, 3.0 + 0.11, (sin(a0) + sin(a1)) * 1.0)
+		var bm := blk(Vector3(-0.85, -0.11, -0.17), Vector3(0.85, 0.11, 0.17), "stone"); bm.position = m; bm.rotation.y = -(a0 + a1) * 0.5 + PI * 0.5
+	her_plinth(tc + Vector3(0, 0.3, 0), 0.6, "mourn", self)
+	for dk in [[2.9, 3.1, 0.4], [3.4, 2.6, 1.3], [-3.2, 3.0, 0.2]]:      # drums of the broken ones, where they rolled
+		var dr := cyl(Vector3.ZERO, 0.17, 0.17, 0.5, pal("stone"), 12); dr.position = tc + Vector3(dk[0], 0.17, dk[1]); dr.rotation = Vector3(0, dk[2], PI * 0.5)
+	stele("stele_t", tc + Vector3(3.2, 0, -3.2), 0.0, ["I built her a house\nwith no roof,\nso that she would never\nlook up for one.", "Rain is a water\nI could not forbid."])
+	_look_add("", tc, 2.2, ["a round temple with no roof. she is in it, in stone, mourning", "eight columns. three were broken on purpose: the cuts are clean"])
+	urn(tc + Vector3(-3.3, 0, -3.3), 1.1, "rose")
+
 ## what stands on the island beyond the courts: the things he left where they fell
 func _landmarks() -> void:
 	# a head of her, colossal, half under the sea off the harbour: the first thing she sees when she wakes
 	sculpt_head(Vector3(7.6, WATER - 1.2, 15.2), 5.6, 0.7, Vector3(-0.2, 0, 0.16), 2)
 	foam_ring(Vector3(7.6, 0, 15.4), 2.5, 0.45)
-	# a round temple without a roof on the hill north of the well: eight columns, three of them broken
-	var tc := Vector3(-11.5, 0, -11.0); tc.y = _land_h(tc.x, tc.z) - 0.05
-	cyl(tc, 2.5, 2.6, 0.16, pal("shade"), 28); cyl(tc + Vector3(0, 0.16, 0), 2.3, 2.35, 0.14, pal("stone"), 28)
-	for i in 8:
-		var a := TAU * i / 8.0 + 0.2
-		var cp := tc + Vector3(cos(a) * 1.95, 0.3, sin(a) * 1.95)
-		var broken: bool = i in [1, 4, 6]
-		column(cp, 1.1 + 0.5 * _hash2(i, 7) if broken else 2.7, 0.17, broken)
-	for i in [7, 2]:      # what is left of its ring beam, on the columns that still stand side by side
-		var a0: float = TAU * float(i) / 8.0 + 0.2; var a1: float = TAU * float(i + 1) / 8.0 + 0.2
-		var m := tc + Vector3((cos(a0) + cos(a1)) * 0.975, 3.0 + 0.11, (sin(a0) + sin(a1)) * 0.975)
-		var bm := blk(Vector3(-0.85, -0.11, -0.17), Vector3(0.85, 0.11, 0.17), "stone"); bm.position = m; bm.rotation.y = -(a0 + a1) * 0.5 + PI * 0.5
-	her_plinth(tc + Vector3(0, 0.3, 0), -0.6, "mourn", self)
 	# drums of a fallen column in the meadow west of the long basin, and a statue of her that was never finished
 	for k in 4:
 		var dp := Vector3(-8.2 - 0.75 * k, 0, -9.2 + 0.28 * k); dp.y = _land_h(dp.x, dp.z) + 0.2
@@ -547,6 +562,12 @@ func chan_run(pts: Array, speed := 2.2, w := 0.42) -> void:
 func _wing_done(id: String) -> void:
 	if id in wings_done: return
 	wings_done.append(id); hub_pending.append(id)
+	var all_built := true      # (a build in which some wing is not there yet: when every wing that is there has given its water, the others' waters come too, from under their shut doors, so that the chapter can be played to its end)
+	for w in ["W", "N", "S"]:
+		if wing_open[w] and not (w in wings_done): all_built = false
+	if all_built:
+		for w in ["W", "N", "S"]:
+			if not wing_open[w] and not (w in wings_done): wings_done.append(w); hub_pending.append(w)
 	print("WING done ", id, " (", wings_done.size(), " of 3)")
 
 # ---------------------------------------------------------------- the atrium's water
@@ -850,7 +871,7 @@ func _fountain() -> void:
 			pb.position = Vector3(ARCH_X + (col - 0.5) * ARCH_W, ARCH_Y * (row + 0.5) / 4.0, FZ0 + 0.15)
 	var pc := cyl(Vector3.ZERO, ARCH_W - 0.002, ARCH_W - 0.002, 0.3, pal("stone"), 28, plug); pc.rotation.x = PI * 0.5; pc.position = Vector3(ARCH_X, ARCH_Y, FZ0 + 0.15)
 	stoa(FX0, FZ0 + 0.3, FX0 + 0.3, FZ1)      # the west side
-	parapet(Vector3(FX1 - 0.1, 0, FZ0 + 0.4), Vector3(FX1 - 0.1, 0, -21.5)); parapet(Vector3(FX1 - 0.1, 0, -20.1), Vector3(FX1 - 0.1, 0, FZ1 - 0.1)); parapet(Vector3(FX0 + 0.4, 0, FZ1 - 0.1), Vector3(FX1 - 0.1, 0, FZ1 - 0.1))
+	parapet(Vector3(FX1 - 0.1, 0, FZ0 + 0.4), Vector3(FX1 - 0.1, 0, -21.5)); parapet(Vector3(FX1 - 0.1, 0, -20.1), Vector3(FX1 - 0.1, 0, FZ1 - 0.1)); parapet(Vector3(FX0 + 0.4, 0, FZ1 - 0.1), Vector3(ARCH_X - 0.8, 0, FZ1 - 0.1)); parapet(Vector3(ARCH_X + 0.8, 0, FZ1 - 0.1), Vector3(FX1 - 0.1, 0, FZ1 - 0.1))
 	stele("stele_5", Vector3(FX1 - 0.75, 0, FZ1 - 0.75), 0.0, ["I built that wall in one night.", "The water has not learned it.\nIt still shows what was there."])
 	_look_add("", Vector3(ARCH_X + 1.5, 0.05, FZ0 + 0.3), 1.3, ["the spout is dry", "a hand's depth of water is left under it"])
 	_look_add("fwall", Vector3(ARCH_X - 1.6, 0.05, FZ0 + 0.3), 1.8, ["a wall of plain stone", "in the water this wall has an arch"])
@@ -1180,6 +1201,10 @@ func _nav() -> void:
 	solids.append(Vector3(POST3.x, POST3.z, 0.3))
 	rects["Fe"] = R(FPX1 + 0.3, FPZ0 + 0.15, FX1 - 0.45, FZ1 - 0.45); rects["Fs"] = R(FX0 + 0.45, FPZ1 + 0.3, FX1 - 0.45, FZ1 - 0.45); rects["Fw"] = R(FX0 + 0.45, FPZ0 + 0.15, FPX0 - 0.3, FZ1 - 0.45)
 	rects["Fl"] = R(FPX0 - 0.3, FPZ0 + 0.15, FPX1 + 0.3, FPZ0 + 0.42); rects["F5"] = R(ARCH_X - 0.25, GZ1 - 0.5, ARCH_X + 0.25, FPZ0 + 0.42, false)
+	rects["Fp"] = R(ARCH_X - 0.45, FZ1 - 0.5, ARCH_X + 0.45, TEMPLE.z - 3.5)      # the garden path, and the walk round the temple
+	rects["Ft1"] = R(TEMPLE.x - 3.55, TEMPLE.z - 3.55, TEMPLE.x + 3.55, TEMPLE.z - 3.0); rects["Ft2"] = R(TEMPLE.x - 3.55, TEMPLE.z + 3.0, TEMPLE.x + 3.55, TEMPLE.z + 3.55)
+	rects["Ft3"] = R(TEMPLE.x - 3.55, TEMPLE.z - 3.55, TEMPLE.x - 3.0, TEMPLE.z + 3.55); rects["Ft4"] = R(TEMPLE.x + 3.0, TEMPLE.z - 3.55, TEMPLE.x + 3.55, TEMPLE.z + 3.55)
+	solids.append(Vector3(TEMPLE.x + 3.2, TEMPLE.z - 3.2, 0.4))
 	rects["Gs"] = R(GX0 + 0.8, GPZ1 + 0.3, GX1 - 0.45, GZ1 - 0.45); rects["Ge"] = R(GPX1 + 0.35, GZ0 + 0.8, GX1 - 0.45, GZ1 - 0.45)
 	rects["Gw"] = R(GX0 + 0.8, GZ0 + 0.8, ROWW_X - 0.6, GZ1 - 0.45); rects["Gn"] = R(GX0 + 0.8, GZ0 + 0.8, GX1 - 0.45, ROW_Z - 0.6)
 	rects["D6"] = R(GX0 - 0.7, DOOR6.z - 0.25, GX0 + 0.8, DOOR6.z + 0.25, false); rects["D6"].x0 = UX1 - 0.7
@@ -2078,6 +2103,9 @@ func _ready() -> void:
 	if OS.get_environment("HUB") != "": _hub_instant(int(OS.get_environment("HUB")))
 	if "hub" in args: _play_hub()
 	if "gate" in args: _play_gate()
+	if OS.get_environment("PATHCHK") != "":      # (a check of the floor's ways: "x,z,x,z")
+		var pc := OS.get_environment("PATHCHK").split(",")
+		print("PATH ", find_path(Vector3(float(pc[0]), 0, float(pc[1])), Vector3(float(pc[2]), 0, float(pc[3]))).size(), " points")
 
 ## stills. VIEWS="name,cx,cz,size[,px,pz,yaw];..." : the middle of the view on the ground, how many metres it holds
 ## across, and where she stands (away from everything, if not given)

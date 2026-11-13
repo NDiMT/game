@@ -808,4 +808,6 @@ func _play_cistern() -> void:
 	print("CISTERN 4 gate: ", done.has("cs_post4"), " wings done ", wings_done, " way back ", rects["C4b"].on)
 	await _tap_wait(Vector3(UX0 + 1.5, 0, UC.z))
 	print("CISTERN back in the atrium at ", pos)
+	while hub_n < 3 or hub_busy: await get_tree().process_frame      # (the other wings are not in this build: their waters come too)
+	print("CISTERN the basin stands full: waters ", hub_n, " knots can be reached ", not done.has("knots"))
 	get_tree().quit()
