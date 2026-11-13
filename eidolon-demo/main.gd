@@ -1931,7 +1931,7 @@ func _ione4_proof() -> void:
 	var spot := Vector3(0.9, 0, 1.2)
 	if OS.get_environment("PROOF_AT") != "": var f := OS.get_environment("PROOF_AT").split(","); spot = Vector3(float(f[0]), 0, float(f[1]))
 	var zoom := float(OS.get_environment("PROOF_ZOOM")) if OS.get_environment("PROOF_ZOOM") != "" else 2.0
-	if what == "walk": pos = Vector3(-13.9, 0, -21.4); yaw = PI * 0.5; cam.size = PLAY_SIZE / zoom; cam_t = pos      # (the film begins where she begins)
+	if what == "walk": pos = Vector3(-12.95, 0, -20.7); yaw = PI; cam.size = PLAY_SIZE / zoom; cam_t = pos      # (the film begins where she begins)
 	else: await get_tree().create_timer(1.5).timeout
 	if what == "close":      # front, three-quarter, side, back, at twice the size of play (or PROOF_ZOOM times)
 		for v in [["front", PI * 0.25], ["threeq", PI * 0.25 - 0.75], ["side", PI * 0.25 + PI * 0.5], ["back", PI * 1.25], ["backq", PI * 1.25 - 0.75]]:
@@ -1972,14 +1972,13 @@ func _ione4_proof() -> void:
 			await get_tree().create_timer(0.5).timeout
 			await snap.call("kneel-" + v[0])
 			a_drop = 0.0; a_lean = 0.0; a_headp = 0.0; a_wR = 0.0
-	elif what == "walk":      # a film: round the garden's pool, a halt, standing, a turn where she stands, and on
-		pos = Vector3(-13.9, 0, -21.4); yaw = PI * 0.5; cam.size = PLAY_SIZE / zoom; cam_t = pos
+	elif what == "walk":      # a film: along the garden's pool, a halt, standing, a turn where she stands, and back
 		await get_tree().create_timer(0.5).timeout
-		await go([Vector3(-12.95, 0, -21.4), Vector3(-12.95, 0, -24.4)])
+		await go([Vector3(-12.95, 0, -24.7)])
 		await wait(2.4)
-		await face(pos + Vector3(-1.0, 0, 0.9))
+		await face(pos + Vector3(-0.3, 0, 1.0))
 		await wait(0.5)
-		await go([Vector3(-12.95, 0, -26.0), Vector3(-13.9, 0, -26.0)])
+		await go([Vector3(-12.95, 0, -22.3)])
 		await wait(0.3)
 	get_tree().quit()
 
