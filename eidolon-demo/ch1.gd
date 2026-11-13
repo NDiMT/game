@@ -79,12 +79,31 @@ const UX0 := -34.0
 const UZ0 := -43.0
 const UX1 := -16.0
 const UZ1 := -24.0
-const UC := Vector3(-25.0, 0, -32.6)      # the middle of the great basin
-const UR := 4.2                           # its radius
-const UH := 4.3                           # half the side of the square opening it sits in
-const POD_H := 1.2                        # the podium of the Gate
-const POD_Z := UZ0 + 2.6                  # its front edge, where the stair comes up
-const STAIR_Z := UZ0 + 5.0                # the foot of the stair
+const UC := Vector3(-25.0, 0, -32.6)      # (the line the west door and its channel lie on)
+const GATE_X := -28.0                     # the middle of the Gate, in the north wall
+const UB := Vector3(-25.0, 0, -36.9)      # the middle of the great basin: it lies at the Gate's feet, south-east of it, where a water must lie to show it
+const UBR := 3.9                          # its radius
+const UBH := 4.0                          # half the side of the square opening it sits in
+const POD_H := 1.2                        # the landing before the Gate
+const LAND_X0 := GATE_X - 2.8
+const LAND_X1 := GATE_X + 2.2
+const LAND_Z := -41.0                     # its front edge, which stands at the basin's rim
+const STAIR_X := LAND_X1 + 2.1            # the foot of its stair, which comes down eastward along the wall
+const CLEFT_X0 := -27.1                   # in the water the landing is broken through here
+const CLEFT_X1 := -26.4
+const BREACH_X0 := -30.7                  # and the wall beside the Gate is breached here
+const BREACH_X1 := -30.12
+const TURN3 := Vector3(-26.75, 0, -40.68) # the statue that holds a stone, at the landing's foot
+const ROW3_X := -29.55                    # the row of her along the basin's west rim
+const ROW3_Z := [-39.4, -38.2, -37.0, -35.8]
+const HERS3 := 2                          # which of its places is empty
+const UC_STONE := "d8ccb9"                # the plain colours of the atrium's things as the basin's water shows them
+const UC_TOP := "e9dfcc"
+const UC_SHADE := "b9ab98"
+const UC_GOLD := "d2aa58"
+const UC_DARK := "7a708a"
+const UC_ROPE := "b9a888"
+const UC_CRIM := "cf5a40"
 
 var N := {}      # the pieces that move, by name (kept here so that the joined world leaves them alone)
 var WL: Array = []      # the still waters, in order: their names
@@ -94,6 +113,7 @@ var refl_key := "mir"      # which of her mirrored bodies it is (a water whose s
 var ramps: Array = []      # floor that is not level: {"r": its rect, "z0", "z1": between these it goes from height "y0" to "y1"}
 var on_ramp := false
 var refl_busy := 0      # how many orders to her reflection are still being carried out
+var refl_img := false   # the place it is being sent to was named by a tap on the water (on the image of the place)
 var woke := false
 var flags := {}
 var wing_open := {"W": false, "N": false, "S": false}      # which wings are built: a script that extends this one and builds a wing sets its own to true in _init (after super._init())
@@ -291,12 +311,17 @@ func channel(a: Vector3, b: Vector3, w := 0.5) -> void:
 # ---------------------------------------------------------------- waters that lie below the floor
 ## a still water at a level of its own: its mirror world hangs under a root that turns everything over about that
 ## level, so that when the water sinks by one step what it shows sinks by two. Returns that root
-func _cs_water(key: String, x0: float, z0: float, x1: float, z1: float, level: float) -> Node3D:
+func _cs_water(key: String, x0: float, z0: float, x1: float, z1: float, level: float, round := false) -> Node3D:
 	var mr := Node3D.new(); mr.name = "Mirror_" + key; mr.transform = Transform3D(Basis(Vector3(1, 0, 0), Vector3(0, -1, 0), Vector3(0, 0, 1)), Vector3(0, 2.0 * level, 0)); add_child(mr)
 	var wq := QuadMesh.new(); wq.size = Vector2(x1 - x0, z1 - z0); wq.orientation = PlaneMesh.FACE_Y
 	var g := ShaderMaterial.new(); g.shader = shaders["glass"]; timed.append(g)
 	g.set_shader_parameter("lost_a", 0.0); g.set_shader_parameter("blur_px", 0.6); g.set_shader_parameter("lod", 0.0)
-	var gl := prim(wq, Vector3((x0 + x1) * 0.5, level + 0.012, (z0 + z1) * 0.5), g); gl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var gl: MeshInstance3D
+	if round:      # a round water: a disc, as wide as the rectangle given
+		var dm := CylinderMesh.new(); dm.top_radius = 0.5; dm.bottom_radius = 0.5; dm.height = 0.001; dm.radial_segments = 72; dm.rings = 0; dm.cap_bottom = false
+		gl = prim(dm, Vector3((x0 + x1) * 0.5, level + 0.012, (z0 + z1) * 0.5), g); gl.scale = Vector3(x1 - x0, 1, z1 - z0)
+	else: gl = prim(wq, Vector3((x0 + x1) * 0.5, level + 0.012, (z0 + z1) * 0.5), g)
+	gl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	N[key + "_mr"] = mr; N[key + "_glass"] = gl; N[key + "_level"] = level
 	cs_mirs.append(["mir_" + key, mr])
 	return mr
@@ -518,11 +543,128 @@ func chan_run(pts: Array, speed := 2.2, w := 0.42) -> void:
 		var g := create_tween(); g.tween_property(n, "scale", Vector3.ONE, l / speed)
 		await g.finished
 
-## a wing's water has been set free: it runs down its channel into the great basin of the atrium
+## a wing's water has been set free: when she is next in the atrium it runs down that wing's channel into the basin
 func _wing_done(id: String) -> void:
 	if id in wings_done: return
-	wings_done.append(id)
+	wings_done.append(id); hub_pending.append(id)
 	print("WING done ", id, " (", wings_done.size(), " of 3)")
+
+# ---------------------------------------------------------------- the atrium's water
+var beyond := false       # what lies behind the Gate is built (by a script that extends this one)
+var hub_n := 0            # how many waters have come into the basin
+var hub_pending: Array = []
+var hub_busy := false
+var hub_gust := false     # a new water lies in the basin and no reflection has been sent over it yet
+
+## the way a wing's water takes through the atrium, from its door to the basin's rim
+func _hub_way(id: String) -> Array:
+	match id:
+		"W": return [Vector3(UX0 + 0.3, 0, UC.z), Vector3(UB.x, 0, UC.z), Vector3(UB.x, 0, UB.z + UBR)]
+		"S": return [Vector3(-30.0, 0, UZ1 - 0.2), Vector3(-30.0, 0, -34.5), Vector3(-28.05, 0, -34.5)]
+	return [Vector3(-19.5, 0, UZ0 + 0.3), Vector3(-19.5, 0, -39.0), Vector3(-21.75, 0, -39.0)]
+
+## the basin's water stands at a level and lies so wide
+func _u_set(level: float, rad: float) -> void:
+	N["U_level"] = level; W["U"].level = level; W["U"].rad = rad; W["U"].r = [UB.x - rad, UB.z - rad, UB.x + rad, UB.z + rad]
+	(N["U_mr"] as Node3D).position.y = 2.0 * level
+	var gl: Node3D = N["U_glass"]; gl.position.y = level + 0.012; gl.scale = Vector3(rad * 2.0, 1, rad * 2.0)
+	for m in N.get("U_umats", []): (m as ShaderMaterial).set_shader_parameter("level", level)
+	for key in ["lampW", "lampE"]:      # the glare of each lamp lies where the water shows the lamp
+		var c: Vector3 = N[key + "_c"]
+		(N[key + "_glare"] as Node3D).position = Vector3(c.x + (c.y - level), level + 0.03, c.z + (c.y - level))
+
+func _u_rise(level: float, rad: float, secs: float) -> void:
+	var l0: float = N["U_level"]; var r0: float = W["U"].rad
+	var t := create_tween(); t.tween_method(func(v: float) -> void: _u_set(lerpf(l0, level, v), lerpf(r0, rad, v)), 0.0, 1.0, secs).set_trans(Tween.TRANS_SINE)
+	await t.finished
+
+## the glare of the Gate's lamps on the water: there once the water lies wide enough to show them, and while they burn
+func _u_glares(secs := 1.2) -> void:
+	for key in ["lampW", "lampE"]:
+		var gm: StandardMaterial3D = N[key + "_glare_m"]; var gl: Node3D = N[key + "_glare"]
+		var to := 0.9 if (hub_n >= 2 and flags.get(key, true)) else 0.0
+		if to > 0.0: gl.visible = true
+		create_tween().tween_property(gm, "albedo_color:a", to, secs)
+
+## where the basin's water lets her reflection stand, as things are: the floor round the basin; the Gate's stair once
+## the second water has come; the landing once the third has, where no lamp's glare lies; the stone, where it is held
+## over the cleft; the breach, and the far side of the Gate
+func _u_foot() -> void:
+	var F := {}
+	for n in ["Us", "Uw", "Unw", "Ue", "Une", "Ucor"]:
+		var r: Dictionary = rects[n]; F[n] = R(r.x0, r.z0, r.x1, r.z1, true, 0.0)
+	var pl := Vector3(ROW3_X, 0, ROW3_Z[HERS3])
+	F["pl3"] = R(pl.x - 0.3, pl.z - 0.3, pl.x + 0.3, pl.z + 0.3, true, 0.17)
+	for i in 5: F["st%d" % i] = R(STAIR_X - 0.42 * (i + 1), LAND_Z - 0.6, STAIR_X - 0.42 * i + (0.25 if i == 0 else 0.0), LAND_Z - 0.05, hub_n >= 2, 0.24 * (i + 1))
+	var le: bool = hub_n >= 3 and not flags.get("lampE", true); var lw: bool = hub_n >= 3 and not flags.get("lampW", true)
+	F["ldE"] = R(CLEFT_X1, UZ0 + 1.2, LAND_X1, LAND_Z - 0.05, le, POD_H)
+	F["slab"] = R(CLEFT_X0 - 0.02, LAND_Z - 0.45, CLEFT_X1 + 0.02, LAND_Z - 0.05, le and flags.get("turn3", false), POD_H)
+	F["ldW"] = R(LAND_X0 + 0.1, UZ0 + 1.2, CLEFT_X0, LAND_Z - 0.05, lw, POD_H)
+	F["breach"] = R(BREACH_X0 + 0.05, UZ0 - 0.6, BREACH_X1 - 0.05, UZ0 + 1.25, lw, POD_H)
+	F["back"] = R(BREACH_X0 + 0.05, UZ0 - 0.9, GATE_X + 0.8, UZ0 - 0.45, hub_n >= 3, POD_H)
+	W["U"].foot = F
+	W["U"].heads = [rects["Us"], rects["Uw"], rects["Unw"], rects["Ue"], rects["Une"], rects["Ucor"], F["pl3"]]
+	if not refl_out.is_empty() and refl_w == "U" and _foot_of("U", (refl_out.holder as Node3D).position, 0.3) == "": _refl_melt()      # what it stood on is gone
+
+## a water comes into the basin: down its channel from its wing's door, then the basin takes it. The first fills the
+## floor of the basin and covers the lower step; the second covers the upper step; the third stands at the brim, at the
+## Gate's feet. While it comes in the water is stirred and shows nothing; then it stills, and is a mirror
+func _hub_fill(id: String) -> void:
+	hub_busy = true; busy = true; route.clear(); pending = ""
+	if not refl_out.is_empty(): await _refl_melt()
+	var k := hub_n; var gm: ShaderMaterial = N["U_gm"]; var gl: Node3D = N["U_glass"]
+	var s0 := cam.size
+	cam_focus = UB + Vector3(-1.2, 0.2, -0.6); cam_focus_on = true
+	create_tween().tween_property(cam, "size", 15.5, 1.8).set_trans(Tween.TRANS_SINE)
+	await wait(0.8)
+	await chan_run(_hub_way(id), 3.0)
+	var veil := func(a: float, b: float, secs: float) -> void:
+		var vt := create_tween(); vt.tween_method(func(v: float) -> void: gm.set_shader_parameter("veil", v), a, b, secs)
+		await vt.finished
+	if k == 0:
+		_u_set(-0.43, 2.1); gm.set_shader_parameter("veil", 1.0); gm.set_shader_parameter("alpha", 0.0); gl.visible = true
+		var f := create_tween(); f.tween_method(func(v: float) -> void: gm.set_shader_parameter("alpha", v), 0.0, 1.0, 1.0)
+		await f.finished
+		await _u_rise(-0.3, 2.1, 2.4); await _u_rise(-0.29, 3.0, 2.2)
+		(N["u_b0"] as Node3D).visible = false; (N["u_pit"] as Node3D).visible = true; (N["U_mr"] as Node3D).visible = true; W["U"].wet = true
+	elif k == 1:
+		await veil.call(0.0, 1.0, 1.0)
+		await _u_rise(-0.15, 3.0, 2.4); await _u_rise(-0.14, UBR, 2.2)
+		(N["u_b1"] as Node3D).visible = false
+	else:
+		await veil.call(0.0, 1.0, 1.0)
+		await _u_rise(-0.01, UBR, 2.8)
+		(N["u_b2"] as Node3D).visible = false
+	hub_n = k + 1; hub_gust = true
+	if hub_n >= 3: done.erase("knots")
+	await veil.call(1.0, 0.0, 2.0)
+	_u_foot(); _u_glares()
+	await wait(1.6)
+	cam_focus_on = false
+	create_tween().tween_property(cam, "size", s0, 1.6).set_trans(Tween.TRANS_SINE)
+	busy = false; hub_busy = false; settled.emit()
+	print("HUB water ", hub_n, " level ", N["U_level"], " radius ", W["U"].rad)
+
+## (for stills and runs) so many waters stand in the basin already
+func _hub_instant(n: int) -> void:
+	if n <= 0: return
+	var gm: ShaderMaterial = N["U_gm"]
+	hub_n = n; wings_done = ["W", "N", "S"].slice(0, n)
+	_u_set([-0.29, -0.14, -0.01][n - 1], [3.0, UBR, UBR][n - 1])
+	gm.set_shader_parameter("veil", 0.0); gm.set_shader_parameter("alpha", 1.0); (N["U_glass"] as Node3D).visible = true
+	(N["u_b0"] as Node3D).visible = false; (N["u_pit"] as Node3D).visible = true; (N["U_mr"] as Node3D).visible = true; W["U"].wet = true
+	if n >= 2: (N["u_b1"] as Node3D).visible = false
+	if n >= 3: (N["u_b2"] as Node3D).visible = false; done.erase("knots")
+	_u_foot(); _u_glares(0.1)
+
+## a breath of wind crosses the basin: for as long as it lasts the water holds no image, and her reflection is back
+## under her feet
+func _gust() -> void:
+	var gm: ShaderMaterial = N["U_gm"]
+	if not refl_out.is_empty() and refl_w == "U": _refl_melt()
+	var g := create_tween(); g.tween_method(func(v: float) -> void:
+		gm.set_shader_parameter("wave", 1.0 + 8.0 * sin(v * PI)); gm.set_shader_parameter("blur_px", 0.6 + 6.0 * sin(v * PI)), 0.0, 1.0, 3.0)
+	await g.finished
 
 ## I.1 the shore. The sea stands still inside a small harbour. A quay on the north side; from it a mole runs south
 ## into the basin, broken in the middle. The wheel of the first sluice was left on the far piece. In the water the
@@ -741,70 +883,221 @@ func _forecourt() -> void:
 		if i != HERS: _look_add("", Vector3(ROW_X[i], 0, ROW_Z), 1.9, ["one of his. veiled, like all of them", "it stands where he put it"])
 	urn(Vector3(GX1 - 0.8, 0, GZ0 + 1.0), 1.0)
 
-## I.7 the atrium. In its middle a great round basin, three steps deep, dry: all three waters of the house came
-## together here. Three dry channels come in from three shut doors. On the north side, at the top of a stair, the
-## Gate: barred, tied, and covered with the one cloth. Two lamps burn beside it by day
+## I.7 the atrium. A great round basin, three steps deep, dry: all three waters of the house came together here.
+## Three dry channels come in from the three wings, one goes down to the sea. The Gate stands at the basin's north
+## rim on a landing, its stair coming down eastward along the wall: barred, tied, and covered with the one cloth.
+## Two lamps burn on its piers by day. The basin lies south-east of the Gate: where a water must lie to show it
 func _atrium() -> void:
 	var n0 := get_child_count()
-	_pool_court(UX0, UZ0, UX1, UZ1, UC.x - UH, UC.z - UH, UC.x + UH, UC.z + UH, "stone", "PoolSkyU")
-	for c in get_children().slice(n0):      # this opening holds a dry basin, not a pool: no kerb, and nothing to see below
+	_pool_court(UX0, UZ0, UX1, UZ1, UB.x - UBH, UB.z - UBH, UB.x + UBH, UB.z + UBH, "stone", "PoolSkyU")
+	for c in get_children().slice(n0):      # this opening holds a stepped basin, not a pool: no kerb, and (while it is dry) nothing to see below
 		var mi := c as MeshInstance3D
 		if mi == null: continue
-		if mi.name == "PoolSkyU": mi.visible = false
+		if mi.name == "PoolSkyU": mi.visible = false; N["u_pit"] = mi
 		elif mi.mesh is BoxMesh and absf((mi.mesh as BoxMesh).size.y - 0.04) < 0.001 and absf(mi.position.y - 0.02) < 0.001: remove_child(mi); mi.queue_free()
-	tile_hole = Rect2(UC.x - UH, UC.z - UH, UH * 2.0, UH * 2.0); tiles(UX0, UZ0, UX1, UZ1, 1.0); tile_hole = Rect2()
-	turned(UC, [[UH * 1.432, 0.006], [UR, 0.006], [UR, -0.15], [UR - 0.9, -0.15], [UR - 0.9, -0.3], [UR - 1.8, -0.3], [UR - 1.8, -0.45], [0.0, -0.45]], "stone", 48)
-	turned(UC, [[UR + 0.22, 0.01], [UR, 0.01]], "shade", 48); turned(UC, [[UH * 1.432, 0.008], [UH * 1.432 - 0.1, 0.008]], "shade", 48)
-	cyl(UC + Vector3(0, -0.45, 0), 0.3, 0.3, 0.012, pal("gold"), 24)      # the drain in its middle
-	for a in 12: blk(Vector3(-0.012, 0, 0.45), Vector3(0.012, 0.004, UR - 1.95), "shade").transform = Transform3D(Basis(Vector3.UP, TAU * a / 12.0), UC + Vector3(0, -0.449, 0)) * Transform3D(Basis(), Vector3(0, 0, (0.45 + UR - 1.95) * 0.5))
-	# the podium, the stair, the Gate
-	var gx := UC.x
-	blk(Vector3(gx - 3.0, 0, UZ0 + 0.3), Vector3(gx + 3.0, POD_H, POD_Z), "stone"); blk(Vector3(gx - 3.04, 0, UZ0 + 0.3), Vector3(gx + 3.04, 0.16, POD_Z + 0.04), "shade")
-	cornice(gx - 3.0, UZ0 + 0.3, gx + 3.0, POD_Z, POD_H - 0.06, 0.04, 0.06)
+	_cs_deep_pit("PoolSkyU", 7.4)
+	tile_hole = Rect2(UB.x - UBH, UB.z - UBH, UBH * 2.0, UBH * 2.0); tiles(UX0, UZ0, UX1, UZ1, 1.0); tile_hole = Rect2()
+	cs_courts.append([UX0, UZ0, UX1, UZ1])
+	var mr := _cs_water("U", UB.x - 2.1, UB.z - 2.1, UB.x + 2.1, UB.z + 2.1, -0.43, true)
+	mr.visible = false
+	var gm := _veil_glass(Color("d9cdb9")); (N["U_glass"] as MeshInstance3D).material_override = gm; (N["U_glass"] as Node3D).visible = false; N["U_gm"] = gm
+	# the basin: a rim and two steps down to a round floor with a bronze drain. Each piece goes under the water in its turn
+	turned(UB, [[UBH * 1.432, 0.006], [UBR, 0.006]], "stone", 64)
+	turned(UB, [[UBR + 0.22, 0.01], [UBR, 0.01]], "shade", 64); turned(UB, [[UBH * 1.432, 0.008], [UBH * 1.432 - 0.1, 0.008]], "shade", 64)
+	var b2 := Node3D.new(); add_child(b2); N["u_b2"] = b2; turned(UB, [[UBR, 0.006], [UBR, -0.15]], "stone", 64, b2)
+	var b1 := Node3D.new(); add_child(b1); N["u_b1"] = b1; turned(UB, [[UBR, -0.15], [3.0, -0.15], [3.0, -0.3]], "stone", 64, b1)
+	var b0 := Node3D.new(); add_child(b0); N["u_b0"] = b0; turned(UB, [[3.0, -0.3], [2.1, -0.3], [2.1, -0.45], [0.0, -0.45]], "stone", 64, b0)
+	cyl(UB + Vector3(0, -0.45, 0), 0.3, 0.3, 0.012, pal("gold"), 24, b0)
+	for a in 12: blk(Vector3(-0.012, 0, 0.45), Vector3(0.012, 0.004, 1.95), "shade", b0).transform = Transform3D(Basis(Vector3.UP, TAU * a / 12.0), UB + Vector3(0, -0.449, 0)) * Transform3D(Basis(), Vector3(0, 0, 1.2))
+	# the half carvings on the risers, where the water will stand: each is made whole by its reflection
+	for both in [b1, mr]:      # half a hand mirror, lying on the line of the first water
+		var hc := Node3D.new(); hc.position = UB + Vector3(-0.7071, 0, -0.7071) * 2.985 + Vector3(0, -0.3, 0); hc.rotation.y = PI * 0.25; both.add_child(hc)
+		var gmat: Material = _cs_umat("U", Color(UC_GOLD)) if both == mr else pal("gold")
+		var dk := cyl(Vector3.ZERO, 0.13, 0.13, 0.014, gmat, 24, hc); dk.rotation.x = PI * 0.5
+		var hb := blk(Vector3(0.12, -0.02, -0.007), Vector3(0.36, 0.02, 0.007), "gold", hc)
+		if both == mr: hb.material_override = gmat
+	for both in [b2, mr]:      # a small figure standing on the line of the second water: with its reflection, two joined at the feet. The lower one looks elsewhere
+		var hc2 := Node3D.new(); hc2.position = UB + Vector3(-0.7071, 0, -0.7071) * 3.885 + Vector3(0, -0.15, 0); hc2.rotation.y = PI * 0.25; both.add_child(hc2)
+		var gmat2: Material = _cs_umat("U", Color(UC_GOLD)) if both == mr else pal("gold")
+		var bd := blk(Vector3(-0.016, 0.0, -0.007), Vector3(0.016, 0.085, 0.007), "gold", hc2)
+		var hd := cyl(Vector3(0.028 if both == mr else 0.0, 0.108, 0), 0.024, 0.024, 0.014, gmat2, 12, hc2); hd.rotation.x = PI * 0.5
+		if both == mr: bd.material_override = gmat2
+	# the row of her along the basin's west rim: three statues and an empty place, which a chain ties to the Gate's bar
+	var poses := ["calm", "pray", "", "mourn"]
+	for both in [self, mr]:
+		for i in ROW3_Z.size(): her_plinth(Vector3(ROW3_X, 0, ROW3_Z[i]), PI * 0.5, poses[i], both)
+	_strip_refl(mr)
+	var pl3 := Vector3(ROW3_X, 0, ROW3_Z[HERS3])
+	blk(pl3 + Vector3(0.262, 0.09, -0.08), pl3 + Vector3(0.276, 0.13, 0.08), "gold")      # its name plate, blank
+	# the landing and its stair
+	blk(Vector3(LAND_X0, 0, UZ0 + 0.3), Vector3(LAND_X1, POD_H, LAND_Z), "stone"); blk(Vector3(LAND_X0 - 0.04, 0, UZ0 + 0.3), Vector3(LAND_X1, 0.16, LAND_Z + 0.04), "shade")
+	cornice(LAND_X0, UZ0 + 0.3, LAND_X1, LAND_Z, POD_H - 0.06, 0.04, 0.06)
+	for seg in [[LAND_X0, CLEFT_X0], [CLEFT_X1, LAND_X1]]:      # in the water it is broken through
+		_ublk(Vector3(seg[0], 0, UZ0 + 0.3), Vector3(seg[1], POD_H - 0.05, LAND_Z), "stone", UC_STONE, false); _ublk(Vector3(seg[0], POD_H - 0.05, UZ0 + 0.3), Vector3(seg[1], POD_H, LAND_Z), "stone", UC_TOP, false)
+	for rb in [[0.1, 0.0, 0.3, 0.22], [0.32, 0.12, 0.55, 0.3], [0.05, 0.4, 0.3, 0.16], [0.3, 0.75, 0.5, 0.2]]:
+		_ublk(Vector3(CLEFT_X0 + rb[0], 0, LAND_Z - 1.0 + rb[1]), Vector3(CLEFT_X0 + rb[2], rb[3], LAND_Z - 0.75 + rb[1]), "stone", UC_SHADE, false)
 	for k in 7:
-		var z0 := POD_Z + 0.3 * k
-		blk(Vector3(gx - 1.2, 0, z0), Vector3(gx + 1.2, POD_H - 0.15 * (k + 1), z0 + 0.3), "stone")
-		blk(Vector3(gx - 1.2, POD_H - 0.15 * (k + 1) - 0.03, z0 + 0.3), Vector3(gx + 1.2, POD_H - 0.15 * (k + 1), z0 + 0.32), "shade")
-	for e in [-1.0, 1.0]:      # the cheeks of the stair, each ending in a block for a lamp
-		blk(Vector3(gx + e * 1.2 - 0.14 * (1.0 - e), 0, POD_Z), Vector3(gx + e * 1.2 + 0.14 * (1.0 + e), 0.5, STAIR_Z - 0.3), "stone")
-		blk(Vector3(gx + e * 1.34 - 0.22, 0, STAIR_Z - 0.5), Vector3(gx + e * 1.34 + 0.22, 0.72, STAIR_Z - 0.06), "stone"); blk(Vector3(gx + e * 1.34 - 0.25, 0.72, STAIR_Z - 0.53), Vector3(gx + e * 1.34 + 0.25, 0.78, STAIR_Z - 0.03), "shade")
-	wall(UX0, UZ0, gx - 1.95, UZ0 + 0.3, 3.2); wall(gx + 1.95, UZ0, -20.44, UZ0 + 0.3, 3.2); wall(-18.56, UZ0, UX1, UZ0 + 0.3, 3.2)      # the north wall, with the Gate and the door of the Spring in it
+		var sx := LAND_X1 + 0.3 * k; var top := POD_H - 0.15 * (k + 1)
+		_ublk(Vector3(sx, 0, UZ0 + 0.3), Vector3(sx + 0.3, top, LAND_Z), "stone", UC_STONE if k % 2 == 0 else UC_TOP)
+		blk(Vector3(sx + 0.3, top - 0.03, UZ0 + 0.3), Vector3(sx + 0.32, top, LAND_Z + 0.02), "shade")
+	# the north wall, with the Gate and the door of the Spring in it. In the water it is breached beside the Gate
+	wall(UX0, UZ0, GATE_X - 1.95, UZ0 + 0.3, 3.2); wall(GATE_X + 1.95, UZ0, -20.44, UZ0 + 0.3, 3.2); wall(-18.56, UZ0, UX1, UZ0 + 0.3, 3.2)
 	blk(Vector3(-20.44, 2.35, UZ0), Vector3(-18.56, 3.2, UZ0 + 0.3), "stone")
-	for e in [-1.0, 1.0]:      # the piers of the Gate
-		var px: float = gx + e * 1.7
-		blk(Vector3(px - 0.3, POD_H, UZ0 + 0.2), Vector3(px + 0.3, 5.0, UZ0 + 0.8), "stone"); blk(Vector3(px - 0.34, POD_H, UZ0 + 0.16), Vector3(px + 0.34, POD_H + 0.2, UZ0 + 0.84), "shade")
-		blk(Vector3(px - 0.34, 4.86, UZ0 + 0.16), Vector3(px + 0.34, 5.0, UZ0 + 0.84), "shade"); ball(Vector3(px, 5.72, UZ0 + 0.5), 0.2, pal("gold")); blk(Vector3(px - 0.2, 5.36, UZ0 + 0.3), Vector3(px + 0.2, 5.54, UZ0 + 0.7), "stone")
-	var gw := CSGBox3D.new(); gw.size = Vector3(4.0, 1.9, 0.6); gw.position = Vector3(gx, 4.4 + 0.02, UZ0 + 0.5); gw.material = pal("stone")
-	var gc := CSGCylinder3D.new(); gc.operation = CSGShape3D.OPERATION_SUBTRACTION; gc.radius = 1.4; gc.height = 0.8; gc.sides = 36
-	gc.rotation.x = PI * 0.5; gc.position = Vector3(0, -0.95, 0); gc.material = pal("shade"); gw.add_child(gc); add_child(gw)
-	cornice(gx - 2.0, UZ0 + 0.2, gx + 2.0, UZ0 + 0.8, 5.36, 0.05, 0.08)
-	blk(Vector3(gx - 1.4, POD_H, UZ0 + 0.36), Vector3(gx + 1.4, 3.46, UZ0 + 0.44), "gold")      # the leaves, of polished bronze, under the cloth
-	var lf := cyl(Vector3.ZERO, 1.4, 1.4, 0.08, pal("gold"), 36); lf.rotation.x = PI * 0.5; lf.position = Vector3(gx, 3.46, UZ0 + 0.4)
-	blk(Vector3(gx - 1.75, 2.5, UZ0 + 0.46), Vector3(gx + 1.75, 2.72, UZ0 + 0.6), "dark")      # the bar
-	# the cloth: it hangs in folds from a cord strung between the piers, down to a hand above the podium. The crown
-	# of the bronze leaves shows over it
-	var veil := cloth(Color("d9553a"), Color("a63a26"), 0.5)
-	N["veil"] = drape(Vector3(gx, 4.56, UZ0 + 0.92), 3.5, 4.56 - POD_H - 0.22, 20, veil)
-	var rod := cyl(Vector3.ZERO, 0.025, 0.025, 3.7, pal("gold"), 8); rod.rotation.z = PI * 0.5; rod.position = Vector3(gx, 4.58, UZ0 + 0.9)
-	for ry in [2.25, 3.45]:      # the cords that hold it shut: they go round the piers to the far side
-		blk(Vector3(gx - 2.02, ry, UZ0 + 1.0), Vector3(gx + 2.02, ry + 0.035, UZ0 + 1.03), "rope")
-		for e in [-1.0, 1.0]: blk(Vector3(gx + e * 2.02 - 0.017, ry, UZ0 + 0.3), Vector3(gx + e * 2.02 + 0.017, ry + 0.035, UZ0 + 1.03), "rope")
-	lantern(Vector3(gx - 2.45, POD_H, POD_Z - 0.45), 5, 1.0); lantern(Vector3(gx + 2.45, POD_H, POD_Z - 0.45), 6, -1.0)      # the two lamps that burn by day
-	# the doors of the three wings, shut: the Cistern to the west, the Spring in the north wall, the Lamps to the south
-	wall(UX0, UZ0 + 0.3, UX0 + 0.3, UC.z - 0.94, 3.2); wall(UX0, UC.z + 0.94, UX0 + 0.3, UZ1, 3.2)
-	blk(Vector3(UX0, 2.35, UC.z - 0.94), Vector3(UX0 + 0.3, 3.2, UC.z + 0.94), "stone")
+	_ublk(Vector3(UX0, 0, UZ0), Vector3(BREACH_X0, 3.2, UZ0 + 0.3), "stone", UC_STONE, false); _ublk(Vector3(BREACH_X1, 0, UZ0), Vector3(GATE_X - 1.95, 3.2, UZ0 + 0.3), "stone", UC_STONE, false)
+	_ublk(Vector3(BREACH_X0, POD_H + 2.05, UZ0), Vector3(BREACH_X1, 3.2, UZ0 + 0.3), "stone", UC_STONE, false); _ublk(Vector3(GATE_X + 1.95, 0, UZ0), Vector3(-21.0, 3.2, UZ0 + 0.3), "stone", UC_STONE, false)
+	_ublk(Vector3(UX0, 3.2, UZ0 - 0.04), Vector3(-21.0, 3.26, UZ0 + 0.34), "stone", UC_SHADE, false)
+	for rb in [[0.02, 0.12, 0.16], [0.3, 0.2, 0.1]]: _ublk(Vector3(BREACH_X0 + rb[0], POD_H, UZ0 + 0.32), Vector3(BREACH_X0 + rb[0] + rb[1], POD_H + rb[2], UZ0 + 0.5), "stone", UC_SHADE, false)
+	for both in [self, mr]: _gate(both, both == mr)
+	# the chain from the empty plinth to the bar: along the floor, up the landing, up the wall to a pulley by the pier
+	_chain([pl3 + Vector3(-0.34, 0.02, 0), Vector3(LAND_X0 + 0.25, 0.02, pl3.z), Vector3(LAND_X0 + 0.25, 0.02, LAND_Z + 0.03), Vector3(LAND_X0 + 0.25, POD_H + 0.02, LAND_Z + 0.03), Vector3(LAND_X0 + 0.25, POD_H + 0.02, UZ0 + 0.34), Vector3(LAND_X0 + 0.25, 3.0, UZ0 + 0.34), Vector3(GATE_X - 2.1, 3.0, UZ0 + 0.34)])
+	cyl(Vector3(GATE_X - 2.1, 2.93, UZ0 + 0.36), 0.07, 0.07, 0.03, pal("gold"), 12).rotation.x = PI * 0.5
+	for both in [self, mr]: _turn3_build(both, both == mr)
+	# the post that turns the statue: a pinion at the turntable's ring, a crank on top
+	var p3 := TURN3 + Vector3(-0.47, 0, 0)
+	blk(p3 + Vector3(-0.15, 0, -0.15), p3 + Vector3(0.15, 0.1, 0.15), "shade"); blk(p3 + Vector3(-0.1, 0.1, -0.1), p3 + Vector3(0.1, 0.84, 0.1), "stone")
+	var pg := Node3D.new(); pg.position = p3 + Vector3(0, 0.03, 0); add_child(pg); _gear(pg, 0.16, 12, 0.04); N["p3_gear"] = pg
+	var pt := Node3D.new(); pt.position = p3 + Vector3(0, 0.84, 0); add_child(pt); _gear(pt, 0.13, 12, 0.04); N["p3_top"] = pt
+	var ch3 := _crank_handle(pt); ch3.position = Vector3(0, 0.1, 0); ch3.rotation = Vector3(-PI * 0.5, 0, 0); ch3.scale = Vector3.ONE * 0.85
+	# the sides: an open row of columns to the west, either side of the Cistern's door; the forecourt's wall to the east
+	stoa(UX0, UZ0 + 0.3, UX0 + 0.3, UC.z - 0.94, 2.9); stoa(UX0, UC.z + 0.94, UX0 + 0.3, UZ1, 2.9)
 	sluice("doorW", Vector3(UX0 + 0.15, 0, UC.z), true, 0.6, 2.1); sluice("doorN", Vector3(-19.5, 0, UZ0 + 0.15), false, 0.6, 2.1); sluice("doorS", Vector3(-30.0, 0, UZ1 - 0.2), false, 0.6, 1.5)
 	parapet(Vector3(UX0 + 0.4, 0, UZ1 - 0.1), Vector3(-30.95, 0, UZ1 - 0.1)); parapet(Vector3(-29.05, 0, UZ1 - 0.1), Vector3(UX1 - 0.1, 0, UZ1 - 0.1))
 	parapet(Vector3(UX1 - 0.1, 0, GZ1 + 0.1), Vector3(UX1 - 0.1, 0, UZ1 - 0.1))
 	wall(UX1 - 0.3, UZ0 + 0.3, UX1, GZ0, 3.2)
-	channel(Vector3(UX0 + 0.3, 0, UC.z), Vector3(UC.x - UR - 0.2, 0, UC.z)); channel(Vector3(UC.x + UR + 0.2, 0, DOOR6.z), Vector3(UX1, 0, DOOR6.z))
-	channel(Vector3(-19.5, 0, UZ0 + 0.3), Vector3(-19.5, 0, -37.4)); channel(Vector3(-30.0, 0, UZ1 - 0.2), Vector3(-30.0, 0, -27.4))
-	stele("stele_7", Vector3(gx + 2.2, 0, STAIR_Z + 0.5), 0.0, ["This one I could not turn,\nor sink, or blind.\nSo I covered it.", "A pool this size shows too much.\nI let it run dry."])
-	_look_add("ubasin", UC + Vector3(UR - 0.4, 0, 0.0), 0.3, ["no water. no one", "three channels come in here, and one goes down to the sea"])
-	_look_add("", Vector3(gx - 2.45, POD_H, POD_Z - 0.45), 1.4, ["a lamp, burning by day", "its light falls where the water would be"])
+	# the channels: three come in, one goes down to the sea
+	channel(Vector3(UX0 + 0.3, 0, UC.z), Vector3(UB.x + 0.5, 0, UC.z)); channel(Vector3(UB.x, 0, UC.z - 0.02), Vector3(UB.x, 0, UB.z + UBR + 0.05))
+	channel(Vector3(-30.0, 0, UZ1 - 0.2), Vector3(-30.0, 0, -35.0)); channel(Vector3(-29.5, 0, -34.5), Vector3(-28.05, 0, -34.5))
+	channel(Vector3(-19.5, 0, UZ0 + 0.3), Vector3(-19.5, 0, -38.5)); channel(Vector3(-20.0, 0, -39.0), Vector3(-21.75, 0, -39.0))
+	channel(Vector3(UB.x + UBR + 0.05, 0, UB.z), Vector3(-17.0, 0, UB.z)); channel(Vector3(-17.5, 0, UB.z + 0.5), Vector3(-17.5, 0, DOOR6.z - 0.5)); channel(Vector3(-18.0, 0, DOOR6.z), Vector3(UX1, 0, DOOR6.z))
+	stele("stele_7", Vector3(STAIR_X + 0.9, 0, UZ0 + 0.95), 0.0, ["This one I could not turn,\nor sink, or blind.\nSo I covered it.", "A pool this size shows too much.\nI let it run dry."])
+	_look_add("ubasin", UB + Vector3(UBR - 0.4, 0, 1.2), 0.3, ["no water. no one", "three channels come in here, and one goes down to the sea"])
+	_look_add("", Vector3(GATE_X + 1.7, POD_H, UZ0 + 1.15), 2.0, ["a lamp, burning by day", "its light falls where the water would be"])
+	_look_add("", TURN3, 1.7, ["she holds out a stone, as if it were wanted somewhere", "a toothed ring under her feet, and a post beside it"])
+	_look_add("", pl3, 0.4, ["an empty place. a chain goes from under it to the bar of the Gate", "it waits for a weight"])
 	for dl in [[Vector3(UX0 + 0.3, 0, UC.z), "the channel of the cistern comes in under it"], [Vector3(-19.5, 0, UZ0 + 0.3), "the channel of the spring comes in under it"], [Vector3(-30.0, 0, UZ1 - 0.2), "the channel of the lamps comes in under it"]]:
 		_look_add("", dl[0], 1.6, ["a door, shut", dl[1]])
 	urn(Vector3(UX1 - 0.9, 0, UZ1 - 0.9), 1.0); urn(Vector3(UX0 + 0.9, 0, UZ1 - 0.9), 1.0, "rose"); cypress(Vector3(UX0 + 0.9, 0, UZ0 + 1.0), 2.8); cypress(Vector3(UX1 - 0.9, 0, UZ0 + 1.0), 2.8)
+	W["U"] = {"r": [UB.x - 2.1, UB.z - 2.1, UB.x + 2.1, UB.z + 2.1], "round": true, "c": UB, "rad": 2.1, "level": -0.43, "mir": "mir_U", "wet": false, "far": 20.0, "heads": [], "foot": {}}
+	WL.append("U")
+
+## a piece of the atrium and its copy in the basin's water (in a plain colour of its own)
+func _ublk(a: Vector3, b: Vector3, p: String, c: String, real := true, twin := true) -> void:
+	if real: blk(a, b, p)
+	if twin: blk(a, b, p, N["U_mr"]).material_override = _cs_umat("U", Color(c))
+
+## the surface of a water that can lie as a film over stone before it shows anything: the glass, with a veil
+func _veil_glass(veil_col: Color) -> ShaderMaterial:
+	if not N.has("veil_sh"):
+		var gsh := Shader.new(); gsh.code = SH_GLASS.replace("//GLINT", GLSL_GLINT).replace("uniform float time_s = 0.0;", "uniform float time_s = 0.0; uniform float veil = 0.0; uniform float alpha = 1.0; uniform vec3 veil_col : source_color = vec3(0.8);").replace("	ALBEDO = c;", "	c = mix(c, mix(veil_col, vec3(0.6, 0.85, 0.88), 0.18), veil);\n	ALBEDO = c; ALPHA = alpha;")
+		N["veil_sh"] = gsh
+	var gm := ShaderMaterial.new(); gm.shader = N["veil_sh"]; timed.append(gm)
+	gm.set_shader_parameter("lost_a", 0.0); gm.set_shader_parameter("blur_px", 0.6); gm.set_shader_parameter("lod", 0.0); gm.set_shader_parameter("veil", 1.0); gm.set_shader_parameter("alpha", 0.0); gm.set_shader_parameter("veil_col", veil_col)
+	return gm
+
+## a chain laid from point to point: links, every other one turned
+func _chain(pts: Array) -> void:
+	var k := 0
+	for i in pts.size() - 1:
+		var a: Vector3 = pts[i]; var b: Vector3 = pts[i + 1]; var l := a.distance_to(b); var d := (b - a) / l
+		var t := 0.04
+		while t < l:
+			var lk := blk(Vector3(-0.034, -0.008, -0.016) if k % 2 == 0 else Vector3(-0.034, -0.016, -0.008), Vector3(0.034, 0.008, 0.016) if k % 2 == 0 else Vector3(0.034, 0.016, 0.008), "dark")
+			lk.position = a + d * t
+			if absf(d.y) > 0.9: lk.rotation.z = PI * 0.5
+			else: lk.rotation.y = atan2(-d.z, d.x)
+			t += 0.062; k += 1
+
+## the Gate: two piers, an arch, two leaves of polished bronze under a bar, the cloth hung before them from a rod and
+## tied with three cords that go round the piers to the far side; a lamp on each pier. (twin: its copy in the water)
+func _gate(par: Node, twin: bool) -> void:
+	var gx := GATE_X; var sfx := "_m" if twin else ""
+	var B := func(a: Vector3, b: Vector3, p: String, c: String, to: Node = par) -> MeshInstance3D:
+		var m := blk(a, b, p, to)
+		if twin: m.material_override = _cs_umat("U", Color(c))
+		return m
+	for e in [-1.0, 1.0]:
+		var px: float = gx + e * 1.7
+		B.call(Vector3(px - 0.3, POD_H, UZ0 + 0.2), Vector3(px + 0.3, 5.0, UZ0 + 0.8), "stone", UC_STONE); B.call(Vector3(px - 0.34, POD_H, UZ0 + 0.16), Vector3(px + 0.34, POD_H + 0.2, UZ0 + 0.84), "shade", UC_SHADE)
+		B.call(Vector3(px - 0.34, 4.86, UZ0 + 0.16), Vector3(px + 0.34, 5.0, UZ0 + 0.84), "shade", UC_SHADE); B.call(Vector3(px - 0.2, 5.36, UZ0 + 0.3), Vector3(px + 0.2, 5.54, UZ0 + 0.7), "stone", UC_STONE)
+		var bl := ball(Vector3(px, 5.72, UZ0 + 0.5), 0.2, pal("gold"), par)
+		if twin: bl.material_override = _cs_umat("U", Color(UC_GOLD))
+	var gw := CSGBox3D.new(); gw.size = Vector3(4.0, 1.9, 0.6); gw.position = Vector3(gx, 4.42, UZ0 + 0.5); gw.material = _cs_umat("U", Color(UC_STONE)) if twin else pal("stone")
+	var gc := CSGCylinder3D.new(); gc.operation = CSGShape3D.OPERATION_SUBTRACTION; gc.radius = 1.4; gc.height = 0.8; gc.sides = 36
+	gc.rotation.x = PI * 0.5; gc.position = Vector3(0, -0.95, 0); gc.material = _cs_umat("U", Color(UC_SHADE)) if twin else pal("shade"); gw.add_child(gc); par.add_child(gw)
+	if twin: B.call(Vector3(gx - 2.05, 5.36, UZ0 + 0.15), Vector3(gx + 2.05, 5.44, UZ0 + 0.85), "shade", UC_SHADE)
+	else: cornice(gx - 2.0, UZ0 + 0.2, gx + 2.0, UZ0 + 0.8, 5.36, 0.05, 0.08)
+	for e in [-1.0, 1.0]:      # the leaves: each hangs on its pier and swings inward
+		var lf := Node3D.new(); lf.position = Vector3(gx + e * 1.4, POD_H, UZ0 + 0.4); par.add_child(lf); N[("leafL" if e < 0.0 else "leafR") + sfx] = lf
+		B.call(Vector3(minf(0.0, -e * 1.4), 0, -0.04), Vector3(maxf(0.0, -e * 1.4), 2.26, 0.04), "gold", UC_GOLD, lf)
+		for i in 10:      # its rounded head
+			var y0 := 1.4 * i / 10.0; var y1 := 1.4 * (i + 1) / 10.0; var wdt := sqrt(maxf(1.96 - y0 * y0, 0.0)) + 0.02
+			B.call(Vector3(minf(-e * 1.4, -e * 1.4 + e * wdt), 2.26 + y0, -0.04), Vector3(maxf(-e * 1.4, -e * 1.4 + e * wdt), 2.26 + y1, 0.04), "gold", UC_GOLD, lf)
+		for ry in [0.25, 1.1, 2.05]: B.call(Vector3(minf(-e * 0.12, -e * 1.3), ry, 0.04), Vector3(maxf(-e * 0.12, -e * 1.3), ry + 0.05, 0.055), "shade", UC_SHADE, lf)      # its rails
+		B.call(Vector3(-e * 1.3 - 0.03, 1.0, 0.04), Vector3(-e * 1.3 + 0.03, 1.3, 0.075), "dark", UC_DARK, lf)      # a ring to pull it by
+	var bar := Node3D.new(); bar.position = Vector3(gx - 1.78, 2.5, UZ0 + 0.53); par.add_child(bar); N["bar" + sfx] = bar      # (it hangs by its west end, where the chain takes it)
+	B.call(Vector3(0, 0, -0.07), Vector3(3.56, 0.22, 0.07), "dark", UC_DARK, bar)
+	for e in [-1.0, 1.0]: B.call(Vector3(gx + e * 1.52 - 0.06, 2.36, UZ0 + 0.44), Vector3(gx + e * 1.52 + 0.06, 2.5, UZ0 + 0.64), "gold", UC_GOLD)      # the hooks it lies in
+	# the cloth: it hangs in folds from a rod between the piers, down to a hand above the landing
+	var veil := drape(Vector3(gx, 4.56, UZ0 + 0.92), 3.5, 4.56 - POD_H - 0.22, 20, _cs_umat("U", Color(UC_CRIM)) if twin else cloth(Color("d9553a"), Color("a63a26"), 0.5))
+	if twin: veil.reparent(par, false)
+	N["veil" + sfx] = veil
+	var rod := cyl(Vector3.ZERO, 0.025, 0.025, 3.7, _cs_umat("U", Color(UC_GOLD)) if twin else pal("gold"), 8, par); rod.rotation.z = PI * 0.5; rod.position = Vector3(gx, 4.58, UZ0 + 0.9)
+	var ci := 0
+	for ry in [2.05, 2.85, 3.65]:      # the three cords that hold it shut
+		var cd := Node3D.new(); cd.position = Vector3(gx, ry, UZ0 + 1.0); par.add_child(cd); N["cord%d%s" % [ci, sfx]] = cd; ci += 1
+		B.call(Vector3(-2.02, 0, 0), Vector3(2.02, 0.035, 0.03), "rope", UC_ROPE, cd)
+		for e in [-1.0, 1.0]: B.call(Vector3(e * 2.02 - 0.017, 0, -0.7), Vector3(e * 2.02 + 0.017, 0.035, 0.03), "rope", UC_ROPE, cd)
+	if twin: return
+	for e in [-1.0, 1.0]: _gate_lamp("lampW" if e < 0.0 else "lampE", gx + e * 1.7, 5 if e < 0.0 else 6)
+
+## a lamp on a pier of the Gate: a bracket, a lantern on a short chain, over it a bronze cap that a pull-chain lets
+## down; and the glare it throws on the basin's water, where that water holds no image
+func _gate_lamp(key: String, px: float, li: int) -> void:
+	var c := Vector3(px, 2.75, UZ0 + 1.15)
+	blk(Vector3(px - 0.025, 3.12, UZ0 + 0.8), Vector3(px + 0.025, 3.16, UZ0 + 1.19), "gold"); blk(Vector3(px - 0.02, 2.95, UZ0 + 0.8), Vector3(px + 0.02, 3.12, UZ0 + 0.84), "gold")
+	cyl(Vector3(px, 2.98, UZ0 + 1.15), 0.008, 0.008, 0.15, pal("dark"), 6)
+	cyl(c + Vector3(0, -0.13, 0), 0.11, 0.09, 0.03, pal("gold"), 14); cyl(c + Vector3(0, 0.1, 0), 0.09, 0.11, 0.03, pal("gold"), 14)
+	for a in 4: cyl(c + Vector3(cos(TAU * a / 4.0) * 0.09, -0.1, sin(TAU * a / 4.0) * 0.09), 0.008, 0.008, 0.2, pal("gold"), 6)
+	var glow := cyl(c + Vector3(0, -0.1, 0), 0.07, 0.07, 0.2, pal("lamp"), 12); N[key + "_glow"] = glow
+	var cap := cyl(Vector3.ZERO, 0.03, 0.15, 0.24, pal("gold"), 16); cap.position = c + Vector3(0, 0.2, 0); N[key + "_cap"] = cap
+	var h := halo(0.9, Color(1.0, 0.8, 0.45, 0.5)); h.position = c; add_child(h); N[key + "_halo"] = h
+	var pull := Node3D.new(); pull.position = Vector3(px + 0.2, POD_H + 1.42, UZ0 + 1.15); add_child(pull); N[key + "_pull"] = pull
+	cyl(Vector3(0, 0.05, 0), 0.007, 0.007, 3.14 - (POD_H + 1.47), pal("dark"), 6, pull)
+	var rg := TorusMesh.new(); rg.inner_radius = 0.03; rg.outer_radius = 0.05; rg.rings = 12; rg.ring_segments = 6
+	prim(rg, Vector3.ZERO, pal("gold"), pull).rotation.x = PI * 0.5
+	blk(Vector3(px + 0.18, 3.12, UZ0 + 1.13), Vector3(px + 0.22, 3.16, UZ0 + 1.17), "gold")
+	lights[li] = Vector4(c.x, 0.2, c.z, 0.5)
+	var gr := Gradient.new(); gr.offsets = PackedFloat32Array([0.0, 0.45, 1.0]); gr.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 1, 1, 0.75), Color(1, 1, 1, 0)])
+	var gt := GradientTexture2D.new(); gt.gradient = gr; gt.fill = GradientTexture2D.FILL_RADIAL; gt.fill_from = Vector2(0.5, 0.5); gt.fill_to = Vector2(1.0, 0.5); gt.width = 128; gt.height = 128
+	var gm := StandardMaterial3D.new(); gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm.albedo_texture = gt; gm.albedo_color = Color(1.0, 0.95, 0.8, 0.0); gm.render_priority = 4
+	var q := QuadMesh.new(); q.size = Vector2(3.6, 3.6); q.orientation = PlaneMesh.FACE_Y
+	var gl := prim(q, c, gm); gl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; gl.visible = false; N[key + "_glare"] = gl; N[key + "_glare_m"] = gm; N[key + "_c"] = c
+	flags[key] = true      # it burns
+
+## the statue at the landing's foot that holds a stone out on both hands, on a toothed turntable
+func _turn3_build(par: Node, twin: bool) -> void:
+	var st := her_statue(TURN3, 0.0, "offer", 1.0, par)
+	var mid := Vector3(0, 1.12, 0.42)
+	var sks := st.find_children("*", "Skeleton3D", true, false)
+	if not sks.is_empty():
+		var sk: Skeleton3D = sks[0]; var li := _bone(sk, "LeftHand"); var ri := _bone(sk, "RightHand")
+		if li >= 0 and ri >= 0:
+			var inv := st.global_transform.affine_inverse()
+			mid = ((inv * (sk.global_transform * sk.get_bone_global_pose(li).origin)) + (inv * (sk.global_transform * sk.get_bone_global_pose(ri).origin))) * 0.5
+	var dirf := Vector3(mid.x, 0, mid.z).normalized()
+	var by := maxf(POD_H + 0.012 - (mid.y + 0.02), 0.03)
+	st.position.y = by
+	var sl := Node3D.new(); sl.position = mid + dirf * 0.14 + Vector3(0, 0.02 + 0.035, 0); sl.rotation.y = atan2(dirf.x, dirf.z); st.add_child(sl)
+	var sb := blk(Vector3(-0.36, -0.035, -0.25), Vector3(0.36, 0.035, 0.25), "stone", sl)
+	if twin: sb.material_override = _cs_umat("U", Color(UC_TOP))
+	var yin := PI - atan2(dirf.x, dirf.z)
+	st.rotation.y = yin + PI * 0.5      # it stands turned away: the stone held out over the floor to the west
+	N["turn3" + ("_m" if twin else "")] = st
+	if twin: return
+	N["turn3_in"] = yin; flags["turn3"] = false
+	var tt := Node3D.new(); tt.position = TURN3; tt.rotation.y = st.rotation.y; add_child(tt); N["turn3_tt"] = tt
+	cyl(Vector3.ZERO, 0.24, 0.26, by, pal("stone"), 24, tt)
+	var gr := Node3D.new(); gr.position = Vector3(0, 0.03, 0); tt.add_child(gr); _gear(gr, 0.29, 22, 0.04)
 
 # ---------------------------------------------------------------- what can be tapped, and where she can walk
 func _things() -> void:
@@ -832,8 +1125,42 @@ func _things() -> void:
 			var hm := HerMod.new(); hm.main = self; (e.sk as Skeleton3D).add_child(hm)
 		if e.ap != null: (e.ap as AnimationPlayer).play("idle")
 	_wing_things()
-	objs["gate"] = {"at": Vector3(UC.x, POD_H + 1.6, UZ0 + 0.9), "stand": Vector3(UC.x, 0, UZ0 + 1.5), "mark": false, "hits": [Vector3(UC.x, POD_H + 0.3, UZ0 + 0.9), Vector3(UC.x, POD_H + 3.4, UZ0 + 0.9)]}
+	objs["gate"] = {"at": Vector3(GATE_X, POD_H + 1.6, UZ0 + 0.9), "stand": Vector3(GATE_X, 0, UZ0 + 1.5), "mark": false, "hits": [Vector3(GATE_X, POD_H + 0.3, UZ0 + 0.9), Vector3(GATE_X, POD_H + 3.4, UZ0 + 0.9)]}
 	objs["place6"] = {"at": pl + Vector3(0, 0.3, 0), "stand": pl + Vector3(0, 0, -0.72), "mark": false, "hits": [pl + Vector3(0, 0.02, 0), pl + Vector3(0, 0.5, 0)]}
+	# the Gate's own things
+	for key in ["lampW", "lampE"]:
+		var lc: Vector3 = N[key + "_c"]
+		objs[key] = {"at": lc, "stand": Vector3(lc.x + 0.2, 0, UZ0 + 1.45), "mark": false, "hits": [lc + Vector3(0, 0.3, 0), Vector3(lc.x + 0.2, POD_H + 1.3, lc.z)]}
+	var p3 := TURN3 + Vector3(-0.47, 0, 0)
+	objs["turn3"] = {"at": TURN3 + Vector3(0, 1.0, 0), "stand": p3 + Vector3(-0.5, 0, 0.08), "mark": false, "hits": [p3 + Vector3(0, 0.1, 0), p3 + Vector3(0, 0.95, 0), TURN3 + Vector3(0, 0.3, 0), TURN3 + Vector3(0, 1.6, 0)]}
+	var pl3 := Vector3(ROW3_X, 0, ROW3_Z[HERS3])
+	objs["place3"] = {"at": pl3 + Vector3(0, 0.3, 0), "stand": pl3 + Vector3(-0.72, 0, 0), "mark": false, "hits": [pl3 + Vector3(0, 0.02, 0), pl3 + Vector3(0, 0.5, 0)]}
+	objs["knots"] = {"at": Vector3(GATE_X, 0, UZ0 + 1.0), "stand": pl3, "mark": false, "water": "U", "rstand": Vector3(GATE_X - 0.5, POD_H, UZ0 - 0.65), "hits": [Vector3(GATE_X, -2.1, UZ0 + 1.0), Vector3(GATE_X, -3.7, UZ0 + 1.0)]}
+	done["knots"] = true      # (the water does not show the Gate until it stands at its feet)
+	objs["bronze"] = {"at": Vector3(GATE_X, POD_H + 1.4, UZ0 + 0.45), "stand": pl3, "mark": false, "hits": [Vector3(GATE_X, POD_H + 0.2, UZ0 + 0.45), Vector3(GATE_X, POD_H + 3.2, UZ0 + 0.45)]}
+	done["bronze"] = true      # (under the cloth)
+	objs["through"] = {"at": Vector3(GATE_X, POD_H + 1.0, UZ0 + 0.4), "stand": Vector3(GATE_X, 0, UZ0 - 0.32), "mark": false, "hits": [Vector3(GATE_X, POD_H + 0.1, UZ0 + 0.4), Vector3(GATE_X, POD_H + 2.7, UZ0 + 0.4)]}
+	done["through"] = true      # (while the Gate is shut)
+	# her image in the bronze, for when the cloth is off it; the cloth as it will lie on the water; and folded
+	var bi: Dictionary = spawn_her(self, "marble"); var bh: Node3D = bi.holder
+	bh.position = Vector3(GATE_X, POD_H + 0.02, UZ0 + 0.5); bh.scale = Vector3(0.3, 0.3, 0.02); bh.visible = false; N["bronze_img"] = bh; N["bronze_ap"] = bi.ap
+	var fv := PackedVector3Array(); var fn := PackedVector3Array(); var fu := PackedVector2Array()
+	for i in 48:
+		var a0 := TAU * i / 48.0; var a1 := TAU * (i + 1) / 48.0
+		var r0 := 1.0 + 0.05 * sin(a0 * 5.0) + 0.035 * sin(a0 * 11.0 + 1.0); var r1 := 1.0 + 0.05 * sin(a1 * 5.0) + 0.035 * sin(a1 * 11.0 + 1.0)
+		for q in [Vector3.ZERO, Vector3(cos(a1) * r1, 0, sin(a1) * r1), Vector3(cos(a0) * r0, 0, sin(a0) * r0)]:
+			fv.append(q); fn.append(Vector3.UP); fu.append(Vector2(q.x * 0.5 + 0.5, q.z * 0.5 + 0.5))
+	var farr := []; farr.resize(Mesh.ARRAY_MAX); farr[Mesh.ARRAY_VERTEX] = fv; farr[Mesh.ARRAY_NORMAL] = fn; farr[Mesh.ARRAY_TEX_UV] = fu
+	var fam := ArrayMesh.new(); fam.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, farr)
+	var cm := StandardMaterial3D.new(); cm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; cm.albedo_color = Color("cf5a40"); cm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var fcl := prim(fam, Vector3(GATE_X + 0.8, 0.03, LAND_Z + 0.4), cm); fcl.scale = Vector3.ONE * 0.05; fcl.visible = false; fcl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; N["u_cloth"] = fcl
+	for i in 7:      # its folds, as darker rings
+		var rr := 0.2 + 0.11 * i
+		var rm := TorusMesh.new(); rm.inner_radius = rr - 0.006; rm.outer_radius = rr + 0.006; rm.rings = 40; rm.ring_segments = 3
+		var dm := StandardMaterial3D.new(); dm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; dm.albedo_color = Color("a8402c")
+		var rmi := prim(rm, Vector3(0.05 * sin(i * 2.1), 0.004, 0.05 * cos(i * 1.7)), dm, fcl); rmi.scale = Vector3(1, 0.2, 1)
+	var fold := Node3D.new(); add_child(fold); fold.visible = false; N["cloth_fold"] = fold
+	blk(Vector3(-0.13, 0, -0.1), Vector3(0.13, 0.03, 0.1), "crim", fold); blk(Vector3(-0.125, 0.03, -0.095), Vector3(0.12, 0.055, 0.095), "crim2", fold); blk(Vector3(-0.13, 0.055, -0.1), Vector3(0.1, 0.08, 0.09), "crim", fold)
 
 func _nav() -> void:
 	rects["Hq"] = R(HX0 + 0.45, HZ0 + 0.75, HX1 - 0.45, BZ0 - 0.3)      # the quay
@@ -856,18 +1183,23 @@ func _nav() -> void:
 	rects["Gs"] = R(GX0 + 0.8, GPZ1 + 0.3, GX1 - 0.45, GZ1 - 0.45); rects["Ge"] = R(GPX1 + 0.35, GZ0 + 0.8, GX1 - 0.45, GZ1 - 0.45)
 	rects["Gw"] = R(GX0 + 0.8, GZ0 + 0.8, ROWW_X - 0.6, GZ1 - 0.45); rects["Gn"] = R(GX0 + 0.8, GZ0 + 0.8, GX1 - 0.45, ROW_Z - 0.6)
 	rects["D6"] = R(GX0 - 0.7, DOOR6.z - 0.25, GX0 + 0.8, DOOR6.z + 0.25, false); rects["D6"].x0 = UX1 - 0.7
-	var kb := UH + 0.25      # she keeps this far from the middle of the dry basin
-	rects["Us"] = R(UX0 + 0.8, UC.z + kb, UX1 - 0.45, UZ1 - 0.45); rects["Un"] = R(UX0 + 0.8, STAIR_Z + 0.25, UX1 - 0.45, UC.z - kb)
-	rects["Uw"] = R(UX0 + 0.8, STAIR_Z + 0.25, UC.x - kb, UZ1 - 0.45); rects["Ue"] = R(UC.x + kb, STAIR_Z + 0.25, UX1 - 0.45, UZ1 - 0.45)
-	rects["Unw"] = R(UX0 + 0.8, UZ0 + 0.8, UC.x - 3.5, STAIR_Z + 0.25); rects["Une"] = R(UC.x + 3.5, UZ0 + 0.8, UX1 - 0.75, STAIR_Z + 0.25)
-	rects["Ust"] = R(UC.x - 0.85, POD_Z - 0.05, UC.x + 0.85, STAIR_Z + 0.25); rects["Upod"] = R(UC.x - 2.0, UZ0 + 1.25, UC.x + 2.0, POD_Z - 0.05)
-	ramps = [{"r": rects["Ust"], "z0": POD_Z, "z1": STAIR_Z, "y0": POD_H, "y1": 0.0}, {"r": rects["Upod"], "z0": 0.0, "z1": 1.0, "y0": POD_H, "y1": POD_H}]
-	solids.append(Vector3(UC.x + 2.2, STAIR_Z + 0.5, 0.45))
+	var kb := UBH + 0.1      # she keeps this far from the middle of the basin
+	rects["Us"] = R(UX0 + 0.8, UB.z + kb, UX1 - 0.45, UZ1 - 0.45); rects["Uw"] = R(UX0 + 0.8, LAND_Z + 0.3, UB.x - kb, UZ1 - 0.45)
+	rects["Unw"] = R(UX0 + 0.8, UZ0 + 0.8, LAND_X0 - 0.3, LAND_Z + 0.35); rects["Ue"] = R(UB.x + kb, UZ0 + 0.8, UX1 - 0.75, UZ1 - 0.45)
+	rects["Une"] = R(STAIR_X - 0.1, UZ0 + 0.8, UB.x + kb + 0.1, LAND_Z - 0.05)
+	rects["Ucor"] = R(UB.x - kb - 0.1, LAND_Z + 0.3, TURN3.x - 0.9, LAND_Z + 0.7)      # the strip between the landing and the basin, as far as the statue's post
+	rects["Ust"] = R(LAND_X1 - 0.05, UZ0 + 0.9, STAIR_X + 0.1, LAND_Z - 0.3); rects["Upod"] = R(LAND_X0 + 0.3, UZ0 + 1.25, LAND_X1 - 0.05, LAND_Z - 0.3)
+	ramps = [{"r": rects["Ust"], "ax": "x", "z0": LAND_X1, "z1": STAIR_X, "y0": POD_H, "y1": 0.0}, {"r": rects["Upod"], "z0": 0.0, "z1": 1.0, "y0": POD_H, "y1": POD_H}]
+	rects["Ugate"] = R(GATE_X - 0.55, UZ0 - 0.45, GATE_X + 0.55, UZ0 + 1.3, false)      # through the Gate, when it stands open
+	ramps.append({"r": rects["Ugate"], "z0": 0.0, "z1": 1.0, "y0": POD_H, "y1": POD_H})
+	for i in ROW3_Z.size(): solids.append(Vector3(ROW3_X, ROW3_Z[i], 0.45))
+	solids.append(Vector3(TURN3.x, TURN3.z, 0.4)); solids.append(Vector3(STAIR_X + 0.9, UZ0 + 0.95, 0.4))
 	# the doors of the wings: open from the start where a wing is built
 	rects["DW"] = R(UX0 - 0.7, UC.z - 0.25, UX0 + 0.8, UC.z + 0.25, wing_open["W"]); rects["DN"] = R(-19.75, UZ0 - 0.7, -19.25, UZ0 + 0.8, wing_open["N"]); rects["DS"] = R(-30.25, UZ1 - 0.65, -29.75, UZ1 + 0.7, wing_open["S"])
 	for wk in [["W", "doorW"], ["N", "doorN"], ["S", "doorS"]]:
 		if wing_open[wk[0]]: (N[wk[1]] as Node3D).position.y = -(float(N[wk[1] + "_h"]) + 0.25)
 	_wing_nav()
+	_u_foot()
 	for i in ROW_X.size(): solids.append(Vector3(ROW_X[i], ROW_Z, 0.45))
 	for i in ROWW_Z.size(): solids.append(Vector3(ROWW_X, ROWW_Z[i], 0.45))
 	posing = true; pose_k = 1.0
@@ -887,6 +1219,7 @@ func _water_under(sp: Vector2):
 		if not W[WL[i]].get("wet", true): continue      # (a tank that stands empty)
 		var g := o + d * ((float(W[WL[i]].get("level", 0.0)) + 0.012 - o.y) / d.y)      # where the finger meets this water's own surface
 		if g.x > r[0] and g.x < r[2] and g.z > r[1] and g.z < r[3]:
+			if W[WL[i]].get("round", false) and _flat(g, W[WL[i]].c) > float(W[WL[i]].rad): continue
 			for n in rects:      # floor that stands in the water (a mole, a quay) is floor
 				if rects[n].on and in_rect(rects[n], g): return null
 			return [i, Vector3(g.x, 0, g.z)]
@@ -915,30 +1248,54 @@ func _refl_path(wid: String, from: Vector3, to: Vector3) -> Dictionary:
 	var F: Dictionary = W[wid].foot
 	var a := _foot_of(wid, from, 0.9)
 	if a == "": return {"pts": [], "left": 1e9, "h": 0.0, "hs": []}
-	var prev := {a: ""}; var q := [a]
-	while not q.is_empty():
-		var c: String = q.pop_front()
-		for n in F:
-			if F[n].on and not prev.has(n) and absf(float(F[c].h) - float(F[n].h)) < 0.3 and portal(F[c], F[n]) != null: prev[n] = c; q.append(n)
-	var goal := to; var gd := 1e9      # the place on any footing nearest to what was asked for
+	var lvl := float(W[wid].get("level", 0.0))
+	# the place that was meant, on whatever this water has to stand on, open or not. (A tap on the water names the
+	# place whose image lies under the finger: what stands h over the water is seen h to the south-east of itself)
+	var goal := to; var gn := ""; var gd := 1e9
 	for n in F:
-		if not F[n].on: continue
-		var c2 := _near_in(F[n], to)
-		if _flat(c2, to) < gd: gd = _flat(c2, to); goal = c2
-	var b := ""; var bd := 1e9; var dest := from
-	for n in prev:
-		var c3 := _near_in(F[n], goal)
-		if _flat(c3, goal) < bd: bd = _flat(c3, goal); b = n; dest = c3
-	var chain := [b]
-	while prev[chain[0]] != "": chain.push_front(prev[chain[0]])
-	var pts := []; var cur := from
+		var tn: Vector3 = (to - Vector3(1, 0, 1) * (float(F[n].h) - lvl)) if refl_img else to
+		var c2 := _near_in(F[n], tn)
+		var dd := _flat(c2, tn) + (0.0 if F[n].on else 0.15)
+		if dd < gd: gd = dd; goal = c2; gn = n
+	# the way there over all of it; what is shut costs dear, so a way that is open is taken if there is one
+	var cost := {a: 0.0}; var prev := {a: ""}; var open_set := [a]
+	while not open_set.is_empty():
+		var c: String = open_set[0]
+		for o in open_set:
+			if cost[o] < cost[c]: c = o
+		open_set.erase(c)
+		for n in F:
+			if n == c or absf(float(F[c].h) - float(F[n].h)) >= 0.3 or portal(F[c], F[n]) == null: continue
+			var nc: float = cost[c] + (1.0 if F[n].on else 100.0)
+			if not cost.has(n) or nc < cost[n] - 0.001:
+				cost[n] = nc; prev[n] = c
+				if not (n in open_set): open_set.append(n)
+	var chain := []; var dest := goal
+	if gn != "" and prev.has(gn):
+		chain = [gn]
+		while prev[chain[0]] != "": chain.push_front(prev[chain[0]])
+		for i in chain.size():      # it is walked as far as it is open
+			if not F[chain[i]].on:
+				var pr0: Array = portal(F[chain[i - 1]], F[chain[i]])
+				dest = _near_in(F[chain[i - 1]], Vector3(clampf(goal.x, pr0[0], pr0[2]), 0, clampf(goal.z, pr0[1], pr0[3])))
+				chain = chain.slice(0, i); break
+	else:      # no way at all: as near as what can be reached comes to it
+		var b := a; var bd := 1e9
+		for n in prev:
+			if cost[n] >= 100.0: continue
+			var c3 := _near_in(F[n], goal)
+			if _flat(c3, goal) < bd: bd = _flat(c3, goal); b = n; dest = c3
+		chain = [b]
+		while prev[chain[0]] != "": chain.push_front(prev[chain[0]])
+	var pts := []; var hs := []; var cur := from
 	for i in range(chain.size() - 1):
 		var pr: Array = portal(F[chain[i]], F[chain[i + 1]])
 		var mid := cur.lerp(dest, 0.5)
 		var pt := Vector3(clampf(mid.x, pr[0], pr[2]), 0, clampf(mid.z, pr[1], pr[3]))
-		pts.append(pt); cur = pt
-	pts.append(dest)
-	return {"pts": pts, "left": bd, "h": F[b].h}
+		pts.append(pt); hs.append(float(F[chain[i + 1]].h)); cur = pt
+	var last: String = chain[chain.size() - 1]
+	pts.append(dest); hs.append(float(F[last].h))
+	return {"pts": pts, "left": _flat(dest, goal) + (0.0 if last == gn else 0.3), "h": F[last].h, "hs": hs}
 
 ## where she stands to send her reflection out on a water: the place nearest to her on the floor that touches its footing
 func _head_point(wid: String) -> Vector3:
@@ -961,10 +1318,12 @@ func _refl_out_now(wid: String) -> Dictionary:
 	return refl_out
 
 ## it walks a way, stone by stone. False if a newer order overtook this one
-func _refl_walk_pts(e: Dictionary, pts: Array, h: float, my: int, speed := 1.3) -> bool:
+func _refl_walk_pts(e: Dictionary, pts: Array, hv, my: int, speed := 1.3) -> bool:      # hv: how high it stands, the whole way (a number) or at each point of it (a list)
 	var hd: Node3D = e.holder
 	(e.ap as AnimationPlayer).play("walk", 0.25); (e.ap as AnimationPlayer).speed_scale = clampf(speed / 1.1, 0.45, 2.3)
-	for wp in pts:
+	for wi in pts.size():
+		var wp: Vector3 = pts[wi]
+		var h: float = float(hv[wi]) if hv is Array else float(hv)
 		var d: Vector3 = wp - hd.position; d.y = 0.0
 		if d.length() > 0.02:
 			var want := atan2(d.x, d.z)
@@ -1015,7 +1374,7 @@ func _refl_to(wid: String, to: Vector3) -> bool:
 			pending = ""
 			while not route.is_empty() and refl_token == my: await get_tree().process_frame
 			if refl_token != my or _flat(pos, hp) > 0.4: return false
-		face_to = Vector3(to.x, 0, to.z)
+		if not posing: face_to = Vector3(to.x, 0, to.z)
 		if _foot_of(wid, _refl_start(wid), 0.9) == "":      # this water has nothing for it to stand on
 			await _her_no()
 			return false
@@ -1033,7 +1392,7 @@ func _refl_to(wid: String, to: Vector3) -> bool:
 		await _refl_no(e)
 		if refl_token == my and _flat(hd.position, pos) < 0.25: await _refl_melt()
 		return false
-	if not await _refl_walk_pts(e, way.pts, way.h, my): return false
+	if not await _refl_walk_pts(e, way.pts, way.hs, my): return false
 	if way.left > 0.25:
 		await _refl_no(e)
 		return false
@@ -1057,7 +1416,13 @@ func _send_reflection(pi: int, to: Vector3, _sp: Vector2) -> void:
 	refl_ring.position = Vector3(to.x, 0.03, to.z); refl_p = 0.0
 	hold_id = -1; route.clear(); pending = ""
 	refl_busy += 1
+	refl_img = true
 	await _refl_to(WL[pi], to)
+	refl_img = false
+	if WL[pi] == "U" and hub_gust:      # the first time over a new water: a breath of wind takes the image away
+		hub_gust = false
+		await wait(0.9)
+		await _gust()
 	refl_busy -= 1
 
 func _refl_return() -> void:
@@ -1098,6 +1463,13 @@ func tap(sp: Vector2) -> void:
 	if started and not ended and not woke:
 		if not busy: _wake()
 		return
+	if started and not ended and not busy and flags.get("posed3", false):      # she stands as a statue on the empty place
+		var px0 := get_viewport().get_visible_rect().size.x / 720.0
+		if flags.get("stone3", false):      # and is stone: nothing answers but the bronze
+			if _tap_dist("bronze", sp) < 70.0 * px0: _bronze()
+			return
+		if _water_under(sp) == null and not (not done.has("knots") and _tap_dist("knots", sp) < 64.0 * px0):
+			_leave3(sp); return      # anything but an order to her reflection: she steps down first
 	if started and not ended and not busy:      # of the things under the finger, the nearest one is meant
 		var px := get_viewport().get_visible_rect().size.x / 720.0
 		var best := ""; var bd := 64.0 * px
@@ -1339,15 +1711,282 @@ func _do_wall5() -> void:
 
 ## I.7: the Gate. She lays a hand on the cloth. (For now the chapter ends here.)
 func _do_gate() -> void:
-	await face(Vector3(UC.x, 0, UZ0))
-	tgtR = Vector3(UC.x - 0.12, POD_H + 1.28, UZ0 + 0.93)
+	await face(Vector3(GATE_X, 0, UZ0))
+	tgtR = Vector3(GATE_X - 0.12, POD_H + 1.28, UZ0 + 0.93)
 	var a := tw(); a.tween_property(self, "a_wR", 1.0, 0.9); a.tween_property(self, "a_headp", -0.2, 0.9)
 	await a.finished
 	quote("gate", "Barred, and covered,\nand tied on the far side.", 4.5, true)
 	await wait(3.2)
 	var b := tw(); b.tween_property(self, "a_wR", 0.0, 0.9); b.tween_property(self, "a_headp", 0.0, 0.9)
 	await b.finished
+	flags["gate_seen"] = true
+	if wing_open["W"] or wing_open["N"] or wing_open["S"]: return      # the three ways stand open: the chapter goes on through them
 	await wait(2.0)
+	_end()
+
+# ---------------------------------------------------------------- III.2 the Gate counts statues
+func _do_lampW() -> void: await _lamp3("lampW", 5)
+func _do_lampE() -> void: await _lamp3("lampE", 6)
+
+## a lamp of the Gate: she pulls its chain. The cap comes down over the flame (or goes up off it), and the glare on
+## the water goes with the flame
+func _lamp3(key: String, li: int) -> void:
+	var c: Vector3 = N[key + "_c"]; var pull: Node3D = N[key + "_pull"]; var cap: Node3D = N[key + "_cap"]; var glow: Node3D = N[key + "_glow"]; var hl: Node3D = N[key + "_halo"]
+	var on: bool = flags[key]
+	await face(Vector3(c.x + 0.2, 0, UZ0))
+	tgtR = pull.global_position
+	var a := tw(); a.tween_property(self, "a_wR", 1.0, 0.8); a.tween_property(self, "a_headp", -0.3, 0.8)
+	await a.finished
+	var y0 := pull.position.y
+	var d := create_tween().set_trans(Tween.TRANS_SINE); d.tween_method(func(v: float) -> void:
+		pull.position.y = y0 - 0.14 * v; tgtR = pull.global_position, 0.0, 1.0, 0.5)
+	await d.finished
+	flags[key] = not on
+	var t := create_tween().set_parallel().set_trans(Tween.TRANS_SINE)
+	t.tween_property(cap, "position:y", c.y + (-0.02 if on else 0.2), 0.7)
+	t.tween_property(glow, "scale", Vector3.ONE * (0.05 if on else 1.0), 0.7)
+	t.tween_property(hl, "scale", Vector3.ONE * (0.01 if on else 1.0), 0.9)
+	t.tween_method(func(v: float) -> void: lights[li] = Vector4(c.x, 0.2, c.z, v), 0.5 if on else 0.0, 0.0 if on else 0.5, 0.9)
+	_u_glares(1.0)
+	await t.finished
+	var u := create_tween().set_trans(Tween.TRANS_SINE); u.tween_method(func(v: float) -> void:
+		pull.position.y = y0 - 0.14 * (1.0 - v); tgtR = pull.global_position, 0.0, 1.0, 0.5)
+	await u.finished
+	var b := tw(); b.tween_property(self, "a_wR", 0.0, 0.8); b.tween_property(self, "a_headp", 0.0, 0.8)
+	await b.finished
+	_u_foot()
+
+## the statue that holds a stone: she turns the crank of its post, and it turns a quarter: the stone over the
+## landing's edge (in the water: into the cleft), or away again
+func _do_turn3() -> void:
+	var p3 := TURN3 + Vector3(-0.47, 0, 0); var pt: Node3D = N["p3_top"]; var pg: Node3D = N["p3_gear"]
+	var to_in: bool = not flags["turn3"]
+	await face(p3)
+	if not to_in and not refl_out.is_empty() and refl_w == "U" and _foot_of("U", (refl_out.holder as Node3D).position, 0.1) == "slab": await _refl_melt()
+	var grip := func() -> Vector3: return pt.global_transform * Vector3(0.25, 0.14, 0.0)
+	tgtR = grip.call()
+	var a := tw(); a.tween_property(self, "a_wR", 1.0, 0.7); a.tween_property(self, "a_lean", 0.1, 0.7)
+	await a.finished
+	var s0 := cam.size
+	cam_focus = TURN3 + Vector3(0.9, 0.5, 1.0); cam_focus_on = true
+	create_tween().tween_property(cam, "size", 8.0, 1.2).set_trans(Tween.TRANS_SINE)
+	var yin: float = N["turn3_in"]; var y_from: float = (N["turn3"] as Node3D).rotation.y; var y_to := yin if to_in else yin + PI * 0.5
+	var t0 := pt.rotation.y
+	var tn := create_tween().set_trans(Tween.TRANS_SINE); tn.tween_method(func(v: float) -> void:
+		var y := lerpf(y_from, y_to, v)
+		(N["turn3"] as Node3D).rotation.y = y; (N["turn3_m"] as Node3D).rotation.y = y; (N["turn3_tt"] as Node3D).rotation.y = y
+		pt.rotation.y = t0 + v * TAU * 2.0 * (-1.0 if to_in else 1.0); pg.rotation.y = pt.rotation.y
+		tgtR = grip.call(), 0.0, 1.0, 3.4)
+	await tn.finished
+	flags["turn3"] = to_in
+	_u_foot()
+	var b := tw(); b.tween_property(self, "a_wR", 0.0, 0.7); b.tween_property(self, "a_lean", 0.0, 0.7)
+	await b.finished
+	cam_focus_on = false
+	create_tween().tween_property(cam, "size", s0, 1.2).set_trans(Tween.TRANS_SINE)
+
+## the bar of the Gate goes up off its hooks (her weight is on the plinth) or comes down again; the cords with it
+func _bar3(up: bool) -> void:
+	var t := create_tween().set_parallel().set_trans(Tween.TRANS_SINE)
+	for sfx in ["", "_m"]:
+		t.tween_property(N["bar" + sfx], "position:y", 2.95 if up else 2.5, 1.4)
+		for i in 3:
+			if not flags.get("untied", false): t.tween_property(N["cord%d%s" % [i, sfx]], "position:y", [2.05, 2.85, 3.65][i] - (0.07 if up else 0.0), 1.4)
+	await t.finished
+
+## the empty place of the row: she steps up and takes the stance. The chain draws tight and the bar lifts. She stays
+## so until something else is asked of her
+func _do_place3() -> void:
+	var pl := Vector3(ROW3_X, 0, ROW3_Z[HERS3])
+	var s0 := cam.size
+	cam_focus = Vector3(GATE_X + 1.4, 0.8, -39.4); cam_focus_on = true
+	create_tween().tween_property(cam, "size", 12.0, 1.6).set_trans(Tween.TRANS_SINE)
+	go([pl], 0.8)
+	while pos.x < pl.x - 0.48: await get_tree().process_frame
+	create_tween().tween_property(self, "pos:y", 0.17, 0.45).set_trans(Tween.TRANS_SINE)
+	await arrived
+	await face(pl + Vector3(3.0, 0, 0))
+	await wait(0.5)
+	tgtL = pl + Vector3(0.21, 1.61, -0.03); tgtR = pl + Vector3(0.21, 1.61, 0.03)
+	var up := tw(); up.tween_property(self, "a_wR", 1.0, 1.2); up.tween_property(self, "a_wL", 1.0, 1.2)
+	await up.finished
+	posing = true; flags["posed3"] = true
+	await _bar3(true)
+	await wait(0.6)
+	cam_focus_on = false
+	create_tween().tween_property(cam, "size", s0, 1.4).set_trans(Tween.TRANS_SINE)
+
+## she steps down from the place (the bar comes down again), and then the tap that asked for it is taken
+func _leave3(sp: Vector2) -> void:
+	busy = true
+	posing = false; flags["posed3"] = false
+	var dn := tw(); dn.tween_property(self, "a_wR", 0.0, 0.7); dn.tween_property(self, "a_wL", 0.0, 0.7)
+	_bar3(false)
+	await dn.finished
+	var pl := Vector3(ROW3_X, 0, ROW3_Z[HERS3])
+	go([pl + Vector3(-0.72, 0, 0)], 0.8)
+	while pos.x > pl.x - 0.14: await get_tree().process_frame
+	create_tween().tween_property(self, "pos:y", 0.0, 0.5).set_trans(Tween.TRANS_SINE)
+	await arrived
+	busy = false; settled.emit()
+	tap(sp)
+
+## the knots, on the far side of the Gate: her reflection has come round to them through the breach. While the bar
+## hangs on the cords they are tight as stone; when the bar is lifted they come away one by one, and the cloth falls
+func _do_knots() -> void:
+	var s0 := cam.size
+	cam_focus = Vector3(GATE_X + 1.2, 1.8, UZ0 + 2.6); cam_focus_on = true
+	create_tween().tween_property(cam, "size", 9.5, 1.4).set_trans(Tween.TRANS_SINE)
+	await wait(1.0)
+	if not flags.get("posed3", false):
+		for k in 2:      # it pulls: the cord jumps, and holds
+			var tw2 := create_tween().set_parallel().set_trans(Tween.TRANS_SINE)
+			for sfx in ["", "_m"]: tw2.tween_property(N["cord0" + sfx], "position:z", UZ0 + 0.965, 0.12)
+			await tw2.finished
+			var tw3 := create_tween().set_parallel().set_trans(Tween.TRANS_SINE)
+			for sfx in ["", "_m"]: tw3.tween_property(N["cord0" + sfx], "position:z", UZ0 + 1.0, 0.3)
+			await tw3.finished
+			await wait(0.25)
+		say("the knots hold. the bar hangs on them")
+		await wait(1.6)
+		cam_focus_on = false
+		create_tween().tween_property(cam, "size", s0, 1.4).set_trans(Tween.TRANS_SINE)
+		return
+	flags["untied"] = true
+	for i in 3:      # one by one
+		var j := 2 - i
+		var pull := create_tween().set_parallel().set_trans(Tween.TRANS_SINE)
+		for sfx in ["", "_m"]: pull.tween_property(N["cord%d%s" % [j, sfx]], "position:z", UZ0 + 0.95, 0.15)
+		await pull.finished
+		var fall := create_tween().set_parallel().set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		for sfx in ["", "_m"]:
+			fall.tween_property(N["cord%d%s" % [j, sfx]], "position:y", POD_H + 0.02, 0.55 + 0.12 * j); fall.tween_property(N["cord%d%s" % [j, sfx]], "position:z", UZ0 + 1.12, 0.55 + 0.12 * j)
+		await fall.finished
+		await wait(0.45)
+	done["knots"] = true
+	await _veil_fall()
+	cam_focus = Vector3(ROW3_X + 2.2, 0.6, ROW3_Z[HERS3] + 0.4)
+	create_tween().tween_property(cam, "size", 8.6, 1.8).set_trans(Tween.TRANS_SINE)
+	await wait(2.0)
+	cam_focus_on = false
+
+## the cloth slides off the Gate, over the landing's edge into the basin, and spreads on the water. The water is
+## covered: it shows nothing, her reflection is cut off behind the Gate, and she is stone on her plinth
+func _veil_fall() -> void:
+	var veil: Node3D = N["veil"]; var fcl: Node3D = N["u_cloth"]; var lvl: float = N["U_level"]
+	(N["veil_m"] as Node3D).visible = false
+	fcl.position = Vector3(GATE_X + 0.3, lvl + 0.03, LAND_Z + 0.5); fcl.scale = Vector3.ONE * 0.05; fcl.visible = true
+	var t := create_tween().set_parallel()
+	t.tween_property(veil, "position:y", POD_H + 0.5, 1.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_property(veil, "scale:y", 0.12, 1.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_property(veil, "position:z", LAND_Z - 0.1, 1.5).set_trans(Tween.TRANS_SINE)
+	await t.finished
+	var t2 := create_tween().set_parallel().set_trans(Tween.TRANS_SINE)
+	t2.tween_property(veil, "scale", Vector3(0.3, 0.02, 0.3), 1.2); t2.tween_property(veil, "position:y", lvl + 0.1, 1.2); t2.tween_property(veil, "position:z", LAND_Z + 0.5, 1.2)
+	t2.tween_property(fcl, "scale", Vector3.ONE * 1.4, 1.2)
+	await t2.finished
+	veil.visible = false
+	flags["stone3"] = true; W["U"].wet = false; done.erase("bronze")
+	for key in ["lampW", "lampE"]: create_tween().tween_property(N[key + "_glare_m"], "albedo_color:a", 0.0, 1.0)
+	var t3 := create_tween().set_parallel().set_trans(Tween.TRANS_SINE)
+	t3.tween_property(fcl, "scale", Vector3.ONE * (UBR - 0.12), 3.6); t3.tween_property(fcl, "position", Vector3(UB.x, lvl + 0.03, UB.z), 3.6)
+	await t3.finished
+
+## the Gate, uncovered, is polished bronze. In it her image comes nearer from the far side, and pushes: the leaves
+## open. Then the cloth is drawn under the water and handed up to her at the foot of her plinth; she wakes
+func _bronze() -> void:
+	busy = true
+	var s0 := cam.size
+	cam_focus = Vector3(GATE_X + 1.0, 2.0, UZ0 + 2.4); cam_focus_on = true
+	create_tween().tween_property(cam, "size", 8.2, 1.6).set_trans(Tween.TRANS_SINE)
+	await wait(1.2)
+	var img: Node3D = N["bronze_img"]; var iap: AnimationPlayer = N["bronze_ap"]
+	img.scale = Vector3(0.28, 0.28, 0.012); img.visible = true
+	if iap != null: iap.play("walk")
+	var ap := create_tween().set_trans(Tween.TRANS_SINE); ap.tween_property(img, "scale", Vector3(0.96, 0.96, 0.03), 3.2)
+	await ap.finished
+	if iap != null: iap.play("idle", 0.4)
+	await wait(0.7)
+	var op := create_tween().set_parallel().set_trans(Tween.TRANS_SINE)      # it pushes: the bar is thrown off, the leaves swing in
+	for sfx in ["", "_m"]:
+		op.tween_property(N["bar" + sfx], "rotation:z", -1.45, 1.6)
+		op.tween_property(N["leafL" + sfx], "rotation:y", 1.42, 3.0).set_delay(0.5); op.tween_property(N["leafR" + sfx], "rotation:y", -1.42, 3.0).set_delay(0.5)
+	op.tween_property(img, "scale:x", 0.01, 1.4).set_delay(0.6)
+	await op.finished
+	img.visible = false
+	rects["Ugate"].on = true; flags["gate_open"] = true; done["gate"] = true; done["bronze"] = true; done.erase("through")
+	await wait(0.6)
+	# the cloth goes under, drawn toward her; the water is a mirror again and her reflection is under her feet
+	var fcl: Node3D = N["u_cloth"]; var lvl: float = N["U_level"]; var pl := Vector3(ROW3_X, 0, ROW3_Z[HERS3])
+	var rim := Vector3(UB.x - UBR + 0.25, lvl, pl.z)
+	cam_focus = pl + Vector3(1.6, 0.6, 0.6)
+	create_tween().tween_property(cam, "size", 7.4, 1.8).set_trans(Tween.TRANS_SINE)
+	var dr := create_tween().set_parallel().set_trans(Tween.TRANS_SINE)
+	dr.tween_property(fcl, "scale", Vector3.ONE * 0.12, 2.6); dr.tween_property(fcl, "position", rim + Vector3(0, 0.03, 0), 2.6)
+	await dr.finished
+	var sk := create_tween(); sk.tween_property(fcl, "position:y", lvl - 0.25, 0.6)
+	await sk.finished
+	fcl.visible = false
+	W["U"].wet = true; flags["stone3"] = false
+	if not refl_out.is_empty():
+		refl_token += 1
+		var e: Dictionary = refl_out; var hd: Node3D = e.holder
+		hd.position = pos; hd.rotation.y = yaw; hd.scale = Vector3(1, 0.02, 1)
+		H[refl_key] = e; refl_out = {}; refl_w = ""
+		(e.ap as AnimationPlayer).play("idle", 0.3)
+		var b0 := create_tween(); b0.tween_property(hd, "scale:y", 1.0, 0.5).set_trans(Tween.TRANS_SINE)
+		await b0.finished
+	_u_glares(1.0)
+	# from hand to hand
+	var fold: Node3D = N["cloth_fold"]
+	fold.position = rim + Vector3(0, -0.05, 0); fold.scale = Vector3.ONE * 0.05; fold.visible = true
+	var ri := create_tween().set_parallel().set_trans(Tween.TRANS_SINE); ri.tween_property(fold, "scale", Vector3.ONE, 0.6); ri.tween_property(fold, "position", pl + Vector3(0.42, 1.05, 0.05), 1.6)
+	posing = false; flags["posed3"] = false
+	tgtR = pl + Vector3(0.42, 1.08, 0.05)
+	var dn := tw(); dn.tween_property(self, "a_wL", 0.0, 0.9); dn.tween_property(self, "a_headp", 0.25, 0.9)
+	await ri.finished
+	await wait(0.3)
+	var tk := create_tween(); tk.tween_property(fold, "scale", Vector3.ONE * 0.02, 0.4)
+	await tk.finished
+	fold.visible = false
+	_pocket_add("cloth")
+	var hb := tw(); hb.tween_property(self, "a_wR", 0.0, 0.8); hb.tween_property(self, "a_headp", 0.0, 0.8)
+	await hb.finished
+	go([pl + Vector3(-0.72, 0, 0)], 0.8)
+	while pos.x > pl.x - 0.14: await get_tree().process_frame
+	create_tween().tween_property(self, "pos:y", 0.0, 0.5).set_trans(Tween.TRANS_SINE)
+	await arrived
+	done["place3"] = true
+	cam_focus_on = false
+	create_tween().tween_property(cam, "size", s0, 1.6).set_trans(Tween.TRANS_SINE)
+	busy = false; settled.emit()
+	print("GATE open; pocket ", pocket)
+
+## the open Gate: she goes through
+func _do_through() -> void:
+	pass
+
+## III.5: the basin overflows into the great channel, and the eye follows the water down past every gate she opened,
+## to the shore where she woke
+func _ch1_finale() -> void:
+	busy = true; route.clear(); pending = ""
+	var ways := [[Vector3(UB.x + UBR, 0, UB.z), Vector3(-17.5, 0, UB.z), Vector3(-17.5, 0, DOOR6.z), Vector3(GX0 + 1.25, 0, DOOR6.z), Vector3(GX0 + 1.25, 0, GZ1 - 1.0), Vector3(ARCH_X, 0, GZ1 - 1.0), Vector3(ARCH_X, 0, FPZ0)],
+		[Vector3(ARCH_X, 0, FPZ1), Vector3(ARCH_X, 0, -20.8), Vector3(WELL.x - WELL_R, 0, -20.8)],
+		[Vector3(-2.05, 0, WELL.z + WELL_R), Vector3(-2.05, 0, TZ0), Vector3(-2.3, 0, TZ0), Vector3(-2.3, 0, TZ1 - 0.62), Vector3(0, 0, TZ1 - 0.62), Vector3(0, 0, BZ0)]]
+	cam_focus = UB; cam_focus_on = true
+	create_tween().tween_property(cam, "size", 13.0, 2.0).set_trans(Tween.TRANS_SINE)
+	await wait(2.2)
+	var speed := 5.0
+	for way in ways:
+		var ct := create_tween()
+		for i in range(1, way.size()): ct.tween_property(self, "cam_focus", way[i], (way[i] as Vector3).distance_to(way[i - 1]) / speed)
+		await chan_run(way, speed)
+		await wait(0.5)
+	cam_focus = Vector3(0, 0, BZ0 + 3.0)
+	create_tween().tween_property(cam, "size", 16.0, 3.0).set_trans(Tween.TRANS_SINE)
+	await wait(1.5)
+	quote("fin", "The water has found the sea again.", 5.0, true)
+	await wait(5.5)
 	_end()
 
 ## I.6: the statue that stands, in the water, on the plinth that is empty above. Her reflection goes up to it, looks
@@ -1405,11 +2044,13 @@ func _do_place6() -> void:
 # ---------------------------------------------------------------- frame, and the runs that try the chapter
 func _process(dt: float) -> void:
 	super._process(dt)
-	if not refl_out.is_empty() and not busy and refl_w != "" and _rect_dist(pos, W[refl_w].r) > 3.2: _refl_melt()      # she has left that water
+	if not refl_out.is_empty() and not busy and refl_w != "" and _rect_dist(pos, W[refl_w].r) > float(W[refl_w].get("far", 3.2)): _refl_melt()      # she has left that water
 	var inside := false
 	for c in cs_courts:
 		if pos.x > c[0] and pos.x < c[2] and pos.z > c[1] and pos.z < c[3]: inside = true
 	if H.has("mir"): (H["mir"].holder as Node3D).visible = not inside      # in a court whose water lies below the floor, that water's own body mirrors her
+	if not hub_pending.is_empty() and not hub_busy and not busy and woke and pos.x > UX0 + 0.6 and pos.x < UX1 - 0.4 and pos.z > UZ0 and pos.z < UZ1: _hub_fill(hub_pending.pop_front())
+	if flags.get("gate_open", false) and not beyond and not ended and not flags.get("fin", false) and pos.z < UZ0 - 0.15: flags["fin"] = true; _ch1_finale()
 	var fy = _floor_y(pos)      # the stair and the podium: she stands as high as the floor is there
 	if fy != null: pos.y = fy; on_ramp = true
 	elif on_ramp: pos.y = 0.0; on_ramp = false
@@ -1434,6 +2075,9 @@ func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	if "views" in args: _views()
 	if "act1" in args: _play_act1()
+	if OS.get_environment("HUB") != "": _hub_instant(int(OS.get_environment("HUB")))
+	if "hub" in args: _play_hub()
+	if "gate" in args: _play_gate()
 
 ## stills. VIEWS="name,cx,cz,size[,px,pz,yaw];..." : the middle of the view on the ground, how many metres it holds
 ## across, and where she stands (away from everything, if not given)
@@ -1519,11 +2163,61 @@ func _play_act1() -> void:
 		print("ACT1 I.6 place ", done.has("place6"), " door ", rects["D6"].on, " she at ", pos)
 	await _tap_wait(Vector3(UX1 - 2.0, 0, DOOR6.z))
 	print("ACT1 I.7 in the atrium at ", pos)
-	await _tap_wait(Vector3(UC.x, POD_H + 1.6, UZ0 + 0.9))
+	await _tap_wait(Vector3(GATE_X, POD_H + 1.6, UZ0 + 0.9))
 	print("ACT1 I.7 at the gate: ", pos, " ended ", ended)
 	get_tree().quit()
 
 ## (to try a later court) everything before it is done, and she stands at its entry
+## the run that tries the atrium's water: each wing's water in turn, and how far her reflection gets toward the Gate
+func _play_hub() -> void:
+	await get_tree().create_timer(1.0).timeout
+	tap(Vector2(360, 640)); await wait(0.5)
+	_wake_now(); _open_to("U")
+	await wait(1.0)
+	for id in ["W", "S", "N"]:
+		_wing_done(id)
+		while hub_pending.size() > 0 or hub_busy: await get_tree().process_frame
+		await wait(0.5)
+		await _tap_wait(Vector3(UB.x - 1.0, float(N["U_level"]), UB.z - 1.0))      # the water, toward the Gate
+		print("HUB ", id, " reflection ", (refl_out.holder as Node3D).position if not refl_out.is_empty() else "under her", " she at ", pos)
+		await wait(4.5)
+		await _tap_wait(Vector3(GATE_X + 1.0, POD_H - 2.0 * (POD_H - float(N["U_level"])), LAND_Z - 0.3))      # the landing, as the water shows it
+		print("HUB ", id, " to the landing: reflection ", (refl_out.holder as Node3D).position if not refl_out.is_empty() else "under her")
+	get_tree().quit()
+
+## the run that tries the Gate: the obvious plans first, then the way that works
+func _play_gate() -> void:
+	await get_tree().create_timer(1.0).timeout
+	tap(Vector2(360, 640)); await wait(0.5)
+	_wake_now(); _open_to("U"); _hub_instant(3)
+	await wait(1.0)
+	var rp := func() -> String: return str((refl_out.holder as Node3D).position.snapped(Vector3.ONE * 0.01)) if not refl_out.is_empty() else "under her"
+	var knots := Vector3(GATE_X, -2.9, UZ0 + 1.0)
+	await _tap_wait(knots)
+	print("GATE 1 knots with the lamps burning: reflection ", rp.call())
+	await _tap_wait(N["lampE_c"]); await _tap_wait(N["lampW_c"])
+	print("GATE 2 lamps capped: E ", flags["lampE"], " W ", flags["lampW"], " she at ", pos)
+	await _tap_wait(knots)
+	print("GATE 3 knots with the cleft open: reflection ", rp.call())
+	await _tap_wait(TURN3 + Vector3(0, 1.0, 0))
+	print("GATE 4 the stone turned in: ", flags["turn3"], " she at ", pos)
+	await _tap_wait(knots)
+	print("GATE 5 knots with the bar down: reflection ", rp.call(), " untied ", flags.get("untied", false))
+	await _tap_wait(Vector3(ROW3_X, 0.3, ROW3_Z[HERS3]))
+	print("GATE 6 on the plinth: posed ", flags.get("posed3", false), " bar at ", (N["bar"] as Node3D).position.y)
+	await _tap_wait(knots)
+	print("GATE 7 knots with the bar up: untied ", flags.get("untied", false), " stone ", flags.get("stone3", false))
+	await _tap_wait(Vector3(UX1 - 3.0, 0, UZ1 - 3.0))
+	print("GATE 8 a tap on the floor: she at ", pos)
+	await _tap_wait(Vector3(GATE_X, POD_H + 1.4, UZ0 + 0.45))
+	print("GATE 9 the bronze: open ", flags.get("gate_open", false), " pocket ", pocket, " she at ", pos)
+	_tap_at(Vector3(GATE_X, POD_H + 1.2, UZ0 + 0.4))
+	while not flags.get("fin", false): await get_tree().process_frame
+	print("GATE 10 through: she at ", pos, " fin ", flags.get("fin", false))
+	while not ended: await get_tree().process_frame
+	print("GATE ended ", ended)
+	get_tree().quit()
+
 func _open_to(c: String) -> void:
 	var order := ["T", "V", "F", "G", "U"]; var k := order.find(c)
 	rects["S1"].on = true; (N["s1"] as Node3D).position.y = -1.75; done["wheel1"] = true
