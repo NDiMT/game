@@ -143,6 +143,7 @@ class Scene:
     def lift(self, name, box, kind, only=None, thick=0, cut=(), seed=None, **kw):
         # an element is cut out of the picture: what is not ground inside its box (only='colour': not the black
         # either; only='bright': the pale parts alone). What lay under it is filled from what lies round it
+        if self.vn: return      # this scene wears a moving picture
         x0, y0, x1, y1 = box; pad = 16
         X0, Y0, X1, Y1 = max(0, x0 - pad), max(0, y0 - pad), min(PW, x1 + pad), min(PH, y1 + pad)
         sub0 = self.img[Y0:Y1, X0:X1]

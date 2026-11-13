@@ -70,7 +70,11 @@ the drawing itself do not change. The clips are in `clips/`.
 
 `tools/vidprep.py` turns a clip into the frames the vase wears: the clip's colours are fitted to the painting; where
 nothing ever moves, the painting itself is kept (so it stays crisp and cannot shimmer); the last frames lean into
-the first. On the vase each picture begins to move as it comes round.
+the first. Where a clip's end does not meet its beginning (cards 5, 6, 7) it is played forward and then back, so
+there is no join at all. On the vase each picture begins to move as it comes round.
+
+Card 5 was first drawn with her bending over the water from a rock; the video model refused that picture three
+times, so she was redrawn standing upright on a low shore (`prompts/card5_fix3_standing.txt`), which it accepted.
 
 | Card | What moves |
 |---|---|
@@ -78,7 +82,7 @@ the first. On the vase each picture begins to move as it comes round.
 | 2 | Theron raises and lowers his hands in prayer; she takes one hesitant step down from the block and back, her arms finding balance; the goddess tilts the mirror, the dove lifts its wings |
 | 3 | she walks into the wind, her hand at her cheek, hair, shawl and skirt streaming; Theron in the doorway looks and hides his eyes again |
 | 4 | Theron draws the veil down and smooths it, shifting his feet; the veil sways; the cloth on the peg stirs |
-| 5 | (the video model refused this picture three times; no clip) she sways as she looks and the woman in the water sways with her; the gulls hang; the sun's road trembles |
+| 5 | she takes a small step to the water's edge and back, lifts her hand to her veil; the woman in the water does the same; the gulls beat their wings; the sun's road shimmers |
 | 6 | she reaches her hand down to the water until she touches it, rings spread, she draws it back; the boat rides; the reflection follows |
 | 7 | the empty boat rocks; the veil drifts; on the shore Theron steps forward, stretches out his arm, lets it sink |
 

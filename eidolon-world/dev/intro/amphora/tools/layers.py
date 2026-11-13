@@ -22,9 +22,9 @@ L = {
  4: [('wrapped_mirror_1', (0, 70, 270, 340), 'all'), ('wrapped_mirror_2', (0, 400, 270, 665), 'all'), ('bare_mirror', (835, 70, 1100, 330), 'all'),
      ('cloth_on_peg', (858, 503, 980, 858), 'all', (895, 462, 945, 503, 'red')), ('hand_mirror_and_peg', (880, 458, 1100, 650), 'all'),
      ('ione_veiled', (580, 150, 850, 1020), 'colour', (625, 900, 800, 978, 'dark')), ('theron', (300, 60, 600, 1020), 'all', (600, 60, 715, 300, 'dark')), ('ground_line', (0, 1000, 1100, 1030), 'all')],
- 5: [('sea', None, 'sea'), ('gull_1', (556, 26, 654, 94), 'all'), ('gull_2', (958, 226, 1058, 298), 'all'), ('sun', (780, 55, 905, 180), 'dark'),
-     ('ione_veiled', (185, 125, 455, 580), 'colour'), ('rock', (0, 385, 400, 614), 'dark'),
-     ('reflection', (166, 614, 424, 1060), 'all'), ('sun_road', (776, 614, 914, 1096), 'all')],
+ 5: [('sea', None, 'sea'), ('gull_1', (540, 15, 670, 105), 'all'), ('gull_2', (950, 215, 1070, 305), 'all'), ('sun', (770, 45, 915, 195), 'dark'),
+     ('ione_veiled', (150, 0, 400, 585), 'colour', (190, 540, 380, 590, 'dark')), ('shore', (0, 540, 460, 616), 'dark'),
+     ('reflection', (120, 614, 420, 1090), 'all'), ('sun_road', (760, 614, 930, 1098), 'all')],
  6: [('sea', None, 'sea'), ('sun', (75, 50, 225, 195), 'dark'), ('boat_and_ione', (100, 230, 945, 677), 'all'), ('reflection', (100, 678, 960, 1096), 'all')],
  7: [('sea', None, 'sea'), ('sun', (845, 225, 990, 365), 'dark'), ('theron_on_shore', (0, 480, 225, 712), 'all'), ('boat', (310, 600, 760, 748), 'dark'),
      ('veil', (776, 738, 1022, 804), 'red'), ('boat_reflection', (300, 748, 770, 892), 'all'), ('rings', (740, 715, 1100, 840), 'all')],
@@ -77,9 +77,12 @@ for c, layers in L.items():
     near = a[idx[0], idx[1]]
     if sea_top < H: near[sea_top - 6:] = g      # under the sea: plain clay
     smooth = np.dstack([ndi.gaussian_filter(near[..., ch], 30) for ch in range(3)])
-    strip = a[8:int(H * 0.03)] if sea_top < H else a[int(H * 0.972):H - 6]; strip = np.concatenate([strip, strip[::-1]], 0)
-    grain = strip - np.dstack([ndi.gaussian_filter(strip[..., ch], 12) for ch in range(3)])
-    grain = np.concatenate([grain] * (H // grain.shape[0] + 1), 0)[:H]
+    busy = ndi.maximum_filter((dg > 26).astype(np.uint8), size=(100, 300), origin=(-50, -150))      # a clean piece of bare clay, 300 x 100, to take the grain from
+    ys, xs = np.where(busy[:H - 100, :W - 300] == 0); assert len(ys), 'no clean clay'
+    j = len(ys) // 2; pc = a[ys[j]:ys[j] + 100, xs[j]:xs[j] + 300]
+    pc = pc - np.dstack([ndi.gaussian_filter(pc[..., ch], 12) for ch in range(3)])
+    pc = np.concatenate([pc, pc[:, ::-1]], 1); pc = np.concatenate([pc, pc[::-1]], 0)
+    grain = np.tile(pc, (H // pc.shape[0] + 1, W // pc.shape[1] + 1, 1))[:H, :W]
     soft = ndi.gaussian_filter(hole.astype(np.float32), 2.0)[..., None]
     base = a * (1 - soft) + (smooth + grain) * soft
     Image.fromarray(np.clip(base, 0, 255).astype(np.uint8)).save(d + '/00_background.png', optimize=True)
