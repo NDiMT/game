@@ -127,6 +127,7 @@ class Scene:
         if only == 'colour': al = al * np.clip((np.maximum(sat - 28, lum - 95)) / 20.0, 0, 1)
         if only == 'bright': al = al * np.clip((lum - 150) / 30.0, 0, 1)
         if only == 'dark': al = al * np.clip((80 - lum) / 25.0, 0, 1)
+        if only == 'notbright': al = al * np.clip((165 - lum) / 25.0, 0, 1)
         inb = np.zeros_like(al); inb[y0 - Y0:y1 - Y0, x0 - X0:x1 - X0] = 1; al = al * inb
         if thick:      # thin lines that happen to cross its box (a column behind a figure) stay where they are
             al = al * ndi.binary_dilation(ndi.binary_opening(al > 0.3, iterations=thick), iterations=thick + 1)
@@ -203,34 +204,95 @@ class Scene:
 def scenes():
     sc = [Scene(c) for c in range(1, 8)]
     s = sc[0]      # 1: a light passes over the marble; the olive branch stirs; the sea runs
-    s.lift('marble', (556, 200, 752, 880), 'still', only='bright', sheen=6.0, sheen_k=26.0)
-    s.lift('branch', (598, 52, 1008, 482), 'flutter', dir='y', anchor=(900, 60), reach=420.0, amp=5.0, lam=170.0, w=1.2)
-    s.lift('waves', (40, 696, 330, 872), 'rock', pivot=(185, 870), amp=0.0, bob=2.6, bw=1.3, drift=5.0, dw=0.65)
+    s.lift('marble', (560, 200, 750, 870), 'still', only='bright', sheen=6.0, sheen_k=24.0)
+    s.lift('branch', (595, 55, 1010, 475), 'flutter', dir='y', only='dark', anchor=(900, 60), reach=420.0, amp=5.0, lam=170.0, w=1.2)
+    s.lift('waves', (40, 690, 318, 866), 'rock', pivot=(180, 866), amp=0.0, bob=2.6, bw=1.3, drift=5.0, dw=0.65)
     s = sc[1]      # 2: he bows as he prays; she sways on her first step; the mirror catches the light
-    s.lift('sculptor', (172, 448, 468, 902), 'rock', thick=4, pivot=(330, 892), amp=1.3, w=0.7)
-    s.lift('woman', (478, 310, 678, 902), 'rock', thick=4, pivot=(565, 892), amp=0.6, w=0.9, ph=1.0)
-    s.fx.append(dict(kind='glint', at=(679, 392), r=24, w=1.1))
+    s.lift('sculptor', (160, 445, 495, 886), 'rock', only='notbright', thick=4, pivot=(330, 884), amp=1.3, w=0.7)
+    s.lift('woman', (440, 310, 682, 886), 'rock', only='bright', pivot=(560, 884), amp=0.6, w=0.9, ph=1.0)
+    s.fx.append(dict(kind='glint', at=(681, 392), r=24, w=1.1))
     s = sc[2]      # 3: her hair and her dress in the wind; the sea runs
-    s.lift('hair', (585, 200, 845, 352), 'flutter', anchor=(600, 270), sign=1.0, reach=200.0, amp=5.5, lam=60.0, w=2.5)
-    s.lift('dress', (590, 352, 850, 800), 'flutter', only='colour', anchor=(600, 560), sign=1.0, reach=230.0, amp=5.0, lam=70.0, w=2.2)
-    s.lift('waves', (98, 508, 486, 700), 'rock', pivot=(290, 700), amp=0.0, bob=2.6, bw=1.3, drift=5.0, dw=0.65)
+    s.lift('hair', (548, 205, 800, 345), 'flutter', only='dark', anchor=(555, 270), sign=1.0, reach=200.0, amp=5.5, lam=60.0, w=2.5)
+    s.lift('dress', (500, 345, 850, 800), 'flutter', only='colour', anchor=(520, 560), sign=1.0, reach=260.0, amp=5.0, lam=70.0, w=2.2)
+    s.lift('waves', (98, 510, 486, 696), 'rock', pivot=(290, 696), amp=0.0, bob=2.6, bw=1.3, drift=5.0, dw=0.65)
     s = sc[3]      # 4: the one bare mirror still shines; the cloth that waits for it stirs; a spark on the small mirror
-    s.lift('mirror', (890, 262, 1040, 538), 'still', only='bright', sheen=4.5, sheen_k=24.0)
-    s.lift('cloth', (880, 588, 1010, 898), 'flutter', dir='y', only='colour', anchor=(945, 590), reach=300.0, amp=3.6, lam=140.0, w=1.0)
-    s.fx.append(dict(kind='glint', at=(792, 682), r=18, w=0.9, ph=2.0))
+    s.lift('mirror', (890, 262, 1040, 540), 'still', only='bright', sheen=4.5, sheen_k=24.0)
+    s.lift('cloth', (878, 590, 1028, 905), 'flutter', dir='y', only='colour', anchor=(950, 592), reach=300.0, amp=3.6, lam=140.0, w=1.0)
+    s.fx.append(dict(kind='glint', at=(792, 676), r=18, w=0.9, ph=2.0))
     s = sc[4]      # 5: the gulls hang; the sun's road and the woman in the water tremble
-    s.lift('gull1', (212, 270, 322, 330), 'rock', pivot=(267, 300), amp=4.0, w=1.6, bob=4.0, bw=0.7, drift=6.0)
-    s.lift('gull2', (452, 252, 556, 304), 'rock', pivot=(504, 278), amp=4.0, w=1.5, ph=1.3, bob=4.0, bw=0.6, drift=6.0)
-    s.fx.append(dict(kind='waver', box=(368, 442, 508, 818), amp=3.2, lam=11.0, w=1.6))
-    s.fx.append(dict(kind='waver', box=(606, 588, 792, 862), amp=2.8, lam=13.0, w=1.4))
+    s.lift('gull1', (212, 268, 322, 346), 'rock', pivot=(267, 308), amp=4.0, w=1.6, bob=4.0, bw=0.7, drift=6.0)
+    s.lift('gull2', (455, 244, 562, 306), 'rock', pivot=(510, 276), amp=4.0, w=1.5, ph=1.3, bob=4.0, bw=0.6, drift=6.0)
+    s.fx.append(dict(kind='waver', box=(366, 454, 502, 800), amp=3.2, lam=11.0, w=1.6))
+    s.fx.append(dict(kind='waver', box=(626, 598, 768, 858), amp=2.8, lam=13.0, w=1.4))
     s = sc[5]      # 6: the boat rides; what the water shows of it trembles
-    s.fx.append(dict(kind='waver', box=(128, 642, 892, 948), amp=2.8, lam=14.0, w=1.5))
-    s.lift('boat', (236, 300, 882, 640), 'rock', pivot=(560, 632), amp=0.7, w=1.0, bob=1.6, bw=1.0)
+    s.fx.append(dict(kind='waver', box=(136, 646, 884, 998), amp=2.8, lam=14.0, w=1.5))
+    s.lift('boat', (236, 296, 852, 641), 'rock', pivot=(550, 634), amp=0.7, w=1.0, bob=1.6, bw=1.0)
     s = sc[6]      # 7: the veil lies on the water and moves with it; rings widen where she went down
-    s.fx.append(dict(kind='waver', box=(140, 640, 404, 752), amp=2.2, lam=12.0, w=1.3))
-    s.fx.append(dict(kind='rings', at=(770, 772)))
-    s.lift('veil', (640, 560, 900, 760), 'flutter', only='colour', anchor=(645, 640), sign=1.0, reach=260.0, amp=3.4, lam=52.0, w=1.6)
+    s.fx.append(dict(kind='waver', box=(134, 654, 424, 752), amp=2.2, lam=12.0, w=1.3))
+    s.fx.append(dict(kind='rings', at=(800, 792)))
+    s.lift('veil', (612, 585, 906, 768), 'flutter', only='colour', anchor=(618, 650), sign=1.0, reach=280.0, amp=3.4, lam=52.0, w=1.6)
     return sc
+
+# ---------------------------------------------------------------- old age: the vase has been in the ground a long time
+def aging():
+    # five slots' worth (the whole way round), so that no two neighbouring pictures wear the same marks
+    from scipy.spatial import Voronoi
+    Wd = SW * 5; rng = np.random.default_rng(31)
+    cr = Image.new('L', (Wd, TH), 0); dr = ImageDraw.Draw(cr)
+    pts = rng.uniform(0, 1, (1100, 2)) * [Wd, TH]
+    vor = Voronoi(np.vstack([pts, pts + [Wd, 0], pts - [Wd, 0]]))
+    for a, b in vor.ridge_vertices:      # the fine net of cracks in the glaze: most of it faint, some of it missing
+        if a < 0 or b < 0 or rng.uniform() < 0.42: continue
+        p, q = vor.vertices[a], vor.vertices[b]
+        if not (-50 < p[0] < Wd + 50 and -50 < p[1] < TH + 50): continue
+        m = (p + q) * 0.5 + rng.normal(0, 3.0, 2)
+        dr.line([tuple(p), tuple(m), tuple(q)], fill=int(rng.uniform(60, 150)), width=1)
+    chips = Image.new('L', (Wd, TH), 0); dc = ImageDraw.Draw(chips)
+    def flake(x, y, r):      # an angular flake, never a round dot
+        n = int(rng.integers(5, 9)); a0 = rng.uniform(0, 6.28); sq = rng.uniform(0.45, 1.0); rot = rng.uniform(0, 3.14)
+        pts2 = []
+        for i in range(n):
+            a = a0 + 6.283 * i / n + rng.normal(0, 0.25); rr = r * rng.uniform(0.45, 1.15)
+            px, py = math.cos(a) * rr, math.sin(a) * rr * sq
+            pts2.append((x + px * math.cos(rot) - py * math.sin(rot), y + px * math.sin(rot) + py * math.cos(rot)))
+        dc.polygon(pts2, fill=255)
+    for k in range(11):      # the breaks where it was put together again, with chips lost along them
+        x, y = rng.uniform(0, Wd), rng.uniform(0, TH); ang = rng.uniform(0, 6.28); pl = [(x, y)]
+        for st in range(int(rng.uniform(22, 60))):
+            ang += rng.normal(0, 0.22); x += math.cos(ang) * 42; y += math.sin(ang) * 42; pl.append((x, y))
+            if rng.uniform() < 0.3: flake(x + rng.normal(0, 5), y + rng.normal(0, 5), rng.uniform(4, 16))
+        for ox in (-Wd, 0, Wd): dr.line([(px + ox, py) for px, py in pl], fill=235, width=3)
+    for k in range(520):      # flakes lost from the glaze: many small, a few large; more toward the lip and the foot
+        flake(rng.uniform(0, Wd), TH * rng.beta(0.5, 0.5), rng.uniform(1.5, 6.0) if rng.uniform() < 0.95 else rng.uniform(9, 30))
+    for k in range(260):      # scratches
+        x, y = rng.uniform(0, Wd), rng.uniform(0, TH); a = rng.uniform(0, 3.14); l = rng.uniform(15, 120)
+        dr.line([(x, y), (x + math.cos(a) * l, y + math.sin(a) * l)], fill=int(rng.uniform(50, 130)), width=1)
+    crack = np.asarray(cr.filter(ImageFilter.GaussianBlur(0.6))).astype(np.float32) / 255.0
+    nz = lambda sg: ndi.gaussian_filter(rng.normal(0, 1, (TH // 4, Wd // 4)), sg / 4.0, mode='wrap')
+    up = lambda a: np.asarray(Image.fromarray(a.astype(np.float32)).resize((Wd, TH), Image.BILINEAR))
+    n1 = nz(70); n1 = (n1 - n1.min()) / (n1.max() - n1.min())
+    chip = np.clip(np.asarray(chips.filter(ImageFilter.GaussianBlur(0.7))).astype(np.float32) / 255.0 * 1.4 - 0.2, 0, 1)
+    n2 = up(nz(8)); n2 = n2 / (np.abs(n2).max() + 1e-6)
+    wear = np.clip((up(n1) - 0.3) * 1.6 + 0.5 * n2, 0, 1) * 0.5            # where the black slip has gone thin and brown, in patches
+    n3 = nz(150); stain = 1.0 - 0.2 * np.clip((up((n3 - n3.min()) / (n3.max() - n3.min())) - 0.45) * 2.2, 0, 1)      # where it has darkened
+    n4 = up(nz(22)); dep = np.clip((n4 / (np.abs(n4).max() + 1e-6) - 0.42) * 2.4, 0, 1) * 0.2          # pale crust from the earth
+    speck = rng.normal(0, 4.0, (TH, Wd)).astype(np.float32)
+    return dict(crack=crack, chip=chip, wear=wear.astype(np.float32), stain=stain.astype(np.float32), dep=dep.astype(np.float32), speck=speck, W=Wd)
+
+def age(arr, ag, slot, x0, y0, k=1.0):
+    # the marks of age laid on a piece of a slot's strip (arr: uint8, at x0, y0 in the strip)
+    h, w = arr.shape[:2]; X = (slot % 5) * SW + x0
+    sl = (slice(y0, y0 + h), slice(X, X + w))
+    t = arr.astype(np.float32); lum = t.mean(2, keepdims=True); dark = (lum < 85).astype(np.float32)
+    t *= ag['stain'][sl][..., None]
+    t += (ag['wear'][sl][..., None] * k) * dark * (CLAY * 0.6 - t)
+    c = ag['crack'][sl][..., None] * k
+    t = t * (1 - 0.5 * c * (1 - dark)) + 62.0 * c * dark
+    ch = ag['chip'][sl][..., None] * k
+    t = t * (1 - ch) + ((CLAY * 0.9) * dark + np.array([240, 190, 140], np.float32) * (1 - dark) + ag['speck'][sl][..., None] * 2) * ch      # bare clay where the black is gone; paler where the clay itself is chipped
+    d = ag['dep'][sl][..., None] * k
+    t = t * (1 - d) + np.array([232, 220, 200], np.float32) * d
+    return np.clip(t + ag['speck'][sl][..., None], 0, 255).astype(np.uint8)
 
 # ---------------------------------------------------------------- the words, written under the panel
 FONT = ImageFont.truetype(S + '/fonts/IMFeENsc28P.ttf', 50)
@@ -299,19 +361,23 @@ def timeline():
 def render(f0, f1, out):
     ev = timeline(); f1 = min(f1, len(ev))
     h, th, cov, light, spec, rim = geometry(); bg = background()
-    orn = ornaments(); sc = scenes(); txt = [text_layer(l) for l in TEXTS]
+    orn = ornaments(); sc = scenes(); txt = [text_layer(l) for l in TEXTS]; ag = aging()
+    orn_aged = {}      # the ornament bands with their marks of age, for each of the five places round the vase
     hy = ty(h); cov3 = cov[..., None]
     y_pan = int(ty(PAN_H0)); x_pan = int(tx(-PANEL * 0.5)); y_t0 = int(ty(TXT_H0)); y_t1 = y_t0 + txt[0][0].shape[0]
     def slot_tex(i, t, wr):      # the strip of the vase that carries scene i (None: a plain side)
-        s = orn.copy()
+        ph = (i if i is not None else -1) % 5
+        if ph not in orn_aged: orn_aged[ph] = age(orn, ag, ph, 0, 0)
+        s = orn_aged[ph].copy()
         if i is None or i < 0 or i > 6: return s
-        s[y_pan - 6:y_pan + PH + 6, x_pan - 9:x_pan + PW + 9] = BLACK.astype(np.uint8)       # the panel's frame
-        s[y_pan:y_pan + PH, x_pan:x_pan + PW] = sc[i].frame(t)
-        s[y_pan + 10:y_pan + PH - 10, x_pan + 7:x_pan + 10] = BLACK.astype(np.uint8); s[y_pan + 10:y_pan + PH - 10, x_pan + PW - 10:x_pan + PW - 7] = BLACK.astype(np.uint8)
-        band = s[y_t0:y_t1].astype(np.float32)
+        pan = np.empty((PH + 12, PW + 18, 3), np.uint8); pan[:] = BLACK.astype(np.uint8)       # the panel in its frame
+        pan[6:6 + PH, 9:9 + PW] = sc[i].frame(t)
+        pan[16:PH - 4, 16:19] = BLACK.astype(np.uint8); pan[16:PH - 4, PW - 1:PW + 2] = BLACK.astype(np.uint8)
+        s[y_pan - 6:y_pan + PH + 6, x_pan - 9:x_pan + PW + 9] = age(pan, ag, ph, x_pan - 9, y_pan - 6)
+        band = orn[y_t0:y_t1].astype(np.float32)
         for j, ly in enumerate(txt[i]):
             if wr[j] > 0.0: band = band * (1 - ly[..., None] * wr[j]) + np.array(CREAM, np.float32) * ly[..., None] * wr[j]
-        s[y_t0:y_t1] = band.astype(np.uint8)
+        s[y_t0:y_t1] = age(band.astype(np.uint8), ag, ph, 0, y_t0, 0.55)      # (the words are worn too, but can be read)
         return s
     ff = subprocess.Popen(['ffmpeg', '-loglevel', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', '%dx%d' % (W, Hh), '-r', str(FPS), '-i', '-', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '17', '-preset', 'medium', out], stdin=subprocess.PIPE)
     cache = {}
