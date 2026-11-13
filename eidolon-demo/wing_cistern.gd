@@ -77,8 +77,6 @@ var cs4_has := false      # the handle has come out of the water onto the hook
 var cs3_in := false       # the inlet runs
 var cs3_over := false     # the overflow at the middle is open
 var cs3_wet := false
-var cs_mirs: Array = []      # the mirrored bodies of her that belong to waters below the floor's height, to be made once she exists: [key, root]
-var cs_courts: Array = []    # the courts with such waters: in them her ordinary mirrored body is put away
 
 func _init() -> void:
 	super._init(); wing_open["W"] = true
@@ -89,13 +87,6 @@ func _hollows() -> Array:
 func _wings() -> void:
 	super._wings()
 	_cs1(); _cs2(); _cs3(); _cs4()
-
-## a deeper pit for a pool whose water must show things that stand high over it
-func _cs_deep_pit(sky: String, depth: float) -> void:
-	var pit := get_node_or_null(sky) as MeshInstance3D
-	if pit == null: return
-	var pm := pit.mesh as BoxMesh
-	pm.size = Vector3(pm.size.x, depth, pm.size.z); pit.position.y = -0.185 - depth * 0.5
 
 ## Σ.1: a pool beside the scaffold where he worked. A wooden stair climbs along the west wall to a landing high
 ## over the water. The lever of the next sluice stands on that landing, but only in the water
@@ -151,11 +142,6 @@ func _cs1() -> void:
 func _wing_things() -> void:
 	super._wing_things()
 	var lp := CS_LEV1 + Vector3(0, -(CS_TOP + 0.7), 0)
-	for mk in cs_mirs:      # her mirrored bodies for the waters that lie below the floor
-		var e: Dictionary = spawn_her(mk[1], "mirror"); H[mk[0]] = e
-		if e.sk != null:
-			var hm := HerMod.new(); hm.main = self; (e.sk as Skeleton3D).add_child(hm)
-		if e.ap != null: (e.ap as AnimationPlayer).play("idle")
 	var g4: Vector3 = N["cs_hub4h"]; var g5: Vector3 = N["cs_hub4l"]
 	objs["cs_hoist4"] = {"at": g4, "stand": g4 + (N["cs_hubn4h"] as Vector3) * 0.56 - Vector3(0, g4.y, 0), "mark": false, "hits": [Vector3(CS4_WINCH.x, 0.15, CS4_WINCH.z), g4, g4 + Vector3(0, 0.3, 0)]}
 	objs["cs_level4"] = {"at": g5, "stand": g5 + (N["cs_hubn4l"] as Vector3) * 0.56 - Vector3(0, g5.y, 0), "mark": false, "hits": [Vector3(CS4_LEVEL.x, 0.15, CS4_LEVEL.z), g5, g5 + Vector3(0, 0.3, 0)]}
@@ -225,39 +211,6 @@ func _do_cs_lever1() -> void:
 	cam_focus_on = false
 	create_tween().tween_property(cam, "size", s0, 1.4).set_trans(Tween.TRANS_SINE)
 	await _refl_melt()
-
-# ---------------------------------------------------------------- waters that lie below the floor
-## a still water at a level of its own: its mirror world hangs under a root that turns everything over about that
-## level, so that when the water sinks by one step what it shows sinks by two. Returns that root
-func _cs_water(key: String, x0: float, z0: float, x1: float, z1: float, level: float) -> Node3D:
-	var mr := Node3D.new(); mr.name = "Mirror_" + key; mr.transform = Transform3D(Basis(Vector3(1, 0, 0), Vector3(0, -1, 0), Vector3(0, 0, 1)), Vector3(0, 2.0 * level, 0)); add_child(mr)
-	var wq := QuadMesh.new(); wq.size = Vector2(x1 - x0, z1 - z0); wq.orientation = PlaneMesh.FACE_Y
-	var g := ShaderMaterial.new(); g.shader = shaders["glass"]; timed.append(g)
-	g.set_shader_parameter("lost_a", 0.0); g.set_shader_parameter("blur_px", 0.6); g.set_shader_parameter("lod", 0.0)
-	var gl := prim(wq, Vector3((x0 + x1) * 0.5, level + 0.012, (z0 + z1) * 0.5), g); gl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	N[key + "_mr"] = mr; N[key + "_glass"] = gl; N[key + "_level"] = level
-	cs_mirs.append(["mir_" + key, mr])
-	return mr
-
-## the plain colour of a thing mirrored in such a water. Only what stands above the water is mirrored in it: of
-## the copy that hangs under the water's root, whatever would come out above the surface is not drawn
-var cs_ush: Shader
-func _cs_umat(key: String, c: Color) -> ShaderMaterial:
-	if cs_ush == null:
-		cs_ush = Shader.new(); cs_ush.code = "shader_type spatial;\nrender_mode unshaded, cull_disabled;\nuniform vec3 col : source_color; uniform float level = 0.0;\nvarying vec3 wp;\nvoid vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }\nvoid fragment(){ if (wp.y > level) discard; ALBEDO = col; }"
-	var m := ShaderMaterial.new(); m.shader = cs_ush; m.set_shader_parameter("col", c); m.set_shader_parameter("level", float(N[key + "_level"]))
-	if not N.has(key + "_umats"): N[key + "_umats"] = []
-	(N[key + "_umats"] as Array).append(m)
-	return m
-
-## the water of such a tank goes to a level, slowly: its surface, and under it its whole mirror world twice as far
-func _cs_level(key: String, to: float, secs := 2.6) -> void:
-	var from: float = N[key + "_level"]
-	var lt := create_tween(); lt.tween_method(func(v: float) -> void:
-		N[key + "_level"] = v
-		(N[key + "_mr"] as Node3D).position.y = 2.0 * v; (N[key + "_glass"] as Node3D).position.y = v + 0.012
-		for m in N.get(key + "_umats", []): (m as ShaderMaterial).set_shader_parameter("level", v), from, to, secs).set_trans(Tween.TRANS_SINE)
-	await lt.finished
 
 ## Σ.2: two tanks side by side, a low wall with a gap between them. The east one stands low; the west one a step
 ## higher, and holds the lever of the next sluice. In each water a causeway runs toward the gap, but the two do
@@ -794,10 +747,6 @@ func _refl_melt() -> void:
 
 func _process(dt: float) -> void:
 	super._process(dt)
-	var inside := false
-	for c in cs_courts:
-		if pos.x > c[0] and pos.x < c[2] and pos.z > c[1] and pos.z < c[3]: inside = true
-	if H.has("mir"): (H["mir"].holder as Node3D).visible = not inside      # in a court whose water lies below the floor, that water's own body mirrors her
 	if not refl_out.is_empty() and refl_w == "C2":      # her reflection passes the gap: from there on it belongs to the west tank's world (the two are level, or it could not pass)
 		var hd: Node3D = refl_out.holder
 		var want: Node3D = N["cs2T_mr"] if hd.position.x < (CS2WX0 + CS2WX1) * 0.5 else N["cs2S_mr"]
