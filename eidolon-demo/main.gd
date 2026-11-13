@@ -1565,9 +1565,9 @@ func her_statue(p: Vector3, yaw: float, pose := "calm", sc := 1.0, parent: Node 
 	var ap: AnimationPlayer = d.ap; var sk: Skeleton3D = d.sk
 	if ap != null and ap.has_animation("idle"):
 		ap.play("idle"); ap.seek(fmod(absf(p.x * 1.7 + p.z * 0.9), 12.0), true); ap.stop(true)
-	if ap != null and pose == "kneel" and rig_file.begins_with("ione4") and ap.has_animation("kneel"):      # ione4 has a kneel: its last frame, and she is set forward so that her knee, not her front foot, is over the spot
+	if ap != null and pose == "kneel" and rig_file.begins_with("ione4") and ap.has_animation("kneel") and OS.get_environment("IONE4_KNEEL_STATUE") == "1":      # ione4 has a real kneel (its last frame; she is set forward so that her knee, not her front foot, is over the spot). Off unless asked for: the plinths of the world are cut for a standing figure
 		ap.play("kneel"); ap.seek(ap.get_animation("kneel").length, true); ap.stop(true)
-		(holder.get_child(0) as Node3D).position.z += 0.3 * sc
+		(holder.get_child(0) as Node3D).position.z += 0.3
 	if sk == null: return holder
 	var la := _bone(sk, "LeftArm"); var ra := _bone(sk, "RightArm")
 	if la < 0 or ra < 0: return holder
@@ -1931,7 +1931,8 @@ func _ione4_proof() -> void:
 	var spot := Vector3(0.9, 0, 1.2)
 	if OS.get_environment("PROOF_AT") != "": var f := OS.get_environment("PROOF_AT").split(","); spot = Vector3(float(f[0]), 0, float(f[1]))
 	var zoom := float(OS.get_environment("PROOF_ZOOM")) if OS.get_environment("PROOF_ZOOM") != "" else 2.0
-	await get_tree().create_timer(1.5).timeout
+	if what == "walk": pos = Vector3(-13.9, 0, -21.4); yaw = PI * 0.5; cam.size = PLAY_SIZE / zoom; cam_t = pos      # (the film begins where she begins)
+	else: await get_tree().create_timer(1.5).timeout
 	if what == "close":      # front, three-quarter, side, back, at twice the size of play (or PROOF_ZOOM times)
 		for v in [["front", PI * 0.25], ["threeq", PI * 0.25 - 0.75], ["side", PI * 0.25 + PI * 0.5], ["back", PI * 1.25], ["backq", PI * 1.25 - 0.75]]:
 			route.clear(); pos = spot; yaw = v[1]; cam.size = PLAY_SIZE / zoom; cam_t = pos; shot = {"c": pos + Vector3(0, 0.82, 0), "s": cam.size}
@@ -1940,7 +1941,7 @@ func _ione4_proof() -> void:
 			await get_tree().create_timer(0.6).timeout
 			await snap.call(v[0])
 	elif what == "pool":      # beside the garden's pool and at the sea's edge, at the size of play
-		for v in [["pool", Vector3(-15.0, 0, -24.3), PI * 0.25, 1.0], ["pool2x", Vector3(-15.0, 0, -24.3), PI * 0.25, 2.0], ["sea", Vector3(-4.9, 0, 0.9), PI * 0.1, 1.0], ["sea2x", Vector3(-4.9, 0, 0.9), PI * 0.1, 2.0]]:
+		for v in [["pool", Vector3(-14.85, 0, -24.9), PI * 0.25, 1.0], ["pool2x", Vector3(-14.85, 0, -24.9), PI * 0.25, 2.0], ["sea", Vector3(0.0, 0, -7.0), PI * 0.25, 1.0], ["sea2x", Vector3(0.0, 0, -7.0), PI * 0.25, 2.0]]:
 			route.clear(); pos = v[1]; yaw = v[2]; cam.size = PLAY_SIZE / float(v[3]); cam_t = pos; shot = {"c": pos + Vector3(0, 0.4 if float(v[3]) > 1.5 else 0.0, 0), "s": cam.size}
 			for h in H.values():
 				if h.ap != null: h.ap.play("idle"); h.ap.seek(2.0, true)
@@ -1973,13 +1974,13 @@ func _ione4_proof() -> void:
 			a_drop = 0.0; a_lean = 0.0; a_headp = 0.0; a_wR = 0.0
 	elif what == "walk":      # a film: round the garden's pool, a halt, standing, a turn where she stands, and on
 		pos = Vector3(-13.9, 0, -21.4); yaw = PI * 0.5; cam.size = PLAY_SIZE / zoom; cam_t = pos
-		await get_tree().create_timer(0.7).timeout
+		await get_tree().create_timer(0.5).timeout
 		await go([Vector3(-12.95, 0, -21.4), Vector3(-12.95, 0, -24.4)])
-		await wait(1.8)
+		await wait(2.4)
 		await face(pos + Vector3(-1.0, 0, 0.9))
-		await wait(0.6)
-		await go([Vector3(-12.95, 0, -26.0), Vector3(-14.6, 0, -26.0)])
-		await wait(0.4)
+		await wait(0.5)
+		await go([Vector3(-12.95, 0, -26.0), Vector3(-13.9, 0, -26.0)])
+		await wait(0.3)
 	get_tree().quit()
 
 func _fog() -> void:
@@ -2324,7 +2325,8 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 			add_rest_coords(hero_srcs[hf])
 			if not rig_file.begins_with("ione4"): align_clips(hero_srcs[hf])   # (ione4's clips are brought to one standing place when she is built)
 	hero_src = hero_srcs[hf]
-	var i4 := rig_file.begins_with("ione4") and OS.get_environment("IONE4") != "plain"
+	var i4 := rig_file.begins_with("ione4") and OS.get_environment("IONE4") != "vcol"
+	var i4v := rig_file.begins_with("ione4") and not i4      # IONE4=vcol: the same data read from her vertices by the older wrap's shader, to compare with the picture
 	if i4 and not shaders.has("tex4"): _ione4_shaders()
 	var src: Node3D = hero_src.duplicate()
 	var holder := Node3D.new(); parent.add_child(holder); holder.add_child(src)
@@ -2364,15 +2366,15 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 					if mode == "tex": her_mats.append(sm)
 				sm.set_shader_parameter("fog_col", sea_c); sm.set_shader_parameter("mist_col", mist_c); sm.set_shader_parameter("shadow_col", shadow_c); sm.set_shader_parameter("mist_k", mist_k)
 				if i4: _ione4_dress(sm, om, hero_src, mode)
-				elif om is BaseMaterial3D and (om as BaseMaterial3D).albedo_texture != null: sm.set_shader_parameter("albedo_tex", (om as BaseMaterial3D).albedo_texture)
+				elif om is BaseMaterial3D and (om as BaseMaterial3D).albedo_texture != null and not i4v: sm.set_shader_parameter("albedo_tex", (om as BaseMaterial3D).albedo_texture)
 				elif mi.mesh.surface_get_format(si) & Mesh.ARRAY_FORMAT_COLOR: sm.set_shader_parameter("vcol", 1.0)
 				if mode == "crim": sm.set_shader_parameter("tint", Vector3(1.75, 0.42, 0.5))
 				if mode == "mirror": sm.set_shader_parameter("tint", Vector3(0.4, 0.48, 0.62))   # her reflection is dark, and the water blurs it
 				if mode == "tex": floor_mats.append(sm)
 				if rig_file.begins_with("lp") or rig_file.begins_with("sr") or rig_file.begins_with("nb") or (rig_file.begins_with("wrap") and OS.get_environment("WRAP_FLAT") == "1"): sm.set_shader_parameter("flat_n", 1.0)
 				if rig_file == "lp1r" and OS.get_environment("NOSNAP") != "1": sm.set_shader_parameter("snap", 1.0)
-				if rig_file == "wrap3r" and mode == "tex": sm.set_shader_parameter("wrap_col", Vector3(0.82, 0.31, 0.215)); sm.set_shader_parameter("wrap_ref", 0.34); sm.set_shader_parameter("rim", 1.3)   # (rim: her turned-away faces a little deeper, so that her wrap and her limbs read as round)
-				if rig_file.begins_with("wrap") and mode == "tex": sm.set_shader_parameter("wrap_lift", float(OS.get_environment("WRAP_LIFT")) if OS.get_environment("WRAP_LIFT") != "" else 1.55)
+				if (rig_file == "wrap3r" or i4v) and mode == "tex": sm.set_shader_parameter("wrap_col", Vector3(0.82, 0.31, 0.215)); sm.set_shader_parameter("wrap_ref", 0.34); sm.set_shader_parameter("rim", 1.3)   # (rim: her turned-away faces a little deeper, so that her wrap and her limbs read as round)
+				if (rig_file.begins_with("wrap") or i4v) and mode == "tex": sm.set_shader_parameter("wrap_lift", float(OS.get_environment("WRAP_LIFT")) if OS.get_environment("WRAP_LIFT") != "" else 1.55)
 				if rig_file.begins_with("ione") and not rig_file.begins_with("ione4") and mode == "tex" and OS.get_environment("IONE") != "old":
 					var dark_veil := OS.get_environment("IONE") == "dark"
 					var gown_c := Vector3(0.184, 0.702, 0.678); var veil_c := Vector3(0.827, 0.953, 0.941)   # turquoise gown, pale veil
@@ -2402,8 +2404,8 @@ func spawn_her(parent: Node, mode: String) -> Dictionary:
 ## and the shader lays the world's red and the world's marble over it, with a woven grain that is drawn only as fine
 ## as the screen can show (each layer of the grain fades out before it would shimmer).
 func _ione4_shaders() -> void:
-	var uni := "uniform float ione4 = 0.0; uniform sampler2D data_tex : filter_linear_mipmap, repeat_disable; uniform vec3 i4_marble = vec3(0.975, 0.97, 0.962); uniform float i4_grain = 1.0; uniform float i4_tone = 1.0; uniform float i4_shade = 1.0; uniform float i4_hand = -1.0; varying vec3 mpos; varying float mveil;"
-	var frag := "if (snap > 0.5) tx = snapc(tx); if (ione4 > 0.5) { vec3 d4 = texture(data_tex, UV).rgb; float w4 = clamp(fwidth(d4.g) * 0.7, 0.02, 0.3); float cm4 = smoothstep(0.5 - w4, 0.5 + w4, d4.g); float tn4 = 1.0 + (d4.r * 2.0 - 1.0) * i4_tone; float ao4 = smoothstep(0.0, 0.92, d4.b); float px4 = max(length(dFdx(mpos)), length(dFdy(mpos))); float th4 = atan(mpos.z, mpos.x); vec2 hv4 = vec2(th4 * 0.13, mpos.y); float u4 = hv4.x * 0.866 + hv4.y * 0.5 * i4_hand; float v4 = -hv4.x * 0.5 * i4_hand + hv4.y * 0.866; float f1 = 1.0 - smoothstep(0.25, 0.55, px4 / 0.009); float f2 = 1.0 - smoothstep(0.3, 0.62, px4 / 0.026); float thr4 = sin(u4 * 698.0) * sin(v4 * 698.0) + 0.5 * (n3(vec3(u4 * 40.0, v4 * 349.0, 3.1)) - 0.5); float sl4 = smoothstep(0.3, 0.7, n3(vec3(u4 * 18.0, v4 * 44.0, 1.7))) - 0.5; float f3 = 1.0 - smoothstep(0.3, 0.62, px4 / 0.012); float sf4 = n3(mpos * 83.0) - 0.5; float sm4 = n3(mpos * 45.0 + 9.0) - 0.5; float mo4 = n3(mpos * 9.0) - 0.5; float gr4 = (0.1 * f1 * thr4 + 0.085 * f2 * sl4 + 0.2 * f3 * sf4 + 0.15 * f2 * sm4 + 0.06 * mo4) * i4_grain; vec3 cl4 = wrap_col * clamp(tn4, 0.5, 1.5) * (1.0 + gr4); cl4 *= mix(vec3(1.0), mix(vec3(0.46, 0.33, 0.4), vec3(1.0), ao4), i4_shade); vec3 mb4 = i4_marble * clamp(tn4, 0.45, 1.25) * (1.0 + 0.03 * mo4); mb4 *= mix(vec3(1.0), mix(vec3(0.7, 0.71, 0.82), vec3(1.0), ao4), i4_shade); tx = mix(mb4, cl4, cm4); }"
+	var uni := "uniform float ione4 = 0.0; uniform sampler2D data_tex : filter_linear_mipmap, repeat_disable; uniform vec3 i4_marble = vec3(0.975, 0.97, 0.962); uniform float i4_grain = 1.35; uniform float i4_tone = 1.0; uniform float i4_shade = 1.0; uniform float i4_hand = -1.0; varying vec3 mpos; varying float mveil;"
+	var frag := "if (snap > 0.5) tx = snapc(tx); if (ione4 > 0.5) { vec3 d4 = texture(data_tex, UV).rgb; float w4 = clamp(fwidth(d4.g) * 0.7, 0.02, 0.3); float cm4 = smoothstep(0.5 - w4, 0.5 + w4, d4.g); float tn4 = 1.0 + (d4.r * 2.0 - 1.0) * i4_tone; float ao4 = smoothstep(0.0, 0.92, d4.b); float px4 = max(length(dFdx(mpos)), length(dFdy(mpos))); float th4 = atan(mpos.z, mpos.x); vec2 hv4 = vec2(th4 * 0.13, mpos.y); float u4 = hv4.x * 0.866 + hv4.y * 0.5 * i4_hand; float v4 = -hv4.x * 0.5 * i4_hand + hv4.y * 0.866; float f1 = 1.0 - smoothstep(0.25, 0.55, px4 / 0.009); float f2 = 1.0 - smoothstep(0.3, 0.62, px4 / 0.026); float thr4 = sin(u4 * 698.0) * sin(v4 * 698.0) + 0.5 * (n3(vec3(u4 * 40.0, v4 * 349.0, 3.1)) - 0.5); float sl4 = smoothstep(0.3, 0.7, n3(vec3(u4 * 18.0, v4 * 44.0, 1.7))) - 0.5; float f3 = 1.0 - smoothstep(0.3, 0.62, px4 / 0.012); float sf4 = n3(mpos * 83.0) - 0.5; float sm4 = n3(mpos * 45.0 + 9.0) - 0.5; float mo4 = n3(mpos * 9.0) - 0.5; float gr4 = (0.1 * f1 * thr4 + 0.085 * f2 * sl4 + 0.18 * f3 * sf4 + 0.1 * f2 * sm4 + 0.04 * mo4) * i4_grain; float fc4 = wt * wt * 1.1 + wz * wz * 0.96 + wx * wx * 0.7; vec3 cl4 = wrap_col * clamp(tn4, 0.55, 1.4) * (1.0 + gr4) * mix(1.0, fc4, 0.75); cl4 *= mix(vec3(1.0), mix(vec3(0.46, 0.33, 0.4), vec3(1.0), ao4), i4_shade); vec3 mb4 = i4_marble * clamp(tn4, 0.45, 1.25) * (1.0 + 0.03 * mo4); mb4 *= mix(vec3(1.0), mix(vec3(0.7, 0.71, 0.82), vec3(1.0), ao4), i4_shade); tx = mix(mb4, cl4, cm4); }"
 	for pair in [["tex4", "tex"], ["tex4m", "tex2"]]:
 		var code: String = (shaders[pair[1]] as Shader).code
 		if not code.contains("varying vec3 mpos; varying float mveil;") or not code.contains("if (snap > 0.5) tx = snapc(tx);"): push_error("ione4: the heroine's shader has changed; her dress is not drawn"); shaders[pair[0]] = shaders[pair[1]]; continue

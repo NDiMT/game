@@ -10,7 +10,7 @@
 #   - three weights of the same model, each with the unwrap kept, the data picture as the material's image, and the
 #     cloth (alpha) and the data (rgb) in the vertex colours as well, for her reflection
 # usage: python3.11 -I ione4_build.py -- <rig+clips.glb> <data.png> <out dir> <name>
-#   env: LODS="24000,10000,6000"  STRIDE=1.0 (scale of the walk's leg swing)  ONLY_FULL=1 (skip the light copies)  CLIPS=a,b (only these)
+#   env: LODS="24000,10000,6000"  STRIDE=0.9 (scale of the walk's leg swing)  ONLY_FULL=1 (skip the light copies)  CLIPS=a,b (only these)
 import bpy, sys, os, math
 import numpy as np
 from mathutils import Vector, Matrix, Quaternion
@@ -77,9 +77,15 @@ sL = sstep(-LAT, LAT, y - yc); sR = 1.0 - sL
 tk = sstep(kneez - KNEE, kneez + KNEE, z)                       # 1 above the knee
 h = sstep(hipz - float(os.environ.get("SK_HIPLO", "0.12")), hipz + float(os.environ.get("SK_HIPHI", "0.035")), z)   # 1 = the hips alone
 F = np.zeros((nv, ng))
-F[:, G("Hips")] = h
-F[:, G("LeftUpLeg")] = (1 - h) * tk * sL; F[:, G("RightUpLeg")] = (1 - h) * tk * sR
-F[:, G("LeftLeg")] = (1 - h) * (1 - tk) * sL; F[:, G("RightLeg")] = (1 - h) * (1 - tk) * sR
+# The surface is one skin: there are no legs inside the wrap, only the patches of leg that show in the slit. So the
+# wrap need not swing as far as the legs do: toward the hem it takes only part of their swing (the rest stays with
+# the hips) and hangs calmer, as cloth would; the feet, below it, go all the way.
+HEM = float(os.environ.get("SK_HEM", "0.72"))
+dmp = HEM + (1.0 - HEM) * sstep(0.12, 0.5, z)
+leg = (1 - h) * dmp
+F[:, G("Hips")] = 1.0 - leg
+F[:, G("LeftUpLeg")] = leg * tk * sL; F[:, G("RightUpLeg")] = leg * tk * sR
+F[:, G("LeftLeg")] = leg * (1 - tk) * sL; F[:, G("RightLeg")] = leg * (1 - tk) * sR
 top = sstep(hipz + 0.01, hipz + 0.09, z)                         # above this the smoothed automatic weights take over
 low = np.where(cloth, 1.0, sstep(anklez - 0.012, anklez + 0.03, z))   # the feet keep their own (ankle, toes); cloth never follows a foot
 mixf = (1.0 - top) * low
@@ -255,7 +261,7 @@ idle = ground(centre(idle), "idle"); clips["idle"] = idle
 stand = idle["rot"][0].copy(); stand_h = idle["hips"][0].copy()
 # ---- walk: timed for 1.1 m/s, the carrying foot held to the passing floor
 wk = copyc(src_clips["walk"])                                    # (its last frame is one step short of its first: a cycle of that many frames)
-wk = scale_from(wk, float(os.environ.get("STRIDE", "1.0")), stand, ("UpLeg", "Leg", "Foot", "Toe"))
+wk = scale_from(wk, float(os.environ.get("STRIDE", "0.9")), stand, ("UpLeg", "Leg", "Foot", "Toe"))
 wk = ground(wk)
 def cycle_travel(c):
     """how far the floor passes under her in one cycle of the clip (units), counted along the feet that carry her"""
