@@ -91,3 +91,30 @@ The seven shader lights are all taken (`lantern(p, i)` uses one each): new lamps
   later court with everything before it done). Add your own run in the same manner.
 - Video: add `--write-movie out.avi --quit-after N` to the stills command line with `-- act1`; about 2-2.5 frames
   a second; encode `ffmpeg -c:v libx264 -pix_fmt yuv420p -crf 24 -an`, then delete the .avi. Look at frames.
+
+## Added after the owner's feedback ("not rooms; one place; more like an open world")
+- **The island.** `_island()` (called at the end of `_world()`) lays land round every floor that exists by then: level
+  with the floors to the north and west (meadow, low hills, cypresses), a sea wall over a low rock shelf to the south
+  and east, an inlet under every floor narrower than 2.6 m (a bridge). A narrow floor that is a path over land goes
+  into `land_paths` (as `[x0, z0, x1, z1]`) so that no inlet is cut under it. No hill stands between the eye and a
+  floor. You need do nothing for it; do not build your own sea-level surroundings.
+- **Walls.** `wall(...)` dresses itself (pilasters, sunk panels, string course, dentils, coping, a pier at each end).
+  Use a wall only where a puzzle needs one. Otherwise: `stoa(x0, z0, x1, z1, h := 2.5)`, an open row of columns on a
+  balustrade under an architrave; `parapet(a, b)`; or nothing, where the land runs on. Walls and stoas of
+  neighbouring places should meet at shared corners. A place may be larger than the screen.
+- **Places off the way.** `_temple()` is the model: a path (`floor_plain`, listed in `land_paths`), a court, things to
+  look at, a stele; walkable rects in `_nav()`; nothing there is needed for the way on.
+- **Waters at a level of their own** (in ch1.gd): `_cs_water(key, x0, z0, x1, z1, level, round := false)` returns the
+  root its mirror world hangs under (twins go under it, coloured with `_cs_umat(key, Color)`), registers her mirrored
+  body `"mir_" + key` (name it in `W[id].mir`); `_cs_level(key, to, secs)`; `_veil_glass(color)` is a surface that can
+  lie as a film (uniforms `veil`, `alpha`) before it shows anything; `cs_courts.append([x0, z0, x1, z1])` for the
+  court it lies in.
+- **Her reflection.** A tap on a water names the place whose image lies under the finger (what stands h over the
+  water is seen h to the south-east of itself); footing rects carry their height (`R(..., on, h)`), connect when
+  their heights differ by less than 0.3, and a way is walked as far as it is open (it stops at the first shut rect,
+  and shows that it cannot go on). `W[id].far` = how far she may go from that water before her reflection is called
+  back (default 3.2).
+- **The atrium's water.** `_wing_done(id)` only records; when she is next in the atrium the water runs down that
+  wing's channel (`chan_run`) and the basin takes it (`_hub_fill`). `HUB=1|2|3` (environment) starts with so many
+  waters in; runs: `-- hub`, `-- gate`.
+- **Gate slots.** `sluice(key, c, along_x, ...)`: `along_x` = the WAY through it runs along x (its leaf lies along z).
