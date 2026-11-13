@@ -18,6 +18,7 @@ Everything is in `amphora/`:
 - `tools/gen.py` sends a prompt and reference images to the model (the key is read from a private file outside the
   repository). `tools/install.py` turns the drawings into panels. `tools/vase.py` draws the vase, wraps the paintings
   on it, turns it, writes the words, moves the small things, and writes the film. `tools/layers.py` cuts the layers.
+- `clips/cardN.mp4` — the moving pictures (the painted figures in motion, one loop each).
 - `intro_amphora.mp4` — the film (1080×1920, 24 fps).
 
 ## The words (one card each; a new line here is a new page on the vase)
@@ -60,17 +61,26 @@ Everything is in `amphora/`:
 - The words are in the game's letter (EB Garamond Italic), large and clean over the old glaze.
 - The vase is old: a net of fine cracks, breaks, flakes lost from the glaze. The words are not worn.
 
-## What moves in each painting
+## How the figures move
 
-| Card | Small movements |
+The figures themselves move: hands, steps, cloth. Each painting was given to a video model (`gemini-omni-1.2-flash`,
+through `tools/genvid.py`) as both the first and the last frame of an 8 or 10 second clip, so the clip ends where it
+began and loops; the prompt (`prompts/motion/cardN.txt`) names what moves and says that the camera, the ground and
+the drawing itself do not change. The clips are in `clips/`.
+
+`tools/vidprep.py` turns a clip into the frames the vase wears: the clip's colours are fitted to the painting; where
+nothing ever moves, the painting itself is kept (so it stays crisp and cannot shimmer); the last frames lean into
+the first. On the vase each picture begins to move as it comes round.
+
+| Card | What moves |
 |---|---|
-| 1 | a light passes over the marble; the olive branch stirs; the waves run |
-| 2 | Theron bows as he prays; she sways on her first step; a spark on the goddess's mirror |
-| 3 | her hair, her shawl and her dress in the wind; the waves run |
-| 4 | the one bare mirror shines; the cloth that waits for it stirs; a spark on the hand mirror |
-| 5 | the gulls hang in the air; the sun's road and the woman in the water tremble; thin lights on the sea |
-| 6 | the boat rides; what the water shows of it trembles |
-| 7 | the veil moves with the water; rings widen where she went down; the boat's reflection trembles |
+| 1 | Theron strokes the statue's cheek, lifts and lowers his mallet, shifts his feet; the olive branch sways. The statue is stone and does not move |
+| 2 | Theron raises and lowers his hands in prayer; she takes one hesitant step down from the block and back, her arms finding balance; the goddess tilts the mirror, the dove lifts its wings |
+| 3 | she walks into the wind, her hand at her cheek, hair, shawl and skirt streaming; Theron in the doorway looks and hides his eyes again |
+| 4 | Theron draws the veil down and smooths it, shifting his feet; the veil sways; the cloth on the peg stirs |
+| 5 | (the video model refused this picture three times; no clip) she sways as she looks and the woman in the water sways with her; the gulls hang; the sun's road trembles |
+| 6 | she reaches her hand down to the water until she touches it, rings spread, she draws it back; the boat rides; the reflection follows |
+| 7 | the empty boat rocks; the veil drifts; on the shore Theron steps forward, stretches out his arm, lets it sink |
 
 ## What the intro holds back
 

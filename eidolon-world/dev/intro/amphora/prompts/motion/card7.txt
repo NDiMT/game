@@ -1,0 +1,17 @@
+The two attached images are the same picture: it is both the FIRST FRAME and the LAST FRAME of the video, so the
+animation ends exactly where it began and can loop.
+Bring this ancient Greek black-figure vase painting to life as flat 2D cut-out animation, as if the painted figures on
+the vase began to move. LOCKED-OFF STATIC CAMERA: no zoom, no pan, no tilt, no camera movement at all. The orange clay
+ground, the black bands at the left and right, and everything that is not named below stay perfectly still.
+The drawing stays exactly as painted: the same flat colours, the same outlines and incised lines, no shading, no 3D,
+no light effects, no new objects, no new figures, no text. Every figure keeps its exact look, clothes and proportions.
+Movement is calm, slow and continuous. Single continuous shot, no cuts. Silent: no music, no voices, no sound.
+
+WHAT MOVES:
+- The empty boat rocks gently on the still water; its oar swings slowly.
+- The red veil floating on the water drifts a little and undulates; thin pale rings spread slowly outward round it.
+- The small man standing on the shore at the left takes one step forward, stretches his arm out toward the sea,
+  holds it there, then lets it sink and steps back.
+- The reflection of the boat trembles a little as water does.
+- The sea itself stays flat and still, a flat dark band. The sun does not move. Nothing rises out of the water.
+At the end everything is back exactly as in the first frame.

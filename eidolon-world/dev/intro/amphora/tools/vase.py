@@ -137,6 +137,7 @@ class Scene:
         self.ds = np.sqrt(((a - self.seacol) ** 2).sum(2))
         gt = a[5:95]; self.gfill = np.concatenate([gt, gt[::-1]] * 7, 0)[:PH]          # plain ground, to lay where something is lifted off
         self.base = a.copy(); self.els = []; self.fx = []
+        self.vdir = S + '/v/vf/c%d' % c; self.vn = len([f for f in os.listdir(self.vdir) if f.endswith('.jpg')]) if os.path.isdir(self.vdir) else 0; self.vc = {}      # the scene's moving picture, if it has one
         rng = np.random.default_rng(100 + c)
         self.strokes = [(rng.uniform(0, 1), rng.uniform(0.08, 0.92), rng.uniform(60, 150), rng.uniform(0.4, 1.0), rng.uniform(0, 6.28)) for _ in range(7)]
     def lift(self, name, box, kind, only=None, thick=0, cut=(), seed=None, **kw):
@@ -152,6 +153,7 @@ class Scene:
         if only == 'dark': al = al * np.clip((80 - lum) / 25.0, 0, 1)
         if only == 'notbright': al = al * np.clip((165 - lum) / 25.0, 0, 1)
         if only == 'red': al = al * np.clip((sub0[..., 0] - sub0[..., 1] * 1.6) / 20.0, 0, 1)
+        if only == 'notsea': al = al * np.clip((np.abs(sub0 - SEACOL).sum(2) - 30) / 25.0, 0, 1)
         inb = np.zeros_like(al); inb[y0 - Y0:y1 - Y0, x0 - X0:x1 - X0] = 1
         for (cx0, cy0, cx1, cy1) in cut: inb[max(0, cy0 - Y0):max(0, cy1 - Y0), max(0, cx0 - X0):max(0, cx1 - X0)] = 0      # parts of the box that belong to something else
         al = al * inb
@@ -170,6 +172,12 @@ class Scene:
             self.base[Y0:Y1, X0:X1] = sub * (1 - soft) + fill * soft
         self.els.append(dict(name=name, org=(X0, Y0), patch=patch, kind=kind, **kw))
     def frame(self, t):
+        if self.vn:      # a loop of frames: the figures themselves move
+            k = int(round(t * FPS)) % self.vn
+            if k not in self.vc:
+                if len(self.vc) > 3: self.vc.clear()
+                self.vc[k] = np.asarray(Image.open('%s/%04d.jpg' % (self.vdir, k)).convert('RGB'))
+            return self.vc[k]
         out = self.base.copy()
         if self.sea.any():      # the still sea: a few thin lights that come and go
             ys, xs = np.where(self.sea); sy0, sy1, sx0, sx1 = ys.min(), ys.max(), xs.min(), xs.max()
@@ -253,7 +261,8 @@ def scenes():
     s.lift('gull1', (556, 26, 654, 94), 'rock', pivot=(605, 60), amp=4.0, w=1.6, bob=4.0, bw=0.7, drift=6.0)
     s.lift('gull2', (958, 226, 1058, 298), 'rock', pivot=(1008, 262), amp=4.0, w=1.5, ph=1.3, bob=4.0, bw=0.6, drift=6.0)
     s.fx.append(dict(kind='waver', box=(776, 614, 914, 1096), amp=3.2, lam=11.0, w=1.6))
-    s.fx.append(dict(kind='waver', box=(166, 614, 424, 1060), amp=2.8, lam=13.0, w=1.4))
+    s.lift('woman', (185, 125, 455, 545), 'rock', only='colour', pivot=(290, 548), amp=1.3, w=0.6)      # (no clip for this scene: she sways as she looks, and the woman in the water with her)
+    s.lift('reflection', (166, 614, 424, 1062), 'rock', only='notsea', pivot=(290, 646), amp=-1.3, w=0.6)
     s = sc[5]      # 6: the boat rides; what the water shows of it trembles
     s.fx.append(dict(kind='waver', box=(100, 682, 960, 1096), amp=2.8, lam=14.0, w=1.5))
     s.lift('boat', (100, 230, 945, 675), 'rock', pivot=(520, 662), amp=0.6, w=1.0, bob=1.5, bw=1.0)
@@ -403,6 +412,8 @@ def render(f0, f1, out):
     orn_aged = {}      # the ornament bands with their marks of age, for each of the five places round the vase
     hy = ty(h); cov3 = cov[..., None]
     y_pan = int(ty(PAN_H0)); x_pan = int(tx(-PANEL * 0.5)); y_t0 = int(ty(TXT_H0)); y_t1 = y_t0 + txt[0][0].shape[0]
+    T0 = [next(j for j, e in enumerate(ev) if e[1] == i and e[0] == float(i)) / FPS - 1.0 for i in range(7)]      # each picture begins to move as it comes round
+    loc = lambda i, t: max(0.0, t - T0[i]) if 0 <= i <= 6 else 0.0
     def slot_tex(i, t, wr):      # the strip of the vase that carries scene i (None: a plain side)
         ph = (i if i is not None else -1) % 5
         if ph not in orn_aged: orn_aged[ph] = age(orn, ag, ph, 0, 0)
@@ -425,8 +436,8 @@ def render(f0, f1, out):
         hx = tx(ul); img = np.zeros((Hh, W, 3), np.float32)
         for k in np.unique(sl):
             key = (int(k), fi if int(k) == front else -1)
-            if int(k) == front: tex = slot_tex(int(k), t, wr)
-            elif int(k) == front - 1: tex = slot_tex(int(k), t, final_wr(int(k)) if 0 <= int(k) <= 6 else [0.0] * NL)      # the picture that is turning away goes on moving
+            if int(k) == front: tex = slot_tex(int(k), loc(int(k), t), wr)
+            elif int(k) == front - 1: tex = slot_tex(int(k), loc(int(k), t), final_wr(int(k)) if 0 <= int(k) <= 6 else [0.0] * NL)      # the picture that is turning away goes on moving
             else:
                 if int(k) not in cache: cache[int(k)] = slot_tex(int(k), 0.0, final_wr(int(k)) if 0 <= int(k) < front else [0.0] * NL)
                 tex = cache[int(k)]
