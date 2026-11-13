@@ -90,6 +90,7 @@ var N := {}      # the pieces that move, by name (kept here so that the joined w
 var WL: Array = []      # the still waters, in order: their names
 var W := {}      # each water: {"r": [x0, z0, x1, z1], "heads": [rects of floor from which her reflection can be sent], "foot": {name: {x0, z0, x1, z1, on, h}}}
 var refl_w := ""      # the water her reflection is out on
+var refl_key := "mir"      # which of her mirrored bodies it is (a water whose surface is not at the floor's height has one of its own: W[id].mir)
 var ramps: Array = []      # floor that is not level: {"r": its rect, "z0", "z1": between these it goes from height "y0" to "y1"}
 var on_ramp := false
 var refl_busy := 0      # how many orders to her reflection are still being carried out
@@ -97,6 +98,8 @@ var woke := false
 var flags := {}
 var wing_open := {"W": false, "N": false, "S": false}      # which wings are built: a script that extends this one and builds a wing sets its own to true in _init (after super._init())
 var wings_done: Array = []      # the wings whose water has been set free, in the order it was done
+var cs_mirs: Array = []      # the mirrored bodies of her that belong to waters below the floor's height, to be made once she exists: [key, root]
+var cs_courts: Array = []    # the courts with such waters: in them her ordinary mirrored body is put away
 
 func _init() -> void:
 	old_world = false
@@ -147,7 +150,7 @@ func sluice(key: String, c: Vector3, along_x := false, half := 0.62, h := 1.5) -
 		blk(pc - ax * 0.2 - th * 0.2, pc + ax * 0.2 + th * 0.2 + Vector3(0, 0.1, 0), "shade")
 		blk(pc - ax * 0.2 - th * 0.2 + Vector3(0, h + 0.2, 0), pc + ax * 0.2 + th * 0.2 + Vector3(0, h + 0.27, 0), "shade")
 		ball(pc + Vector3(0, h + 0.36, 0), 0.09, pal("gold"))
-	gate_slot(c, half, along_x)
+	gate_slot(c, half, not along_x)      # (the slot lies along the leaf, across the way)
 	var leaf := Node3D.new(); leaf.position = c; add_child(leaf)
 	if along_x: leaf.rotation.y = PI * 0.5
 	var n := 7
@@ -197,14 +200,71 @@ func floor_plain(x0: float, z0: float, x1: float, z1: float, tile := 1.0) -> voi
 	slab(x0, z0, x1, z1, 0.0); under(x0, z0, x1, z1, 0.22, "stone")
 	if tile > 0.0: tiles(x0, z0, x1, z1, tile)
 
-## a wall: a base course, the wall, a cornice. twin: its copy in the water as well, in plain colours
+## a wall: a base course, the wall with its pilasters and panels, a string course, dentils and a cornice; it ends in
+## piers. twin: its copy in the water as well, in plain colours
 func wall(x0: float, z0: float, x1: float, z1: float, h: float, twin := false, y0 := 0.0) -> void:
 	blk(Vector3(x0, y0, z0), Vector3(x1, h, z1), "stone")
 	if y0 == 0.0: blk(Vector3(x0 - 0.03, 0, z0 - 0.03), Vector3(x1 + 0.03, 0.14, z1 + 0.03), "shade")
 	cornice(x0, z0, x1, z1, h, 0.04, 0.06)
+	if y0 == 0.0 and h > 1.8: _wall_dress(x0, z0, x1, z1, h)
 	if twin:
 		blk(Vector3(x0, y0, z0), Vector3(x1, h, z1), "stone", mroot).material_override = under_mat(Color("d8ccb9"))
 		blk(Vector3(x0 - 0.04, h, z0 - 0.04), Vector3(x1 + 0.04, h + 0.06, z1 + 0.04), "stone", mroot).material_override = under_mat(Color("b9ab98"))
+
+## the face of a wall that the eye sees (south, or east): pilasters on plinths with small capitals, a sunk panel in
+## each bay, a string course, dentils under the cornice, a coping; and a pier at each end, a little taller, capped
+func _wall_dress(x0: float, z0: float, x1: float, z1: float, h: float) -> void:
+	var ax := (x1 - x0) >= (z1 - z0)      # it runs east-west: its south face is seen
+	var l := (x1 - x0) if ax else (z1 - z0)
+	var o := Vector3(x0, 0, z1) if ax else Vector3(x1, 0, z0)      # the foot of the seen face, at its start
+	var u := Vector3(1, 0, 0) if ax else Vector3(0, 0, 1)          # along it
+	var w := Vector3(0, 0, 1) if ax else Vector3(1, 0, 0)          # out of it
+	var B := func(a0: float, a1: float, ya: float, yb: float, out0: float, out1: float, p: String) -> void:
+		var pa: Vector3 = o + u * a0 + w * out0 + Vector3(0, ya, 0); var pb: Vector3 = o + u * a1 + w * out1 + Vector3(0, yb, 0)
+		blk(Vector3(minf(pa.x, pb.x), ya, minf(pa.z, pb.z)), Vector3(maxf(pa.x, pb.x), yb, maxf(pa.z, pb.z)), p)
+	var n := maxi(1, int(round(l / 2.3)))
+	var bay := l / n
+	for i in n + 1:
+		var a := bay * i
+		if i == 0 or i == n:      # the pier that ends it
+			var c := clampf(a, 0.2, l - 0.2)
+			B.call(c - 0.26, c + 0.26, 0.0, h + 0.16, -0.36, 0.1, "stone"); B.call(c - 0.3, c + 0.3, 0.0, 0.2, -0.4, 0.14, "shade")
+			B.call(c - 0.31, c + 0.31, h + 0.16, h + 0.23, -0.41, 0.15, "shade"); B.call(c - 0.2, c + 0.2, h + 0.23, h + 0.33, -0.3, 0.04, "stone")
+		else:
+			B.call(a - 0.17, a + 0.17, 0.14, h - 0.2, 0.0, 0.05, "stone"); B.call(a - 0.2, a + 0.2, 0.14, 0.3, 0.0, 0.075, "shade")
+			B.call(a - 0.21, a + 0.21, h - 0.2, h - 0.12, 0.0, 0.08, "shade")
+	for i in n:      # the bays: a sunk panel, and over it a string course
+		var a0 := bay * i + 0.42; var a1 := bay * (i + 1) - 0.42
+		if a1 - a0 < 0.5: continue
+		B.call(a0, a1, 0.46, h * 0.7 - 0.12, 0.0, 0.012, "shade")
+		B.call(a0 + 0.06, a1 - 0.06, 0.52, h * 0.7 - 0.18, 0.0, 0.02, "stone")
+		B.call(bay * i + 0.2, bay * (i + 1) - 0.2, h * 0.7, h * 0.7 + 0.05, 0.0, 0.03, "shade")
+	var dx := 0.3      # dentils under the cornice
+	while dx < l - 0.3:
+		B.call(dx, dx + 0.07, h - 0.1, h - 0.03, 0.0, 0.035, "shade"); dx += 0.16
+	B.call(0.0, l, h + 0.06, h + 0.1, -0.33, 0.07, "stone")      # the coping
+
+## an open screen in place of a wall: a row of columns on a low balustrade, carrying an architrave. The land beyond
+## shows through it
+func stoa(x0: float, z0: float, x1: float, z1: float, h := 2.5) -> void:
+	var ax := (x1 - x0) >= (z1 - z0)
+	var l := (x1 - x0) if ax else (z1 - z0)
+	var o := Vector3(x0, 0, (z0 + z1) * 0.5) if ax else Vector3((x0 + x1) * 0.5, 0, z0)
+	var u := Vector3(1, 0, 0) if ax else Vector3(0, 0, 1)
+	var hw := Vector3(0, 0, 0.21) if ax else Vector3(0.21, 0, 0)
+	blk(o - hw, o + u * l + hw + Vector3(0, 0.1, 0), "shade")      # the stylobate
+	var n := maxi(2, int(round(l / 1.75)))
+	for i in n + 1:
+		var c: Vector3 = o + u * clampf(l * i / n, 0.22, l - 0.22)
+		blk(c + Vector3(-0.2, 0.1, -0.2), c + Vector3(0.2, 0.2, 0.2), "stone")
+		column(c + Vector3(0, 0.2, 0), h - 0.36, 0.135)
+		blk(c + Vector3(-0.2, h - 0.16, -0.2), c + Vector3(0.2, h - 0.08, 0.2), "shade"); blk(c + Vector3(-0.23, h - 0.08, -0.23), c + Vector3(0.23, h, 0.23), "stone")
+		if i < n:
+			var c2: Vector3 = o + u * clampf(l * (i + 1) / n, 0.22, l - 0.22)
+			parapet(c + u * 0.2, c2 - u * 0.2)
+	blk(o - hw * 1.05 + Vector3(0, h, 0), o + u * l + hw * 1.05 + Vector3(0, h + 0.2, 0), "stone")      # the architrave
+	blk(o - hw * 1.3 - u * 0.05 + Vector3(0, h + 0.2, 0), o + u * (l + 0.05) + hw * 1.3 + Vector3(0, h + 0.27, 0), "shade")
+	blk(o - hw * 1.15 + Vector3(0, h + 0.27, 0), o + u * l + hw * 1.15 + Vector3(0, h + 0.33, 0), "stone")
 
 ## a plinth for a statue of her, and the statue (pose "": none stands on it)
 func her_plinth(p: Vector3, yaw: float, pose: String, parent: Node) -> Node3D:
@@ -228,13 +288,210 @@ func channel(a: Vector3, b: Vector3, w := 0.5) -> void:
 		blk(Vector3(lo.x - w, 0, lo.z), Vector3(hi.x + w, 0.004, hi.z), "shade")
 		for e in [-1.0, 1.0]: blk(Vector3(lo.x + e * w - 0.03, 0, lo.z), Vector3(lo.x + e * w + 0.03, 0.018, hi.z), "stone")
 
+# ---------------------------------------------------------------- waters that lie below the floor
+## a still water at a level of its own: its mirror world hangs under a root that turns everything over about that
+## level, so that when the water sinks by one step what it shows sinks by two. Returns that root
+func _cs_water(key: String, x0: float, z0: float, x1: float, z1: float, level: float) -> Node3D:
+	var mr := Node3D.new(); mr.name = "Mirror_" + key; mr.transform = Transform3D(Basis(Vector3(1, 0, 0), Vector3(0, -1, 0), Vector3(0, 0, 1)), Vector3(0, 2.0 * level, 0)); add_child(mr)
+	var wq := QuadMesh.new(); wq.size = Vector2(x1 - x0, z1 - z0); wq.orientation = PlaneMesh.FACE_Y
+	var g := ShaderMaterial.new(); g.shader = shaders["glass"]; timed.append(g)
+	g.set_shader_parameter("lost_a", 0.0); g.set_shader_parameter("blur_px", 0.6); g.set_shader_parameter("lod", 0.0)
+	var gl := prim(wq, Vector3((x0 + x1) * 0.5, level + 0.012, (z0 + z1) * 0.5), g); gl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	N[key + "_mr"] = mr; N[key + "_glass"] = gl; N[key + "_level"] = level
+	cs_mirs.append(["mir_" + key, mr])
+	return mr
+
+## the plain colour of a thing mirrored in such a water. Only what stands above the water is mirrored in it: of
+## the copy that hangs under the water's root, whatever would come out above the surface is not drawn
+var cs_ush: Shader
+func _cs_umat(key: String, c: Color) -> ShaderMaterial:
+	if cs_ush == null:
+		cs_ush = Shader.new(); cs_ush.code = "shader_type spatial;\nrender_mode unshaded, cull_disabled;\nuniform vec3 col : source_color; uniform float level = 0.0;\nvarying vec3 wp;\nvoid vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }\nvoid fragment(){ if (wp.y > level) discard; ALBEDO = col; }"
+	var m := ShaderMaterial.new(); m.shader = cs_ush; m.set_shader_parameter("col", c); m.set_shader_parameter("level", float(N[key + "_level"]))
+	if not N.has(key + "_umats"): N[key + "_umats"] = []
+	(N[key + "_umats"] as Array).append(m)
+	return m
+
+## the water of such a tank goes to a level, slowly: its surface, and under it its whole mirror world twice as far
+func _cs_level(key: String, to: float, secs := 2.6) -> void:
+	var from: float = N[key + "_level"]
+	var lt := create_tween(); lt.tween_method(func(v: float) -> void:
+		N[key + "_level"] = v
+		(N[key + "_mr"] as Node3D).position.y = 2.0 * v; (N[key + "_glass"] as Node3D).position.y = v + 0.012
+		for m in N.get(key + "_umats", []): (m as ShaderMaterial).set_shader_parameter("level", v), from, to, secs).set_trans(Tween.TRANS_SINE)
+	await lt.finished
+
+## a deeper pit for a pool whose water must show things that stand high over it
+func _cs_deep_pit(sky: String, depth: float) -> void:
+	var pit := get_node_or_null(sky) as MeshInstance3D
+	if pit == null: return
+	var pm := pit.mesh as BoxMesh
+	pm.size = Vector3(pm.size.x, depth, pm.size.z); pit.position.y = -0.185 - depth * 0.5
+
 # ---------------------------------------------------------------- the world
 func _world() -> void:
 	mroot = Node3D.new(); mroot.name = "MirrorPool"; mroot.transform = Transform3D(Basis(Vector3(1, 0, 0), Vector3(0, -1, 0), Vector3(0, 0, 1)), Vector3.ZERO); add_child(mroot)
 	_harbour(); _causeway(); _basin(); _well(); _fountain(); _forecourt(); _atrium()
 	_wings()
 	_strip_refl(mroot)
+	_island()
+	_landmarks()
 	pos = HERPL + Vector3(0, 0.17, 0); yaw = 0.0
+
+# ---------------------------------------------------------------- the island
+## the house does not stand in the open sea: it is built on a rock. A low shelf of stone, just out of the water, runs
+## out round every court and joins them; it reaches far to the north and west (inland) and little to the south and
+## east, where the sea comes up to the terraces. Away from the courts it mounds up, green, with cypresses
+func _hash2(ix: int, iz: int) -> float:
+	var n := (ix * 73856093) ^ (iz * 19349663) ^ 0x5bd1e995
+	n = ((n ^ (n >> 13)) * 1274126177) & 0x7fffffff
+	return float((n ^ (n >> 16)) & 0xffff) / 65535.0
+
+func _vnoise(x: float, z: float) -> float:
+	var ix := int(floor(x)); var iz := int(floor(z)); var fx := x - ix; var fz := z - iz
+	fx = fx * fx * (3.0 - 2.0 * fx); fz = fz * fz * (3.0 - 2.0 * fz)
+	return lerpf(lerpf(_hash2(ix, iz), _hash2(ix + 1, iz), fx), lerpf(_hash2(ix, iz + 1), _hash2(ix + 1, iz + 1), fx), fz)
+
+## how far a place lies from the nearest floor, and which way from it: [distance, x, z of the way out, as a unit]
+func _land_d(x: float, z: float) -> Array:
+	var best := 1e9; var bx := 0.0; var bz := 0.0
+	for f in land_rects:
+		var dx := maxf(maxf(f[0] - x, 0.0), x - f[2]) * (-1.0 if x < f[0] else 1.0); var dz := maxf(maxf(f[1] - z, 0.0), z - f[3]) * (-1.0 if z < f[1] else 1.0)
+		var d := sqrt(dx * dx + dz * dz)
+		if d < best: best = d; bx = dx; bz = dz
+	return [best, bx / maxf(best, 0.001), bz / maxf(best, 0.001)]
+
+## how high the land stands at a place (the sea lies at WATER). To the north and west of a floor the land is level
+## with it and runs on as a meadow that rises into low hills and falls to a far shore; to the south and east the
+## floor ends in a sea wall over a low shelf of rock. Under and beside a bridge the land is cut by an inlet. No hill
+## stands between the eye and a floor
+func _land_h(x: float, z: float) -> float:
+	var q := _land_d(x, z); var d: float = q[0]
+	var n1 := _vnoise(x * 0.085 + 11.3, z * 0.085 + 4.1); var n2 := _vnoise(x * 0.2 + 3.1, z * 0.2 + 7.7)
+	var sea_side := smoothstep(0.3, 0.8, clampf((float(q[1]) + float(q[2])) * 0.75 + 0.5, 0.0, 1.0))      # 1: south or east of the house, toward the open sea
+	var reach := 15.0 + 12.0 * n1
+	var tl := d / reach
+	var y_land := lerpf(-0.03, WATER - 1.1, smoothstep(0.62, 1.0, tl)) + (0.5 + 3.4 * n2) * smoothstep(2.0, 8.0, d) * (1.0 - smoothstep(0.5, 0.95, tl))
+	var reach_s := 1.2 + 2.6 * n1
+	var y_sea := lerpf(WATER - 1.1, WATER + 0.3, smoothstep(0.0, 0.32, clampf(1.0 - d / reach_s, 0.0, 1.0)))
+	var y := lerpf(y_land, y_sea, sea_side)
+	var db := 1e9      # an inlet runs under every bridge
+	for f in land_bridges: db = minf(db, Vector2(maxf(maxf(f[0] - x, 0.0), x - f[2]), maxf(maxf(f[1] - z, 0.0), z - f[3])).length())
+	if db < 2.6: y = minf(y, lerpf(WATER + 0.22, y, smoothstep(1.3, 2.6, db)))
+	if y > 0.0:      # a hill hides what lies behind it for as far as it is high
+		for k in range(1, 10):
+			var bx := x - k; var bz := z - k
+			for f in land_rects:
+				if bx > f[0] - 0.6 and bx < f[2] + 0.6 and bz > f[1] - 0.6 and bz < f[3] + 0.6: y = minf(y, maxf(k - 1.3, 0.0)); break
+	return y + 0.05 * (n2 - 0.5) + (0.05 * (_hash2(int(x * 2.0), int(z * 2.0)) - 0.5) if d > 0.7 else 0.0)
+
+var land_bridges: Array = []
+var land_rects: Array = []
+func _island() -> void:
+	land_rects = []; land_bridges = []
+	var x0 := 1e9; var z0 := 1e9; var x1 := -1e9; var z1 := -1e9
+	for f in floors:
+		land_rects.append([f[0], f[1], f[2], f[3]])
+		if minf(f[2] - f[0], f[3] - f[1]) <= 2.6: land_bridges.append([f[0], f[1], f[2], f[3]])
+		x0 = minf(x0, f[0]); z0 = minf(z0, f[1]); x1 = maxf(x1, f[2]); z1 = maxf(z1, f[3])
+	x0 = floor(x0) - 30.0; z0 = floor(z0) - 30.0; x1 = ceil(x1) + 7.0; z1 = ceil(z1) + 7.0
+	var nx := int(x1 - x0); var nz := int(z1 - z0)
+	var hs := PackedFloat32Array(); hs.resize((nx + 1) * (nz + 1))
+	var ds := PackedFloat32Array(); ds.resize((nx + 1) * (nz + 1))
+	for j in nz + 1:
+		for i in nx + 1: hs[j * (nx + 1) + i] = _land_h(x0 + i, z0 + j); ds[j * (nx + 1) + i] = _land_d(x0 + i, z0 + j)[0]
+	for pass_i in 2:      # the land is worn smooth, away from the house
+		var h2 := hs.duplicate()
+		for j in range(1, nz):
+			for i in range(1, nx):
+				if ds[j * (nx + 1) + i] < 1.3: continue
+				var sum := 0.0
+				for dj in [-1, 0, 1]:
+					for di in [-1, 0, 1]: sum += hs[(j + dj) * (nx + 1) + i + di]
+				h2[j * (nx + 1) + i] = sum / 9.0
+		hs = h2
+	var groups := {"sand": [], "far": [], "rose": [], "leaf2": [], "leaf3": []}
+	for j in nz:
+		for i in nx:
+			var cx := x0 + i + 0.5; var cz := z0 + j + 0.5
+			var inside := false
+			for f in land_rects:
+				if cx > f[0] and cx < f[2] and cz > f[1] and cz < f[3]: inside = true; break
+			if inside: continue
+			var a := Vector3(x0 + i, hs[j * (nx + 1) + i], z0 + j); var b := Vector3(x0 + i + 1, hs[j * (nx + 1) + i + 1], z0 + j)
+			var c := Vector3(x0 + i + 1, hs[(j + 1) * (nx + 1) + i + 1], z0 + j + 1); var d := Vector3(x0 + i, hs[(j + 1) * (nx + 1) + i], z0 + j + 1)
+			if maxf(maxf(a.y, b.y), maxf(c.y, d.y)) < WATER - 0.25: continue      # (under the sea)
+			var tris := [[a, b, c], [a, c, d]] if (i + j) % 2 == 0 else [[a, b, d], [b, c, d]]      # (clockwise from above: the side that is seen)
+			var cell_y := (a.y + b.y + c.y + d.y) * 0.25; var cell_steep := maxf(maxf(a.y, b.y), maxf(c.y, d.y)) - minf(minf(a.y, b.y), minf(c.y, d.y))
+			var n3 := _vnoise(cx * 0.11 + 31.0, cz * 0.11 + 9.0)
+			var g := "sand" if cell_y < WATER + 0.06 else ("far" if (cell_y < WATER + 0.55 or cell_steep > 1.05) else ("rose" if (cell_y < WATER + 0.8 or n3 > 0.82) else ("leaf2" if n3 < 0.42 else "leaf3")))
+			for t in tris:
+				for v in t: (groups[g] as Array).append(v)
+	for g in groups:
+		var v := PackedVector3Array(groups[g] as Array)
+		if v.is_empty(): continue
+		var nn := PackedVector3Array(); nn.resize(v.size())
+		for k in range(0, v.size(), 3):
+			var fn := (v[k + 2] - v[k]).cross(v[k + 1] - v[k]).normalized()
+			nn[k] = fn; nn[k + 1] = fn; nn[k + 2] = fn
+		var arr := []; arr.resize(Mesh.ARRAY_MAX); arr[Mesh.ARRAY_VERTEX] = v; arr[Mesh.ARRAY_NORMAL] = nn
+		var am := ArrayMesh.new(); am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+		var mi := prim(am, Vector3.ZERO, pal(g, "flat")); mi.name = "Island_" + g
+		if OS.get_environment("LAND_DBG") != "": print("LAND ", g, " tris ", v.size() / 3, " aabb ", am.get_aabb())
+	# what grows on it, and the rocks at its edge: nothing that would stand between the eye and a floor
+	var gx := x0 + 1.3
+	while gx < x1:
+		var gz := z0 + 1.3
+		while gz < z1:
+			var r := _hash2(int(gx * 3.1), int(gz * 2.7)); var r2 := _hash2(int(gx * 1.7) + 91, int(gz * 4.3) + 17)
+			var p := Vector3(gx + (r - 0.5) * 1.6, 0, gz + (r2 - 0.5) * 1.6)
+			var gi := clampi(int(p.x - x0), 0, nx - 1); var gj := clampi(int(p.z - z0), 0, nz - 1)
+			p.y = minf(minf(hs[gj * (nx + 1) + gi], hs[gj * (nx + 1) + gi + 1]), minf(hs[(gj + 1) * (nx + 1) + gi], hs[(gj + 1) * (nx + 1) + gi + 1]))
+			var d: float = _land_d(p.x, p.z)[0]
+			var tall := 0.0; var kind := ""
+			if p.y > WATER + 0.85 and d > 2.2:
+				if r < 0.2: kind = "cyp"; tall = 2.3 + 2.4 * r2
+				elif r < 0.42: kind = "bush"; tall = 0.9
+			elif p.y > WATER - 0.05 and p.y < WATER + 0.25 and d > 1.5 and r < 0.14: kind = "rock"
+			elif p.y > WATER - 0.2 and p.y < WATER + 0.1 and d > 1.2 and r > 0.93: kind = "reeds"
+			if kind != "" and tall > 0.0:      # would it hide a floor? (what stands h high hides what lies up to h behind it)
+				for k in int(tall + p.y + 2.0):
+					var bx := p.x - 0.5 - k; var bz := p.z - 0.5 - k
+					for f in land_rects:
+						if bx > f[0] - 0.4 and bx < f[2] + 0.4 and bz > f[1] - 0.4 and bz < f[3] + 0.4: kind = ""; break
+					if kind == "": break
+			match kind:
+				"cyp": cypress(p, tall)
+				"bush": bush(p + Vector3(0, -0.05, 0), 1.2 + 1.4 * r2, "leaf2" if r2 > 0.5 else "leaf3")
+				"rock": rock(Vector3(p.x, 0, p.z), 0.6 + 0.8 * r2)
+				"reeds": reeds(Vector3(p.x, 0, p.z))
+			gz += 2.6
+		gx += 2.6
+
+## what stands on the island beyond the courts: the things he left where they fell
+func _landmarks() -> void:
+	# a head of her, colossal, half under the sea off the harbour: the first thing she sees when she wakes
+	sculpt_head(Vector3(7.6, WATER - 1.2, 15.2), 5.6, 0.7, Vector3(-0.2, 0, 0.16), 2)
+	foam_ring(Vector3(7.6, 0, 15.4), 2.5, 0.45)
+	# a round temple without a roof on the hill north of the well: eight columns, three of them broken
+	var tc := Vector3(-11.5, 0, -11.0); tc.y = _land_h(tc.x, tc.z) - 0.05
+	cyl(tc, 2.5, 2.6, 0.16, pal("shade"), 28); cyl(tc + Vector3(0, 0.16, 0), 2.3, 2.35, 0.14, pal("stone"), 28)
+	for i in 8:
+		var a := TAU * i / 8.0 + 0.2
+		var cp := tc + Vector3(cos(a) * 1.95, 0.3, sin(a) * 1.95)
+		var broken: bool = i in [1, 4, 6]
+		column(cp, 1.1 + 0.5 * _hash2(i, 7) if broken else 2.7, 0.17, broken)
+	for i in [7, 2]:      # what is left of its ring beam, on the columns that still stand side by side
+		var a0: float = TAU * float(i) / 8.0 + 0.2; var a1: float = TAU * float(i + 1) / 8.0 + 0.2
+		var m := tc + Vector3((cos(a0) + cos(a1)) * 0.975, 3.0 + 0.11, (sin(a0) + sin(a1)) * 0.975)
+		var bm := blk(Vector3(-0.85, -0.11, -0.17), Vector3(0.85, 0.11, 0.17), "stone"); bm.position = m; bm.rotation.y = -(a0 + a1) * 0.5 + PI * 0.5
+	her_plinth(tc + Vector3(0, 0.3, 0), -0.6, "mourn", self)
+	# drums of a fallen column in the meadow west of the long basin, and a statue of her that was never finished
+	for k in 4:
+		var dp := Vector3(-8.2 - 0.75 * k, 0, -9.2 + 0.28 * k); dp.y = _land_h(dp.x, dp.z) + 0.2
+		var dr := cyl(Vector3.ZERO, 0.2, 0.2, 0.62, pal("stone"), 12); dr.position = dp; dr.rotation = Vector3(0, 0.3 * k, PI * 0.5)
+	var bs := Vector3(-19.5, 0, -19.0); bs.y = _land_h(bs.x, bs.z) - 0.05
+	thing("broken_statue", bs, 2.2, "stone:marble", 0.7)
 
 ## the wings of the atrium. A script that extends this one builds its wing here (and calls super._wings() first);
 ## likewise _wing_things() for what can be tapped there and _wing_nav() for its floor
@@ -244,6 +501,22 @@ func _wing_things() -> void:
 	pass
 func _wing_nav() -> void:
 	pass
+
+## water runs along a dry channel: from point to point (each leg along x or along z), a band of running water grows
+## at walking pace. Returns when it has reached the last point
+func chan_run(pts: Array, speed := 2.2, w := 0.42) -> void:
+	for i in pts.size() - 1:
+		var a: Vector3 = pts[i]; var b: Vector3 = pts[i + 1]
+		var d := b - a; var l := d.length()
+		if l < 0.01: continue
+		var along_x := absf(d.x) > absf(d.z)
+		var n := Node3D.new(); n.position = Vector3(a.x, 0.02, a.z); add_child(n)
+		var q := QuadMesh.new(); q.size = Vector2(l, w * 2.0) if along_x else Vector2(w * 2.0, l); q.orientation = PlaneMesh.FACE_Y
+		var mi := prim(q, Vector3(d.x * 0.5, 0, d.z * 0.5), water(Vector2(signf(d.x) * 0.5, 0) if along_x else Vector2(0, signf(d.z) * 0.5)), n)
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		n.scale = Vector3(0.001, 1, 1) if along_x else Vector3(1, 1, 0.001)
+		var g := create_tween(); g.tween_property(n, "scale", Vector3.ONE, l / speed)
+		await g.finished
 
 ## a wing's water has been set free: it runs down its channel into the great basin of the atrium
 func _wing_done(id: String) -> void:
@@ -319,11 +592,11 @@ func _basin() -> void:
 		"foot": {"a": R(TWX0, TG_WATER + 0.15, TWX1, TZ1 - 0.4), "wg": R(TWX0, TG_WATER - 0.15, TWX1, TG_WATER + 0.15, false), "b": R(TWX0, TZ0 + 0.65, TWX1, TG_WATER - 0.15)}}
 	WL.append("T")
 	wall(TX0, TZ0, TX0 + 0.3, TZ1, 2.3, true)      # the west wall
-	wall(-1.3, TZ0, TX1, TZ0 + 0.3, 2.3, true)      # the north wall, east of the sluice
+	stoa(-1.3, TZ0, TX1, TZ0 + 0.3)      # the north side, east of the sluice: a row of columns
 	parapet(Vector3(TX1 - 0.1, 0, TZ0 + 0.4), Vector3(TX1 - 0.1, 0, TZ1 - 0.1)); parapet(Vector3(1.3, 0, TZ1 - 0.1), Vector3(TX1 - 0.1, 0, TZ1 - 0.1)); parapet(Vector3(TX0 + 0.4, 0, TZ1 - 0.1), Vector3(-1.3, 0, TZ1 - 0.1))
 	channel(Vector3(-0.5, 0, TZ1 - 0.62), Vector3(-2.3, 0, TZ1 - 0.62)); channel(Vector3(-2.3, 0, TZ1 - 0.12), Vector3(-2.3, 0, TZ0 + 0.02)); channel(Vector3(0, 0, TZ1 - 1.12), Vector3(0, 0, TZ1))
 	leaf("g2", Vector3((TX0 + 0.3 + TPX0) * 0.5, 0, TG_REAL), false, (TPX0 - TX0 - 0.3) * 0.5, 1.9)      # the grille above
-	gate_slot(Vector3((TX0 + 0.3 + TPX0) * 0.5, 0, TG_REAL), (TPX0 - TX0 - 0.3) * 0.5, false)
+	gate_slot(Vector3((TX0 + 0.3 + TPX0) * 0.5, 0, TG_REAL), (TPX0 - TX0 - 0.3) * 0.5, true)
 	leaf("", Vector3((TX0 + 0.3 + TPX0) * 0.5, 0, TG_WATER), false, (TPX0 - TX0 - 0.3) * 0.5, 1.9, mroot, true)      # the grille the water keeps
 	for both in [self, mroot]:
 		var wd := winch(WHEEL2, PI * 0.5, both, both == mroot)
@@ -378,8 +651,8 @@ func _well() -> void:
 	var gr := Node3D.new(); gr.position = POST3 + Vector3(0, 0.86, 0); add_child(gr); _gear(gr, 0.17, 14, 0.05); N["post3_gear"] = gr
 	blk(POST3 + Vector3(-0.035, 0.91, -0.035), POST3 + Vector3(0.035, 0.97, 0.035), "gold")
 	var c3 := _crank_handle(gr); c3.position = Vector3(0, 0.1, 0); c3.rotation = Vector3(-PI * 0.5, 0, 0); c3.visible = false; N["crank3"] = c3
-	wall(VX0, VZ0, VX1, VZ0 + 0.3, 2.3)      # the north wall
-	wall(VX0, VZ0 + 0.3, VX0 + 0.3, -21.6, 2.3); wall(VX0, -20.0, VX0 + 0.3, VZ1, 2.3)      # the west wall, either side of the sluice
+	stoa(VX0, VZ0, VX1, VZ0 + 0.3)      # the north side: columns, and the hill behind them
+	stoa(VX0, VZ0 + 0.3, VX0 + 0.3, -21.6); stoa(VX0, -20.0, VX0 + 0.3, VZ1)      # the west side, either side of the sluice
 	parapet(Vector3(VX1 - 0.1, 0, VZ0 + 0.4), Vector3(VX1 - 0.1, 0, VZ1 - 0.1)); parapet(Vector3(-1.3, 0, VZ1 - 0.1), Vector3(VX1 - 0.1, 0, VZ1 - 0.1)); parapet(Vector3(VX0 + 0.4, 0, VZ1 - 0.1), Vector3(-2.8, 0, VZ1 - 0.1))
 	stele("stele_4", Vector3(-0.1, 0, VZ1 - 0.75), 0.0, ["I threw the handle\ndown the well.", "The well kept it.\nIt keeps whatever touches it."])
 	tree(Vector3(VX0 + 0.9, 0, VZ0 + 0.95), 1.1); urn(Vector3(-0.1, 0, VZ0 + 0.8), 1.0); urn(Vector3(-4.6, 0, VZ1 - 0.8), 0.8, "rose")
@@ -434,7 +707,7 @@ func _fountain() -> void:
 			var pb := blk(Vector3(-ARCH_W * 0.5, -ARCH_Y * 0.125, -0.15), Vector3(ARCH_W * 0.5, ARCH_Y * 0.125, 0.15), "stone", plug)
 			pb.position = Vector3(ARCH_X + (col - 0.5) * ARCH_W, ARCH_Y * (row + 0.5) / 4.0, FZ0 + 0.15)
 	var pc := cyl(Vector3.ZERO, ARCH_W - 0.002, ARCH_W - 0.002, 0.3, pal("stone"), 28, plug); pc.rotation.x = PI * 0.5; pc.position = Vector3(ARCH_X, ARCH_Y, FZ0 + 0.15)
-	wall(FX0, FZ0 + 0.3, FX0 + 0.3, FZ1, 2.3)      # the west wall
+	stoa(FX0, FZ0 + 0.3, FX0 + 0.3, FZ1)      # the west side
 	parapet(Vector3(FX1 - 0.1, 0, FZ0 + 0.4), Vector3(FX1 - 0.1, 0, -21.5)); parapet(Vector3(FX1 - 0.1, 0, -20.1), Vector3(FX1 - 0.1, 0, FZ1 - 0.1)); parapet(Vector3(FX0 + 0.4, 0, FZ1 - 0.1), Vector3(FX1 - 0.1, 0, FZ1 - 0.1))
 	stele("stele_5", Vector3(FX1 - 0.75, 0, FZ1 - 0.75), 0.0, ["I built that wall in one night.", "The water has not learned it.\nIt still shows what was there."])
 	_look_add("", Vector3(ARCH_X + 1.5, 0.05, FZ0 + 0.3), 1.3, ["the spout is dry", "a hand's depth of water is left under it"])
@@ -553,6 +826,11 @@ func _things() -> void:
 	var pl := Vector3(ROW_X[HERS], 0, ROW_Z)
 	objs["place6w"] = {"at": pl + Vector3(0, -1.0, 0), "stand": pl + Vector3(0, 0, -0.72), "mark": false, "water": "G", "rstand": pl + Vector3(0.75, 0, -0.72),
 		"hits": [pl + Vector3(0, -0.2, 0), pl + Vector3(0, -1.9, 0)]}
+	for mk in cs_mirs:      # her mirrored bodies for the waters that lie below the floor
+		var e: Dictionary = spawn_her(mk[1], "mirror"); H[mk[0]] = e
+		if e.sk != null:
+			var hm := HerMod.new(); hm.main = self; (e.sk as Skeleton3D).add_child(hm)
+		if e.ap != null: (e.ap as AnimationPlayer).play("idle")
 	_wing_things()
 	objs["gate"] = {"at": Vector3(UC.x, POD_H + 1.6, UZ0 + 0.9), "stand": Vector3(UC.x, 0, UZ0 + 1.5), "mark": false, "hits": [Vector3(UC.x, POD_H + 0.3, UZ0 + 0.9), Vector3(UC.x, POD_H + 3.4, UZ0 + 0.9)]}
 	objs["place6"] = {"at": pl + Vector3(0, 0.3, 0), "stand": pl + Vector3(0, 0, -0.72), "mark": false, "hits": [pl + Vector3(0, 0.02, 0), pl + Vector3(0, 0.5, 0)]}
@@ -604,9 +882,10 @@ func _pools() -> Array:
 
 func _water_under(sp: Vector2):
 	var o := cam.project_ray_origin(sp); var d := cam.project_ray_normal(sp)
-	var g := o + d * ((0.012 - o.y) / d.y)
 	for i in WL.size():
 		var r: Array = W[WL[i]].r
+		if not W[WL[i]].get("wet", true): continue      # (a tank that stands empty)
+		var g := o + d * ((float(W[WL[i]].get("level", 0.0)) + 0.012 - o.y) / d.y)      # where the finger meets this water's own surface
 		if g.x > r[0] and g.x < r[2] and g.z > r[1] and g.z < r[3]:
 			for n in rects:      # floor that stands in the water (a mole, a quay) is floor
 				if rects[n].on and in_rect(rects[n], g): return null
@@ -624,7 +903,7 @@ func _foot_of(wid: String, p: Vector3, reach := 0.2) -> String:
 	var best := ""; var bd := reach
 	for n in W[wid].foot:
 		var f: Dictionary = W[wid].foot[n]
-		if not f.on: continue
+		if not f.on or absf(float(f.h) - p.y) > 0.35: continue      # (a footing at another height is another place)
 		var d := _flat(_near_in(f, p), p)
 		if d < bd: bd = d; best = n
 	return best
@@ -635,12 +914,12 @@ func _foot_of(wid: String, p: Vector3, reach := 0.2) -> String:
 func _refl_path(wid: String, from: Vector3, to: Vector3) -> Dictionary:
 	var F: Dictionary = W[wid].foot
 	var a := _foot_of(wid, from, 0.9)
-	if a == "": return {"pts": [], "left": 1e9, "h": 0.0}
+	if a == "": return {"pts": [], "left": 1e9, "h": 0.0, "hs": []}
 	var prev := {a: ""}; var q := [a]
 	while not q.is_empty():
 		var c: String = q.pop_front()
 		for n in F:
-			if F[n].on and not prev.has(n) and portal(F[c], F[n]) != null: prev[n] = c; q.append(n)
+			if F[n].on and not prev.has(n) and absf(float(F[c].h) - float(F[n].h)) < 0.3 and portal(F[c], F[n]) != null: prev[n] = c; q.append(n)
 	var goal := to; var gd := 1e9      # the place on any footing nearest to what was asked for
 	for n in F:
 		if not F[n].on: continue
@@ -669,10 +948,15 @@ func _head_point(wid: String) -> Vector3:
 		if _flat(c, pos) < bd: bd = _flat(c, pos); best = c
 	return best
 
+## where her reflection stands when it is under her feet
+func _refl_start(_wid: String) -> Vector3:
+	return pos      # (a mirrored body's own height is the height of what it mirrors: the root it hangs under does the turning over)
+
 ## her reflection is taken from under her feet, to be moved on its own
 func _refl_out_now(wid: String) -> Dictionary:
 	if refl_out.is_empty():
-		var e0: Dictionary = H["mir"]; H.erase("mir"); refl_out = e0
+		refl_key = W[wid].get("mir", "mir")
+		var e0: Dictionary = H[refl_key]; H.erase(refl_key); refl_out = e0
 	refl_w = wid
 	return refl_out
 
@@ -700,15 +984,15 @@ func _refl_melt() -> void:
 	if _flat(hd.position, pos) > 0.25:
 		var a := create_tween(); a.tween_property(hd, "scale:y", 0.02, 0.32).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 		await a.finished
-		hd.position = Vector3(pos.x, 0, pos.z); hd.rotation.y = yaw
+		hd.position = pos; hd.rotation.y = yaw
 		var b := create_tween(); b.tween_property(hd, "scale:y", 1.0, 0.32).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 		await b.finished
 	else:
 		var rt := create_tween(); rt.tween_property(hd, "rotation:y", hd.rotation.y + angle_difference(hd.rotation.y, yaw), 0.3).set_trans(Tween.TRANS_SINE)
 		await rt.finished
-	hd.position.y = 0.0; hd.scale = Vector3.ONE
+	hd.position.y = pos.y; hd.scale = Vector3.ONE
 	(e.ap as AnimationPlayer).play("walk" if walk_on else "idle", 0.3)
-	H["mir"] = e; refl_out = {}; refl_w = ""
+	H[refl_key] = e; refl_out = {}; refl_w = ""
 
 ## it has nowhere to go: it looks down at the water, and from side to side
 func _refl_no(e: Dictionary) -> void:
@@ -722,7 +1006,7 @@ func _refl_no(e: Dictionary) -> void:
 ## it is but could from under her feet, it comes back to her first. True if it arrived at the place itself
 func _refl_to(wid: String, to: Vector3) -> bool:
 	refl_token += 1; var my := refl_token
-	if not H.has("mir") and refl_out.is_empty(): return false
+	if not H.has(W[wid].get("mir", "mir")) and refl_out.is_empty(): return false
 	if not refl_out.is_empty() and refl_w != wid: await _refl_melt(); refl_token += 1; my = refl_token
 	if refl_out.is_empty():
 		var hp := _head_point(wid)
@@ -732,14 +1016,14 @@ func _refl_to(wid: String, to: Vector3) -> bool:
 			while not route.is_empty() and refl_token == my: await get_tree().process_frame
 			if refl_token != my or _flat(pos, hp) > 0.4: return false
 		face_to = Vector3(to.x, 0, to.z)
-		if _foot_of(wid, pos, 0.9) == "":      # this water has nothing for it to stand on
+		if _foot_of(wid, _refl_start(wid), 0.9) == "":      # this water has nothing for it to stand on
 			await _her_no()
 			return false
 	else:      # it is out: could it get nearer from under her feet than from where it stands?
 		var here := _refl_path(wid, (refl_out.holder as Node3D).position, to)
 		var hp2 := _head_point(wid)
 		if _flat(pos, hp2) < 0.4:
-			var home := _refl_path(wid, pos, to)
+			var home := _refl_path(wid, _refl_start(wid), to)
 			if home.left < here.left - 0.3:
 				await _refl_melt(); refl_token += 1; my = refl_token
 	var e := _refl_out_now(wid)
@@ -1122,6 +1406,10 @@ func _do_place6() -> void:
 func _process(dt: float) -> void:
 	super._process(dt)
 	if not refl_out.is_empty() and not busy and refl_w != "" and _rect_dist(pos, W[refl_w].r) > 3.2: _refl_melt()      # she has left that water
+	var inside := false
+	for c in cs_courts:
+		if pos.x > c[0] and pos.x < c[2] and pos.z > c[1] and pos.z < c[3]: inside = true
+	if H.has("mir"): (H["mir"].holder as Node3D).visible = not inside      # in a court whose water lies below the floor, that water's own body mirrors her
 	var fy = _floor_y(pos)      # the stair and the podium: she stands as high as the floor is there
 	if fy != null: pos.y = fy; on_ramp = true
 	elif on_ramp: pos.y = 0.0; on_ramp = false
@@ -1129,7 +1417,7 @@ func _process(dt: float) -> void:
 ## how high the floor is at a place, where it is not level (null: level floor)
 func _floor_y(p: Vector3):
 	for rp in ramps:
-		if in_rect(rp.r, p): return lerpf(rp.y0, rp.y1, clampf((p.z - rp.z0) / (rp.z1 - rp.z0), 0.0, 1.0))
+		if rp.r.on and in_rect(rp.r, p): return lerpf(rp.y0, rp.y1, clampf(((p.x if rp.get("ax", "z") == "x" else p.z) - rp.z0) / (rp.z1 - rp.z0), 0.0, 1.0))
 	return null
 
 ## a tap on floor that stands higher than the rest names a place on it
@@ -1153,7 +1441,7 @@ func _views() -> void:
 	started = true; title_box.hide(); hint.hide()
 	if not woke: _wake_now()
 	var dir := OS.get_environment("SHOT_DIR")
-	await get_tree().create_timer(2.0).timeout
+	await get_tree().create_timer(float(OS.get_environment("VIEW_WAIT")) if OS.get_environment("VIEW_WAIT") != "" else 2.0).timeout
 	for at in OS.get_environment("VIEWS").split(";", false):
 		var f := at.split(",")
 		var sh := {"n": f[0], "c": Vector3(float(f[1]), 0.4, float(f[2])), "s": float(f[3])}
