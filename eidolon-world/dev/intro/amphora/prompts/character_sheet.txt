@@ -1,21 +1,31 @@
-A character model sheet, painted flat in authentic Attic black-figure vase-painting technique on plain warm orange
-terracotta clay (flat black slip silhouettes in strict profile, thin incised detail lines, added cream-white, added
-matt purple-red; no shading, no gradients, evenly lit, no vase, no border, no text, no labels). Five full-length
-standing figures in one row on a thin ground line, all the same scale, well separated, all facing right:
+A character model sheet for a storyboard, painted flat in authentic Attic black-figure vase-painting technique of
+about 530 BC, in the manner of Exekias: confident flat black slip silhouettes in strict profile, rich fine incised
+detail lines (hair curls, beard, muscles, cloth pleats, patterned borders), added cream-white, added matt purple-red.
+Plain warm orange terracotta clay ground. No shading, no gradients, evenly lit, perfectly flat. No vase, no border,
+no text, no labels, no numbers.
 
-1. THERON, the sculptor: a lean man painted in black slip. Short curly black hair bound with a thin purple-red
-   fillet, a pointed black beard. He wears a short belted tunic that ends at mid-thigh, black, with a broad
-   purple-red sash hanging from his left shoulder to his hip. Bare legs, barefoot.
-2. THERON again, the very same man in the very same tunic and sash, kneeling on one knee with both hands raised.
-3. IONE AS A MARBLE STATUE: a slender young woman standing stiffly, entirely in added cream-white: skin, hair and
-   dress all the same white, like carved marble. Her hair is gathered in a low knot with a fillet. She wears a
-   long sleeveless ankle-length dress with fine vertical incised pleats. Her face is smooth and blank: no eye, no
-   mouth. Barefoot.
-4. IONE ALIVE: the same young woman, same height and build and the same dress shape, but now in colour: skin in
-   added white, long wavy BLACK hair worn loose down her back and bound with a thin purple-red fillet, the dress
-   in matt purple-red with fine incised pleats and a narrow black border at the hem. Her profile face has one
-   almond eye. Barefoot.
-5. IONE VEILED: exactly figure 4, same dress, but a long purple-red veil is drawn over her head and face and hangs
-   to her waist; only her white arms and feet show.
+Six full-length figures in one row standing on one thin ground line, all drawn at the same scale, tall (they fill
+most of the height of the image), well separated, all facing right:
 
-Wide image; generous empty clay round the figures.
+1. THERON, the sculptor: a lean, strong man of about forty painted in black slip. Short tightly curled black hair
+   bound with a thin purple-red fillet; a pointed black beard; one almond eye incised. He wears a short belted
+   tunic ending at mid-thigh, black with fine incised pleats, and a broad purple-red sash that hangs from his left
+   shoulder to his hip. Bare legs, barefoot. He stands upright holding a small mallet in his lowered right hand.
+2. THERON again, the very same man with the very same hair, beard, tunic and sash, kneeling on one knee with
+   both open hands raised in prayer.
+3. IONE AS A MARBLE STATUE: a slender young woman standing stiffly upright on a low rectangular plinth block,
+   arms at her sides. EVERYTHING about her is added cream-white like carved marble: skin, hair and dress alike,
+   with fine incised lines. Long wavy hair hanging loose down her back to her waist, bound with a thin fillet.
+   A long sleeveless ankle-length dress belted at the waist with fine vertical pleats. HER FACE IS BLANK: the front
+   of her head is a smooth empty white oval: no eye, no eyebrow, no nose line, no mouth, nothing drawn inside it.
+4. IONE JUST COME ALIVE: exactly the same woman as figure 3, same height, same build, same long wavy hair to the
+   waist, same dress shape, but now in colour: skin in added white, the hair BLACK with a thin purple-red fillet,
+   the dress matt PURPLE-RED with fine incised pleats and a narrow black border at the hem. Barefoot, taking a
+   small step. HER FACE IS STILL BLANK: a smooth empty white oval: no eye, no eyebrow, no nose line, no mouth.
+5. IONE WITH HER FACE: exactly figure 4 in every respect (same black wavy hair to the waist with the purple-red
+   fillet, same purple-red dress with the black hem border, white skin), but now her profile face is drawn: one
+   large almond eye, a fine eyebrow, a straight nose and a small mouth.
+6. IONE VEILED: exactly figure 5 in the same dress, but a long purple-red veil is drawn over her head and face and
+   hangs down to her waist, hiding her hair and face completely; only her white forearms and white feet show.
+
+Wide image. Plain clay to all four edges.

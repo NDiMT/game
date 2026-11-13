@@ -21,21 +21,52 @@ PAN_H0 = 335.0                  # where the panel begins
 PW, PH = 1100, 1100
 TXT_H0, TXT_H1 = 1206.0, 1700.0
 CLAY = np.load(S + '/v/clay.npy').astype(np.float32); BLACK = np.array([24, 19, 20], np.float32); DRED = np.array([122, 30, 22], np.float32)
-CREAM = (244, 220, 178)
+CREAM = (244, 220, 178); SEACOL = np.array([20, 54, 68], np.float32)
 TILT = math.radians(9.0)
+FAC = 6.0; SUN = np.array([1.05, 1.0, 0.93], np.float32); SHADE = np.array([0.66, 0.62, 0.80], np.float32)
+LIFT = np.array([24, 17, 42], np.float32); FACJ = (np.random.default_rng(5).uniform(-1, 1, 60) * 0.05).astype(np.float32); RIM = np.array([236, 228, 250], np.float32)
 
 def ty(h): return (h - H_TOP) * K
 def tx(u): return (u + SLOT * 0.5) * PXD
 
-TEXTS = [
- ["On Kythira there lived", "a sculptor named Theron.", "From white marble", "he carved a woman,", "and loved her more", "than stone should be loved."],
- ["After Theron's prayers,", "Aphrodite gave her life,", "on one condition:", "“Leave her face smooth.", "A face is carved by living,", "from within.”"],
- ["They called her Ione.", "And life began to carve her", "a face, a face the sculptor", "had never imagined.", "He could not bear a face", "he had not carved himself."],
- ["So he covered her face", "with a veil, so that", "he need not see it.", "And he hid every mirror,", "so that she never would.", "For as long as she had not", "seen her own face, she was", "still only what he had made."],
- ["But there was one mirror", "he could not hide: the sea.", "One morning the Aegean", "lay still as glass,", "and at the water's edge", "Ione saw a veiled woman", "looking up at her.", "She had never seen her before."],
- ["She wanted to see her closer.", "So that morning Ione", "rowed out alone, to where", "the water lay stillest,", "and leaned over the side to look."],
- ["The sea took her.", "There was no wave to blame."],
+PAGES = [      # each card: its sentences, shown one page at a time
+ ["On Kythira there lived a sculptor named Theron.", "From white marble he carved a woman, and loved her more than stone should be loved."],
+ ["After Theron's prayers, Aphrodite gave her life, on one condition:", "“Leave her face smooth. A face is carved by living, from within.”"],
+ ["They called her Ione. And life began to carve her a face, a face the sculptor had never imagined.", "He could not bear a face he had not carved himself."],
+ ["So he covered her face with a veil, so that he need not see it.", "And he hid every mirror, so that she never would.", "For as long as she had not seen her own face, she was still only what he had made."],
+ ["But there was one mirror he could not hide: the sea.", "One morning the Aegean lay still as glass, and at the water's edge Ione saw a veiled woman looking up at her.", "She had never seen her before."],
+ ["She wanted to see her closer.", "So that morning Ione rowed out alone, to where the water lay stillest, and leaned over the side to look."],
+ ["The sea took her. There was no wave to blame."],
 ]
+FONT = ImageFont.truetype('/home/user/game/eidolon-demo/fonts/EBGaramond-Italic.ttf', 86)      # the game's own letter
+try: FONT.set_variation_by_axes([620])
+except Exception as e: print('font weight:', e)
+LH = 104; TXT_W = 1010.0; INK = np.array([252, 243, 222], np.float32)
+def wrap(text):      # the fewest lines that fit, and of those the most even
+    words = text.split(); wl = lambda i, j: FONT.getlength(' '.join(words[i:j]))
+    if text.count('. ') == 1 and len(text) < 60:      # two short sentences: one to a line
+        a, b2 = text.split('. '); return [a + '.', b2]
+    n = len(words); best = None
+    for k in range(1, 9):
+        INF = 1e18; cost = [[INF] * (n + 1) for _ in range(k + 1)]; prev = [[0] * (n + 1) for _ in range(k + 1)]; cost[0][0] = 0
+        for l in range(1, k + 1):
+            for j in range(1, n + 1):
+                for i in range(j):
+                    w = wl(i, j)
+                    if w > TXT_W or cost[l - 1][i] >= INF: continue
+                    c = cost[l - 1][i] + (TXT_W - w) ** 2
+                    if j < n and words[j - 1].lower() in ('a', 'the', 'of', 'to', 'and', 'her', 'he', 'so'): c += 3e5      # no little word left hanging at a line's end
+                    if c < cost[l][j]: cost[l][j] = c; prev[l][j] = i
+        if cost[k][n] < INF:
+            out = []; j = n
+            for l in range(k, 0, -1): i = prev[l][j]; out.insert(0, ' '.join(words[i:j])); j = i
+            return out
+    return [text]
+TEXTS = [[wrap(t) for t in card] for card in PAGES]      # card -> pages -> lines
+NL = max(sum(len(pg) for pg in card) for card in TEXTS)
+def final_wr(i):      # the card's last page, fully written
+    card = TEXTS[i]; n = sum(len(pg) for pg in card); k = len(card[-1])
+    return [0.0] * (n - k) + [1.0] * k + [0.0] * (NL - n)
 
 # ---------------------------------------------------------------- the ornament bands, the same all round
 def palmette(dr, cx, base_y, h, col, up=True):
@@ -100,23 +131,15 @@ class Scene:
         a = self.img
         self.g = np.median(a[5:60].reshape(-1, 3), axis=0)
         self.dg = np.sqrt(((a - self.g) ** 2).sum(2))
-        teal = (a[..., 0] < 75) & (a[..., 2] > a[..., 0] + 6) & (a[..., 1] > a[..., 0] + 4) & (self.dg > 60)
-        teal = ndi.binary_opening(teal, iterations=2)
-        self.sea = np.zeros(teal.shape, bool); self.seacol = np.array([10, 38, 46], np.float32)
-        lab, n = ndi.label(ndi.binary_dilation(teal, iterations=3))
-        if n:
-            sz = ndi.sum(teal, lab, range(1, n + 1)); big = 1 + int(np.argmax(sz))
-            if sz[big - 1] > 20000:
-                m = lab == big
-                for y in np.where(m.any(1))[0]:
-                    xx = np.where(m[y])[0]; self.sea[y, xx.min():xx.max() + 1] = True
-                self.seacol = np.median(a[teal & m], axis=0)
+        self.sea = np.zeros(a.shape[:2], bool); self.seacol = SEACOL.copy()
+        rows = np.where((np.abs(a - SEACOL).sum(2) < 45).mean(1) > 0.5)[0]
+        if len(rows) > 100: self.sea[rows.min():] = np.abs(a[rows.min():] - SEACOL).sum(2) < 45
         self.ds = np.sqrt(((a - self.seacol) ** 2).sum(2))
         gt = a[5:95]; self.gfill = np.concatenate([gt, gt[::-1]] * 7, 0)[:PH]          # plain ground, to lay where something is lifted off
         self.base = a.copy(); self.els = []; self.fx = []
         rng = np.random.default_rng(100 + c)
         self.strokes = [(rng.uniform(0, 1), rng.uniform(0.08, 0.92), rng.uniform(60, 150), rng.uniform(0.4, 1.0), rng.uniform(0, 6.28)) for _ in range(7)]
-    def lift(self, name, box, kind, only=None, thick=0, **kw):
+    def lift(self, name, box, kind, only=None, thick=0, cut=(), seed=None, **kw):
         # an element is cut out of the picture: what is not ground inside its box (only='colour': not the black
         # either; only='bright': the pale parts alone). What lay under it is filled from what lies round it
         x0, y0, x1, y1 = box; pad = 16
@@ -128,7 +151,13 @@ class Scene:
         if only == 'bright': al = al * np.clip((lum - 150) / 30.0, 0, 1)
         if only == 'dark': al = al * np.clip((80 - lum) / 25.0, 0, 1)
         if only == 'notbright': al = al * np.clip((165 - lum) / 25.0, 0, 1)
-        inb = np.zeros_like(al); inb[y0 - Y0:y1 - Y0, x0 - X0:x1 - X0] = 1; al = al * inb
+        if only == 'red': al = al * np.clip((sub0[..., 0] - sub0[..., 1] * 1.6) / 20.0, 0, 1)
+        inb = np.zeros_like(al); inb[y0 - Y0:y1 - Y0, x0 - X0:x1 - X0] = 1
+        for (cx0, cy0, cx1, cy1) in cut: inb[max(0, cy0 - Y0):max(0, cy1 - Y0), max(0, cx0 - X0):max(0, cx1 - X0)] = 0      # parts of the box that belong to something else
+        al = al * inb
+        if seed:      # only the thing that holds this point
+            lab, n = ndi.label(al > 0.3); k = lab[seed[1] - Y0, seed[0] - X0]; assert k > 0, (name, 'seed on ground')
+            al = al * ndi.binary_dilation(lab == k, iterations=2)
         if thick:      # thin lines that happen to cross its box (a column behind a figure) stay where they are
             al = al * ndi.binary_dilation(ndi.binary_opening(al > 0.3, iterations=thick), iterations=thick + 1)
         patch = np.dstack([sub0, al * 255.0]).astype(np.uint8)
@@ -167,13 +196,13 @@ class Scene:
                 q = np.asarray(im).astype(np.float32)
             elif k == 'flutter':      # cloth or hair in the wind: it moves more the farther it is from where it is held
                 hh, ww = p.shape[:2]; yy, xx = np.mgrid[0:hh, 0:ww].astype(np.float32)
-                ax, ay = e['anchor'][0] - X0, e['anchor'][1] - Y0
+                gy, gx = yy + Y0, xx + X0; ax, ay = e['anchor']
                 if e.get('dir', 'x') == 'x':
-                    far = np.clip((xx - ax) * e.get('sign', 1.0) / e.get('reach', 200.0), 0, 1.4)
-                    dy = e.get('amp', 5.0) * far * np.sin(xx / e.get('lam', 55.0) * e.get('sign', 1.0) - t * e.get('w', 2.2) + yy / 90.0); dx = 0.35 * dy
+                    far = np.clip((gx - ax) * e.get('sign', 1.0) / e.get('reach', 200.0), 0, 1.4)
+                    dy = e.get('amp', 5.0) * far * np.sin(gx / e.get('lam', 55.0) * e.get('sign', 1.0) - t * e.get('w', 2.2) + gy / 90.0); dx = 0.35 * dy
                 else:
-                    far = np.clip((yy - ay) / e.get('reach', 400.0), 0, 1.3)
-                    dx = e.get('amp', 3.0) * far * np.sin(yy / e.get('lam', 120.0) - t * e.get('w', 1.1) + e.get('ph', 0.0)); dy = np.zeros_like(dx)
+                    far = np.clip((gy - ay) / e.get('reach', 400.0), 0, 1.3)
+                    dx = e.get('amp', 3.0) * far * np.sin(gy / e.get('lam', 120.0) - t * e.get('w', 1.1) + e.get('ph', 0.0)); dy = np.zeros_like(dx)
                 q = np.dstack([ndi.map_coordinates(p[..., ch].astype(np.float32), [yy + dy, xx + dx], order=1, mode='constant') for ch in range(4)])
             else:
                 q = p.astype(np.float32)
@@ -198,39 +227,40 @@ class Scene:
                     ph = ((t * 0.22 + j / 3.0) % 1.0); rx = 18 + 95 * ph; ry = rx * 0.2; a = math.sin(math.pi * ph) ** 0.7 * 0.5 * (1 - 0.5 * ph)
                     th = np.linspace(0, 6.283, 200); px = (x + rx * np.cos(th)).astype(int); py = (y + ry * np.sin(th)).astype(int)
                     ok = (px >= 0) & (px < PW) & (py >= 0) & (py < PH); px, py = px[ok], py[ok]
-                    for oy in (0, 1): out[np.clip(py + oy, 0, PH - 1), px] = out[np.clip(py + oy, 0, PH - 1), px] * (1 - a) + np.array([40, 26, 22], np.float32) * a
+                    for oy in (0, 1): out[np.clip(py + oy, 0, PH - 1), px] = out[np.clip(py + oy, 0, PH - 1), px] * (1 - a) + np.array([214, 196, 170], np.float32) * a
         return np.clip(out, 0, 255).astype(np.uint8)
 
 def scenes():
     sc = [Scene(c) for c in range(1, 8)]
     s = sc[0]      # 1: a light passes over the marble; the olive branch stirs; the sea runs
-    s.lift('marble', (560, 200, 750, 870), 'still', only='bright', sheen=6.0, sheen_k=24.0)
-    s.lift('branch', (595, 55, 1010, 475), 'flutter', dir='y', only='dark', anchor=(900, 60), reach=420.0, amp=5.0, lam=170.0, w=1.2)
-    s.lift('waves', (40, 690, 318, 866), 'rock', pivot=(180, 866), amp=0.0, bob=2.6, bw=1.3, drift=5.0, dw=0.65)
+    s.lift('marble', (630, 215, 828, 990), 'still', only='bright', sheen=6.0, sheen_k=22.0)
+    br = dict(dir='y', anchor=(900, 0), reach=430.0, amp=5.0, lam=170.0, w=1.2)
+    s.lift('branch_a', (545, 0, 1100, 215), 'flutter', only='dark', **br)
+    s.lift('branch_b', (770, 215, 1100, 475), 'flutter', only='dark', **br)
+    s.lift('waves', (0, 905, 242, 1056), 'rock', pivot=(120, 1056), amp=0.0, bob=2.4, bw=1.3, drift=4.5, dw=0.65)
     s = sc[1]      # 2: he bows as he prays; she sways on her first step; the mirror catches the light
-    s.lift('sculptor', (160, 445, 495, 886), 'rock', only='notbright', thick=4, pivot=(330, 884), amp=1.3, w=0.7)
-    s.lift('woman', (440, 310, 682, 886), 'rock', only='bright', pivot=(560, 884), amp=0.6, w=0.9, ph=1.0)
-    s.fx.append(dict(kind='glint', at=(681, 392), r=24, w=1.1))
-    s = sc[2]      # 3: her hair and her dress in the wind; the sea runs
-    s.lift('hair', (548, 205, 800, 345), 'flutter', only='dark', anchor=(555, 270), sign=1.0, reach=200.0, amp=5.5, lam=60.0, w=2.5)
-    s.lift('dress', (500, 345, 850, 800), 'flutter', only='colour', anchor=(520, 560), sign=1.0, reach=260.0, amp=5.0, lam=70.0, w=2.2)
-    s.lift('waves', (98, 510, 486, 696), 'rock', pivot=(290, 696), amp=0.0, bob=2.6, bw=1.3, drift=5.0, dw=0.65)
+    s.lift('sculptor', (55, 420, 405, 1008), 'rock', only='notbright', thick=4, cut=[(372, 860, 405, 1008)], pivot=(230, 1005), amp=1.2, w=0.7)
+    s.lift('woman', (378, 200, 652, 952), 'rock', thick=4, cut=[(630, 200, 652, 440), (378, 500, 406, 640)], pivot=(500, 950), amp=0.5, w=0.9, ph=1.0)
+    s.fx.append(dict(kind='glint', at=(673, 315), r=26, w=1.1))
+    s = sc[2]      # 3: her hair, her shawl and her dress in the wind; the sea runs
+    s.lift('woman', (438, 140, 885, 872), 'flutter', seed=(600, 600), anchor=(610, 0), sign=1.0, reach=250.0, amp=6.0, lam=66.0, w=2.3)
+    s.lift('waves', (0, 708, 437, 876), 'rock', pivot=(210, 876), amp=0.0, bob=2.4, bw=1.3, drift=4.5, dw=0.65)
     s = sc[3]      # 4: the one bare mirror still shines; the cloth that waits for it stirs; a spark on the small mirror
-    s.lift('mirror', (890, 262, 1040, 540), 'still', only='bright', sheen=4.5, sheen_k=24.0)
-    s.lift('cloth', (878, 590, 1028, 905), 'flutter', dir='y', only='colour', anchor=(950, 592), reach=300.0, amp=3.6, lam=140.0, w=1.0)
-    s.fx.append(dict(kind='glint', at=(792, 676), r=18, w=0.9, ph=2.0))
+    s.lift('mirror', (885, 75, 1045, 232), 'still', only='bright', sheen=4.5, sheen_k=22.0)
+    s.lift('cloth', (858, 503, 980, 858), 'flutter', dir='y', anchor=(918, 503), reach=330.0, amp=3.4, lam=140.0, w=1.0)
+    s.fx.append(dict(kind='glint', at=(1020, 585), r=18, w=0.9, ph=2.0))
     s = sc[4]      # 5: the gulls hang; the sun's road and the woman in the water tremble
-    s.lift('gull1', (212, 268, 322, 346), 'rock', pivot=(267, 308), amp=4.0, w=1.6, bob=4.0, bw=0.7, drift=6.0)
-    s.lift('gull2', (455, 244, 562, 306), 'rock', pivot=(510, 276), amp=4.0, w=1.5, ph=1.3, bob=4.0, bw=0.6, drift=6.0)
-    s.fx.append(dict(kind='waver', box=(366, 454, 502, 800), amp=3.2, lam=11.0, w=1.6))
-    s.fx.append(dict(kind='waver', box=(626, 598, 768, 858), amp=2.8, lam=13.0, w=1.4))
+    s.lift('gull1', (556, 26, 654, 94), 'rock', pivot=(605, 60), amp=4.0, w=1.6, bob=4.0, bw=0.7, drift=6.0)
+    s.lift('gull2', (958, 226, 1058, 298), 'rock', pivot=(1008, 262), amp=4.0, w=1.5, ph=1.3, bob=4.0, bw=0.6, drift=6.0)
+    s.fx.append(dict(kind='waver', box=(776, 614, 914, 1096), amp=3.2, lam=11.0, w=1.6))
+    s.fx.append(dict(kind='waver', box=(166, 614, 424, 1060), amp=2.8, lam=13.0, w=1.4))
     s = sc[5]      # 6: the boat rides; what the water shows of it trembles
-    s.fx.append(dict(kind='waver', box=(136, 646, 884, 998), amp=2.8, lam=14.0, w=1.5))
-    s.lift('boat', (236, 296, 852, 641), 'rock', pivot=(550, 634), amp=0.7, w=1.0, bob=1.6, bw=1.0)
+    s.fx.append(dict(kind='waver', box=(100, 682, 960, 1096), amp=2.8, lam=14.0, w=1.5))
+    s.lift('boat', (100, 230, 945, 675), 'rock', pivot=(520, 662), amp=0.6, w=1.0, bob=1.5, bw=1.0)
     s = sc[6]      # 7: the veil lies on the water and moves with it; rings widen where she went down
-    s.fx.append(dict(kind='waver', box=(134, 654, 424, 752), amp=2.2, lam=12.0, w=1.3))
-    s.fx.append(dict(kind='rings', at=(800, 792)))
-    s.lift('veil', (612, 585, 906, 768), 'flutter', only='colour', anchor=(618, 650), sign=1.0, reach=280.0, amp=3.4, lam=52.0, w=1.6)
+    s.fx.append(dict(kind='waver', box=(300, 748, 770, 892), amp=2.2, lam=12.0, w=1.3))
+    s.fx.append(dict(kind='rings', at=(900, 774)))
+    s.lift('veil', (776, 738, 1022, 804), 'flutter', only='red', anchor=(790, 0), sign=1.0, reach=240.0, amp=2.6, lam=52.0, w=1.6)
     return sc
 
 # ---------------------------------------------------------------- old age: the vase has been in the ground a long time
@@ -285,7 +315,7 @@ def age(arr, ag, slot, x0, y0, k=1.0):
     sl = (slice(y0, y0 + h), slice(X, X + w))
     t = arr.astype(np.float32); lum = t.mean(2, keepdims=True); dark = (lum < 85).astype(np.float32)
     t *= ag['stain'][sl][..., None]
-    t += (ag['wear'][sl][..., None] * k) * dark * (CLAY * 0.6 - t)
+    t += (ag['wear'][sl][..., None] * k * 0.5) * dark * (CLAY * 0.6 - t)
     c = ag['crack'][sl][..., None] * k
     t = t * (1 - 0.5 * c * (1 - dark)) + 62.0 * c * dark
     ch = ag['chip'][sl][..., None] * k
@@ -295,15 +325,15 @@ def age(arr, ag, slot, x0, y0, k=1.0):
     return np.clip(t + ag['speck'][sl][..., None], 0, 255).astype(np.uint8)
 
 # ---------------------------------------------------------------- the words, written under the panel
-FONT = ImageFont.truetype(S + '/fonts/IMFeENsc28P.ttf', 50)
-def text_layer(lines):
-    n = len(lines); lh = 62; top = ty(TXT_H0) + (ty(TXT_H1) - ty(TXT_H0) - n * lh) * 0.5 - 4
-    layers = []
-    for i, ln in enumerate(lines):
-        im = Image.new('L', (SW, int(ty(TXT_H1) - ty(TXT_H0))), 0); dr = ImageDraw.Draw(im)
-        w = dr.textlength(ln, font=FONT)
-        dr.text(((SW - w) * 0.5, top - ty(TXT_H0) + i * lh), ln, font=FONT, fill=255)
-        layers.append(np.asarray(im).astype(np.float32) / 255.0)
+def text_layer(card):
+    bh = int(ty(TXT_H1) - ty(TXT_H0)); layers = []
+    for pg in card:
+        n = len(pg); top = (bh - n * LH) * 0.5 - 8
+        for i, ln in enumerate(pg):
+            im = Image.new('L', (SW, bh), 0); dr = ImageDraw.Draw(im)
+            w = dr.textlength(ln, font=FONT)
+            dr.text(((SW - w) * 0.5, top + i * LH), ln, font=FONT, fill=255)
+            layers.append(np.asarray(im).astype(np.float32) / 255.0)
     return layers
 
 # ---------------------------------------------------------------- the vase
@@ -322,13 +352,15 @@ def geometry():
     rim = np.clip(1.0 - c * 2.6, 0, 1) ** 2 * 0.22                                           # a thin warm light on its edge
     return h.astype(np.float32), th.astype(np.float32), cov, light, spec, rim
 
-def background():
+def background():      # the pale haze over the sea, as in the game
     ys, xs = np.mgrid[0:Hh, 0:W].astype(np.float32)
-    v = ys / Hh; r = np.hypot((xs - W * 0.5) / W, (ys - Hh * 0.42) / Hh)
-    top = np.array([16, 52, 60], np.float32); bot = np.array([6, 18, 24], np.float32)
-    bg = top[None, None] * (1 - v[..., None]) + bot[None, None] * v[..., None]
-    bg *= np.clip(1.15 - r[..., None] * 1.1, 0.35, 1.2)
-    return bg
+    v = np.clip(ys / (Hh * 0.55), 0, 1)[..., None]
+    top = np.array([222, 222, 236], np.float32); bot = np.array([170, 204, 214], np.float32)
+    bg = top * (1 - v) + bot * v
+    d = (xs * 0.82 + ys * 0.57)      # soft shafts of light, slanting
+    sh = 0.5 + 0.5 * np.sin(d / 97.0 + 0.6) * np.sin(d / 41.0 + 2.0)
+    bg += (ndi.gaussian_filter(sh, 9.0)[..., None] - 0.5) * 12.0
+    return np.clip(bg, 0, 255)
 
 def sample(strip, hx, hy):      # bilinear
     x0 = np.floor(hx).astype(np.int32); y0 = np.floor(hy).astype(np.int32); fx = (hx - x0)[..., None]; fy = (hy - y0)[..., None]
@@ -339,29 +371,35 @@ def sample(strip, hx, hy):      # bilinear
 # ---------------------------------------------------------------- the film
 def timeline():
     # (phi in slots, scene shown in front, how far each of its lines is written, global fade)
-    ev = []; t = 0.0
-    def seg(d, f): 
-        nonlocal t
+    ev = []
+    def seg(d, f):
         n = int(round(d * FPS))
         for i in range(n): ev.append(f(i / max(n - 1, 1)))
-        t += d
     ease = lambda u: u * u * (3 - 2 * u)
-    seg(1.2, lambda u: (-1.0, 0, [0.0] * 8, u))                               # the vase comes out of the dark, its plain side to us
+    Z = [0.0] * NL
+    seg(1.2, lambda u: (-1.0, 0, Z, u))                               # the vase comes out of the haze, its plain side to us
     for i in range(7):
-        lines = TEXTS[i]; n = len(lines)
-        seg(2.6 if i else 3.0, lambda u, i=i: (i - 1 + ease(u), i, [0.0] * 8, 1.0))            # it turns: the next picture comes round
-        seg(1.0, lambda u, i=i: (float(i), i, [0.0] * 8, 1.0))
-        for j in range(n):
-            d = 1.25 + 0.03 * len(lines[j])
-            seg(d, lambda u, i=i, j=j, n=n, d=d: (float(i), i, [1.0] * j + [min(1.0, u * d / 0.9)] + [0.0] * (8 - j - 1), 1.0))
-        seg(3.2 if i < 6 else 4.5, lambda u, i=i, n=n: (float(i), i, [1.0] * n + [0.0] * (8 - n), 1.0))
-    seg(2.8, lambda u: (6.0 + ease(u) * 1.0, 6, [1.0] * 8, 1.0 - u * u))                       # it turns away, into the dark
+        card = TEXTS[i]
+        seg(2.6 if i else 3.0, lambda u, i=i: (i - 1 + ease(u), i, Z, 1.0))            # it turns: the next picture comes round
+        seg(0.8, lambda u, i=i: (float(i), i, Z, 1.0))
+        base = 0
+        for p, pg in enumerate(card):
+            n = len(pg)
+            def st(vals, base=base, n=n): return [0.0] * base + vals + [0.0] * (NL - base - n)
+            for j in range(n):
+                d = 0.75 + 0.03 * len(pg[j])
+                seg(d, lambda u, i=i, j=j, n=n, d=d, st=st: (float(i), i, st([1.0] * j + [ease(min(1.0, u * d / 0.8))] + [0.0] * (n - j - 1)), 1.0))
+            last = p == len(card) - 1
+            seg((3.0 if i < 6 else 4.5) if last else 1.5, lambda u, i=i, n=n, st=st: (float(i), i, st([1.0] * n), 1.0))
+            if not last: seg(0.6, lambda u, i=i, n=n, st=st: (float(i), i, st([1.0 - ease(u)] * n), 1.0)); seg(0.25, lambda u, i=i: (float(i), i, Z, 1.0))
+            base += n
+    seg(2.8, lambda u: (6.0 + ease(u) * 1.0, 6, final_wr(6), 1.0 - u * u))                       # it turns away, into the haze
     return ev
 
 def render(f0, f1, out):
     ev = timeline(); f1 = min(f1, len(ev))
     h, th, cov, light, spec, rim = geometry(); bg = background()
-    orn = ornaments(); sc = scenes(); txt = [text_layer(l) for l in TEXTS]; ag = aging()
+    orn = ornaments(); sc = scenes(); txt = [text_layer(l) for l in TEXTS]; ag = aging(); haze = bg.mean((0, 1))
     orn_aged = {}      # the ornament bands with their marks of age, for each of the five places round the vase
     hy = ty(h); cov3 = cov[..., None]
     y_pan = int(ty(PAN_H0)); x_pan = int(tx(-PANEL * 0.5)); y_t0 = int(ty(TXT_H0)); y_t1 = y_t0 + txt[0][0].shape[0]
@@ -374,10 +412,10 @@ def render(f0, f1, out):
         pan[6:6 + PH, 9:9 + PW] = sc[i].frame(t)
         pan[16:PH - 4, 16:19] = BLACK.astype(np.uint8); pan[16:PH - 4, PW - 1:PW + 2] = BLACK.astype(np.uint8)
         s[y_pan - 6:y_pan + PH + 6, x_pan - 9:x_pan + PW + 9] = age(pan, ag, ph, x_pan - 9, y_pan - 6)
-        band = orn[y_t0:y_t1].astype(np.float32)
+        band = s[y_t0:y_t1].astype(np.float32)      # the words lie clean over the old glaze
         for j, ly in enumerate(txt[i]):
-            if wr[j] > 0.0: band = band * (1 - ly[..., None] * wr[j]) + np.array(CREAM, np.float32) * ly[..., None] * wr[j]
-        s[y_t0:y_t1] = age(band.astype(np.uint8), ag, ph, 0, y_t0, 0.55)      # (the words are worn too, but can be read)
+            if wr[j] > 0.0: band = band * (1 - ly[..., None] * wr[j]) + INK * ly[..., None] * wr[j]
+        s[y_t0:y_t1] = band.astype(np.uint8)
         return s
     ff = subprocess.Popen(['ffmpeg', '-loglevel', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', '%dx%d' % (W, Hh), '-r', str(FPS), '-i', '-', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '17', '-preset', 'medium', out], stdin=subprocess.PIPE)
     cache = {}
@@ -388,14 +426,20 @@ def render(f0, f1, out):
         for k in np.unique(sl):
             key = (int(k), fi if int(k) == front else -1)
             if int(k) == front: tex = slot_tex(int(k), t, wr)
-            elif int(k) == front - 1: tex = slot_tex(int(k), t, [1.0] * 8)      # the picture that is turning away goes on moving
+            elif int(k) == front - 1: tex = slot_tex(int(k), t, final_wr(int(k)) if 0 <= int(k) <= 6 else [0.0] * NL)      # the picture that is turning away goes on moving
             else:
-                if int(k) not in cache: cache[int(k)] = slot_tex(int(k), 0.0, [1.0] * 8 if int(k) < front else [0.0] * 8)
+                if int(k) not in cache: cache[int(k)] = slot_tex(int(k), 0.0, final_wr(int(k)) if 0 <= int(k) < front else [0.0] * NL)
                 tex = cache[int(k)]
             m = sl == k
             img[m] = sample(tex, hx[m], hy[m])
-        img = img * light[..., None] + 255.0 * spec[..., None] + np.array([255, 190, 120], np.float32) * rim[..., None]
-        frame = (img * cov3 + bg * (1 - cov3)) * fade
+        # the game's light: flat facets (they turn with the vase), warm where the sun falls, lilac in the shade
+        thq = np.clip(np.round(u / FAC) * FAC - phi * SLOT, -88.0, 88.0) * (math.pi / 180.0)
+        fi_ = np.round(u / FAC).astype(np.int32)
+        L = np.clip(np.cos(thq) * 0.95 - np.sin(thq) * 0.34 + 0.08 + FACJ[fi_ % 60], 0, 1)[..., None]      # each facet a shade of its own, as low-poly things are
+        img = img + (1.0 - img / 255.0) ** 2 * LIFT                      # no dead black: the slip is a deep plum
+        img = img * (L * SUN + (1 - L) * SHADE) + RIM * rim[..., None]
+        frame = img * cov3 + bg * (1 - cov3)
+        frame = haze * (1 - fade) + frame * fade
         ff.stdin.write(np.clip(frame, 0, 255).astype(np.uint8).tobytes())
         if os.environ.get('STILL'): Image.fromarray(np.clip(frame, 0, 255).astype(np.uint8)).save(os.environ['STILL'] % fi)
     ff.stdin.close(); ff.wait()
