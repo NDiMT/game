@@ -1,23 +1,40 @@
-# EIDOLON · Intro: the seven cards and their image prompts
+# EIDOLON · Intro: seven scenes painted on one amphora, and their image prompts
 
-Each card is one painted scene in the manner of a Greek vase, delivered as separate layers so that it can be animated.
-The words are added in the animation; the pictures carry no text.
+The whole intro is ONE amphora. Each card is the picture panel on its belly; between cards the vase turns and the
+next scene comes round. The words are added in the animation, written like a vase inscription in the plain black
+band under the panel; the pictures themselves carry no text.
 
 ## Style block (paste at the start of every prompt)
 
 ```
-Ancient Greek vase painting, flat 2D illustration. Figures as flat dark brown-black slip silhouettes with thin
-incised orange detail lines, on a warm orange terracotta clay ground. Worn, chipped, slightly cracked glaze, with
-small pale flakes where the slip has come off. A band of Greek meander ornament across the top and a thin dark
-ground line. No shading, no perspective, no gradients, profile figures. Portrait 9:16, 941 x 1672 px. No text.
+A real ancient Greek amphora, Attic black-figure ware of about 530 BC, seen straight on and filling the frame from
+lip to foot, standing against a plain dark warm-grey background. Glossy black glaze over warm orange terracotta
+clay. The scene is painted in a large reserved panel of bare orange clay on the belly of the vase: figures as flat
+black slip silhouettes in strict profile, inner details as thin incised lines that show the clay, women's skin and
+marble in added cream-white, cloth accents in added matt purple-red. No shading, no perspective inside the picture,
+no gradients. The panel is framed above by a lotus-and-palmette chain and at the sides by thin double lines, with a
+thin dark ground line under the figures. Above the panel: the shoulder with a tongue pattern, the black neck with a
+palmette band, two black handles. Below the panel: a broad band of plain black glaze, kept empty, then a meander
+band, then rays rising from the foot. The surface curves gently: the panel is seen almost flat and only darkens and
+turns away at its outer edges. Fine craquelure, small chips and worn patches where the slip has flaked, one soft
+museum highlight down the left side. Portrait 9:16, 941 x 1672 px. No text, no inscriptions, no label, no stand.
+The amphora itself (shape, ornament bands, handles, light, position in the frame) is identical in every image of
+this series: only the picture in the panel changes.
 ```
 
 ## Layer rules (paste at the end of every prompt)
 
 ```
-Deliver the scene as separate PNG layers, all 941 x 1672, each element in its final position on a fully
-transparent background, plus one background layer and one composite of everything together. Leave the stated
-area of plain clay empty for text. Do not put pale outlines round the dark figures.
+Deliver as separate PNG layers, all 941 x 1672, every element in its final position on a fully transparent
+background:
+1. the amphora with its panel left empty (bare clay, the ornament frame and the ground line only), on the dark
+   background;
+2. each element of the picture named under "Layers", painted flat as it lies on the panel: no pale outline round
+   the black figures, no drop shadow, no curvature of its own;
+3. one overlay with only the craquelure, chips, wear and highlight of the panel area, to be laid over the moving
+   figures so that they stay part of the vase;
+4. one composite of everything together.
+Keep the broad black band under the panel completely empty: the words will be written there.
 ```
 
 ---
@@ -29,12 +46,12 @@ area of plain clay empty for text. Do not put pale outlines round the dark figur
 > and loved her more than stone should be loved.
 
 ```
-A sculptor, a bearded man in a short belted tunic, stands in profile and rests one hand on the shoulder of a
-standing marble woman, painted cream-white, smooth and faceless. Beside them a workbench with a mallet and
-chisels, an olive branch in the upper corner, and stylised spiral waves with a low sun on the horizon at the left.
-Layers: background (clay, meander, ground line, sun) · sculptor without his raised arm · the raised arm alone ·
-marble woman · tools and bench · olive branch · waves.
-Empty clay for text: the lower third, under the ground line.
+In the panel: a sculptor, a bearded man in a short belted tunic, stands in profile and rests one hand on the
+shoulder of a standing marble woman, painted in added cream-white, smooth and faceless. Beside them a workbench
+with a mallet and chisels. An olive branch hangs in the upper corner of the panel. At the left a row of running
+spiral waves along the ground line and a low sun, a plain disc, above them.
+Layers: sculptor without his raised arm · the raised arm alone · marble woman · bench and tools · olive branch ·
+the row of waves · the sun.
 ```
 
 ## Card 2 (animated)
@@ -44,14 +61,13 @@ Empty clay for text: the lower third, under the ground line.
 > A face is carved by living, from within."*
 
 ```
-Inside a simple temple front (two pale columns and a pediment), the goddess Aphrodite stands tall at the right
-in a long draped robe, hair bound up, holding a round bronze mirror in both hands. At the left the sculptor
-kneels on one knee, hands raised. Between them the marble woman, cream-white, faceless, takes her first step;
-her hands have just turned the colour of living skin. Three thin rays of light fall from the pediment.
-Layers: background (clay, meander, temple, ground line) · Aphrodite without her forearms · the mirror with
-both hands and forearms · kneeling sculptor · marble woman in three slightly different walking frames
-(same size and position) · rays.
-Empty clay for text: the lower third, under the ground line.
+In the panel: a simple temple front, two slim columns and a pediment drawn in black line. The goddess Aphrodite
+stands tall at the right in a long draped robe, hair bound up, skin in added white, holding a round bronze mirror
+in both hands. At the left the sculptor kneels on one knee, hands raised. Between them the marble woman, cream-white
+and faceless, takes her first step; her hands have just turned from white to the warm colour of the clay. Three
+thin incised rays fall from the pediment.
+Layers: temple front · Aphrodite without her forearms · the mirror with both hands and forearms · kneeling sculptor
+· the marble woman in three slightly different walking frames (same size and place) · the rays.
 ```
 
 ## Card 3 (animated)
@@ -62,13 +78,13 @@ Empty clay for text: the lower third, under the ground line.
 > He could not bear a face he had not carved himself.
 
 ```
-A young woman walks barefoot over rocks by the sea, in a long terracotta-red dress, her long dark hair and the
-hem of the dress streaming in the wind. One hand touches her own face. Far behind her, small, the sculptor
-stands watching in a plain doorway on a low rise. A low sun on the horizon and two rows of spiral waves at the left.
-Layers: background (clay, meander, horizon with sun, rocks, doorway) · the woman with short hair and a
-straight dress · the streaming hair alone · the flying part of the dress alone · sculptor in the doorway ·
-waves · one or two thin strokes of wind.
-Empty clay for text: the upper third, between the meander and her head.
+In the panel: a young woman walks barefoot over rocks by the sea, in a long dress of added purple-red, her skin in
+added white, her long black hair and the hem of the dress streaming in the wind. One hand touches her own face.
+Far behind her, small, the sculptor stands watching in a plain doorway on a low rise. Two rows of running spiral
+waves at the left and a low sun, a plain disc, above them.
+Layers: rocks and the rise with the doorway · the woman with short hair and a straight dress · the streaming hair
+alone · the flying part of the dress alone · the small sculptor in the doorway · the rows of waves · the sun ·
+one or two thin strokes of wind.
 ```
 
 ## Card 4
@@ -79,15 +95,14 @@ Empty clay for text: the upper third, between the meander and her head.
 > she was still only what he had made.
 
 ```
-An interior: a plain wall with a shelf and two pegs. The sculptor stands behind the young woman in the red
-dress and lowers a long terracotta-red veil over her head with both hands; she stands still, hands at her
-sides. Around them, three standing mirrors and one hand mirror on the shelf, each wrapped in cloth and tied
-with cord, like shrouded figures. One round mirror at the right is still bare, a second cloth hangs ready
-beside it.
-Layers: background (clay, meander, wall, shelf, ground line) · the woman, bare-headed · the veil alone, as it
-hangs once it covers her head and shoulders · sculptor without his arms · his two arms alone, raised, holding
-the veil's edge · each wrapped mirror as its own layer · the bare round mirror · the cloth that will cover it.
-Empty clay for text: the lower third, under the ground line.
+In the panel: an interior, shown only by a shelf and two pegs drawn on the clay. The sculptor stands behind the
+young woman in the purple-red dress and lowers a long purple-red veil over her head with both hands; she stands
+still, hands at her sides. Around them three standing mirrors and one hand mirror on the shelf, each wrapped in
+cloth and tied with cord, like small shrouded figures. One round mirror at the right is still bare, a plain disc
+on a stand; a second cloth hangs ready on a peg beside it.
+Layers: shelf and pegs · the woman, bare-headed · the veil alone, as it hangs once it covers her head and
+shoulders · sculptor without his arms · his two arms alone, raised, holding the veil's edge · each wrapped mirror
+as its own layer · the bare round mirror · the cloth that will cover it.
 ```
 
 ## Card 5
@@ -98,14 +113,13 @@ Empty clay for text: the lower third, under the ground line.
 > She had never seen her before.
 
 ```
-A wide, completely still sea fills the lower half, drawn as a flat pale band with only two or three thin
-horizontal lines: no waves at all. A low sun sits on the horizon with its reflection lying under it as a
-broken column of short strokes. At the right a low rocky shore with the sculptor's small house; the veiled
-woman in the red dress stands at the water's edge, looking down at the sea. Her figure is mirrored, upside
-down and slightly paler, in the water at her feet. Two gulls hang in the sky.
-Layers: background (clay, meander, sky) · the still sea band · sun · the sun's reflection · shore and house ·
-the veiled woman · her reflection alone · gulls.
-Empty clay for text: the upper third, between the meander and the horizon.
+In the panel: the lower half is a completely still sea, left as bare clay with only two or three thin incised
+horizontal lines: no waves, no spirals at all. A low sun, a plain disc, sits on the horizon with its reflection
+lying under it as a broken column of short strokes. At the right a low rocky shore with the sculptor's small
+house. The veiled woman in the purple-red dress stands at the water's edge, looking down at the sea. Her figure
+is repeated upside down under her feet, in thinner, slightly diluted slip, as her reflection. Two gulls in the sky.
+Layers: the sea lines · the sun · the sun's reflection · shore and house · the veiled woman · her reflection
+alone · the gulls.
 ```
 
 ## Card 6
@@ -115,14 +129,14 @@ Empty clay for text: the upper third, between the meander and the horizon.
 > and leaned over the side to look.
 
 ```
-A small rowing boat on the same still sea, seen in profile, moving left, away from the shore. The veiled woman
-in the red dress sits in it and rows, her head turned down towards the water beside the boat. The boat and the rower are mirrored upside
-down in the flat water, and the mirrored woman seems to look back up at her. Thin ring-shaped ripples spread from the oar blades. Far behind at the right, small, the shore
+In the panel: a small rowing boat on the same still sea, in profile, moving left, away from the shore. The veiled
+woman in the purple-red dress sits in it and rows, her head turned down towards the water beside the boat. Boat
+and rower are repeated upside down beneath, in thinner diluted slip, and the mirrored woman seems to look back up
+at her. Thin ring-shaped ripples, incised, spread from the oar blades. Far behind at the right, small, the shore
 with the house and its dark doorway; the low sun at the left.
-Layers: background (clay, meander, sky, sun) · the still sea band · shore and house, small · boat hull ·
-the woman's body, seated · her two arms with the oars as one layer · the reflection of boat and rower as one
-layer · ripple rings (three sizes, separate) .
-Empty clay for text: the upper third.
+Layers: the sea lines · the sun · shore and house, small · boat hull · the woman's body, seated · her two arms
+with the oars as one layer · the reflection of boat and rower as one layer · ripple rings in three sizes, each
+its own layer.
 ```
 
 ## Card 7
@@ -131,16 +145,24 @@ Empty clay for text: the upper third.
 > There was no wave to blame.
 
 ```
-The same still sea, almost empty. The small boat drifts with no one in it, one oar trailing in the water, its
-reflection under it. A long terracotta-red veil floats on the surface beside the boat, spread out and slowly
-sinking at one end. A few thin ripple rings widen where something went under. No waves, no storm, the same
-low sun. On the far shore, very small, the sculptor stands at the water's edge.
-Layers: background (clay, meander, sky, sun) · the still sea band · the empty boat · the loose oar · the boat's
-reflection · the floating veil · ripple rings (three sizes, separate) · far shore with the small sculptor.
-Empty clay for text: the lower third, under the water.
+In the panel: the same still sea, almost empty. The small boat drifts with no one in it, one oar trailing in the
+water, its reflection beneath it in thinner slip. A long purple-red veil floats on the surface beside the boat,
+spread out, one end already going under. A few thin incised ripple rings widen where something went down. No
+waves, no storm, the same low sun. On the far shore, very small, the sculptor stands at the water's edge.
+Layers: the sea lines · the sun · the empty boat · the loose oar · the boat's reflection · the floating veil ·
+ripple rings in three sizes, each its own layer · the far shore with the small sculptor.
 ```
 
 ---
+
+## Notes for whoever makes the images
+
+- Make the empty amphora first (prompt = style block + "the panel is empty: bare clay, frame and ground line only")
+  and keep it as the reference image for all seven cards, so that the vase does not change from card to card.
+- Added white and added purple-red are the two extra colours black-figure painters really used: white for women
+  and for marble, purple-red for cloth. They are all the colour the story needs: her marble, her dress, her veil.
+- The sea is told by its ornament: running spirals while it is an ordinary sea (cards 1 and 3), bare clay with
+  two or three straight lines once it lies still (cards 5 to 7).
 
 ## What the intro holds back
 
