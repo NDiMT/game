@@ -683,7 +683,7 @@ func _wing_things() -> void:
 		var L: Dictionary = LM[id]
 		if not L.has_ring: continue
 		var p: Vector3 = L.post
-		objs["lm_c_" + id] = {"at": L.ring_at, "stand": L.stand, "mark": false, "hits": [L.ring_at + Vector3(0, -0.3, 0), L.ring_at + Vector3(0, 0.3, 0), L.tip + Vector3(0, 1.0, 0), L.tip + Vector3(0, 1.9, 0)]}
+		objs["lm_c_" + id] = {"at": L.ring_at, "stand": L.stand, "mark": false, "hits": [L.ring_at + Vector3(0, -0.35, 0), L.ring_at + Vector3(0, 0.45, 0)]}
 	var xs: float = LM_A_LAMPS[1] + 0.55
 	objs["lm_lever1"] = {"at": Vector3(xs, -0.5, -15.75), "stand": Vector3(xs, 0, -17.75), "mark": false, "water": "LM1", "rstand": Vector3(xs, 0, -16.22),
 		"hits": [Vector3(xs, 0.9, -15.75), Vector3(xs, 0.06, -15.75), Vector3(xs, -0.9, -15.75)]}
@@ -825,7 +825,7 @@ func _water_under(sp: Vector2):
 ## a post with a ring is a thin thing among much floor and water: a tap must fall nearer to it than to other things
 func _tap_dist(k: String, sp: Vector2) -> float:
 	var d := super._tap_dist(k, sp)
-	return d * 2.2 if k.begins_with("lm_c_") else d
+	return d * 1.8 if k.begins_with("lm_c_") else d
 
 ## a tap on water that a flame lights: there is no one in it. She looks, and shakes her head
 func _send_reflection(pi: int, to: Vector3, sp: Vector2) -> void:
@@ -997,7 +997,7 @@ func _lm_after(id: String, down: bool) -> void:
 		"LM3":      # a lamp with no runnel: capped, it dies, and stays dead until it is lit again
 			if down and L.lit:
 				await _lm_set(id, false, 0.6)
-				_lm_seal(0, false)
+				_lm_seal(0, false); done.erase("lm_d3n")
 		"LM4":      # the four of the hall: the oil of a capped one runs to the bowl of the Great Lamp
 			var up_pts := [Vector3(L.tip.x, LM_ARM_Y + 0.1, L.tip.z), LM_GL + Vector3(0, LM_BEAM_Y - 0.05, 0), LM_GL + Vector3(0, LM_GL_UP + 0.45, 0)]
 			if down:
@@ -1381,9 +1381,9 @@ func _play_lamps() -> void:
 		print("LAMPS in the wing, on the landing: ", pos.snapped(Vector3.ONE * 0.01))
 		await _tap_wait(Vector3(-36.6, 0, LM_CH_Z))      # along the channel to the head-gate: sealed
 		print("LAMPS at the head-gate: ", pos.snapped(Vector3.ONE * 0.01), " way through ", rects["LmHead"].on)
-		await _tap_wait(Vector3(-25.0, 0, -18.3))
+		await _tap_wait(Vector3(-25.7, 0, -18.1))
 		print("LAMPS L.1 on the bank: ", pos.snapped(Vector3.ONE * 0.01), " lamps ", _lm_lit("LM1"))
-		await _tap_wait(Vector3(-24.4, 0.012, -16.0))      # the canal: glare
+		await _tap_wait(Vector3(-25.4, 0.012, -16.2))      # the canal: glare
 		print("LAMPS L.1 a tap on the canal: reflection ", _lm_where(), ", lamps ", _lm_lit("LM1"))
 		var lev: Vector3 = objs["lm_lever1"].at
 		await _tap_wait(Vector3(lev.x, 0.5, lev.z))      # the lever, on its stone under the lamp
@@ -1415,8 +1415,8 @@ func _play_lamps() -> void:
 		await _tap_wait(_lm_ring("b1"))      # the cap behind it lifted,
 		await _tap_wait(_lm_ring("b3"))      # the next one let down
 		print("LAMPS L.2 the dark moved on: lamps ", _lm_lit("LM2"), " reflection ", _lm_where())
-		await _tap_wait(Vector3(LM_B_XC, 0.012, LM_B_ZC))      # to the fork
-		print("LAMPS L.2 reflection at the fork: ", _lm_where(), " she ", pos.snapped(Vector3.ONE * 0.01), " water ", refl_w, " feet ", W["LM2"].foot["j1"].on, W["LM2"].foot["j2"].on)
+		await _tap_wait(Vector3(LM_B_XC - 0.5, 0.012, LM_B_ZC))      # to the fork
+		print("LAMPS L.2 reflection at the fork: ", _lm_where())
 		await _tap_wait(_lm_ring("b4"))      # both arms are lit; a third cap will not stay
 		print("LAMPS L.2 the lever's lamp, with two caps down: lamps ", _lm_lit("LM2"))
 		await _tap_wait(_lm_ring("b2"))      # so: one lifted behind (its oil comes back from the far arm),
@@ -1430,7 +1430,7 @@ func _play_lamps() -> void:
 			await _tap_wait(Vector3(-27.2, 0, LM_B_ZC + 0.8))
 			await _tap_wait(Vector3(-23.6, 0.012, LM_B_ZC))
 			await _tap_wait(_lm_ring("b1")); await _tap_wait(_lm_ring("b3"))
-			await _tap_wait(Vector3(LM_B_XC, 0.012, LM_B_ZC))
+			await _tap_wait(Vector3(LM_B_XC - 0.5, 0.012, LM_B_ZC))
 			await _tap_wait(_lm_ring("b2"))
 		await _tap_wait(_lm_ring("b4"))      # and the lever's lamp capped: its oil lights the other arm
 		print("LAMPS L.2 the lever's lamp capped: lamps ", _lm_lit("LM2"))
