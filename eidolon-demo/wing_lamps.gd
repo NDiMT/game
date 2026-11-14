@@ -57,7 +57,7 @@ const LM_C_LEG := 1.9      # each of the three arms is this long, with a lamp on
 const LM_DX0 := -46.4      # L.4: the hall of the Great Lamp
 const LM_DZ0 := -19.0
 const LM_DX1 := -37.6
-const LM_DZ1 := -10.4
+const LM_DZ1 := -9.8
 const LM_DC := Vector3(-42.0, 0, -14.7)      # the middle of its round pool
 const LM_DR := 2.7
 const LM_GL := Vector3(-43.0, 0, -15.7)      # where the Great Lamp hangs: toward the north-west rim, so that the pool holds the whole of its twin
@@ -77,6 +77,7 @@ var LMW := {}     # for each water of this wing: the names of the lamps over it
 var lm_glare_sh: Shader
 var lm_flames: Array = []      # the flames, to keep them alive
 var lm_oil := 0      # how many lamps' oil has run into the bowl of the Great Lamp
+var lm_glow_a := 0.0      # how much of the Great Lamp's burning twin shows on the water
 
 func _init() -> void:
 	super._init(); wing_open["S"] = true
@@ -89,7 +90,7 @@ func _wings() -> void:
 	super._wings()
 	_lm_shader()
 	N["lm_run_fl"] = _lm_flame(self, Vector3(0, -50, 0), 0.001, 0.55)      # the small flame that runs along a runnel when oil goes elsewhere
-	_lm_entry(); _lm_a(); _lm_b(); _lm_p(); _lm_c(); _lm_d()
+	_lm_entry(); _lm_garden(); _lm_a(); _lm_b(); _lm_p(); _lm_c(); _lm_d()
 
 # ---------------------------------------------------------------- small builders of this wing
 ## the glare of a flame on water: a soft warm disc that lies just over the surface, brightest in the middle. It
@@ -98,7 +99,7 @@ func _lm_shader() -> void:
 	lm_glare_sh = Shader.new()
 	lm_glare_sh.code = """shader_type spatial;
 render_mode unshaded, blend_mix, depth_draw_never, cull_disabled;
-uniform float a = 1.0; uniform float time_s = 0.0; uniform float ph = 0.0;
+uniform float a = 1.0; uniform float time_s = 0.0; uniform float ph = 0.0; uniform float deep = 0.0;
 uniform vec4 rect1 = vec4(0.0); uniform vec4 rect2 = vec4(0.0); uniform vec3 circ = vec3(0.0);
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
@@ -110,6 +111,7 @@ void fragment(){
 	float body = 1.0 - smoothstep(0.66, 1.0, d);
 	float live = 1.0 + 0.035 * sin(time_s * 1.3 + ph) + 0.02 * sin(wp.x * 4.0 + time_s * 0.8) * sin(wp.z * 3.3 - time_s * 0.6);
 	vec3 c = mix(vec3(1.0, 0.86, 0.58), vec3(1.0, 0.975, 0.88), 1.0 - smoothstep(0.0, 0.75, d));
+	c = mix(c, vec3(1.0, 0.62, 0.2), deep * smoothstep(0.1, 0.85, d));      // (deep: the glow of a flame that burns under the water)
 	ALBEDO = c; ALPHA = clamp(a * k * body * 0.97 * live, 0.0, 1.0);
 }"""
 
@@ -155,17 +157,6 @@ func _lm_pit(sky: String, depth: float) -> void:
 	if pit == null: return
 	var pm := pit.mesh as BoxMesh
 	pm.size = Vector3(pm.size.x, depth, pm.size.z); pit.position.y = -0.185 - depth * 0.5
-
-## a row of columns with a beam along their heads: the stoa, roofed only in suggestion. Along x (z fixed) or along z
-func _lm_stoa(a: Vector3, b: Vector3, n: int, h := 2.4) -> void:
-	for i in n:
-		var p := a.lerp(b, float(i) / maxf(n - 1, 1))
-		column(p, h, 0.13)
-		cyl(p, 0.13, 0.11, h, pal("stone", "flat2"), 12, mroot)
-		solids.append(Vector3(p.x, p.z, 0.3))
-	var lo := Vector3(minf(a.x, b.x) - 0.2, h + 0.05, minf(a.z, b.z) - 0.2); var hi := Vector3(maxf(a.x, b.x) + 0.2, h + 0.19, maxf(a.z, b.z) + 0.2)
-	for both in [self, mroot]:
-		blk(lo, hi, "stone", both); blk(lo + Vector3(-0.03, 0.14, -0.03), hi + Vector3(0.03, 0.05, 0.03), "shade", both)
 
 ## one flat face (three or four corners) for the mesh that bb_end closes, wound so that it is seen from the side `out` points to
 func _lm_face(pts: Array, out: Vector3) -> void:
@@ -365,10 +356,42 @@ func _lm_entry() -> void:
 	channel(Vector3(-30.0, 0, UZ1), Vector3(-30.0, 0, LM_CH_Z + 0.5)); channel(Vector3(LM_DX1, 0, LM_CH_Z), Vector3(-29.5, 0, LM_CH_Z))
 	channel(Vector3(-29.5, 0, -18.05), Vector3(LM_LX1, 0, -18.05))      # the side channel, which the stoa's own water used
 	parapet(Vector3(LM_LX0 + 0.1, 0, LM_LZ0 + 0.1), Vector3(-31.2, 0, LM_LZ0 + 0.1)); parapet(Vector3(LM_LX0 + 0.1, 0, LM_LZ0 + 0.1), Vector3(LM_LX0 + 0.1, 0, -17.3))
-	parapet(Vector3(LM_LX0 + 0.1, 0, LM_LZ1 - 0.1), Vector3(LM_LX1 - 0.1, 0, LM_LZ1 - 0.1))
-	for e in [-17.1, -15.7]: parapet(Vector3(LM_DX1 + 0.5, 0, e), Vector3(LM_LX0 - 0.1, 0, e))
+	parapet(Vector3(LM_DX1 + 0.5, 0, -17.1), Vector3(LM_LX0 - 0.1, 0, -17.1))
 	stele("lm_stele_0", Vector3(LM_LX0 + 0.8, 0, LM_LZ0 + 0.85), 0.0, ["I did not hide these mirrors.\nI set a flame before each one.", "The gate to the west is sealed with wax.\nWax fears one thing."])
-	urn(Vector3(-28.9, 0, LM_LZ1 - 0.6), 1.0); urn(Vector3(LM_LX0 + 0.6, 0, LM_LZ1 - 0.6), 0.8, "rose")
+	urn(Vector3(-28.75, 0, LM_LZ0 + 0.5), 1.0); urn(Vector3(LM_LX0 + 0.5, 0, -17.6), 0.8, "rose")
+
+# ---------------------------------------------------------------- the garden inside the ring of courts
+## One terrace joins the landing, the way to the head-gate and the courts round it: a paved garden with three beds
+## of grass, olives (the oil of the lamps was pressed here), the old mill, and lamp standards that no runnel reaches
+func _lm_garden() -> void:
+	floor_plain(LM_DX1, -15.6, LM_LX0, LM_PZ0); floor_plain(LM_LX0, LM_LZ1, LM_AX0, LM_PZ0); floor_plain(LM_AX0, LM_AZ1, -20.4, LM_BZ0)
+	for b in [[-36.9, -14.2, -33.7, -11.7], [-32.1, -14.2, -29.0, -11.7], [-28.2, -13.0, -21.0, -11.7]]:
+		blk(Vector3(b[0], 0, b[1]), Vector3(b[2], 0.05, b[3]), "shade"); blk(Vector3(b[0] + 0.09, 0, b[1] + 0.09), Vector3(b[2] - 0.09, 0.062, b[3] - 0.09), "leaf2")
+	tree(Vector3(-31.35, 0.05, -13.45), 0.9); tree(Vector3(-29.75, 0.05, -12.45), 0.8); tree(Vector3(-27.2, 0.05, -12.35), 0.8); tree(Vector3(-36.2, 0.05, -12.2), 0.85, "leaf3")
+	bush(Vector3(-34.2, 0.05, -13.7), 0.9); bush(Vector3(-25.4, 0.05, -12.4), 1.0); bush(Vector3(-30.6, 0.05, -13.9), 0.8)
+	# the olive mill, in the west bed: a round trough, a post, a beam, and the stone on its edge
+	var mc := Vector3(-35.15, 0.05, -13.05)
+	turned(mc, [[0.78, 0.0], [0.78, 0.26], [0.66, 0.26], [0.62, 0.16], [0.22, 0.16], [0.18, 0.3], [0.0, 0.3]], "stone", 22)
+	turned(mc + Vector3(0, 0.0, 0), [[0.82, 0.0], [0.82, 0.06], [0.78, 0.06]], "shade", 22)
+	blk(mc + Vector3(-0.06, 0.3, -0.06), mc + Vector3(0.06, 1.0, 0.06), "wood"); blk(mc + Vector3(-0.95, 0.56, -0.045), mc + Vector3(0.75, 0.65, 0.045), "wood")
+	var ms := cyl(Vector3.ZERO, 0.4, 0.4, 0.2, pal("shade"), 18); ms.rotation.z = PI * 0.5; ms.position = mc + Vector3(0.42, 0.56, 0)
+	var ms2 := cyl(Vector3.ZERO, 0.09, 0.09, 0.22, pal("gold"), 10); ms2.rotation.z = PI * 0.5; ms2.position = mc + Vector3(0.42, 0.56, 0)
+	_look_add("", mc, 1.0, ["an olive mill. the stone has not turned in years", "the oil of all these lamps was pressed here"])
+	# two tall lamp standards by the path, dead: no runnel comes to them
+	for sx in [-33.55, -32.25]:
+		var sp := Vector3(sx, 0, -14.0)
+		blk(sp + Vector3(-0.14, 0, -0.14), sp + Vector3(0.14, 0.1, 0.14), "shade"); blk(sp + Vector3(-0.1, 0.1, -0.1), sp + Vector3(0.1, 0.2, 0.1), "stone")
+		bb(sp + Vector3(-0.03, 0.2, -0.03), sp + Vector3(0.03, 2.7, 0.03))
+		for cy in [0.2, 1.1, 2.0, 2.62]: bb(sp + Vector3(-0.05, cy, -0.05), sp + Vector3(0.05, cy + 0.04, 0.05))
+		bb_end("gold")
+		turned(sp + Vector3(0, 2.7, 0), [[0.0, 0.0], [0.07, 0.0], [0.17, 0.08], [0.19, 0.12], [0.16, 0.12], [0.07, 0.04], [0.0, 0.04]], "gold", 12)
+		cyl(sp + Vector3(0, 2.77, 0), 0.12, 0.12, 0.012, pal("dark"), 12)
+	_look_add("", Vector3(-33.55, 0, -14.0), 0.9, ["a tall lamp, cold", "he lit only the ones that hang over water"])
+	# what is left of an older colonnade, in the east bed
+	column(Vector3(-22.3, 0.05, -12.4), 1.5, 0.14, true); column(Vector3(-23.7, 0.05, -12.3), 0.8, 0.14, true)
+	var dr := cyl(Vector3.ZERO, 0.13, 0.13, 0.7, pal("stone"), 12); dr.rotation.z = PI * 0.5; dr.rotation.y = 0.5; dr.position = Vector3(-24.6, 0.19, -12.55)
+	_look_add("", Vector3(-22.3, 0, -12.4), 1.5, ["older columns, broken off", "the house was open here once"])
+	urn(Vector3(-21.3, 0.05, -12.4), 0.9); urn(Vector3(-28.9, 0, -10.3), 1.0, "rose"); urn(Vector3(-36.6, 0.05, -11.95), 0.8)
 
 # ---------------------------------------------------------------- L.1 put it out so that it can see
 func _lm_a() -> void:
@@ -387,10 +410,11 @@ func _lm_a() -> void:
 	_lm_stones(Vector3(xs, 0, LM_APZ0 + 0.04), Vector3(xs, 0, -16.13))      # the stones: in the water only
 	_lm_lever("lm_lev1", Vector3(xs, 0, -15.75), PI * 0.5)
 	# the stoa: columns along the north edge, a beam along their heads, a rafter to each lamp's post
-	_lm_stoa(Vector3(-27.2, 0, LM_AZ0 + 0.25), Vector3(-19.5, 0, LM_AZ0 + 0.25), 5)
+	stoa(LM_AX0 + 0.25, LM_AZ0 + 0.02, -20.3, LM_AZ0 + 0.44)      # (it stops short of the corner, where an unfinished statue of her stands)
+	parapet(Vector3(-20.3, 0, LM_AZ0 + 0.1), Vector3(LM_AX1 - 0.1, 0, LM_AZ0 + 0.1))
 	for i in 3:
 		for both in [self, mroot]:
-			var rf := blk(Vector3(-0.035, -0.035, -0.72), Vector3(0.035, 0.035, 0.72), "wood", both); rf.position = Vector3(LM_A_LAMPS[i], 2.4, (LM_AZ0 + 0.25 + LM_APZ0 - 0.3) * 0.5); rf.rotation.x = 0.14
+			var rf := blk(Vector3(-0.035, -0.035, -0.6), Vector3(0.035, 0.035, 0.6), "wood", both); rf.position = Vector3(LM_A_LAMPS[i], 2.45, (LM_AZ0 + 0.44 + LM_APZ0 - 0.3) * 0.5); rf.rotation.x = 0.26
 	channel(Vector3(LM_AX0, 0, -18.05), Vector3(-19.1, 0, -18.05)); channel(Vector3(-19.6, 0, -18.05), Vector3(-19.6, 0, LM_AZ1))
 	sluice("lm_s1", Vector3(-19.6, 0, LM_AZ1 - 0.15), false, 0.5)
 	parapet(Vector3(LM_AX1 - 0.1, 0, LM_AZ0 + 0.1), Vector3(LM_AX1 - 0.1, 0, LM_AZ1 - 0.1)); parapet(Vector3(LM_AX0 + 0.1, 0, LM_AZ1 - 0.1), Vector3(-20.27, 0, LM_AZ1 - 0.1))
@@ -456,7 +480,7 @@ func _lm_b() -> void:
 	sluice("lm_s2", Vector3(LM_BX0 + 0.15, 0, -8.8), true, 0.5)
 	channel(Vector3(-19.6, 0, LM_BZ0), Vector3(-19.6, 0, -8.3)); channel(Vector3(LM_BX0, 0, -8.8), Vector3(-19.1, 0, -8.8))
 	parapet(Vector3(LM_BX1 - 0.1, 0, LM_BZ0 + 0.1), Vector3(LM_BX1 - 0.1, 0, LM_BZ1 - 0.1)); parapet(Vector3(LM_BX0 + 0.1, 0, LM_BZ1 - 0.1), Vector3(LM_BX1 - 0.1, 0, LM_BZ1 - 0.1))
-	parapet(Vector3(LM_BX0 + 0.1, 0, LM_BZ0 + 0.1), Vector3(-20.4, 0, LM_BZ0 + 0.1)); parapet(Vector3(LM_BX0 + 0.1, 0, -8.03), Vector3(LM_BX0 + 0.1, 0, zc - 0.3)); parapet(Vector3(LM_BX0 + 0.1, 0, zc + 0.3), Vector3(LM_BX0 + 0.1, 0, LM_BZ1 - 0.1))
+	parapet(Vector3(LM_BX0 + 0.1, 0, -8.03), Vector3(LM_BX0 + 0.1, 0, zc - 0.3)); parapet(Vector3(LM_BX0 + 0.1, 0, zc + 0.3), Vector3(LM_BX0 + 0.1, 0, LM_BZ1 - 0.1))
 	stele("lm_stele_2", Vector3(-24.6, 0, z1 + 0.9), 0.0, ["The oil must go somewhere.\nSo there is always light.", "Three flames, never fewer.\nShut one and another wakes."])
 	_look_add("", Vector3(LM_BX0 + 0.2, 0, zc), gy + 0.4, ["a jar of oil, on a pier. one runnel leaves it", "enough for three flames, and it never runs dry"])
 	_look_add("", Vector3(xc + 0.58, 0.06, zc - 2.45), 0.9, ["the lever of the next gate", "the path to it lies only in the water"])
@@ -474,10 +498,10 @@ func _lm_p() -> void:
 	var clip := [[LM_PPX0, LM_PPZ0, LM_PPX1, LM_PPZ1]]
 	var mid := (LM_PPZ0 + LM_PPZ1) * 0.5
 	for i in 4: _lm_lamp("p%d" % (i + 1), "LMP", Vector3(-30.25 - 1.8 * i, 0, LM_PPZ0 - 0.3), Vector3(0, 0, 1), mid - (LM_PPZ0 - 0.3), 1.22, {"clip": clip, "ring": false})
-	_lm_stoa(Vector3(LM_PX1 - 1.1, 0, LM_PZ0 + 0.25), Vector3(LM_PX0 + 1.1, 0, LM_PZ0 + 0.25), 5)
+	stoa(LM_PX0, LM_PZ0 - 0.21, -20.4, LM_PZ0 + 0.21)      # one long colonnade between the garden and the water, as far as the next court's corner
 	for i in 4:
 		for both in [self, mroot]:
-			var rf := blk(Vector3(-0.035, -0.035, -0.66), Vector3(0.035, 0.035, 0.66), "wood", both); rf.position = Vector3(-30.25 - 1.8 * i, 2.4, (LM_PZ0 + 0.25 + LM_PPZ0 - 0.3) * 0.5); rf.rotation.x = 0.14
+			var rf := blk(Vector3(-0.035, -0.035, -0.66), Vector3(0.035, 0.035, 0.66), "wood", both); rf.position = Vector3(-30.25 - 1.8 * i, 2.45, (LM_PZ0 + 0.21 + LM_PPZ0 - 0.3) * 0.5); rf.rotation.x = 0.23
 	# the runnel over the lamps: it comes from the east, and at the west end it is cut
 	_lm_gutter(Vector3(LM_PX1 - 0.4, LM_ARM_Y + 0.03, mid), Vector3(-36.0, LM_ARM_Y + 0.03, mid))
 	channel(Vector3(LM_PX0, 0, -8.8), Vector3(LM_PX1, 0, -8.8), 0.4)
@@ -534,14 +558,12 @@ func _lm_c() -> void:
 		var seal := Node3D.new(); seal.position = dc + Vector3(0.39, by, 0.07); add_child(seal); N["lm_seal%d" % i] = seal
 		var sd := cyl(Vector3.ZERO, 0.085, 0.085, 0.03, pal("crim", "flat"), 12, seal); sd.rotation.x = PI * 0.5; sd.position = Vector3.ZERO
 		var sd2 := cyl(Vector3.ZERO, 0.05, 0.05, 0.03, pal("crim", "flat"), 10, seal); sd2.rotation.x = PI * 0.5; sd2.position = Vector3(0, 0, 0.012)
-	wall(LM_CX0, LM_CZ0, LM_CX0 + 0.3, LM_CZ1, 2.3)
 	parapet(Vector3(-44.43, 0, LM_CZ0 + 0.1), Vector3(LM_CX1 - 0.1, 0, LM_CZ0 + 0.1)); parapet(Vector3(LM_CX0 + 0.4, 0, LM_CZ1 - 0.1), Vector3(LM_CX1 - 0.1, 0, LM_CZ1 - 0.1)); parapet(Vector3(LM_CX1 - 0.1, 0, -8.03), Vector3(LM_CX1 - 0.1, 0, LM_CZ1 - 0.1))
 	channel(Vector3(-45.2, 0, -8.8), Vector3(LM_CX1, 0, -8.8), 0.4); channel(Vector3(-45.2, 0, LM_CZ0), Vector3(-45.2, 0, -8.4), 0.4)
 	stele("lm_stele_3", Vector3(-41.3, 0, -9.4), 0.0, ["Past this gate I let them die.\nNo one walks there.", "A flame lit on the way out\nshuts the way in."])
 	_look_add("", lp, 1.2, ["the last lamp that burns", "dry reeds stand in a jar beside it"])
 	_look_add("", Vector3(-36.0, 0, LM_PPZ0 - 0.3), 2.2, ["here the runnel is cut", "past it no oil runs"])
 	cypress(Vector3(LM_CX0 + 0.75, 0, LM_CZ1 - 0.6), 2.5); urn(Vector3(-37.95, 0, -2.0), 0.9)
-	floor_plain(-46.1, LM_DZ1, -44.3, LM_CZ0, 0.0); channel(Vector3(-45.2, 0, LM_DZ1), Vector3(-45.2, 0, LM_CZ0))
 
 ## a plate of bronze that closes a grille (the leaf of a door): w wide, h tall, standing on the floor in the leaf's own plane
 func _lm_plate(w: float, h: float) -> Node3D:
@@ -618,7 +640,7 @@ func _lm_d() -> void:
 		var oil := cyl(Vector3.ZERO, 0.4, 0.4, 0.01, mat(Color("b8802c")), 20, gl); oil.position = Vector3(0, 0.3 if twin else 0.13, 0)      # the oil in its bowl: above, there is none
 		if not twin: oil.scale = Vector3(0.001, 1, 0.001)
 		N["lm_gl_oil" + ("_m" if twin else "")] = oil
-		N["lm_gl_fl" + ("_m" if twin else "")] = _lm_flame(gl, Vector3(0, 0.3, 0), 2.6 if twin else 0.001, 1.9)
+		N["lm_gl_fl" + ("_m" if twin else "")] = _lm_flame(gl, Vector3(0, 0.3, 0), 3.4 if twin else 0.001, 0.0 if twin else 1.9)
 		N["lm_gl_ch" + ("_m" if twin else "")] = _lm_chain_new(both, 150, twin, 0.06)
 		# the windlass, at the foot of the north column: a drum on an axle, a handwheel at its east end
 		var axle := Node3D.new(); axle.position = cn + Vector3(0.1, 1.1, 0.2); both.add_child(axle); N["lm_axle" + ("_m" if twin else "")] = axle
@@ -635,6 +657,11 @@ func _lm_d() -> void:
 		# the pawl that holds it: a small bronze tooth on the east cheek, lying in the ratchet's teeth
 		var pw := blk(Vector3(-0.1, -0.015, -0.015), Vector3(0.1, 0.015, 0.015), "gold", both); pw.position = cn + Vector3(0.36, 1.31, 0.2 + 0.1); pw.rotation.x = 0.5
 	N["lm_hub"] = cn + Vector3(0.62, 1.1, 0.2)
+	# the light of the flame that burns in the water: it lies on the surface where that flame is seen, and is lost in the glare of the four
+	var gq := QuadMesh.new(); gq.size = Vector2(1.7, 1.7); gq.orientation = PlaneMesh.FACE_Y
+	var gwm := ShaderMaterial.new(); gwm.shader = lm_glare_sh; gwm.render_priority = 3; timed.append(gwm)
+	gwm.set_shader_parameter("a", 0.0); gwm.set_shader_parameter("deep", 1.0); gwm.set_shader_parameter("circ", Vector3(c.x, c.z, rr))
+	N["lm_gl_glow"] = prim(gq, LM_GL + Vector3(0, 0.026, 0), gwm); (N["lm_gl_glow"] as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_lm_gl_set(LM_GL_UP)
 	# the head-gate, in the east edge: beyond it the channel runs to the landing. A bar across its piers, and on the
 	# bar the great seal of wax
@@ -657,8 +684,10 @@ func _lm_d() -> void:
 	var len2 := LM_CH_Z + 0.45 + 27.4
 	var q2 := QuadMesh.new(); q2.size = Vector2(0.9, len2); q2.orientation = PlaneMesh.FACE_Y
 	prim(q2, Vector3(0, 0, -len2 * 0.5), water(Vector2(0.0, 2.4)), w2); w2.scale.z = 0.001; w2.visible = false
-	wall(LM_DX0, LM_DZ0, LM_DX1, LM_DZ0 + 0.3, 2.6, true); wall(LM_DX0, LM_DZ0 + 0.3, LM_DX0 + 0.3, LM_DZ1, 2.6, true)
-	parapet(Vector3(LM_DX1 - 0.1, 0, LM_DZ0 + 0.4), Vector3(LM_DX1 - 0.1, 0, -17.17)); parapet(Vector3(LM_DX1 - 0.1, 0, -15.63), Vector3(LM_DX1 - 0.1, 0, LM_DZ1 - 0.1)); parapet(Vector3(-44.3, 0, LM_DZ1 - 0.1), Vector3(LM_DX1 - 0.1, 0, LM_DZ1 - 0.1))
+	# no walls: a colonnade along the north side of the hall, and one down the whole west side of the wing (this court and the next)
+	stoa(LM_DX0, LM_DZ0, LM_DX1, LM_DZ0 + 0.42, 2.6); stoa(LM_DX0, LM_DZ0 + 0.42, LM_DX0 + 0.42, LM_CZ1 - 0.02, 2.6)
+	parapet(Vector3(LM_DX1 - 0.1, 0, LM_DZ0 + 0.5), Vector3(LM_DX1 - 0.1, 0, -17.17)); parapet(Vector3(LM_DX1 - 0.1, 0, -15.63), Vector3(LM_DX1 - 0.1, 0, LM_DZ1))
+	channel(Vector3(-45.2, 0, -11.2), Vector3(-45.2, 0, LM_DZ1), 0.4)
 	stele("lm_stele_4", Vector3(-44.6, 0, -17.3), 0.0, ["The great one stays dark.\nIts heat is bad for my seal.", "It hangs dry. All the oil\ngoes to the four."])
 	_look_add("", gc + Vector3(0.1, 0, 0), 1.7, ["the head-gate of the channel, sealed with wax", "his stamp is in the seal"])
 	_look_add("", cw, 2.6, ["a great lamp hangs from the beam, dark and dry", "in the water it burns"])
@@ -675,6 +704,7 @@ func _lm_gl_set(y: float) -> void:
 		var pts := [Vector3(LM_GL.x, y + 1.4, LM_GL.z), top, col, cn + Vector3(-0.2, 1.2, 0.2)]
 		_lm_chain_lay(N["lm_gl_ch" + sfx], pts, 0.06)
 		(N["lm_axle" + sfx] as Node3D).rotation.x = (LM_GL_UP - y) * 6.0
+	(N["lm_gl_glow"] as Node3D).position = LM_GL + Vector3(y + 0.6, 0.026, y + 0.6)
 
 # ---------------------------------------------------------------- what can be tapped in the wing, and where she can walk
 func _wing_things() -> void:
@@ -708,6 +738,8 @@ func _wing_nav() -> void:
 	rects["LmL"] = R(LM_LX0 + 0.45, LM_LZ0 + 0.45, LM_LX1, LM_LZ1 - 0.45)      # the landing
 	rects["LmW"] = R(-37.3, -16.75, LM_LX0 + 0.45, -16.05)      # the way to the head-gate, and through it
 	rects["LmHead"] = R(-38.45, -16.65, -37.3, -16.15, false)
+	rects["LmG1"] = R(-37.15, -16.05, -32.45, -14.5); rects["LmG2"] = R(-32.45, -15.95, -28.85, -14.5)      # the garden: its north walk, the path between the beds, the walk along the colonnade
+	rects["LmG3"] = R(-33.4, -14.5, -32.4, -11.4); rects["LmG4"] = R(-37.15, -11.4, -20.85, -10.35)
 	rects["LmAn"] = R(LM_AX0, -18.35, -19.25, -17.75); rects["LmAe"] = R(-19.95, -18.35, -19.25, -13.75)      # L.1: the north bank, the east rim
 	rects["LmS1"] = R(-19.85, -13.75, -19.35, -12.7, false); rects["LmAB"] = R(-19.95, -12.7, -19.25, -9.35)
 	rects["LmBn"] = R(-27.75, -9.35, -19.25, -8.65); rects["LmBe"] = R(-20.25, -9.35, -19.25, -1.05); rects["LmBw"] = R(-27.75, -9.35, -27.05, -1.05)      # L.2
@@ -717,7 +749,7 @@ func _wing_nav() -> void:
 	rects["LmCn"] = R(-45.8, -9.05, LM_CX1, -8.25); rects["LmCw"] = R(-45.8, -9.05, -44.65, -1.35)      # L.3
 	rects["LmD3"] = R(-45.45, -11.0, -44.95, -9.05, false)
 	rects["LmDn"] = R(-45.8, -18.4, -38.05, -17.85); rects["LmDw"] = R(-45.8, -18.4, -45.3, -10.85)      # L.4: round the pool
-	rects["LmDs"] = R(-45.8, -11.55, -38.05, -10.85); rects["LmDe"] = R(-38.85, -18.4, -38.05, -10.85)
+	rects["LmDs"] = R(-45.8, -11.55, -38.05, -10.25); rects["LmDe"] = R(-38.85, -18.4, -38.05, -10.85)
 	rects["LmDwl"] = R(-40.35, -17.85, -39.6, -17.15)      # before the windlass
 
 func _ready() -> void:
@@ -727,9 +759,23 @@ func _ready() -> void:
 		if sk == null: continue
 		var kn := LmKneel.new(); kn.main = self; sk.add_child(kn); sk.move_child(kn, 0)
 	var ic := LmIcons.new(); ic.pk = pocket_ui; ic.set_anchors_preset(Control.PRESET_FULL_RECT); ic.mouse_filter = Control.MOUSE_FILTER_IGNORE; pocket_ui.get_parent().add_child(ic)
+	if OS.get_environment("LMSNAP") != "":      # (to look at a run without drawing all of it: only every so-many-th frame is drawn, and kept as a small picture)
+		lm_snap_every = int(OS.get_environment("LMSNAP")); RenderingServer.render_loop_enabled = false
 	if "lamps" in OS.get_cmdline_user_args(): _play_lamps()
 
 var lm_kneel := 0.0      # how far down she is on her heels (0 standing .. 1)
+var lm_zone := ""      # the court whose whole water the view holds while she is in it ("": the view follows her)
+var lm_zone_tw: Tween
+var lm_cam_act := false      # an act of this wing is showing something: the view is its own for now
+var lm_snap_every := 0
+var lm_snap_f := 0
+
+func _lm_snap() -> void:
+	RenderingServer.render_loop_enabled = true
+	await RenderingServer.frame_post_draw
+	var img := get_viewport().get_texture().get_image()
+	RenderingServer.render_loop_enabled = false
+	img.save_jpg("%s/s_%05d.jpg" % [OS.get_environment("SHOT_DIR"), lm_snap_f], 0.8)
 
 ## she sinks down on her heels: the hips come down and a little back, and each leg folds so that its foot stays where
 ## it stood. Every copy of her does the same (her reflection under her, too)
@@ -771,6 +817,31 @@ class LmKneel extends SkeletonModifier3D:
 			sk.set_bone_global_pose(li, Transform3D(Basis(Quaternion((gf2.origin - gl2.origin).normalized(), (foot - gl2.origin).normalized())) * gl2.basis, gl2.origin))
 			sk.set_bone_global_pose(fi, Transform3D((feet[i] as Transform3D).basis, sk.get_bone_global_pose(fi).origin))
 
+## In the courts where what a chain does is seen somewhere else, the view takes in the whole water and stays there
+## while she walks its rims: it does not swing after her at every pull. [name, x0, z0, x1, z1, the middle it looks at, how
+## much it holds, how far it still leans toward her]
+const LM_ZONES := [["B", -28.0, -9.6, -18.8, -0.6, Vector3(-23.3, 0.4, -5.3), 10.6, 0.25], ["C", -46.4, -9.6, -37.6, -0.9, Vector3(-42.3, 0.4, -5.6), 9.8, 0.3], ["D", -46.4, -19.0, -37.9, -10.0, Vector3(-41.8, 0.7, -14.6), 10.4, 0.2]]
+func _lm_view() -> void:
+	if not started or ended or shot != null: return
+	var z := ""; var zd := []
+	for q in LM_ZONES:
+		if pos.x > q[1] and pos.x < q[3] and pos.z > q[2] and pos.z < q[4]: z = q[0]; zd = q
+	if z != lm_zone:
+		lm_zone = z
+		if lm_zone_tw != null and lm_zone_tw.is_valid(): lm_zone_tw.kill()
+		if not lm_cam_act:
+			lm_zone_tw = create_tween(); lm_zone_tw.tween_property(cam, "size", float(zd[6]) if z != "" else PLAY_SIZE, 2.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			if z == "": cam_focus_on = false
+	if z != "" and not lm_cam_act:
+		var k: float = zd[7]
+		cam_focus = (zd[5] as Vector3) * (1.0 - k) + Vector3(pos.x, 0.4, pos.z) * k; cam_focus_on = true
+
+## the size the view goes back to when an act of this wing has shown what it had to
+func _lm_size() -> float:
+	for q in LM_ZONES:
+		if q[0] == lm_zone: return q[6]
+	return PLAY_SIZE
+
 ## the things of this wing that go into the pocket: a reed with a flame at its tip, and her own small lamp
 class LmIcons extends Control:
 	var pk
@@ -796,12 +867,19 @@ class LmIcons extends Control:
 
 func _process(dt: float) -> void:
 	super._process(dt)
+	if lm_snap_every > 0:
+		lm_snap_f += 1
+		if lm_snap_f % lm_snap_every == 0: _lm_snap()
+	_lm_view()
 	for f in lm_flames:      # the flames are alive: they lean and stretch a little, and never go out by themselves
 		var n: Node3D = f[0]
 		if n.scale.x < 0.01: continue
 		var ph: float = f[1]
 		(n.get_child(0) as Node3D).scale = Vector3(1.0 + 0.05 * sin(t * 6.1 + ph), 1.0 + 0.1 * sin(t * 4.7 + ph * 1.7), 1.0 + 0.05 * cos(t * 5.3 + ph))
 		(n.get_child(1) as Node3D).scale = Vector3(1.0, 1.0 + 0.08 * sin(t * 5.9 + ph * 0.6), 1.0)
+	var gn: MeshInstance3D = N["lm_gl_glow"]      # the burning twin of the Great Lamp shows where no lamp's glare lies
+	lm_glow_a = move_toward(lm_glow_a, 0.0 if _lm_blind("LM4", gn.position) != "" else 0.92, dt * 1.1)
+	(gn.material_override as ShaderMaterial).set_shader_parameter("a", lm_glow_a)
 
 # ---------------------------------------------------------------- light on water
 ## the lit lamp whose glare holds a place on a water ("": none does)
@@ -929,12 +1007,6 @@ func _lm_chain(id: String) -> void:
 	await face(Vector3(L.post.x, 0, L.post.z))
 	var down: bool = not L.cap
 	if wid == "LM4" and flags.has("lm_great"): return
-	var wide: bool = wid in ["LM2", "LM4"]      # the courts where what a chain does is seen somewhere else: the view takes in the whole water
-	var s0 := cam.size
-	if wide:
-		var r: Array = W[wid].r
-		cam_focus = Vector3((r[0] + r[2]) * 0.5, 0.4, (r[1] + r[3]) * 0.5); cam_focus_on = true
-		create_tween().tween_property(cam, "size", 10.6, 1.4).set_trans(Tween.TRANS_SINE)
 	tgtR = _lm_ring_pos(id)
 	var a := tw(); a.tween_property(self, "a_wR", 1.0, 0.55); a.tween_property(self, "a_headp", -0.12 if L.cap else 0.0, 0.55)
 	await a.finished
@@ -968,9 +1040,6 @@ func _lm_chain(id: String) -> void:
 		await _lm_after(id, false)
 	var b := tw(); b.tween_property(self, "a_wR", 0.0, 0.55); b.tween_property(self, "a_headp", 0.0, 0.55)
 	await b.finished
-	if wide:
-		cam_focus_on = false
-		create_tween().tween_property(cam, "size", s0, 1.4).set_trans(Tween.TRANS_SINE)
 
 func _lm_caps(wid: String) -> int:
 	var n := 0
@@ -1064,7 +1133,7 @@ func _lm_pull(key: String, wid: String, focus: Vector3, size: float, opens: Call
 	hm.tR = grip.call(); hm.tL = grip.call(); hm.own = true
 	var hu := create_tween().set_parallel(); hu.tween_property(hm, "wR", 1.0, 0.5); hu.tween_property(hm, "wL", 0.7, 0.5); hu.tween_property(hm, "bow", 0.12, 0.5)
 	await hu.finished
-	var s0 := cam.size
+	lm_cam_act = true
 	var over := func(a: float) -> void:
 		lv.rotation.z = a; lm.rotation.z = a; hm.tR = grip.call(); hm.tL = grip.call()
 	var pt := create_tween().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT); pt.tween_method(over, 0.5, -0.5, 1.5)
@@ -1076,8 +1145,8 @@ func _lm_pull(key: String, wid: String, focus: Vector3, size: float, opens: Call
 	hm.own = false
 	await opens.call()
 	await wait(0.5)
-	cam_focus_on = false
-	create_tween().tween_property(cam, "size", s0, 1.4).set_trans(Tween.TRANS_SINE)
+	cam_focus_on = false; lm_cam_act = false
+	create_tween().tween_property(cam, "size", _lm_size(), 1.4).set_trans(Tween.TRANS_SINE)
 	refl_token += 1; var my := refl_token
 	var back := _refl_path(wid, hd.position, pos)
 	if await _refl_walk_pts(e, back.pts, back.h, my, 1.1): await _refl_melt()
@@ -1112,6 +1181,7 @@ func _do_lm_keep() -> void:
 	hm.own = false
 	done["lm_keep"] = true
 	await _refl_melt()      # it comes back to her with the lamp, and she takes it out of the water
+	await face(Vector3(LM_B_XC - 1.2, 0, LM_B_ZC))
 	lm_kneel = 0.0
 	var a := tw(); a.tween_property(self, "lm_kneel", 1.0, 0.8); a.tween_property(self, "a_lean", 0.35, 0.8); a.tween_property(self, "a_headp", 0.3, 0.8)
 	await a.finished
@@ -1239,7 +1309,7 @@ func _do_lm_d3b() -> void: await _lm_light3("b")
 
 ## all four lamps burn: the four seals run, the bolts draw, and the door to the hall goes down
 func _lm_open3() -> void:
-	var s0 := cam.size
+	lm_cam_act = true
 	var dc := Vector3(-45.2, 0, LM_CZ0 + 0.15)
 	cam_focus = dc + Vector3(1.2, 0.5, 2.2); cam_focus_on = true
 	create_tween().tween_property(cam, "size", 7.4, 1.6).set_trans(Tween.TRANS_SINE)
@@ -1260,8 +1330,8 @@ func _lm_open3() -> void:
 	rects["LmD3"].on = true; flags["lm_door3"] = true; done["lm_c_cn"] = true
 	for q in ["n", "f", "a", "b"]: done["lm_d3" + q] = true
 	await wait(0.6)
-	cam_focus_on = false
-	create_tween().tween_property(cam, "size", s0, 1.4).set_trans(Tween.TRANS_SINE)
+	cam_focus_on = false; lm_cam_act = false
+	create_tween().tween_property(cam, "size", _lm_size(), 1.4).set_trans(Tween.TRANS_SINE)
 	if not refl_out.is_empty(): await _refl_melt()
 	var reed: Node3D = N["lm_reed"]      # the reed has done its work: it burns down
 	var gone := create_tween(); gone.tween_property(reed, "scale", Vector3.ONE * 0.01, 0.8)
@@ -1283,9 +1353,8 @@ func _do_lm_wind() -> void:
 	hands.call(LM_GL_UP)
 	var up := tw(); up.tween_property(self, "a_wL", 1.0, 0.7); up.tween_property(self, "a_wR", 1.0, 0.7); up.tween_property(self, "a_lean", 0.06, 0.7)
 	await up.finished
-	var s0 := cam.size
-	cam_focus = LM_DC + Vector3(0.6, 0.8, 0.2); cam_focus_on = true
-	create_tween().tween_property(cam, "size", 10.4, 1.6).set_trans(Tween.TRANS_SINE)
+	lm_cam_act = true
+	cam_focus = LM_DC + Vector3(0.3, 0.8, 0.1); cam_focus_on = true
 	var dn := create_tween(); dn.tween_method(hands, LM_GL_UP, 0.012, 5.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await dn.finished
 	var dark := true
@@ -1301,7 +1370,7 @@ func _do_lm_wind() -> void:
 	else:      # the dark lamp touches the water, and is one with what the water held
 		refl_ring.position = LM_GL + Vector3(0, 0.03, 0); refl_p = 0.0
 		var fl: Node3D = N["lm_gl_fl"]
-		var l2 := create_tween().set_trans(Tween.TRANS_SINE); l2.tween_property(fl, "scale", Vector3.ONE * 2.6, 0.9)
+		var l2 := create_tween().set_trans(Tween.TRANS_SINE); l2.tween_property(fl, "scale", Vector3.ONE * 3.0, 0.9)
 		await l2.finished
 		flags["lm_great"] = true
 		await wait(0.6)
@@ -1312,16 +1381,15 @@ func _do_lm_wind() -> void:
 	if flags.has("lm_great"):
 		done["lm_wind"] = true; done["lm_great"] = true
 		for q in LMW["LM4"]: done["lm_c_" + q] = true
-		await _lm_finale(s0)
+		await _lm_finale()
 	else:
-		cam_focus_on = false
-		create_tween().tween_property(cam, "size", s0, 1.4).set_trans(Tween.TRANS_SINE)
+		cam_focus_on = false; lm_cam_act = false
 
 func _do_lm_great() -> void: await _do_lm_wind()
 
 ## the Great Lamp burns. Its heat runs the wax of the great seal; the head-gate goes down; the water of the hall
 ## runs out along the channel, across the landing and down to the door of the atrium
-func _lm_finale(s0: float) -> void:
+func _lm_finale() -> void:
 	var gc := Vector3(LM_DX1 - 0.15, 0, LM_CH_Z)
 	cam_focus = gc + Vector3(-0.9, 0.7, 0.3)
 	create_tween().tween_property(cam, "size", 7.6, 1.8).set_trans(Tween.TRANS_SINE)
@@ -1352,8 +1420,8 @@ func _lm_finale(s0: float) -> void:
 	await r2.finished
 	_wing_done("S")
 	await wait(1.4)
-	cam_focus_on = false
-	create_tween().tween_property(cam, "size", s0, 1.6).set_trans(Tween.TRANS_SINE)
+	cam_focus_on = false; lm_cam_act = false
+	create_tween().tween_property(cam, "size", _lm_size(), 1.6).set_trans(Tween.TRANS_SINE)
 
 # ---------------------------------------------------------------- the run that tries the wing, by taps
 func _lm_where() -> String:
@@ -1371,6 +1439,7 @@ func _lm_ring(id: String) -> Vector3:
 ## starts at that station with everything before it done
 func _play_lamps() -> void:
 	var from := int(OS.get_environment("FROM")) if OS.get_environment("FROM") != "" else 1
+	var until := int(OS.get_environment("UNTIL")) if OS.get_environment("UNTIL") != "" else 4      # (UNTIL=1..3: stop when that station is done)
 	await get_tree().create_timer(1.0).timeout
 	tap(Vector2(360, 640)); await wait(0.5)      # the title
 	_wake_now(); _open_to("U")
@@ -1379,7 +1448,7 @@ func _play_lamps() -> void:
 	if from <= 1:
 		await _tap_wait(Vector3(-30.0, 0, -17.6))
 		print("LAMPS in the wing, on the landing: ", pos.snapped(Vector3.ONE * 0.01))
-		await _tap_wait(Vector3(-36.6, 0, LM_CH_Z))      # along the channel to the head-gate: sealed
+		await _tap_wait(Vector3(-36.9, 0, LM_CH_Z))      # along the channel to the head-gate: sealed
 		print("LAMPS at the head-gate: ", pos.snapped(Vector3.ONE * 0.01), " way through ", rects["LmHead"].on)
 		await _tap_wait(Vector3(-25.7, 0, -18.1))
 		print("LAMPS L.1 on the bank: ", pos.snapped(Vector3.ONE * 0.01), " lamps ", _lm_lit("LM1"))
@@ -1397,6 +1466,7 @@ func _play_lamps() -> void:
 		print("LAMPS L.1 the lamp over the lever capped: lamps ", _lm_lit("LM1"), ", stones ", W["LM1"].foot["st"].on)
 		await _tap_wait(Vector3(lev.x, 0.5, lev.z))
 		print("LAMPS L.1 lever ", done.has("lm_lever1"), " sluice ", rects["LmS1"].on, " reflection ", _lm_where())
+		if until <= 1: await wait(1.0); get_tree().quit(); return
 	if from <= 2:
 		await _tap_wait(Vector3(-19.6, 0, -10.6))
 		await _tap_wait(Vector3(-24.0, 0, -9.0))
@@ -1425,17 +1495,18 @@ func _play_lamps() -> void:
 			var kp: Vector3 = objs["lm_keep"].at
 			await _tap_wait(kp)
 			print("LAMPS L.2 the keepsake: ", flags.has("lm_keep"), " pocket ", pocket, " reflection ", _lm_where())
-			await _tap_wait(Vector3(-27.2, 0, LM_B_ZC + 0.8))
-			for q in ["b1", "b2"]: await _tap_wait(_lm_ring(q))
+			for q in ["b3", "b1", "b2"]: await _tap_wait(_lm_ring(q))      # and the dark is brought to the fork again, from the beginning
 			await _tap_wait(Vector3(-27.2, 0, LM_B_ZC + 0.8))
 			await _tap_wait(Vector3(-23.6, 0.012, LM_B_ZC))
 			await _tap_wait(_lm_ring("b1")); await _tap_wait(_lm_ring("b3"))
 			await _tap_wait(Vector3(LM_B_XC - 0.5, 0.012, LM_B_ZC))
 			await _tap_wait(_lm_ring("b2"))
+			print("LAMPS L.2 at the fork again: lamps ", _lm_lit("LM2"), " reflection ", _lm_where())
 		await _tap_wait(_lm_ring("b4"))      # and the lever's lamp capped: its oil lights the other arm
 		print("LAMPS L.2 the lever's lamp capped: lamps ", _lm_lit("LM2"))
 		await _tap_wait(Vector3(lv2.x, 0.5, lv2.z))
 		print("LAMPS L.2 lever ", done.has("lm_lever2"), " gate ", rects["LmS2"].on, " reflection ", _lm_where())
+		if until <= 2: await wait(1.0); get_tree().quit(); return
 	if from <= 3:
 		await _tap_wait(Vector3(-29.6, 0, -8.8))
 		await _tap_wait(Vector3(-33.0, 0.012, -7.0))      # the long water: light
@@ -1460,6 +1531,7 @@ func _play_lamps() -> void:
 		await _tap_wait(_lm_ring("cn"))
 		await _tap_wait(Vector3(nt.x, -1.0, nt.z))
 		print("LAMPS L.3 the near lamp last: lamps ", _lm_lit("LM3"), " door ", rects["LmD3"].on, " reflection ", _lm_where())
+		if until <= 3: await wait(1.0); get_tree().quit(); return
 	await _tap_wait(Vector3(-45.2, 0, -11.2))
 	print("LAMPS L.4 in the hall: ", pos.snapped(Vector3.ONE * 0.01))
 	await _tap_wait(Vector3(LM_DC.x + 1.0, 0.012, LM_DC.z + 0.6))      # the pool: light
