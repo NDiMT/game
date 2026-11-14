@@ -172,20 +172,9 @@ uniform float line = 0.5;      // mode 3: where the waterline under her feet lie
 uniform vec3 dark = vec3(0.4, 0.48, 0.62);
 // the picture at q as the world is seen (m = 0: warm, clear) or as what the water shows is seen (m = 1: cool, softer, a
 // little less colour). Both a little softened, and neither lighter nor darker than the picture was.
-uniform float mb = 0.0;      // how fast the eye is moving just now (0..1): the picture is drawn out along its way, most in the middle of the turn
 vec3 take(vec2 q, vec2 ps, float m){
 	vec2 px = ps * 1.8;
 	vec3 k3 = texture(screen_tex, q).rgb;
-	if (mb > 0.002) {      // nine takes along the way the picture moves (up and down), a little shaken so they do not show as steps
-		float jit = fract(52.9829189 * fract(dot(q / ps, vec2(0.06711056, 0.00583715)))) - 0.5;
-		float st = 0.0075 * mb;
-		vec3 acc = k3;
-		for (int i = 1; i <= 4; i++) {
-			float o = (float(i) + jit) * st;
-			acc += texture(screen_tex, clamp(q + vec2(0.0, o), vec2(0.0), vec2(1.0))).rgb + texture(screen_tex, clamp(q - vec2(0.0, o), vec2(0.0), vec2(1.0))).rgb;
-		}
-		k3 = acc / 9.0;
-	}
 	vec3 s3 = (k3 * 2.0 + texture(screen_tex, q + vec2(px.x, 0.0)).rgb + texture(screen_tex, q - vec2(px.x, 0.0)).rgb + texture(screen_tex, q + vec2(0.0, px.y)).rgb + texture(screen_tex, q - vec2(0.0, px.y)).rgb) / 6.0;
 	k3 = mix(k3, s3, mix(0.4, 0.72, m));
 	float l3 = dot(k3, vec3(0.3, 0.59, 0.11));
@@ -503,7 +492,6 @@ func _flip_real(over: bool) -> void:
 	await tw3.finished
 	await get_tree().process_frame
 	flip_moving = false; flip_mask_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
-	flip_mat.set_shader_parameter("mb", 0.0)
 	flip_on = over
 	if not flip_on:
 		flip_mi.visible = false; flip_rect.visible = _flip_pane_always()
@@ -540,7 +528,6 @@ func _flip_post() -> void:
 	var vs := get_viewport().get_visible_rect().size
 	var lr := cam.unproject_position(Vector3(flip_anchor.x, 0, flip_anchor.z)).y / vs.y
 	flip_mat.set_shader_parameter("th", flip_th); flip_mat.set_shader_parameter("line", lr if flip_th >= 0.0 else 1.0 - lr)
-	flip_mat.set_shader_parameter("mb", pow(maxf(1.0 - flip_th * flip_th, 0.0), 1.6))      # (the eye is fastest in the middle of its way)
 	flip_mask_cam.global_transform = cam.global_transform; flip_mask_cam.size = cam.size; flip_mask_cam.near = cam.near; flip_mask_cam.far = cam.far
 
 ## what exists on one side only changes sides with the picture: the stones of the mole's middle, the two grilles of the
