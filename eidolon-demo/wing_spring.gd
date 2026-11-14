@@ -34,10 +34,28 @@ const SP1_R := 4.21
 const SP1_S := Vector3(-14.5, 0, -57.75)      # the colossus (its palm is seen about (-10.75, -54.0))
 const SP1_ISLE := Vector3(-10.75, 0, -51.0)   # the islet
 const SP1_LEVER := Vector3(-10.5, 0, -50.75)
-# ---------------------------------------------------------------- the lane north, and P.4 beside it
+# ---------------------------------------------------------------- the lane north (the spine of the wing: the dry channel runs along it)
 const SPL_X0 := -20.3
-const SPL_X1 := -18.4
-const SPL_Z0 := -73.6
+const SPL_X1 := -18.7
+# ---------------------------------------------------------------- P.2 from hand to hand
+const SP2_X0 := -31.65
+const SP2_X1 := -18.7
+const SP2_Z0 := -77.5
+const SP2_Z1 := -60.8
+const SP2_SX := -29.2                        # the row of three stands along the west rim, on this line
+const SP2_AZ := -76.1                        # the first of them; the others follow southward
+const SP2_D := 4.2075                        # from one to the next: the two great wheels and two idle wheels of 23 teeth between them
+const SP2_IDLER_N := 23
+const SP2_IDLER_R := 0.6539
+const SP2_QX0 := -27.9                       # its pool
+const SP2_QX1 := -20.9
+const SP2_QZ0 := -74.45
+const SP2_QZ1 := -61.6
+const SP2_ISLE := Vector3(-22.5, 0, -63.935) # the islet where the third palm sets her down
+const SP2_LEVER := Vector3(-22.35, 0, -63.75)
+const SP2_DOOR := Vector3(-18.55, 0, -62.7)  # the sluice it opens: the door of the third court, in the lane's east side
+const SP2_IDLER_YAW := [91.285, 88.72]       # how the two idle wheels stand, so that their teeth lie in the gaps of their neighbours (degrees)
+const SP2_B_OFF := -4.32                     # and by how much the second's own wheel is set round on its drum for the same
 
 var sp_col := {}      # the colossi, by name: {"p": foot, "q": which quarter the arm points to (0 north, 1 east, 2 south, 3 west), "w": its water, "pair": the one geared to it, "view": where the eye rests while it turns}
 var sp_chan: Array = []      # the course of the water once the spring runs: [from, to] pieces, in order
@@ -46,19 +64,19 @@ func _init() -> void:
 	super._init(); wing_open["N"] = true
 
 func _hollows() -> Array:
-	return super._hollows() + [[SP1_X0 + 0.5, SP1_Z0 + 0.5, SP1_X1 - 0.5, SP1_Z1 - 0.5]]
+	return super._hollows() + [[SP1_X0 + 0.5, SP1_Z0 + 0.5, SP1_X1 - 0.5, SP1_Z1 - 0.5], [SP2_X0 + 0.5, SP2_Z0 + 0.5, SP2_X1 - 0.5, SP2_Z1 - 0.5]]
 
 func _wings() -> void:
 	super._wings()
-	_sp_court1()
+	_sp_court1(); _sp_court2()
 
 func _wing_things() -> void:
 	super._wing_things()
-	_sp_things1()
+	_sp_things1(); _sp_things2()
 
 func _wing_nav() -> void:
 	super._wing_nav()
-	_sp_nav1()
+	_sp_nav1(); _sp_nav2()
 
 func _ready() -> void:
 	super._ready()
@@ -128,7 +146,7 @@ func _sp_palm_real(key: String) -> Vector3:
 
 ## a colossus of her on a geared plinth, an arm held out with a gilded plate on its open palm; and its twin in the
 ## water. q: the quarter it points to. wid: the water it is seen in
-func _sp_colossus(key: String, p: Vector3, q: int, wid: String, view: Vector3, pinion := true) -> void:
+func _sp_colossus(key: String, p: Vector3, q: int, wid: String, view: Vector3, pinion := true, wheel_off := 0.0, size := 9.4) -> void:
 	for both in [self, mroot]:
 		var twin: bool = both == mroot
 		var sfx := "_m" if twin else ""
@@ -139,7 +157,7 @@ func _sp_colossus(key: String, p: Vector3, q: int, wid: String, view: Vector3, p
 			var tk := blk(Vector3(-0.03, 0.0, -0.035), Vector3(0.03, 0.02, 0.035), "gold", both); tk.rotation.y = t * PI * 0.5
 			tk.position = p + Vector3(sin(t * PI * 0.5), 0, cos(t * PI * 0.5)) * 0.483 * SP_PK + Vector3(0, 0.048 * SP_PKV, 0)
 		var n := Node3D.new(); n.position = p; n.rotation.y = _sp_yaw(q); both.add_child(n)
-		prop_model("plinth_top", n, 0.0, 0.0, twin, false, PLINTH_PARTS).scale = Vector3(SP_PK, SP_PKV, SP_PK)
+		var pt := prop_model("plinth_top", n, 0.0, 0.0, twin, false, PLINTH_PARTS); pt.scale = Vector3(SP_PK, SP_PKV, SP_PK); pt.rotation.y += deg_to_rad(wheel_off)      # (wheel_off: the wheel's teeth set round a little, to meet a train's)
 		_sp_colossus_body(n, twin)
 		N["sp_col_" + key + sfx] = n
 		if pinion:      # the small wheel beside it, its teeth in the great wheel's
@@ -151,7 +169,7 @@ func _sp_colossus(key: String, p: Vector3, q: int, wid: String, view: Vector3, p
 			var pr := PINION_R * SP_PK
 			prop_model("pinion", pin, 0.0, 0.0, twin, false, "stone:gold,gold:gold").scale = Vector3(pr * 2.0, pr * 2.0 * 0.45, pr * 2.0)
 			N["sp_pin_" + key + sfx] = pin
-	sp_col[key] = {"p": p, "q": q, "w": wid, "pair": "", "view": view}
+	sp_col[key] = {"p": p, "q": q, "w": wid, "pair": "", "view": view, "size": size}
 
 ## the statue on its plinth: she leans forward a little and holds her right arm out, the palm up and open, a
 ## gilded plate on it. The plate lies exactly SP_R from the axis and SP_H up; the arm is brought to it
@@ -292,7 +310,7 @@ func _sp_turn(key: String) -> void:
 	var up := tw(); up.tween_property(self, "a_wL", 1.0, 0.6); up.tween_property(self, "a_wR", 1.0, 0.6); up.tween_property(self, "a_lean", 0.34, 0.6)
 	var s0 := cam.size
 	cam_focus = c.view; cam_focus_on = true
-	create_tween().tween_property(cam, "size", maxf(s0, 9.4), 1.4).set_trans(Tween.TRANS_SINE)
+	create_tween().tween_property(cam, "size", maxf(s0, float(c.size)), 1.4).set_trans(Tween.TRANS_SINE)
 	await up.finished
 	await wait(0.5)
 	var rider := ""; var hd: Node3D = null
@@ -362,6 +380,7 @@ func _refl_path(wid: String, from: Vector3, to: Vector3) -> Dictionary:
 	for n in prev:
 		var c3 := _sp_mid(F[n]) if String(n).begins_with("sp_palm_") else _near_in(F[n], goal)
 		if _flat(c3, goal) < bd: bd = _flat(c3, goal); b = n; dest = c3
+	if bd > 0.25: bd = 1e6      # (no way there: from wherever it starts it is as far short of it. It does not give up a palm to stand a little nearer on a rim)
 	var chain := [b]
 	while prev[chain[0]] != "": chain.push_front(prev[chain[0]])
 	var pts := []; var cur := from
@@ -464,7 +483,7 @@ func _sp_nav1() -> void:
 	rects["SP1nn"] = R(SP1_X0 + 0.45, SP1_Z0 + 0.6, SP1_X1 - 0.45, SP1_Z0 + 0.92)      # behind the colossus
 	rects["SP1ne"] = R(-13.1, SP1_Z0 + 0.6, SP1_X1 - 0.45, c.z - r - 0.45)      # the north rim, east of it
 	rects["SP1t"] = R(-13.9, -57.2, -12.9, -56.86)      # where she stands to turn it
-	rects["SP1d"] = R(-19.75, SPL_Z0 - 0.3, -19.25, SP1_Z0 + 0.7, false)      # through the door at the north
+	rects["SP1d"] = R(-19.75, SP2_Z1 - 0.5, -19.25, SP1_Z0 + 0.7, false)      # through the door at the north
 	solids.append(Vector3(SP1_S.x, SP1_S.z, 1.0))
 
 func _do_sp_col_1() -> void:
@@ -473,16 +492,15 @@ func _do_sp_col_1() -> void:
 func _do_sp_palm_1() -> void:
 	await _sp_on_palm("1")
 
-## P.1: the lever on the islet. Her reflection, set down there by the palm, pulls it over: the sluice at the north
-## goes down
-func _do_sp_lever1() -> void:
+## her reflection, standing west of a lever of the water, takes it and pulls it over toward itself
+func _sp_lever_pull(nm: String, at: Vector3) -> void:
 	var e: Dictionary = refl_out; var hd: Node3D = e.holder
 	var rt := create_tween(); rt.tween_property(hd, "rotation:y", hd.rotation.y + angle_difference(hd.rotation.y, PI * 0.5), 0.4).set_trans(Tween.TRANS_SINE)
 	await rt.finished
 	var hm := _hermod(e)
-	var arm: Node3D = N["sp_lever1"]; var arm_m: Node3D = N["sp_lever1_m"]
+	var arm: Node3D = N[nm]; var arm_m: Node3D = N[nm + "_m"]
 	var grip := func() -> Vector3:
-		var g := SP1_LEVER + Vector3(0, 0.22, 0) + Vector3(-sin(arm.rotation.z), cos(arm.rotation.z), 0) * 0.9
+		var g := at + Vector3(0, 0.22, 0) + Vector3(-sin(arm.rotation.z), cos(arm.rotation.z), 0) * 0.9
 		return Vector3(g.x, -g.y, g.z)
 	hm.tR = grip.call(); hm.tL = grip.call(); hm.own = true
 	var hu := create_tween().set_parallel(); hu.tween_property(hm, "wR", 1.0, 0.6); hu.tween_property(hm, "bow", 0.12, 0.6)
@@ -495,17 +513,127 @@ func _do_sp_lever1() -> void:
 	var hd2 := create_tween().set_parallel(); hd2.tween_property(hm, "wR", 0.0, 0.6); hd2.tween_property(hm, "bow", 0.0, 0.6)
 	await hd2.finished
 	hm.own = false
+
+## the eye goes to a sluice, the sluice goes down, the eye comes back
+func _sp_show_open(key: String, focus: Vector3, size := 9.6) -> void:
 	var s0 := cam.size
-	cam_focus = Vector3(-18.6, 0.4, SP1_Z0 + 1.6); cam_focus_on = true
-	create_tween().tween_property(cam, "size", 9.6, 1.6).set_trans(Tween.TRANS_SINE)
+	cam_focus = focus; cam_focus_on = true
+	create_tween().tween_property(cam, "size", size, 1.6).set_trans(Tween.TRANS_SINE)
 	await wait(2.2)
-	await sluice_open("sp_s1", 2.6)
-	rects["SP1d"].on = true
-	for k in ["sp_lever1", "sp_palm_1", "sp_col_1"]: done[k] = true
-	looks.erase("sp_look_lever1")
+	await sluice_open(key, 2.6)
 	await wait(0.6)
 	cam_focus_on = false
 	create_tween().tween_property(cam, "size", s0, 1.4).set_trans(Tween.TRANS_SINE)
+
+## P.1: the lever on the islet. Her reflection, set down there by the palm, pulls it over: the sluice at the north
+## goes down
+func _do_sp_lever1() -> void:
+	await _sp_lever_pull("sp_lever1", SP1_LEVER)
+	for k in ["sp_lever1", "sp_palm_1", "sp_col_1"]: done[k] = true
+	looks.erase("sp_look_lever1")
+	await _sp_show_open("sp_s1", Vector3(-18.6, 0.4, SP1_Z0 + 1.6))
+	rects["SP1d"].on = true
+	await _refl_melt()
+
+
+# ---------------------------------------------------------------- P.2 from hand to hand
+## A long pool. Three colossi stand in a row on its west rim, each holding a gilded palm out; the first two are
+## geared together through two idle wheels, so that when one turns the other turns the other way; the third is free.
+## None of them reaches the next: the plates stop a hand apart. The lever of the next door stands on an islet at the
+## far end. The lane, with the dry channel, runs along the pool's east side
+func _sp2_p(i: int) -> Vector3:
+	return Vector3(SP2_SX, 0, SP2_AZ + SP2_D * i)
+
+func _sp_court2() -> void:
+	floor_plain(SPL_X0, SP2_Z1, SPL_X1, SP1_Z0, 0.0); land_paths.append([SPL_X0, SP2_Z1, SPL_X1, SP1_Z0])
+	_pool_court(SP2_X0, SP2_Z0, SP2_X1, SP2_Z1, SP2_QX0, SP2_QZ0, SP2_QX1, SP2_QZ1, "stone", "PoolSkySp2"); _sp_pit("PoolSkySp2", 5.6)
+	tile_hole = Rect2(SP2_QX0 - 0.08, SP2_QZ0 - 0.08, SP2_QX1 - SP2_QX0 + 0.16, SP2_QZ1 - SP2_QZ0 + 0.16); tiles(SP2_X0, SP2_Z0, SP2_X1, SP2_Z1, 1.0); tile_hole = Rect2()
+	glass(SP2_QX0, SP2_QZ0, SP2_QX1, SP2_QZ1)
+	var a := _sp2_p(0); var b := _sp2_p(1); var c := _sp2_p(2)
+	W["SP2"] = {"r": [SP2_QX0, SP2_QZ0, SP2_QX1, SP2_QZ1], "far": 22.0,
+		"heads": [R(SP2_QX0 - 0.6, SP2_AZ + 0.3, SP2_QX1, SP2_QZ0 - 0.45), R(SP2_SX + 0.45, b.z + 0.45, SP2_SX + 0.85, b.z + 1.0), R(SP2_SX + 0.45, c.z + 0.45, SP2_SX + 0.85, c.z + 1.0)],
+		"foot": {"n": R(SP2_SX + 0.4, SP2_AZ + 0.2, SP2_QX1, SP2_QZ0), "w": R(SP2_SX + 0.4, SP2_AZ + 0.2, SP2_QX0, SP2_QZ1),
+			"isle": R(SP2_ISLE.x - 0.75, SP2_ISLE.z - 0.7, SP2_ISLE.x + 0.6, SP2_ISLE.z + 0.7)}}
+	WL.append("SP2")
+	# the three. The first holds its palm to the north rim; the second, geared to it, to the south; the third away
+	_sp_colossus("A", a, 0, "SP2", a.lerp(b, 0.5) + Vector3(2.9, 0.4, 3.3), false, 0.0, 11.5)
+	_sp_colossus("B", b, 2, "SP2", b + Vector3(2.9, 0.4, 3.3), false, SP2_B_OFF, 11.5)
+	_sp_colossus("C", c, 3, "SP2", c + Vector3(2.5, 0.4, 2.9))
+	sp_col["A"].pair = "B"; sp_col["B"].pair = "A"
+	var kr := 28.0 / SP2_IDLER_N
+	sp_col["A"].train = [["sp2_idler0", kr], ["sp2_idler1", -kr]]; sp_col["B"].train = [["sp2_idler1", kr], ["sp2_idler0", -kr]]
+	var gy := PLINTH_CUT * SP_PKV
+	for both in [self, mroot]:
+		var twin: bool = both == mroot
+		var flat := "flat2" if twin else "flat"
+		for i in 2:      # the two idle wheels between the first and the second: each on a stone post, under a bronze cap
+			var at := Vector3(SP2_SX, 0, a.z + SP_GEAR_R + SP2_IDLER_R) if i == 0 else Vector3(SP2_SX, 0, b.z - SP_GEAR_R - SP2_IDLER_R)
+			turned(at, [[0.3, 0.0], [0.3, 0.04], [0.24, 0.06], [0.24, gy - 0.01], [0.0, gy - 0.01]], "stone", 20, both)
+			var id := Node3D.new(); id.position = at + Vector3(0, gy, 0); id.rotation.y = deg_to_rad(SP2_IDLER_YAW[i]); both.add_child(id)
+			_gear(id, SP2_IDLER_R, SP2_IDLER_N, 0.055)
+			for k in 5:      # its spokes are cut through: five round lightening holes, and a hub
+				var hk := cyl(Vector3(cos(TAU * k / 5.0) * 0.36, 0.056, sin(TAU * k / 5.0) * 0.36), 0.11, 0.11, 0.004, pal("dark", flat), 14, id)
+				hk.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			cyl(Vector3(0, 0.055, 0), 0.13, 0.11, 0.05, pal("gold", flat), 16, id); ball(Vector3(0, 0.12, 0), 0.05, pal("gold", flat), id)
+			N["sp2_idler%d%s" % [i, "_m" if twin else ""]] = id
+		# the islet, and the lever on it
+		cyl(SP2_ISLE, 0.8, 0.8, 0.05, pal("stone", flat), 32, both); turned(SP2_ISLE, [[0.84, 0.0], [0.84, 0.03], [0.8, 0.03]], "shade", 32, both)
+		_sp_lever(SP2_LEVER, "sp_lever2" + ("_m" if twin else ""), both)
+	# behind each of them, against the west parapet, a bronze mirror with its face to the wall
+	for i in 3:
+		var mp := _sp2_p(i) + Vector3(-2.2, 0, 0.45)
+		blk(mp + Vector3(-0.1, 0, -0.3), mp + Vector3(0.12, 0.08, 0.3), "shade")
+		var disc := cyl(Vector3.ZERO, 0.46, 0.46, 0.035, pal("gold"), 28); disc.position = mp + Vector3(0.0, 0.53, 0); disc.rotation.z = PI * 0.5 - 0.16
+		var boss := cyl(Vector3.ZERO, 0.09, 0.07, 0.05, pal("dark"), 12); boss.position = mp + Vector3(0.04, 0.53, 0); boss.rotation.z = PI * 0.5 - 0.16
+		_look_add("", mp, 1.0, ["a bronze mirror, its face to the wall", "he stood one of them in front of each mirror"])
+	# edges: low all round (the three are tall enough), the lane open on the east
+	parapet(Vector3(SP2_X0 + 0.1, 0, SP2_Z0 + 0.1), Vector3(-20.47, 0, SP2_Z0 + 0.1)); parapet(Vector3(SP2_X0 + 0.1, 0, SP2_Z0 + 0.1), Vector3(SP2_X0 + 0.1, 0, SP2_Z1 - 0.1))
+	parapet(Vector3(SP2_X0 + 0.1, 0, SP2_Z1 - 0.1), Vector3(SPL_X0, 0, SP2_Z1 - 0.1))
+	parapet(Vector3(SP2_X1 - 0.1, 0, SP2_Z0 + 0.1), Vector3(SP2_X1 - 0.1, 0, SP2_DOOR.z - 0.98)); parapet(Vector3(SP2_X1 - 0.1, 0, SP2_DOOR.z + 0.98), Vector3(SP2_X1 - 0.1, 0, SP1_Z0 - 0.02))
+	parapet(Vector3(SPL_X0 + 0.1, 0, SP2_Z1 - 0.1), Vector3(SPL_X0 + 0.1, 0, SP1_Z0 - 0.02))
+	sluice("sp_s2", SP2_DOOR, true, 0.6, 1.0)      # the door of the third court
+	sluice("sp_s3", Vector3(-19.5, 0, SP2_Z0 + 0.15), false, 0.6, 1.0)      # and, across the lane at the north, the one the third court opens
+	_sp_chan(Vector3(-19.5, 0, SP2_Z0 + 0.3), Vector3(-19.5, 0, SP1_Z0), false)
+	stele("sp_stele2", Vector3(-24.6, 0, SP2_Z0 + 0.85), 0.0, ["None of them reaches the other.\nI measured.", "A hand that waits\nis worth two that carry."])
+	_look_add("sp_look_lever2", SP2_ISLE + Vector3(0, 0.05, 0), 1.0, ["a lever, on an islet at the far end", "three hands between here and there"])
+	_look_add("", Vector3(SP2_SX, 0, a.z + SP_GEAR_R + SP2_IDLER_R * 2.0), 0.4, ["two idle wheels between the first and the second", "turn one, and the other turns against it"])
+	urn(Vector3(SP2_X0 + 0.8, 0, SP2_Z1 - 0.8), 1.0, "rose"); urn(Vector3(-21.4, 0, SP2_Z0 + 0.8), 0.9)
+
+func _sp_things2() -> void:
+	for i in 3: _sp_col_things(["A", "B", "C"][i], _sp2_p(i) + Vector3(0.72, 0, 0.72))
+	var g := SP2_LEVER + Vector3(0, 0.22, 0) + Vector3(0.6 * 0.56, 0.9 * 0.82, 0)
+	objs["sp_lever2"] = {"at": Vector3(g.x, -g.y, g.z), "stand": _sp2_p(2) + Vector3(0.72, 0, 0.72), "mark": false, "water": "SP2", "rstand": SP2_LEVER + Vector3(-0.42, 0, 0.0),
+		"hits": [Vector3(SP2_LEVER.x, -0.1, SP2_LEVER.z), Vector3(g.x, -g.y - 0.2, g.z)]}
+
+func _sp_nav2() -> void:
+	rects["SP2l"] = R(-19.75, SP2_Z0 + 0.6, -19.25, SP2_Z1 - 0.3)      # the lane, along the channel
+	rects["SP2n"] = R(SP2_X0 + 0.45, SP2_Z0 + 0.6, -19.25, SP2_QZ0 - 0.45)      # the north rim
+	rects["SP2w"] = R(SP2_X0 + 0.45, SP2_Z0 + 0.6, SP2_SX - 1.25, SP2_Z1 - 0.45)      # the walk behind the three
+	var b := _sp2_p(1); var c := _sp2_p(2)
+	rects["SP2b"] = R(SP2_X0 + 0.45, b.z + 0.55, SP2_SX + 0.85, c.z - 1.15)      # between the second and the third
+	rects["SP2c"] = R(SP2_X0 + 0.45, c.z + 0.55, SP2_SX + 0.85, SP2_Z1 - 0.45)      # south of the third
+	rects["SP2e"] = R(SP2_QX1 + 0.45, SP2_Z0 + 0.6, -19.25, SP2_Z1 - 0.45)      # the pool's east rim, beside the lane
+	rects["SP3d"] = R(-19.25, SP2_DOOR.z - 0.25, SP2_DOOR.x + 0.9, SP2_DOOR.z + 0.25, false)      # through the door of the third court
+	rects["SP3g"] = R(-19.75, SP2_Z0 - 0.9, -19.25, SP2_Z0 + 0.7, false)      # through the sluice at the north
+	for i in 3: solids.append(Vector3(SP2_SX, _sp2_p(i).z, 1.0))
+	for z in [SP2_AZ + SP_GEAR_R + SP2_IDLER_R, b.z - SP_GEAR_R - SP2_IDLER_R]: solids.append(Vector3(SP2_SX, z, 0.78))
+	for i in 3: solids.append(Vector3(SP2_SX - 2.2, _sp2_p(i).z + 0.45, 0.35))
+
+func _do_sp_col_A() -> void: await _sp_turn("A")
+func _do_sp_col_B() -> void: await _sp_turn("B")
+func _do_sp_col_C() -> void: await _sp_turn("C")
+func _do_sp_palm_A() -> void: await _sp_on_palm("A")
+func _do_sp_palm_B() -> void: await _sp_on_palm("B")
+func _do_sp_palm_C() -> void: await _sp_on_palm("C")
+
+## P.2: the lever on the far islet. Her reflection, handed from palm to palm and set down there, pulls it over: the
+## door of the third court goes down
+func _do_sp_lever2() -> void:
+	await _sp_lever_pull("sp_lever2", SP2_LEVER)
+	for k in ["sp_lever2", "sp_palm_A", "sp_col_A", "sp_palm_B", "sp_col_B", "sp_palm_C", "sp_col_C"]: done[k] = true
+	looks.erase("sp_look_lever2")
+	await _sp_show_open("sp_s2", SP2_DOOR + Vector3(-0.6, 0.4, 0.6))
+	rects["SP3d"].on = true
 	await _refl_melt()
 
 # ---------------------------------------------------------------- the run that tries the wing by taps
@@ -514,6 +642,7 @@ func _sp_refl_at() -> String:
 
 func _play_spring() -> void:
 	var from := int(OS.get_environment("FROM")) if OS.get_environment("FROM") != "" else 1
+	var only := OS.get_environment("ONLY") != ""      # (ONLY=1: stop after the station it starts at)
 	await get_tree().create_timer(1.0).timeout
 	tap(Vector2(360, 640)); await wait(0.5)      # the title
 	_wake_now(); _open_to("U")
@@ -536,6 +665,34 @@ func _play_spring() -> void:
 		print("SPRING P.1 second quarter: arm points ", sp_col["1"].q, ", reflection ", _sp_refl_at())
 		await _tap_wait(lv)
 		print("SPRING P.1 lever ", done.has("sp_lever1"), " door ", rects["SP1d"].on, ", reflection ", _sp_refl_at())
+	if from <= 2 and not (only and from < 2):
+		var cq := func() -> String: return "A%d B%d C%d" % [sp_col["A"].q, sp_col["B"].q, sp_col["C"].q]
+		await _tap_wait(Vector3(-24.0, 0, SP2_QZ0 - 0.7))
+		print("SPRING P.2 on the north rim at ", pos.snapped(Vector3.ONE * 0.01))
+		await _tap_wait(objs["sp_lever2"].at)      # the obvious: straight to the lever. It walks the rim and stops
+		print("SPRING P.2 sent to the lever with no way: lever ", done.has("sp_lever2"), ", reflection ", _sp_refl_at())
+		await _tap_wait(objs["sp_palm_A"].at)
+		print("SPRING P.2 on the first palm: reflection ", _sp_refl_at(), " ", cq.call())
+		await _tap_wait(objs["sp_palm_B"].at)      # the second palm is not there to take it yet
+		print("SPRING P.2 to the second palm too soon (it steps back to the rim and goes as near as the rim lets it): reflection ", _sp_refl_at())
+		await _tap_wait(objs["sp_palm_A"].at)
+		print("SPRING P.2 on the first palm again: reflection ", _sp_refl_at())
+		for i in 2: await _tap_wait(_sp2_p(0) + Vector3(0, 2.0, 0))      # the first is turned: the second turns against it, and the palms come together
+		print("SPRING P.2 the pair turned twice: ", cq.call(), ", reflection ", _sp_refl_at(), " second palm ", _sp_palm("B").snapped(Vector3.ONE * 0.01))
+		await _tap_wait(objs["sp_palm_B"].at)
+		print("SPRING P.2 on the second palm: reflection ", _sp_refl_at())
+		for i in 2: await _tap_wait(_sp2_p(1) + Vector3(0, 2.0, 0))      # the trap: she turns the one that carries it, and nothing waits at the other end
+		print("SPRING P.2 the second turned twice: ", cq.call(), ", reflection ", _sp_refl_at())
+		await _tap_wait(objs["sp_palm_C"].at)
+		print("SPRING P.2 to the third palm, which was not set: reflection ", _sp_refl_at(), " third palm ", _sp_palm("C").snapped(Vector3.ONE * 0.01))
+		await _tap_wait(_sp2_p(2) + Vector3(0, 2.0, 0))      # the free third is set to receive
+		print("SPRING P.2 the third set: ", cq.call(), " third palm ", _sp_palm("C").snapped(Vector3.ONE * 0.01))
+		await _tap_wait(objs["sp_palm_C"].at)
+		print("SPRING P.2 on the third palm: reflection ", _sp_refl_at())
+		await _tap_wait(_sp2_p(2) + Vector3(0, 2.0, 0))
+		print("SPRING P.2 the third turned: ", cq.call(), ", reflection ", _sp_refl_at())
+		await _tap_wait(objs["sp_lever2"].at)
+		print("SPRING P.2 lever ", done.has("sp_lever2"), " door ", rects["SP3d"].on, ", reflection ", _sp_refl_at())
 	print("SPRING done ", wings_done)
 	get_tree().quit()
 
@@ -546,4 +703,9 @@ func _sp_open_to(k: int) -> void:
 		for d in ["sp_lever1", "sp_palm_1", "sp_col_1"]: done[d] = true
 		for sfx in ["", "_m"]: (N["sp_lever1" + sfx] as Node3D).rotation.z = 0.6
 		pos = Vector3(-19.5, 0, SP1_Z0 - 1.0); yaw = PI
+	if k >= 3:
+		rects["SP3d"].on = true; (N["sp_s2"] as Node3D).position.y = -1.25
+		for d in ["sp_lever2", "sp_palm_A", "sp_col_A", "sp_palm_B", "sp_col_B", "sp_palm_C", "sp_col_C"]: done[d] = true
+		for sfx in ["", "_m"]: (N["sp_lever2" + sfx] as Node3D).rotation.z = 0.6
+		pos = Vector3(-19.5, 0, SP2_DOOR.z); yaw = -PI * 0.5
 	cam_t = pos
