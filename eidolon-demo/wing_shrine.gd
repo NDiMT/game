@@ -1,4 +1,4 @@
-extends "res://wing_lamps.gd"
+extends "res://wing_spring.gd"
 ## EIDOLON, chapter 1: what lies behind the Gate. III.3 the stoa of the eight arches, and III.4 the first shrine.
 ## A stair goes down behind the Gate to a stoa beside a canal of still water. The stoa is one bay: an entrance with
 ## eight small lamps, an arch at its far end, and whoever goes through either finds the same bay again, dressed anew.
@@ -44,8 +44,9 @@ const SH_BAYS := [
 ]
 
 # ---------------------------------------------------------------- III.4 the first shrine
-const SH_R_C := Vector3(-28.0, 0, -62.5)      # the middle of the round room, and of its pool
+const SH_R_C := Vector3(-38.0, 0, -62.5)      # the middle of the round room, and of its pool: west of the stoa's line (north of it lies a court of the Spring), reached by a walk that turns west
 const SH_R_H := 4.5             # half the side of the court it stands on
+const SH_WALK_Z := -57.1       # the line of the walk that turns west from the arch to the round room
 const SH_R_R := 2.0             # the pool's radius
 const SH_R_RING := 3.85         # the ring of low wall and columns
 const SH_R_D := Vector3(-0.70711, 0, -0.70711)      # the way to the mirror from the middle: north-west
@@ -54,7 +55,7 @@ const SH_R_MD := 3.62           # how far from the middle the mirror's glass sta
 const SH_R_PW := 1.1            # the glass: its width...
 const SH_R_PH := 2.5            # ...and its height, to the top of its round head
 const SH_R_BASE := 0.22         # the step it stands on
-const SH_R_VIEW := Vector3(-28.55, 0, -63.05)       # the middle of the picture while she is in the room
+const SH_R_VIEW := Vector3(-38.55, 0, -63.05)       # the middle of the picture while she is in the room
 ## the letters her reflection writes: each its width and its strokes, in a square of side 1
 const SH_R_GLYPHS := {
 	"F": [0.78, [[[0, 0], [0, 1]], [[0, 1], [0.78, 1]], [[0, 0.52], [0.58, 0.52]]]],
@@ -171,6 +172,7 @@ func _sh_stoa() -> void:
 	N["sh_bankS"] = prim(bq2, Vector3(SH_X + 0.3, 0.4, SH_ENT + 1.55), _sh_mist_mat(0.0, true))
 	# the way on, north of the arch
 	floor_plain(SH_X - 0.9, SH_SZ0 - 3.0, SH_X + 0.9, SH_SZ0, 0.9); land_paths.append([SH_X - 0.9, SH_SZ0 - 3.0, SH_X + 0.9, SH_SZ0])
+	floor_plain(SH_R_C.x - 0.9, SH_SZ0 - 3.0, SH_X - 0.9, SH_WALK_Z + 0.9, 0.9); land_paths.append([SH_R_C.x - 0.9, SH_SZ0 - 3.0, SH_X - 0.9, SH_WALK_Z + 0.9])      # ...and west along the room's south side to its way in
 	stele("sh_stele3", Vector3(SH_X - 1.05, 0, SH_ENT - 0.75), PI * 0.5, ["Walk as long as you like.\nIt is the same arch.", "When the water told it otherwise,\nI turned back. Every time."])
 	_look_add("sh_lamps", Vector3(SH_X - 1.1, 0.0, SH_ENT), 0.9, ["eight small lamps on the two walls of the entrance", "one for each arch, it seems. but there is one arch"])
 	_look_add("sh_arch", Vector3(SH_X + 0.95, 0, SH_AZ1), 2.6, ["an arch, and mist in it", "the same mist stands behind me"])
@@ -371,7 +373,9 @@ func _wing_nav() -> void:
 	rects["sh_in"] = R(SH_X - 0.4, SH_SZ1 - 0.4, SH_X + 0.4, UZ0 - 0.3)      # the landing behind the Gate and its stair
 	ramps.append({"r": rects["sh_in"], "z0": -43.95, "z1": -45.91, "y0": POD_H, "y1": 0.0})
 	rects["sh_walk"] = R(SH_X - 0.45, SH_IN_N - 0.5, SH_X + 0.25, SH_IN_S + 0.4)      # the walk of the stoa, between the entrance and the arch
-	rects["sh_n"] = R(SH_X - 0.4, SH_R_C.z + 3.03, SH_X + 0.4, SH_IN_N - 0.5, false)      # through the arch and on to the round room, once the stoa lets her
+	rects["sh_n"] = R(SH_X - 0.4, SH_WALK_Z - 0.4, SH_X + 0.4, SH_IN_N - 0.5, false)      # through the arch and on, once the stoa lets her...
+	rects["sh_n2"] = R(SH_R_C.x - 0.4, SH_WALK_Z - 0.4, SH_X + 0.4, SH_WALK_Z + 0.4, false)      # ...west along the walk...
+	rects["sh_n3"] = R(SH_R_C.x - 0.4, SH_R_C.z + 3.03, SH_R_C.x + 0.4, SH_WALK_Z + 0.4, false)      # ...and in to the round room
 	var c := SH_R_C      # the room: a walk round the pool, between its rim and the ring of low wall
 	rects["sh_r_s"] = R(c.x - 1.9, c.z + 2.45, c.x + 1.9, c.z + 3.05); rects["sh_r_n"] = R(c.x - 1.9, c.z - 3.05, c.x + 1.9, c.z - 2.45)
 	rects["sh_r_w"] = R(c.x - 3.05, c.z - 1.9, c.x - 2.45, c.z + 1.9); rects["sh_r_e"] = R(c.x + 2.45, c.z - 1.9, c.x + 3.05, c.z + 1.9)
@@ -481,11 +485,18 @@ func _send_reflection(pi: int, to: Vector3, sp: Vector2) -> void:
 		return
 	await super._send_reflection(pi, to, sp)
 
+## is this place behind the Gate: on the stair, in the stoa, on the walk, in the round room (and not in another wing that lies as far north)
+func _sh_here(p: Vector3) -> bool:
+	if p.z >= UZ0 - 0.3: return false
+	if p.x > SH_SX0 - 0.6 and p.x < SH_SX1 + 0.6 and p.z > SH_SZ0 - 3.3: return true
+	if p.x > SH_R_C.x - 1.2 and p.x < SH_X + 1.2 and p.z > SH_SZ0 - 3.3 and p.z < SH_WALK_Z + 1.2: return true
+	return absf(p.x - SH_R_C.x) < SH_R_H + 0.3 and absf(p.z - SH_R_C.z) < SH_R_H + 0.3
+
 func _process(dt: float) -> void:
 	super._process(dt)
 	if not sh_ready: return
-	if not flags.get("sh_arr", false) and started and woke and not busy and not ended and shot == null and pos.z < UZ0 - 0.2 and absf(pos.x - SH_X) < 0.9: _sh_arrive()
-	var mine := pos.z < UZ0 - 0.3      # behind the Gate the waters lie at the floor's height: the bodies that mirror her in waters of other levels are put away
+	if not flags.get("sh_arr", false) and started and woke and not busy and not ended and shot == null and pos.z < UZ0 - 0.2 and pos.z > SH_SZ1 - 0.5 and absf(pos.x - SH_X) < 0.9: _sh_arrive()      # (only on the stair behind the Gate: other wings reach as far north)
+	var mine := _sh_here(pos)      # behind the Gate the waters lie at the floor's height: the bodies that mirror her in waters of other levels are put away
 	for k in H:
 		if String(k).begins_with("mir_"): (H[k].holder as Node3D).visible = not mine
 	if not sh_still.is_empty() and refl_busy == 0:      # it keeps its eyes on her
@@ -695,10 +706,10 @@ func _sh_r_kneel(e: Dictionary, is_main: bool, v: float) -> void:
 ## the arch is open: she goes on through it by herself, the eye ahead of her, to the way into the round room. There
 ## she stops. Deep in the mirror an eye opens; the pool trembles, and her reflection is gone from under her
 func _sh_to_shrine() -> void:
-	rects["sh_n"].on = true
+	for q in ["sh_n", "sh_n2", "sh_n3"]: rects[q].on = true
 	cam_focus = SH_R_VIEW + Vector3(2.33, 0, 2.33); cam_focus_on = true
 	create_tween().tween_property(cam, "size", PLAY_SIZE, 3.2).set_trans(Tween.TRANS_SINE)
-	await go([Vector3(SH_X, 0, SH_R_C.z + 2.75)], 1.25)
+	await go([Vector3(SH_X, 0, SH_WALK_Z), Vector3(SH_R_C.x, 0, SH_WALK_Z), Vector3(SH_R_C.x, 0, SH_R_C.z + 2.75)], 1.25)
 	await face(_sh_r_mirror_at())
 	await wait(0.8)
 	var pm: ShaderMaterial = N["sh_r_pane"]
@@ -843,7 +854,7 @@ func _sh_stoa_done() -> void:
 		for sfx in ["", "_m"]:
 			for k in ["sh_cl", "sh_ch"]: (N["%s%d%s" % [k, i, sfx]] as Node3D).visible = true; (N["%s%d%s" % [k, i, sfx]] as Node3D).scale = Vector3.ONE
 	for k in ["sh_mistN", "sh_bankN", "sh_mistS", "sh_bankS"]: (N[k] as Node3D).visible = false
-	rects["sh_n"].on = true
+	for q in ["sh_n", "sh_n2", "sh_n3"]: rects[q].on = true
 	pos = Vector3(SH_X, 0, SH_IN_N); yaw = PI; cam_t = pos
 
 ## (for stills) the shrine as it stands after so many of its steps: 1 the eye open and the pool trembling, 2 the cloth

@@ -1,4 +1,4 @@
-extends "res://ch1.gd"
+extends "res://wing_lamps.gd"
 ## EIDOLON, chapter 1: the wing of the Spring ("the water he shut"). The garden of his trials: hands and stances.
 ## Four courts north of the atrium, on one dry channel:
 ##   P.1 the gilded palm            a round pool with an islet, and one colossus on its rim
