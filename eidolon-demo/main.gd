@@ -162,6 +162,7 @@ var sheet_held := false
 var her_mats: Array = []
 var posing := false
 var cam_focus_on := false
+var cam_up_k := 1.0
 var cam_vel := Vector3.ZERO      # how fast the point the eye keeps is moving (see _process: it gathers speed gradually)
 var cam_focus := Vector3.ZERO
 var refl_mat: ShaderMaterial
@@ -5146,7 +5147,7 @@ func _process(dt: float) -> void:
 		var cv := (cam_t - cam_was) / dt
 		cam_vel = cam_vel.move_toward(cv, (9.0 if cv.length() > cam_vel.length() else 40.0) * dt)      # (it gathers speed gently; it may slow four times as fast, but not in one frame)
 		cam_t = cam_was + cam_vel * dt
-	cam.position = cam_t + cam.basis.y * (1.9 if cam.size > 5.0 else 0.85) + cam.basis.z * 34.0
+	cam.position = cam_t + cam.basis.y * (1.9 if cam.size > 5.0 else 0.85) * cam_up_k + cam.basis.z * 34.0      # (cam_up_k: 1 as always; the turned picture brings it to -1, so that she keeps her place on the screen)
 	if shot != null: cam.position = (shot.c as Vector3) + cam.basis.z * maxf(34.0, cam.size * 1.33)   # a very wide still (the map) from further back, or the sea at its foot falls behind the eye and is cut off
 	if old_world and started and not ended and pos.z < KZ0 - 0.25: _end()
 

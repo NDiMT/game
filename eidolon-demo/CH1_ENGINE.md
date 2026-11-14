@@ -154,6 +154,33 @@ water turns it back. It is switched off unless `FLIP=1` (or the run `-- flip`, w
   at the floor's height, `mir_<key>` for each water below it, `_cs_water`). All of them followed her everywhere, so
   that in any pool her image was several bodies, one below another (dark and blurred, it only looked too long). A
   `mir_<key>` body now shows only while she is in its own water's court (`ch1._process`).
+- **The turned picture is where her shadow is played** (the owner: "the whole point of the game: you do things with
+  your reflection and go on"). `FLIP=demo`, or the export preset `WebFlip` (feature `flipdemo`): the first two
+  waters (`FLIP_DEMO_WATERS`: the harbour and the trough).
+  - A tap on open water (or on a thing in it) turns the picture over. She goes to the water's edge first if she is
+    not on its footing. **She stays there**: her image is taken out of `H` (`_refl_out_now`), so the water shows
+    her standing, in her colours. The body the player now moves (`pos`, dark) is her **shadow**.
+  - The shadow walks on what that water gives to stand on (`W[wid].foot`, by `_refl_path`; `_shadow_go` puts the
+    way straight into `route`): the mole is whole for it, the world's grille is not there, the water's grille is.
+  - **What exists on one side only changes sides** with the picture (`_flip_world`): the stones of the mole's middle
+    (`cross_r` in the world, `cross_m` in the water), the trough's two grilles (`g2`/`g2_m`, `g2w_r`/`g2w_m`). Each is
+    built on both sides and one of the pair is put away: a thing of the world by sinking, a thing of the water by
+    being drawn flat ("down" in the water is up in the world).
+  - A thing of the water under the finger (`_tap_dist_world`: at its own place in the world, since the turned picture
+    shows the thing itself): the shadow goes to it and does it (`_shadow_use`; the wheels: `_shadow_wheel`, with her
+    own hands). What it works stays done.
+  - A tap on open water turns the picture back: the shadow sinks where it is, and she is herself again where she
+    stood (`flip_anchor`).
+  - The eye does not draw back. `cam_up_k` (main.gd) brings her to the middle line of the view before the picture
+    turns over about that line, and to her usual place on the other side of it afterwards.
+  - Behind the second sluice the trial ends with the end card. `-- flipdemo` plays both rooms through and prints
+    what happens.
+- Not done: every other water still sends her image out as before; a new one-sided thing needs its pair built and
+  a line in `_flip_world`; only what has a twin under `mroot` is in the water.
+- Found by it, and put right for the whole game: her image has one body for each level of water (`mir` for waters
+  at the floor's height, `mir_<key>` for each water below it, `_cs_water`). All of them followed her everywhere, so
+  that in any pool her image was several bodies, one below another (dark and blurred, it only looked too long). A
+  `mir_<key>` body now shows only while she is in its own water's court (`ch1._process`).
 - **As a thing to play** (`FLIP=demo`, or the export preset `WebFlip`, which carries the feature `flipdemo`): in the
   first two waters (`FLIP_DEMO_WATERS`: the harbour and the trough) a tap on open water turns the picture over and
   back; a thing in the water is still a thing (the wheels: her image goes to them, in either picture); if she walks
