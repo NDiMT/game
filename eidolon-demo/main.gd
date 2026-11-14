@@ -162,6 +162,7 @@ var sheet_held := false
 var her_mats: Array = []
 var posing := false
 var cam_focus_on := false
+var cam_vel := Vector3.ZERO      # how fast the point the eye keeps is moving (see _process: it gathers speed gradually)
 var cam_focus := Vector3.ZERO
 var refl_mat: ShaderMaterial
 var shadow_c := Vector3(0.66, 0.66, 0.86)
@@ -5136,9 +5137,14 @@ func _process(dt: float) -> void:
 	if not carry.is_empty():      # a thing in a hand goes where the hand goes
 		var csk: Skeleton3D = carry.sk
 		(carry.node as Node3D).global_position = csk.global_transform * csk.get_bone_global_pose(carry.bone).origin + Vector3(0, 0.24 if carry.flip else -0.24, 0)
+	var cam_was := cam_t
 	if cam_focus_on: cam_t = cam_t.lerp(cam_focus, 1.0 - exp(-1.8 * dt))
 	elif rig_file != "": cam_t = cam_t.lerp(pos + vel * 0.25, 1.0 - exp(-4.0 * dt))
 	else: cam_t = cam_t.lerp(pos + vel * 0.55, 1.0 - exp(-2.4 * dt))
+	if dt > 0.0:      # the eye never starts with a jerk: it may slow as fast as it likes, but it gathers speed gradually
+		var cv := (cam_t - cam_was) / dt
+		cam_vel = cv if cv.length() <= cam_vel.length() else cam_vel.move_toward(cv, 9.0 * dt)
+		cam_t = cam_was + cam_vel * dt
 	cam.position = cam_t + cam.basis.y * (1.9 if cam.size > 5.0 else 0.85) + cam.basis.z * 34.0
 	if shot != null: cam.position = (shot.c as Vector3) + cam.basis.z * maxf(34.0, cam.size * 1.33)   # a very wide still (the map) from further back, or the sea at its foot falls behind the eye and is cut off
 	if old_world and started and not ended and pos.z < KZ0 - 0.25: _end()
