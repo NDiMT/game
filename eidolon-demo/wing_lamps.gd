@@ -1,4 +1,4 @@
-extends "res://ch1.gd"
+extends "res://wing_cistern.gd"
 ## EIDOLON, chapter 1, the wing of the lamps: "the water he blinded". Light on water is a blind eye: where the glare
 ## of a flame falls, the water shows nothing and her reflection has nowhere to stand. Four courts south of the atrium,
 ## in a ring: from the door a causeway comes down to a landing, where the main channel turns west to the sealed
@@ -600,7 +600,7 @@ func _lm_d() -> void:
 	g.set_shader_parameter("lost_a", 0.0); g.set_shader_parameter("blur_px", 0.6); g.set_shader_parameter("lod", 0.0)
 	prim(cm, Vector3(c.x, 0.011, c.z), g).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var ring := [R(LM_DX0 + 0.6, -18.4, -38.05, -17.85), R(-45.8, -18.4, -45.3, -10.85), R(-45.8, -11.55, -38.05, -10.85), R(-38.85, -18.4, -38.05, -10.85), R(-40.35, -17.85, -39.6, -17.15)]
-	W["LM4"] = {"r": [c.x - rr, c.z - rr, c.x + rr, c.z + rr], "round": Vector3(c.x, c.z, rr), "heads": ring, "foot": {}}
+	W["LM4"] = {"r": [c.x - rr, c.z - rr, c.x + rr, c.z + rr], "round": true, "c": c, "rad": rr, "heads": ring, "foot": {}}      # (a round water is said the way ch1 says it)
 	WL.append("LM4")
 	var clip := [Vector3(c.x, c.z, rr)]
 	_lm_lamp("dn", "LM4", c + Vector3(0, 0, -3.0), Vector3(0, 0, 1), 1.6, 1.5, {"clip": clip})
@@ -895,7 +895,6 @@ func _water_under(sp: Vector2):
 	if wu == null: return null
 	var wa: Array = wu
 	var w: Dictionary = W[WL[wa[0]]]; var g: Vector3 = wa[1]
-	if w.has("round") and Vector2(g.x - w.round.x, g.z - w.round.y).length() > w.round.z: return null
 	for d in w.get("dry", []):
 		if in_rect(d, g): return null
 	return wu

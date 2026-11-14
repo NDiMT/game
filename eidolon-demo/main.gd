@@ -350,6 +350,23 @@ class Pocket extends Control:
 					draw_line(c + Vector2(-0.2, -0.2) * u, c + Vector2(0.5, 0.5) * u, col, lw * 1.2)
 					draw_line(c + Vector2(0.5, 0.5) * u, c + Vector2(0.66, 0.34) * u, col, lw * 1.2)
 					draw_line(c + Vector2(0.3, 0.3) * u, c + Vector2(0.44, 0.16) * u, col, lw * 1.2)
+				"reed":      # a cut reed: a long hollow stalk with its joints, one leaf
+					draw_line(c + Vector2(-0.46, 0.58) * u, c + Vector2(0.4, -0.58) * u, col, lw * 1.5)
+					for f in [0.3, 0.62]:
+						var q: Vector2 = c + (Vector2(-0.46, 0.58).lerp(Vector2(0.4, -0.58), f)) * u
+						draw_line(q + Vector2(-0.08, -0.06) * u, q + Vector2(0.08, 0.06) * u, col, lw)
+					draw_line(c + Vector2(0.08, -0.14) * u, c + Vector2(0.52, -0.1) * u, col, lw * 0.8)
+				"lamp":      # a clay oil lamp: its bowl, its spout, a flame
+					draw_arc(c + Vector2(-0.08, 0.1) * u, 0.44 * u, 0.0, PI, 20, col, lw)
+					draw_line(c + Vector2(-0.52, 0.1) * u, c + Vector2(0.62, 0.1) * u, col, lw)
+					draw_line(c + Vector2(0.36, 0.1) * u, c + Vector2(0.62, -0.06) * u, col, lw)
+					draw_arc(c + Vector2(0.62, -0.3) * u, 0.13 * u, -PI * 0.5, PI * 1.5, 14, col, lw * 0.9)
+					draw_arc(c + Vector2(-0.5, -0.02) * u, 0.13 * u, 0.0, TAU, 14, col, lw * 0.8)
+				"cloth":      # a cloth hung by its middle: a knot, two falls, a hem that dips
+					var pts := PackedVector2Array([c + Vector2(0.0, -0.56) * u, c + Vector2(0.5, -0.2) * u, c + Vector2(0.44, 0.5) * u, c + Vector2(0.2, 0.34) * u, c + Vector2(0.0, 0.56) * u, c + Vector2(-0.2, 0.34) * u, c + Vector2(-0.44, 0.5) * u, c + Vector2(-0.5, -0.2) * u, c + Vector2(0.0, -0.56) * u])
+					draw_polyline(pts, col, lw, true)
+					draw_line(c + Vector2(0.0, -0.56) * u, c + Vector2(0.2, 0.34) * u, col, lw * 0.7); draw_line(c + Vector2(0.0, -0.56) * u, c + Vector2(-0.2, 0.34) * u, col, lw * 0.7)
+					draw_circle(c + Vector2(0.0, -0.56) * u, lw * 1.2, col)
 	func _box(fill: Color, edge: Color, k: float) -> StyleBoxFlat:
 		var sb := StyleBoxFlat.new(); sb.bg_color = fill; sb.border_color = edge
 		sb.set_border_width_all(int(maxf(2.0 * k, 1.0))); sb.set_corner_radius_all(int(14.0 * k)); sb.anti_aliasing = true
@@ -1704,7 +1721,7 @@ func _ready() -> void:
 			pals[dn] = deep
 	hero_real = OS.get_environment("REAL") == "1"
 	if OS.get_environment("RIG") != "": rig_file = OS.get_environment("RIG") if (OS.get_environment("RIG").begins_with("hq") or OS.get_environment("RIG").begins_with("veil") or OS.get_environment("RIG").begins_with("w") or OS.get_environment("RIG").begins_with("lp") or OS.get_environment("RIG").begins_with("sr") or OS.get_environment("RIG").begins_with("nb") or OS.get_environment("RIG").begins_with("ione")) else "min" + OS.get_environment("RIG"); hero_real = true
-	elif OS.get_environment("SHAPE") == "" and OS.get_environment("HERO") == "" and not hero_real: rig_file = "wrap3r"; hero_real = true
+	elif OS.get_environment("SHAPE") == "" and OS.get_environment("HERO") == "" and not hero_real: rig_file = "ione4r"; hero_real = true      # (the heroine made again from the four views; RIG=wrap3r brings the older one back)
 	if OS.get_environment("SHAPE") != "": shape_file = "min" + OS.get_environment("SHAPE")
 	elif not hero_real and OS.get_environment("HERO") == "": shape_file = "min9t"
 	var sb := Shader.new()
