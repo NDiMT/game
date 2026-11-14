@@ -208,6 +208,11 @@ void fragment(){
 				col = mix(col, mix(a, vec3(0.6, 0.85, 0.88), 0.16), w);
 			}
 		}
+		// the edges of the picture fall away a little: warm in the world, cooler and deeper in what the water shows
+		float vr = length((SCREEN_UV - 0.5) * vec2(1.25, 1.0)) / 0.72;
+		float vg = smoothstep(0.55, 1.2, vr);      // (soft: it begins far out and never goes deep)
+		float vm = th >= 0.0 ? 0.0 : 1.0;
+		col *= mix(vec3(1.0), mix(vec3(0.88, 0.85, 0.84), vec3(0.78, 0.84, 0.91), vm), vg);
 		COLOR = vec4(col, 1.0);
 	} else if (mode == 1) {
 		float ang = 3.14159265 * st; float D = 2.6;
@@ -479,14 +484,12 @@ func _flip_pane_always() -> bool: return flip_fx == "" and (flip_demo or flip_te
 ## Under the water the same world is drawn, turned over; at the line the two pictures are the same picture, so nothing
 ## jumps. What changes sides (who is dark, the stones, the grilles, the waters' look) changes there, at the line.
 func _flip_real(over: bool) -> void:
-	var H2 := 1.25      # the eye comes down to the waterline, rests there a moment (she above the line, her shadow below it), and goes on
+	var T := 2.7      # the eye comes down to the waterline and goes on under it, in one move
 	flip_rect.visible = true
 	flip_mask_vp.size = Vector2i(get_viewport().get_visible_rect().size * 0.5); flip_mask_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	flip_moving = true
 	var tw3 := create_tween()
-	tw3.tween_property(self, "flip_th", 0.0, H2).from(1.0 if over else -1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tw3.tween_interval(0.42)
-	tw3.tween_property(self, "flip_th", -1.0 if over else 1.0, H2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw3.tween_property(self, "flip_th", -1.0 if over else 1.0, T).from(1.0 if over else -1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await tw3.finished
 	await get_tree().process_frame
 	flip_moving = false; flip_mask_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
