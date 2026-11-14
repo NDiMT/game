@@ -1,4 +1,4 @@
-extends "res://ch1.gd"
+extends "res://wing_lamps.gd"
 ## EIDOLON, chapter 1: what lies behind the Gate. III.3 the stoa of the eight arches, and III.4 the first shrine.
 ## A stair goes down behind the Gate to a stoa beside a canal of still water. The stoa is one bay: an entrance with
 ## eight small lamps, an arch at its far end, and whoever goes through either finds the same bay again, dressed anew.
