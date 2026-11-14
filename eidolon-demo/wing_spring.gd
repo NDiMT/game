@@ -1154,9 +1154,9 @@ func _do_sp4_place() -> void:
 	cam_focus_on = false
 	create_tween().tween_property(cam, "size", s0, 1.4).set_trans(Tween.TRANS_SINE)
 
-## she lets the beam down (if nothing else holds it, it hangs again) and steps off the place; then the tap that asked
-## for it is taken
-func _sp4_leave(sp: Vector2) -> void:
+## she lets the beam down (if nothing else holds it, it hangs again) and steps off the place; then what the tap asked
+## for is done: the thing k that was under the finger, or else the place g on the ground
+func _sp4_leave(k: String, g: Vector3) -> void:
 	busy = true
 	posing = false; flags["sp4_posed"] = false
 	if not flags.get("sp4_pinned", false): await _sp4_beam_to(SP4_SAG, 1.5)
@@ -1167,8 +1167,11 @@ func _sp4_leave(sp: Vector2) -> void:
 	while pos.x > pl.x - 0.14: await get_tree().process_frame
 	create_tween().tween_property(self, "pos:y", 0.0, 0.5).set_trans(Tween.TRANS_SINE)
 	await arrived
+	await get_tree().process_frame      # (her arrival is still being dealt with: what is asked next must not be taken for part of it)
 	busy = false; settled.emit()
-	if _tap_dist("sp4_place", sp) > 64.0 * get_viewport().get_visible_rect().size.x / 720.0: tap(sp)
+	if k == "sp4_place": return
+	if k != "": use(k)
+	else: tap(cam.unproject_position(g))      # (the eye has moved since: the same place, where it is seen now)
 
 func tap(sp: Vector2) -> void:
 	if started and not ended and not busy and flags.get("sp4_posed", false):      # she holds the beam: only an order to her reflection leaves her there
@@ -1178,7 +1181,13 @@ func tap(sp: Vector2) -> void:
 			if not done.has(k) and _tap_dist(k, sp) < 64.0 * px: to_water = true
 		if _tap_dist("sp_col_4", sp) < _tap_dist("sp_palm_4", sp) and _tap_dist("sp_col_4", sp) < 64.0 * px and not done.has("sp_col_4"): to_water = false
 		if not to_water:
-			_sp4_leave(sp); return
+			var best := ""; var bd := 64.0 * px      # what the tap means is settled now: by the time she has stepped down the eye will have moved
+			for k in objs:
+				if done.has(k): continue
+				var d := _tap_dist(k, sp)
+				if d < bd: bd = d; best = k
+			var ro := cam.project_ray_origin(sp); var rd := cam.project_ray_normal(sp)
+			_sp4_leave(best, ro + rd * (-ro.y / rd.y)); return
 	super.tap(sp)
 
 ## P.4: the door, as the water shows it. Her reflection, come over the palm and along the jetty, lays its hands on it.
