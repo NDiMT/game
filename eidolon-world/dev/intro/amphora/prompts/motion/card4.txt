@@ -1,19 +1,20 @@
-The two attached images are the same picture: it is both the FIRST FRAME and the LAST FRAME of the video, so the
-animation ends exactly where it began and can loop.
+The attached picture is the FIRST FRAME of the video.
 Bring this ancient Greek black-figure vase painting to life as flat 2D cut-out animation, as if the painted figures on
 the vase began to move. LOCKED-OFF STATIC CAMERA: no zoom, no pan, no tilt, no camera movement at all. The orange clay
 ground, the black bands at the left and right, and everything that is not named below stay perfectly still.
 The drawing stays exactly as painted: the same flat colours, the same outlines and incised lines, no shading, no 3D,
-no light effects, no new objects, no new figures, no text. Every figure keeps its exact look, clothes and proportions.
-Movement is calm, slow and continuous. Single continuous shot, no cuts. Silent: no music, no voices, no sound.
+no light effects, no new objects, no new figures, no text. Every figure keeps its exact look, clothes and proportions
+from the first frame to the last. Movement is calm, slow and continuous, one action flowing into the next. In the
+last second everything comes to rest and holds still. Single continuous shot, no cuts. Silent: no music, no voices.
 
-WHAT MOVES:
-- The bearded man draws the red veil down over the woman's head with both hands: his hands lift the edge of the veil,
-  pull it down, and smooth its folds along her head and shoulder; he shifts his weight and takes one small step
-  closer and one back.
-- The veiled woman stands; the veil and her dress sway slightly as he arranges them, her shoulders rise and fall as
-  she breathes, her foot shifts once. HER FACE IS COMPLETELY HIDDEN UNDER THE RED VEIL THE WHOLE TIME: the veil is
-  never lifted and no face is ever seen.
-- The red cloth hanging from the peg at the right sways slowly.
-- The mirrors, the shelves and the wrapped bundles do not move.
-At the end both are back exactly in their first pose.
+WHAT HAPPENS, IN ORDER:
+- At first the young woman's head is uncovered and her face is seen in profile. She stands still, facing right.
+- The bearded man behind her slowly lowers the long red veil that he holds above her: it comes down over her hair and
+  then over her face, until it hides her hair and her face completely and hangs to her waist. He does it in one calm,
+  slow movement.
+- He smooths the veil once over her head and shoulder, then lowers his arms and stands still.
+- Once the veil is down she is a plain red veiled figure: no face, no hair, no skin of the head is seen again.
+  She does not walk; she only stands, and her head sinks a little.
+- Both stay in strict profile the whole time, as painted; nobody turns toward the viewer. The man stays where he
+  stands: he does not walk away.
+- The shelves, the wrapped bundles, the bare mirror, the hanging cloth and the small hand mirror do not move.

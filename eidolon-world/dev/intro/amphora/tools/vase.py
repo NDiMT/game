@@ -426,7 +426,7 @@ def render(f0, f1, out):
     orn_aged = {}      # the ornament bands with their marks of age, for each of the five places round the vase
     hy = ty(h); cov3 = cov[..., None]
     y_pan = int(ty(PAN_H0)); x_pan = int(tx(-PANEL * 0.5)); y_t0 = int(ty(TXT_H0)); y_t1 = y_t0 + txt[0][0].shape[0]
-    T0 = [next(j for j, e in enumerate(ev) if e[1] == i and e[0] == float(i)) / FPS - (0.5 if sc[i].once else 1.0) for i in range(7)]      # each picture begins to move as it comes round
+    T0 = [next(j for j, e in enumerate(ev) if e[1] == i and e[0] == float(i)) / FPS + ((1.6 if sc[i].vn < 120 else -0.5) if sc[i].once else -1.0) for i in range(7)]      # each picture begins to move as it comes round
     loc = lambda i, t: max(0.0, t - T0[i]) if 0 <= i <= 6 else 0.0
     def slot_tex(i, t, wr):      # the strip of the vase that carries scene i (None: a plain side)
         ph = (i if i is not None else -1) % 5

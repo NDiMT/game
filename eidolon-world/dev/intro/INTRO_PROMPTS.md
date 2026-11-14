@@ -76,11 +76,11 @@ over its last second, and after that only breathes (a few of its last frames, ve
 | Card | What happens |
 |---|---|
 | 1 | Theron strokes the statue's cheek, steps back to look at the whole of her, comes close again and lays his hand on her shoulder. The statue is stone and does not move; the olive branch sways |
-| 2 | Theron prays; she lifts her hands and looks at them, steps down from the block and stands on the ground; he lowers his hands and looks up at her; the goddess tilts the mirror, the dove lifts its wings |
+| 2 | she steps down from the block and stands; nothing more (the clip is cut there: after it she turned toward the viewer) |
 | 3 | she walks along the rocks into the wind, feeling her face, and stops by the water; Theron watches from the doorway, hides his eyes and goes inside |
-| 4 | Theron draws the veil down over her and smooths it, shifting his feet; the veil sways (two one-way clips in which he then covers the last bare mirror were not used: in one he jumps past her in a single frame, in the other the view slides sideways) |
-| 5 | (still the earlier clip, played forward and back: the one-way clip showed a face under the veil, and was not used) she steps to the water's edge and back, her hand at her veil; the woman in the water does the same |
-| 6 | she sits up and rows two strokes, lays the oar down, leans over the side and touches the water; rings spread |
+| 4 | her face is seen first; then Theron lowers the veil over her hair and her face, smooths it, and stands (the painting was redrawn for this: she is unveiled in it, and he holds the veil above her) |
+| 5 | she takes two small steps to the water's edge and stands there; the woman in the water does the same |
+| 6 | she sits up and rows two strokes, lays the oar down, leans over the side and touches the water; rings spread (in the painting the arms of the woman in the water are white, as hers are) |
 | 7 | the empty boat rocks; the veil drifts away; on the shore Theron walks to the edge, stretches out his arm, lets it sink |
 
 Card 5 was first drawn with her bending over the water from a rock; the video model refused that picture three

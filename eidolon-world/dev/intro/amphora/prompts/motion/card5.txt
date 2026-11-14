@@ -1,19 +1,19 @@
-The two attached images are the same picture: it is both the FIRST FRAME and the LAST FRAME of the video, so the
-animation ends exactly where it began and can loop.
+The attached picture is the FIRST FRAME of the video.
 Bring this ancient Greek black-figure vase painting to life as flat 2D cut-out animation, as if the painted figures on
 the vase began to move. LOCKED-OFF STATIC CAMERA: no zoom, no pan, no tilt, no camera movement at all. The orange clay
 ground, the black bands at the left and right, and everything that is not named below stay perfectly still.
 The drawing stays exactly as painted: the same flat colours, the same outlines and incised lines, no shading, no 3D,
-no light effects, no new objects, no new figures, no text. Every figure keeps its exact look, clothes and proportions.
-Movement is calm, slow and continuous. Single continuous shot, no cuts. Silent: no music, no voices, no sound.
+no light effects, no new objects, no new figures, no text. Every figure keeps its exact look, clothes and proportions
+from the first frame to the last. Movement is calm, slow and continuous, one action flowing into the next. In the
+last second everything comes to rest and holds still. Single continuous shot, no cuts. Silent: no music, no voices.
 
-WHAT MOVES:
-- The veiled woman standing on the shore looks at her mirror image in the calm water. She takes one small step forward
-  to the water's edge and one back; the hand at her chest lifts slowly to the edge of her veil, touches it, and sinks
-  again; her other hand moves a little at her side; her covered head tilts gently. Her veil and the hem of her dress
-  stir in a light breeze. The red veil covers her head completely the whole time.
-- Her mirror image in the dark water below copies each movement, upside down, and wavers a little as water does.
-- The short pale dashes of light on the water shimmer.
-- The two small gulls beat their wings slowly and glide.
-- The sea is a flat, calm, dark band and stays so. The sun does not move.
-At the end she stands exactly as in the first frame.
+WHAT HAPPENS, IN ORDER:
+- The veiled woman on the shore takes two small, slow, ordinary steps forward to the very edge of the shore, and there
+  she stands still, upright, looking down at the water. That is all she does: no gestures, her arms stay as they are.
+- Her head is wrapped completely in the plain red cloth, closed all round like a hood with no opening: THE WHOLE TIME
+  it stays a plain red shape. No face, no skin, no hair, no eye is ever seen.
+- Her mirror image in the dark water below makes the same two steps, upside down, and then is still too; it wavers
+  very slightly as water does.
+- The two small gulls stay the small black shapes they are and do not move from their places; no other bird appears.
+- The short pale dashes of light on the water shimmer faintly. The sea is a flat, calm, dark band and stays so. The
+  sun does not move.
