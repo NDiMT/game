@@ -163,6 +163,7 @@ var her_mats: Array = []
 var posing := false
 var cam_focus_on := false
 var cam_up_k := 1.0
+var sink_main := 0.0      # how far her own body is sunk into the floor it stands on (the floor cuts it: see floor_y)
 var cam_pitch := 35.264      # how steeply the eye looks down, in degrees (always this; the turn of the picture brings it down to the waterline and up again)
 var cam_vel := Vector3.ZERO      # how fast the point the eye keeps is moving (see _process: it gathers speed gradually)
 var cam_focus := Vector3.ZERO
@@ -5083,6 +5084,7 @@ func _process(dt: float) -> void:
 	for k in H:
 		var hd: Node3D = H[k].holder
 		hd.position = pos; hd.rotation.y = yaw
+		if sink_main > 0.0 and String(k) == "main": hd.position.y -= sink_main
 		if H[k].ap == null: continue
 		var hap: AnimationPlayer = H[k].ap
 		hap.speed_scale = (1.0 - smoothstep(0.0, 1.0, pose_k)) * (clampf(spd / 1.1, 0.4 if rig_file != "" else 0.7, 2.3) if moving else 1.0)

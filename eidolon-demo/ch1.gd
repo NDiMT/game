@@ -246,6 +246,9 @@ var flip_fx := OS.get_environment("FLIP_FX")      # "": the eye goes down to the
 var flip_th := 1.0      # +1: the eye looks down on the world; 0: along the waterline; -1: from under it
 var flip_side := 1.0      # which side of the waterline the picture is drawn for just now
 var flip_moving := false
+var flip_icon: Control      # the sign that turns the world over: it shows only where she stands by a water that can be turned (and, turned, always)
+var flip_icon_a := 0.0
+var flip_icon_wid := ""
 var flip_mask_vp: SubViewport
 var flip_mask_cam: Camera3D
 const FLIP_PITCH := 35.264
@@ -276,6 +279,7 @@ func _flip_setup() -> void:
 	flip_mask_cam.cull_mask = 1 << 19; flip_mask_vp.add_child(flip_mask_cam); flip_mask_cam.current = true
 	for mm0 in (H["main"].holder as Node).find_children("*", "MeshInstance3D", true, false): (mm0 as MeshInstance3D).set_layer_mask_value(20, true)
 	flip_mat.set_shader_parameter("her_mask", flip_mask_vp.get_texture()); flip_mat.set_shader_parameter("dark", FLIP_DARK)
+	_flip_icon_setup()
 	flip_rect.material = flip_mat; flip_rect.visible = false; cl.add_child(flip_rect)
 	for m in timed:
 		if m is ShaderMaterial and (m as ShaderMaterial).shader == shaders["glass"]: flip_glass.append([m, float((m as ShaderMaterial).get_shader_parameter("blur_px"))])
@@ -314,16 +318,17 @@ func _flip(sp: Vector2, wu: Array) -> void:
 		flip_busy = true
 		hold_id = -1; route.clear(); pending = ""
 		# the shadow goes back into her: it sinks where it is, and she is where she stood
-		var body: Node3D = H["main"].holder
-		var sk := create_tween(); sk.tween_property(body, "scale", Vector3(1, 0.02, 1), 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-		await sk.finished
-		pos = flip_anchor; yaw = flip_anchor_yaw
-		if flip_fx == "":      # the eye goes back to where she stands, and her shadow comes up under her feet
-			var t0 := 0.0
-			while cam_t.distance_to(pos) > 0.06 and t0 < 1.6: await get_tree().process_frame; t0 += get_process_delta_time()
-			var ru := create_tween(); ru.tween_property(body, "scale", Vector3.ONE, 0.35).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-			await ru.finished
-		else: cam_t = pos
+		if _flat(pos, flip_anchor) > 0.05:      # (it keeps its shape: the surface takes it, as water would)
+			var sk := create_tween(); sk.tween_property(self, "sink_main", 1.95, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			await sk.finished
+			pos = flip_anchor; yaw = flip_anchor_yaw
+			if flip_fx == "":      # the eye goes back to where she stands, and her shadow comes up under her feet
+				var t0 := 0.0
+				while cam_t.distance_to(pos) > 0.35 and t0 < 1.1: await get_tree().process_frame; t0 += get_process_delta_time()
+				var ru := create_tween(); ru.tween_property(self, "sink_main", 0.0, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+				await ru.finished
+			else: cam_t = pos
+		else: pos = flip_anchor; yaw = flip_anchor_yaw
 	if flip_fx == "": await _flip_real(to > 0.5); return
 	flip_r = 0.0
 	var vs := get_viewport().get_visible_rect().size
@@ -348,7 +353,7 @@ func _flip(sp: Vector2, wu: Array) -> void:
 	tw3.tween_method(func(v: float) -> void:
 		for hm in her_mats: (hm as ShaderMaterial).set_shader_parameter("tint", Vector3.ONE.lerp(FLIP_DARK, v))
 		for mm2 in flip_mir: (mm2 as ShaderMaterial).set_shader_parameter("tint", FLIP_DARK.lerp(Vector3.ONE, v)), 1.0 - to, to, T * 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	if to < 0.5: tw3.tween_property(H["main"].holder, "scale", Vector3.ONE, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	if to < 0.5: tw3.tween_property(self, "sink_main", 0.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await tw3.finished
 	flip_on = to > 0.5
 	flip_mat.set_shader_parameter("from_s", to); flip_mat.set_shader_parameter("r", 0.0)
@@ -364,6 +369,41 @@ func _flip(sp: Vector2, wu: Array) -> void:
 	flip_busy = false
 	if flip_demo and flip_on and not flags.get("flip_said", false) and not done.has("wheel1"): flags["flip_said"] = true; say("you are her shadow  ·  here the mole is whole")
 	print("FLIP ", "over" if flip_on else "back")
+
+## The sign under the picture: a ring with the waterline across it, a mark above the line and the same mark, hollow, below.
+func _flip_icon_setup() -> void:
+	var cl := CanvasLayer.new(); cl.layer = 5; add_child(cl)
+	flip_icon = Control.new(); flip_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE; flip_icon.modulate.a = 0.0; cl.add_child(flip_icon)
+	flip_icon.draw.connect(func() -> void:
+		var px := get_viewport().get_visible_rect().size.x / 720.0; var R := 34.0 * px
+		var ink := Color(1.0, 0.985, 0.94); var soft := Color(0.06, 0.1, 0.25, 0.3)
+		flip_icon.draw_circle(Vector2.ZERO, R + 1.0 * px, Color(0.06, 0.1, 0.25, 0.16))
+		flip_icon.draw_arc(Vector2.ZERO, R, 0.0, TAU, 64, soft, 5.0 * px, true); flip_icon.draw_arc(Vector2.ZERO, R, 0.0, TAU, 64, ink, 2.2 * px, true)
+		flip_icon.draw_line(Vector2(-R * 0.64, 0), Vector2(R * 0.64, 0), ink, 2.0 * px, true)
+		flip_icon.draw_colored_polygon(PackedVector2Array([Vector2(0, -R * 0.66), Vector2(R * 0.27, -R * 0.14), Vector2(-R * 0.27, -R * 0.14)]), ink)
+		flip_icon.draw_polyline(PackedVector2Array([Vector2(0, R * 0.66), Vector2(R * 0.27, R * 0.14), Vector2(-R * 0.27, R * 0.14), Vector2(0, R * 0.66)]), Color(ink, 0.8), 1.8 * px, true))
+
+## the water she stands by, if it can be turned
+func _flip_water_near() -> String:
+	for wid in (WL if flip_test else FLIP_DEMO_WATERS if flip_demo else []):
+		if W.has(wid) and not (W[wid].foot as Dictionary).is_empty() and _rect_dist(pos, W[wid].r) < 2.0: return wid
+	return ""
+
+func _flip_icon_frame(dt: float) -> void:
+	var wid := ""
+	if started and not ended and woke and not flip_busy and not busy: wid = flip_wid if flip_on else _flip_water_near()
+	flip_icon_wid = wid
+	flip_icon_a = move_toward(flip_icon_a, 1.0 if wid != "" else 0.0, dt / 0.5)
+	var vs := get_viewport().get_visible_rect().size
+	flip_icon.modulate.a = smoothstep(0.0, 1.0, flip_icon_a) * 0.96
+	flip_icon.position = Vector2(vs.x * 0.5, vs.y - 168.0 * vs.x / 720.0); flip_icon.rotation = PI * (0.5 - 0.5 * flip_th)
+	if wid != "" and not flip_on and flip_demo and not flags.get("icon_said", false): flags["icon_said"] = true; say("tap the sign  ·  the world turns over")
+
+func _flip_icon_press() -> void:
+	if flip_busy or busy or flip_icon_wid == "": return
+	var pr := create_tween(); pr.tween_property(flip_icon, "scale", Vector2.ONE * 0.88, 0.09); pr.tween_property(flip_icon, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	if flip_on: _flip(Vector2.ZERO, [])
+	else: _flip(Vector2.ZERO, [WL.find(flip_icon_wid)])
 
 ## The turn itself, as a thing the eye does: it comes down until it looks along the waterline (the world stands above the
 ## line and what the water shows of it hangs below, she above and her shadow under her feet), and goes on under it.
@@ -509,16 +549,17 @@ func _shadow_tap(sp: Vector2) -> void:
 	var way := _refl_path(flip_wid, pos, g)
 	if not way.pts.is_empty() and _foot_of(flip_wid, g, 0.12) != "":      # a place it can stand on
 		_shadow_go(way.pts); tapring.position = Vector3(g.x, 0.02, g.z); tap_p = 0.0; return
-	if _water_under(sp) != null: _flip(sp, []); return      # open water: the picture turns back
 	if not way.pts.is_empty(): _shadow_go(way.pts)      # anywhere else: as near as its footing comes
 
 ## (the trial) the words under the picture speak of the turning water
 func say(s: String) -> void:
-	if flip_demo and s.begins_with("tap the water"): s = "tap the water: the world turns over, and you are her shadow"
+	if flip_demo and s.begins_with("tap the water"): s = "tap the sign  ·  the world turns over"
 	super.say(s)
 
 ## while the picture is turned over, a finger on the screen means the place it would have meant the right way up
 func _unhandled_input(ev: InputEvent) -> void:
+	if ev is InputEventScreenTouch and ev.pressed and flip_icon != null and flip_icon_wid != "" and flip_icon_a > 0.6 and (ev.position as Vector2).distance_to(flip_icon.position) < 50.0 * get_viewport().get_visible_rect().size.x / 720.0:
+		_flip_icon_press(); return
 	if flip_on and flip_turn and (ev is InputEventScreenTouch or ev is InputEventScreenDrag):
 		ev = ev.duplicate(); ev.position.y = get_viewport().get_visible_rect().size.y - ev.position.y
 	super._unhandled_input(ev)
@@ -538,7 +579,13 @@ func _play_flipdemo() -> void:
 	tap(Vector2(360, 640))      # she wakes
 	await settled
 	await wait(1.6); await snap.call("demo_0_words_of_the_place")
-	_tap_at(Vector3(2.2, 0, 6.6)); await idle.call()      # open water: the picture turns over
+	var sign := func() -> void:      # the sign is pressed, once it shows
+		var n0 := 0
+		while flip_icon_wid == "" and n0 < 240: await get_tree().process_frame; n0 += 1
+		if flip_icon_wid == "": print("DEMO the sign does not show at ", pos)
+		_flip_icon_press(); await get_tree().process_frame
+	print("DEMO she woke at ", pos, ", the water by her: ", _flip_water_near())
+	await sign.call(); await idle.call()      # the picture turns over
 	print("DEMO 1 turned over: ", flip_on, ", she stays at ", flip_anchor); await wait(2.4); await snap.call("demo_1_harbour_turned")
 	var hub: Vector3 = N["hub1"]
 	_tap_at(hub); await wait(2.6); await snap.call("demo_2_shadow_on_the_mole")
@@ -546,23 +593,23 @@ func _play_flipdemo() -> void:
 	await wait(0.7); await snap.call("demo_2b_shadow_at_the_wheel")      # (she, in the water, stands as she stood)
 	await idle.call()
 	print("DEMO 1 wheel ", done.has("wheel1"), " sluice ", rects["S1"].on, " shadow at ", pos); await snap.call("demo_3_wheel_turned")
-	_tap_at(Vector3(2.2, 0, 6.6)); await idle.call()      # open water again: back
+	await sign.call(); await idle.call()      # back
 	print("DEMO 1 turned back: ", not flip_on, ", she is at ", pos); await wait(0.8); await snap.call("demo_4_harbour_back")
 	_tap_at(Vector3(-2.3, 0, -9.0)); await idle.call()      # she walks on, into the second room
 	print("DEMO 2 on the walk at ", pos)
-	_tap_at(Vector3(0.5, 0, -10.2)); await idle.call()      # its water
+	await sign.call(); await idle.call()      # its water
 	print("DEMO 2 turned over: ", flip_on, " at ", pos); await wait(0.8); await snap.call("demo_5_trough_turned")
 	var h2: Vector3 = N["hub2"]
 	_tap_at(h2); await idle.call()      # the wheel: the shadow is stopped by the grille that stands here, in the turned picture
 	print("DEMO 2 first try: wheel ", done.has("wheel2"), " shadow at ", pos); await snap.call("demo_6_stopped_at_the_grille")
-	_tap_at(Vector3(0.5, 0, -10.2)); await idle.call()      # back
+	await sign.call(); await idle.call()      # back
 	_tap_at(Vector3(-2.3, 0, TG_REAL + 0.6)); await idle.call()      # she walks on, past where that grille stood
 	print("DEMO 2 she walked on to ", pos)
-	_tap_at(Vector3(0.5, 0, -12.6)); await idle.call()      # over again
+	await sign.call(); await idle.call()      # over again
 	_tap_at(h2); await wait(2.0); await snap.call("demo_7_shadow_past_the_grille")
 	await idle.call()
 	print("DEMO 2 second try: wheel ", done.has("wheel2"), " sluice ", rects["S2"].on, " shadow at ", pos); await snap.call("demo_8_second_wheel")
-	_tap_at(Vector3(0.5, 0, -12.6)); await idle.call()      # back
+	await sign.call(); await idle.call()      # back
 	print("DEMO 2 turned back: ", not flip_on, ", she is at ", pos)
 	_tap_at(Vector3(-2.05, 0, TZ0 - 1.6))      # through the sluice: the end
 	var n2 := 0
@@ -1888,7 +1935,7 @@ func walk(p: Vector3, cap := 1.25) -> void:
 func _send_reflection(pi: int, to: Vector3, _sp: Vector2) -> void:
 	if busy: return
 	if flip_test or (flip_demo and WL[pi] in FLIP_DEMO_WATERS):      # (the trial) open water turns the picture over
-		if not flip_busy and refl_busy == 0: _flip(_sp, [pi, to])
+		if not flip_busy: walk_to(_head_point(WL[pi]), PLAY_WALK)      # (the sign turns it: a tap on the water only brings her to its edge)
 		return
 	refl_ring.position = Vector3(to.x, 0.03, to.z); refl_p = 0.0
 	hold_id = -1; route.clear(); pending = ""
@@ -1918,8 +1965,7 @@ func use(k: String) -> void:
 	var o: Dictionary = objs[k]
 	if o.has("water") and (flip_test or (flip_demo and o.water in FLIP_DEMO_WATERS)):      # (the trial) a thing in a turning water: the picture turns over first; the shadow is what does things there
 		if busy or flip_busy: return
-		await _flip(Vector2.ZERO, [WL.find(o.water)])
-		if flip_on and not done.has(k): await _shadow_use(k)
+		walk_to(_head_point(o.water), PLAY_WALK)      # (she goes to the water's edge; the sign turns the world, and the shadow does the thing)
 		return
 	if o.has("water"):      # a thing in a water: her reflection goes to it
 		if busy: return
@@ -2536,6 +2582,7 @@ func _process(dt: float) -> void:
 	if flip_moving: _flip_pre()
 	super._process(dt)
 	if flip_moving: _flip_post()
+	if flip_icon != null: _flip_icon_frame(dt)
 	if flip_demo and not ended and not busy and not flip_busy and not flip_on and rects.has("S2") and rects["S2"].on and pos.z < TZ0 - 0.9: route.clear(); _end()      # (the trial ends behind the second sluice)
 	if not flip_on and not flip_busy and woke: _stele_watch()
 	if flip_on or flip_busy: return      # (the shadow is played: her image stays with her, and the floor's own rules are not the shadow's)
