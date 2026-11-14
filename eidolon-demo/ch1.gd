@@ -184,6 +184,9 @@ var flip_mat: ShaderMaterial
 var flip_mi: MeshInstance3D
 var flip_rect: ColorRect
 var flip_glass := []      # every pool's surface, with the softness it had
+var flip_size := 0.0      # how much the view held before it turned over
+var flip_mir := []      # the materials of her image in the waters
+const FLIP_DARK := Vector3(0.4, 0.48, 0.62)      # the dark of her image in a water (as spawn_her gives it)
 func _flip_setup() -> void:
 	var sh := Shader.new(); sh.code = SH_WORLDWAVE
 	flip_wave = ShaderMaterial.new(); flip_wave.shader = sh; flip_wave.render_priority = -8; timed.append(flip_wave)
@@ -197,6 +200,14 @@ func _flip_setup() -> void:
 	flip_rect.material = flip_mat; flip_rect.visible = false; cl.add_child(flip_rect)
 	for m in timed:
 		if m is ShaderMaterial and (m as ShaderMaterial).shader == shaders["glass"]: flip_glass.append([m, float((m as ShaderMaterial).get_shader_parameter("blur_px"))])
+	for k in H:      # her image in the waters: every body that was made as a mirror of her
+		if not (H[k] is Dictionary) or not H[k].has("holder"): continue
+		for mm in (H[k].holder as Node).find_children("*", "MeshInstance3D", true, false):
+			var mi := mm as MeshInstance3D
+			for si in mi.get_surface_override_material_count():
+				var sm := mi.get_surface_override_material(si) as ShaderMaterial
+				if sm != null and sm.get_shader_parameter("tint") is Vector3 and (sm.get_shader_parameter("tint") as Vector3).distance_to(FLIP_DARK) < 0.01 and not flip_mir.has(sm): flip_mir.append(sm)
+	print("FLIP her materials ", her_mats.size(), ", her image's ", flip_mir.size())
 
 ## the picture turns over (or back), from where the finger fell on the water
 func _flip(sp: Vector2, wu: Array) -> void:
@@ -207,8 +218,11 @@ func _flip(sp: Vector2, wu: Array) -> void:
 	if to > 0.5:      # the water comes to the middle of the view first: the picture turns over about its middle line, so the water stays where it is
 		var r: Array = W[WL[wu[0]]].r
 		cam_focus = Vector3((r[0] + r[2]) * 0.5, 0, (r[1] + r[3]) * 0.5) + Vector3(1, 0, 1) * ((1.9 if cam.size > 5.0 else 0.85) / 0.8165); cam_focus_on = true
+		flip_size = cam.size
+		var need: float = (float(r[2]) - float(r[0]) + float(r[3]) - float(r[1])) * 0.7071 * 1.16      # the whole water in view, with some of the world round it
+		if need > cam.size: create_tween().tween_property(cam, "size", need, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		var n := 0
-		while (cam_t - cam_focus).length() > 0.1 and n < 150: await get_tree().process_frame; n += 1
+		while ((cam_t - cam_focus).length() > 0.1 or absf(cam.size - maxf(need, flip_size)) > 0.05) and n < 180: await get_tree().process_frame; n += 1
 	var on_screen := Vector2(sp.x, vs.y - sp.y) if (flip_on and flip_turn) else sp
 	if to > 0.5: on_screen = cam.unproject_position(wu[1])
 	flip_mi.visible = true; flip_rect.visible = true
@@ -221,10 +235,16 @@ func _flip(sp: Vector2, wu: Array) -> void:
 	for g in flip_glass:
 		var gm: ShaderMaterial = g[0]; var b0: float = g[1]
 		tw3.tween_method(func(v: float) -> void: gm.set_shader_parameter("clear", v); gm.set_shader_parameter("wave", 1.0 - v); gm.set_shader_parameter("blur_px", b0 * (1.0 - v)), 1.0 - to, to, T * 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	# she and her image change looks as the world and the water do: in the turned picture she is the dark one, and the water shows her as she is
+	tw3.tween_method(func(v: float) -> void:
+		for hm in her_mats: (hm as ShaderMaterial).set_shader_parameter("tint", Vector3.ONE.lerp(FLIP_DARK, v))
+		for mm2 in flip_mir: (mm2 as ShaderMaterial).set_shader_parameter("tint", FLIP_DARK.lerp(Vector3.ONE, v)), 1.0 - to, to, T * 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await tw3.finished
 	flip_on = to > 0.5
 	flip_mat.set_shader_parameter("from_s", to); flip_mat.set_shader_parameter("r", 0.0)
-	if not flip_on: flip_mi.visible = false; flip_rect.visible = false; cam_focus_on = false
+	if not flip_on:
+		flip_mi.visible = false; flip_rect.visible = false; cam_focus_on = false
+		if absf(cam.size - flip_size) > 0.05: create_tween().tween_property(cam, "size", flip_size, 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	flip_busy = false
 	print("FLIP ", "over" if flip_on else "back")
 
@@ -234,34 +254,39 @@ func _unhandled_input(ev: InputEvent) -> void:
 		ev = ev.duplicate(); ev.position.y = get_viewport().get_visible_rect().size.y - ev.position.y
 	super._unhandled_input(ev)
 
-## (the trial) she stands by the forecourt's pool; the water is tapped, she walks a little in the turned world, and the water is tapped again
+## (the trial) in the harbour, where she wakes. The water is tapped and the picture turns over; she walks in the
+## turned picture (dark, as her image was), while the water shows her as she is; the water is tapped again
 func _play_flip() -> void:
-	started = true; title_box.hide(); hint.hide()
+	started = true; hand_play = true; title_box.hide(); hint.hide()
 	if not woke: _wake_now()
-	var mid := Vector3((GPX0 + GPX1) * 0.5, 0, (GPZ0 + GPZ1) * 0.5)
-	pos = Vector3(GPX0 - 0.55, 0, GPZ0 + 2.2); yaw = PI * 0.5; cam.size = PLAY_SIZE; cam_t = pos
+	cam.size = PLAY_SIZE; cam_t = pos
 	var dir := OS.get_environment("SHOT_DIR")
 	var snap := func(n: String) -> void:
 		if dir != "": await RenderingServer.frame_post_draw; get_viewport().get_texture().get_image().save_png("%s/%s.png" % [dir, n])
 	await wait(2.5)
 	await snap.call("flip_1_before")
-	_tap_at(mid + Vector3(0.6, 0, 0.4))
-	await wait(1.6)
+	_tap_at(Vector3(2.0, 0, 6.4))
+	await wait(1.0)
 	while flip_busy and flip_r < 0.42: await get_tree().process_frame
 	await snap.call("flip_2_turning")
 	while flip_busy: await get_tree().process_frame
-	await wait(2.0)
+	await wait(1.6)
 	await snap.call("flip_3_over")
-	_tap_at(Vector3(GPX0 - 0.55, 0, GPZ1 - 0.6))      # she walks along the rim, in the turned world
-	await wait(3.2)
+	await _tap_wait(Vector3(-2.2, 0, 1.7))      # she walks back along the mole and onto the quay, in the turned picture
+	await wait(0.6)
 	await snap.call("flip_4_walked")
-	_tap_at(mid + Vector3(-0.8, 0, -0.5))
-	while not flip_busy: await get_tree().process_frame
+	await _tap_wait(Vector3(0.0, 0, MOLE_A - 0.7))      # and out along the mole again
+	await wait(0.6)
+	await snap.call("flip_5_walked_back")
+	_tap_at(Vector3(-2.0, 0, 6.4))
+	var n := 0
+	while not flip_busy and n < 120: await get_tree().process_frame; n += 1
 	while flip_busy and flip_r < 0.5: await get_tree().process_frame
-	await snap.call("flip_5_turning_back")
+	await snap.call("flip_6_turning_back")
 	while flip_busy: await get_tree().process_frame
-	await wait(2.0)
-	await snap.call("flip_6_back")
+	await wait(2.2)
+	await snap.call("flip_7_back")
+	print("FLIP run done at ", pos)
 	get_tree().quit()
 
 ## the still surface of a pool
@@ -1623,7 +1648,7 @@ func tap(sp: Vector2) -> void:
 	if started and not ended and not woke:
 		if not busy: _wake()
 		return
-	if flip_test and started and not ended:      # (the trial) a tap on a water turns the picture over
+	if flip_test and started and not ended:      # (the trial) a tap on a water turns the picture over, and a tap on a water turns it back
 		if flip_busy: return
 		if not busy:
 			var wu = _water_under(sp)

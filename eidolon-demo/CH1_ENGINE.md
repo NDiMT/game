@@ -136,8 +136,8 @@ balustrades, as in the first demo.
 ## The turn-over (a trial, in one court)
 A tap on a pool turns the whole picture over: a ring spreads from the finger and behind it the world is what the
 water showed (soft, rippling, upside down), while the water shows its picture plainly and upright; a second tap on the
-water turns it back. It is switched off unless `FLIP=1` (or the run `-- flip`, which plays it in the forecourt's pool;
-`FLIP_TURN=0`: the looks change places but nothing is turned upside down).
+water turns it back. It is switched off unless `FLIP=1` (or the run `-- flip`, which plays it in the harbour;
+`FLIP_TURN=0`: the looks change places but nothing is turned upside down). The owner chose the turned picture.
 - `SH_WORLDWAVE` (ch1.gd): one sheet over the whole view, drawn before every water (`render_priority -8`), that
   ripples and softens what is behind it. The waters are drawn after it, so they stay clear, and a thing that stands
   in front of a water is still soft. The mists are drawn after it too and are not rippled.
@@ -146,5 +146,10 @@ water turns it back. It is switched off unless `FLIP=1` (or the run `-- flip`, w
 - `SH_TURN` (ch1.gd): the finished picture, turned over about its middle line inside the spreading ring (a canvas
   layer under the words and the pocket). The camera first brings the pool to the middle of the view, so that the
   water stays where it is. While the picture is turned over, `_unhandled_input` turns every touch back.
-- Not done: nothing in the game answers to the turned world yet (she walks in it as before); only what has a twin
-  under `mroot` is in the water.
+- She changes looks with the world: in the turned picture **she is the dark one** (her materials' `tint` goes to
+  the dark her image has), and her image in the water has her own colours; turned back, she is herself again and
+  her image is dark. (The owner: "when I play in the reflection, Ione is still black".)
+- Before it turns, the view opens until the whole water is in it, and closes again afterwards.
+- Not done: nothing in the game answers to the turned world yet (she walks in it as before, by taps); a tap on a
+  water turns the picture and no longer sends her image out, so the courts' own puzzles are not playable with
+  `FLIP=1`; only what has a twin under `mroot` is in the water.
