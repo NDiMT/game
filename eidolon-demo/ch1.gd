@@ -170,6 +170,28 @@ uniform sampler2D her_mask : filter_linear, repeat_disable;      // where her ow
 uniform float th = 1.0;      // mode 3: +1 the eye looks down on the world as always, 0 it looks along the waterline, -1 it looks from under it
 uniform float line = 0.5;      // mode 3: where the waterline under her feet lies in the picture
 uniform vec3 dark = vec3(0.4, 0.48, 0.62);
+// the picture at q as the world is seen (m = 0: warm, clear) or as what the water shows is seen (m = 1: cool, softer, a
+// little less colour). Both a little softened, and neither lighter nor darker than the picture was.
+uniform float mb = 0.0;      // how fast the eye is moving just now (0..1): the picture is drawn out along its way, most in the middle of the turn
+vec3 take(vec2 q, vec2 ps, float m){
+	vec2 px = ps * 1.8;
+	vec3 k3 = texture(screen_tex, q).rgb;
+	if (mb > 0.002) {      // nine takes along the way the picture moves (up and down), a little shaken so they do not show as steps
+		float jit = fract(52.9829189 * fract(dot(q / ps, vec2(0.06711056, 0.00583715)))) - 0.5;
+		float st = 0.0075 * mb;
+		vec3 acc = k3;
+		for (int i = 1; i <= 4; i++) {
+			float o = (float(i) + jit) * st;
+			acc += texture(screen_tex, clamp(q + vec2(0.0, o), vec2(0.0), vec2(1.0))).rgb + texture(screen_tex, clamp(q - vec2(0.0, o), vec2(0.0), vec2(1.0))).rgb;
+		}
+		k3 = acc / 9.0;
+	}
+	vec3 s3 = (k3 * 2.0 + texture(screen_tex, q + vec2(px.x, 0.0)).rgb + texture(screen_tex, q - vec2(px.x, 0.0)).rgb + texture(screen_tex, q + vec2(0.0, px.y)).rgb + texture(screen_tex, q - vec2(0.0, px.y)).rgb) / 6.0;
+	k3 = mix(k3, s3, mix(0.4, 0.72, m));
+	float l3 = dot(k3, vec3(0.3, 0.59, 0.11));
+	vec3 g3 = mix(mix(vec3(l3), k3, 1.08) * vec3(1.05, 1.0, 0.93), mix(vec3(l3), k3, 0.76) * vec3(0.92, 1.02, 1.1), m);
+	return g3 * (l3 / max(dot(g3, vec3(0.3, 0.59, 0.11)), 0.001));
+}
 uniform int mode = 0;      // 3: the eye itself goes down to the waterline and under it (see _flip_real). 0: a ring spreads from the finger. 1: the whole picture tips over through the sea. 2: the eye goes down, past the waterline, into what the water shows
 const vec3 SEA = vec3(0.325, 0.565, 0.635);
 void fragment(){
@@ -183,17 +205,17 @@ void fragment(){
 		vec2 rip = vec2(sin(d * 80.0 + TIME * 2.6) * 0.006, sin(d * 120.0 - TIME * 3.4 + uv.x * 5.0) * 0.004) * dp;
 		vec3 col;
 		if (th >= 0.0) {
-			col = texture(screen_tex, uv).rgb;
+			col = take(uv, SCREEN_PIXEL_SIZE, 0.0);
 			if (uv.y > line && w > 0.0) {
 				vec2 q = clamp(vec2(uv.x, 2.0 * line - uv.y) + rip, vec2(0.0), vec2(1.0));
-				vec3 b = texture(screen_tex, q).rgb * mix(vec3(1.0), dark, texture(her_mask, q).a);      // below the line she is her shadow
+				vec3 b = take(q, SCREEN_PIXEL_SIZE, 1.0) * mix(vec3(1.0), dark, texture(her_mask, q).a);      // below the line she is her shadow
 				col = mix(col, mix(b, vec3(0.6, 0.85, 0.88), 0.16), w);
 			}
 		} else {
-			col = texture(screen_tex, vec2(uv.x, 1.0 - uv.y)).rgb;
+			col = take(vec2(uv.x, 1.0 - uv.y), SCREEN_PIXEL_SIZE, 1.0);
 			if (uv.y < line && w > 0.0) {
 				vec2 q = clamp(vec2(uv.x, uv.y + 1.0 - 2.0 * line) + rip, vec2(0.0), vec2(1.0));
-				vec3 a = texture(screen_tex, q).rgb / mix(vec3(1.0), dark, texture(her_mask, q).a);      // above the line she is herself
+				vec3 a = take(q, SCREEN_PIXEL_SIZE, 0.0) / mix(vec3(1.0), dark, texture(her_mask, q).a);      // above the line she is herself
 				col = mix(col, mix(a, vec3(0.6, 0.85, 0.88), 0.16), w);
 			}
 		}
@@ -250,6 +272,11 @@ var flip_icon: Control      # the sign that turns the world over: it shows only 
 var flip_icon_a := 0.0
 var flip_icon_wid := ""
 var flip_mask_vp: SubViewport
+const FLIP_LEASH := 5.5      # how far from her the shadow may go: farther, and it is with her again
+var flip_homing := false
+var smoke := []      # the puffs of the shadow when it goes back to her: {n, a, b, t0, life, ph, lift}
+var smoke_t := -1.0
+var smoke_dur := 1.0
 var flip_mask_cam: Camera3D
 const FLIP_PITCH := 35.264
 var flip_k := 0.0      # how much the turned picture ripples and blurs just now
@@ -279,8 +306,8 @@ func _flip_setup() -> void:
 	flip_mask_cam.cull_mask = 1 << 19; flip_mask_vp.add_child(flip_mask_cam); flip_mask_cam.current = true
 	for mm0 in (H["main"].holder as Node).find_children("*", "MeshInstance3D", true, false): (mm0 as MeshInstance3D).set_layer_mask_value(20, true)
 	flip_mat.set_shader_parameter("her_mask", flip_mask_vp.get_texture()); flip_mat.set_shader_parameter("dark", FLIP_DARK)
-	_flip_icon_setup()
-	flip_rect.material = flip_mat; flip_rect.visible = false; cl.add_child(flip_rect)
+	_flip_icon_setup(); _smoke_setup()
+	flip_rect.material = flip_mat; flip_rect.visible = _flip_pane_always(); cl.add_child(flip_rect)
 	for m in timed:
 		if m is ShaderMaterial and (m as ShaderMaterial).shader == shaders["glass"]: flip_glass.append([m, float((m as ShaderMaterial).get_shader_parameter("blur_px"))])
 	for k in H:      # her image in the waters: every body that was made as a mirror of her
@@ -318,17 +345,13 @@ func _flip(sp: Vector2, wu: Array) -> void:
 		flip_busy = true
 		hold_id = -1; route.clear(); pending = ""
 		# the shadow goes back into her: it sinks where it is, and she is where she stood
-		if _flat(pos, flip_anchor) > 0.05:      # (it keeps its shape: the surface takes it, as water would)
-			var sk := create_tween(); sk.tween_property(self, "sink_main", 1.95, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		if flip_fx == "":      # it is with her again by the time the eye is level with the water: it goes as smoke, while the eye comes down
+			if _flat(pos, flip_anchor) > 0.05: _shadow_home()
+			else: pos = flip_anchor; yaw = flip_anchor_yaw
+		else:
+			var sk := create_tween(); sk.tween_property(self, "sink_main", 1.95, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 			await sk.finished
-			pos = flip_anchor; yaw = flip_anchor_yaw
-			if flip_fx == "":      # the eye goes back to where she stands, and her shadow comes up under her feet
-				var t0 := 0.0
-				while cam_t.distance_to(pos) > 0.35 and t0 < 1.1: await get_tree().process_frame; t0 += get_process_delta_time()
-				var ru := create_tween(); ru.tween_property(self, "sink_main", 0.0, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-				await ru.finished
-			else: cam_t = pos
-		else: pos = flip_anchor; yaw = flip_anchor_yaw
+			pos = flip_anchor; yaw = flip_anchor_yaw; cam_t = pos
 	if flip_fx == "": await _flip_real(to > 0.5); return
 	flip_r = 0.0
 	var vs := get_viewport().get_visible_rect().size
@@ -370,6 +393,60 @@ func _flip(sp: Vector2, wu: Array) -> void:
 	if flip_demo and flip_on and not flags.get("flip_said", false) and not done.has("wheel1"): flags["flip_said"] = true; say("you are her shadow  ·  here the mole is whole")
 	print("FLIP ", "over" if flip_on else "back")
 
+const SH_SMOKE := """shader_type spatial;
+render_mode unshaded, cull_disabled, depth_draw_never, blend_mix;
+uniform vec3 col = vec3(0.19, 0.18, 0.26);
+void fragment(){ float d = distance(UV, vec2(0.5)) * 2.0; ALBEDO = col; ALPHA = smoothstep(1.0, 0.0, d) * 0.46; }"""
+func _smoke_setup() -> void:
+	var sh := Shader.new(); sh.code = SH_SMOKE
+	var m := ShaderMaterial.new(); m.shader = sh; m.render_priority = 4
+	var q := QuadMesh.new(); q.size = Vector2(1, 1)
+	for i in 40:
+		var n := MeshInstance3D.new(); n.mesh = q; n.material_override = m; n.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; n.visible = false; add_child(n)
+		smoke.append({"n": n})
+
+## the shadow as smoke: it leaves the body where that stands and gathers again at `to`
+func _smoke_go(from: Vector3, to: Vector3, dur: float) -> void:
+	var rng := RandomNumberGenerator.new(); rng.seed = 7
+	for s in smoke:
+		s["a"] = from + Vector3(rng.randf_range(-0.16, 0.16), rng.randf_range(0.15, 1.55), rng.randf_range(-0.16, 0.16))
+		s["b"] = to + Vector3(rng.randf_range(-0.14, 0.14), rng.randf_range(0.15, 1.55), rng.randf_range(-0.14, 0.14))
+		s["t0"] = rng.randf_range(0.0, 0.42) * dur; s["life"] = rng.randf_range(0.48, 0.58) * dur
+		s["ph"] = rng.randf_range(0.0, TAU); s["lift"] = rng.randf_range(0.15, 0.5); s["sz"] = rng.randf_range(0.7, 1.15)
+	smoke_t = 0.0; smoke_dur = dur
+
+func _smoke_frame(dt: float) -> void:
+	if smoke_t < 0.0: return
+	smoke_t += dt
+	var cb := cam.global_transform.basis
+	for s in smoke:
+		var n: MeshInstance3D = s.n
+		var u := (smoke_t - float(s.t0)) / float(s.life)
+		if u <= 0.0 or u >= 1.0: n.visible = false; continue
+		var a: Vector3 = s.a; var b: Vector3 = s.b
+		var side := Vector3(-(b - a).z, 0, (b - a).x).normalized() if _flat(a, b) > 0.01 else Vector3.RIGHT
+		var e := smoothstep(0.0, 1.0, u)
+		var grow := smoothstep(0.0, 0.16, u) * smoothstep(1.0, 0.8, u)
+		n.visible = true
+		n.global_transform = Transform3D(cb.scaled(Vector3.ONE * float(s.sz) * (0.55 + 0.45 * sin(PI * u)) * grow), a.lerp(b, e) + Vector3.UP * sin(PI * u) * float(s.lift) + side * sin(TAU * u + float(s.ph)) * 0.13)
+	if smoke_t > smoke_dur + 0.05:
+		smoke_t = -1.0
+		for s in smoke: (s.n as Node3D).visible = false
+
+## the shadow is with her again: it goes as smoke from where it is to under her feet
+func _shadow_home() -> void:
+	if flip_homing: return
+	flip_homing = true
+	route.clear(); pending = ""
+	_smoke_go(pos, flip_anchor, 1.0)
+	var sk := create_tween(); sk.tween_property(self, "sink_main", 1.95, 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await sk.finished
+	pos = flip_anchor; yaw = flip_anchor_yaw
+	await wait(0.12)
+	var ru := create_tween(); ru.tween_property(self, "sink_main", 0.0, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await ru.finished
+	flip_homing = false
+
 ## The sign under the picture: a ring with the waterline across it, a mark above the line and the same mark, hollow, below.
 func _flip_icon_setup() -> void:
 	var cl := CanvasLayer.new(); cl.layer = 5; add_child(cl)
@@ -405,6 +482,9 @@ func _flip_icon_press() -> void:
 	if flip_on: _flip(Vector2.ZERO, [])
 	else: _flip(Vector2.ZERO, [WL.find(flip_icon_wid)])
 
+## (the trial, with the eye's own turn) the pane over the picture stays: it gives the world its look, and the turned picture its other look
+func _flip_pane_always() -> bool: return flip_fx == "" and (flip_demo or flip_test)
+
 ## The turn itself, as a thing the eye does: it comes down until it looks along the waterline (the world stands above the
 ## line and what the water shows of it hangs below, she above and her shadow under her feet), and goes on under it.
 ## Under the water the same world is drawn, turned over; at the line the two pictures are the same picture, so nothing
@@ -417,15 +497,16 @@ func _flip_real(over: bool) -> void:
 	if not over:      # the turned picture comes clear first
 		var c0 := create_tween().set_parallel(true)
 		c0.tween_method(func(v: float) -> void: flip_k = v; flip_wave.set_shader_parameter("k", v), flip_k, 0.0, T * 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		c0.tween_method(func(v: float) -> void: flip_wave.set_shader_parameter("veil", v), 1.0, 0.0, T * 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		c0.tween_method(func(v: float) -> void: flip_wave.set_shader_parameter("veil", v), 0.5, 0.0, T * 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	var tw3 := create_tween()
 	tw3.tween_property(self, "flip_th", -1.0 if over else 1.0, T).from(1.0 if over else -1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await tw3.finished
 	await get_tree().process_frame
 	flip_moving = false; flip_mask_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	flip_mat.set_shader_parameter("mb", 0.0)
 	flip_on = over
 	if not flip_on:
-		flip_mi.visible = false; flip_rect.visible = false
+		flip_mi.visible = false; flip_rect.visible = _flip_pane_always()
 		if not refl_out.is_empty():      # her image is under her feet again, and does as she does
 			var hm1 := _hermod(refl_out)
 			if hm1 != null: hm1.own = false
@@ -452,13 +533,14 @@ func _flip_pre() -> void:
 	if over:
 		var c1 := create_tween().set_parallel(true)
 		c1.tween_method(func(x: float) -> void: flip_k = x; flip_wave.set_shader_parameter("k", x), 0.0, FLIP_CALM, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		c1.tween_method(func(x: float) -> void: flip_wave.set_shader_parameter("veil", x), 0.0, 1.0, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		c1.tween_method(func(x: float) -> void: flip_wave.set_shader_parameter("veil", x), 0.0, 0.5, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 ## (every frame of the turn, once the eye is placed) the picture is told where the eye is
 func _flip_post() -> void:
 	var vs := get_viewport().get_visible_rect().size
 	var lr := cam.unproject_position(Vector3(flip_anchor.x, 0, flip_anchor.z)).y / vs.y
 	flip_mat.set_shader_parameter("th", flip_th); flip_mat.set_shader_parameter("line", lr if flip_th >= 0.0 else 1.0 - lr)
+	flip_mat.set_shader_parameter("mb", pow(maxf(1.0 - flip_th * flip_th, 0.0), 1.6))      # (the eye is fastest in the middle of its way)
 	flip_mask_cam.global_transform = cam.global_transform; flip_mask_cam.size = cam.size; flip_mask_cam.near = cam.near; flip_mask_cam.far = cam.far
 
 ## what exists on one side only changes sides with the picture: the stones of the mole's middle, the two grilles of the
@@ -483,16 +565,36 @@ func _flip_world(wid: String, over: bool, d: float) -> void:
 ## (the turned picture) the shadow walks a way over its footing
 func _shadow_go(pts: Array) -> void:
 	route.clear(); speed_cap = PLAY_WALK; face_to = null
+	pts = _round_solids(pos, pts, func(q: Vector3) -> bool: return _foot_of(flip_wid, q, 0.01) != "")
 	for q in pts: route.append({"p": Vector3(q.x, 0, q.z)})
+
+## (the turned picture) the shadow's way to a place. A way that would take it farther from her than it may go is no way:
+## then it goes by its nearer footing alone, as far as that is open (to the grille that stops it, not round the water).
+func _shadow_way(to: Vector3) -> Dictionary:
+	var way := _refl_path(flip_wid, pos, to)
+	var far := false; var a := pos
+	for q in way.pts:
+		var n := int(ceil(_flat(a, q) / 0.25)) + 1
+		for i in n + 1:
+			if _flat(a.lerp(q, float(i) / n), flip_anchor) > FLIP_LEASH - 0.15: far = true
+		a = q
+	var wide: Array = W[flip_wid].get("wide", [])
+	if not far or wide.is_empty(): return way
+	var F: Dictionary = W[flip_wid].foot; var was := {}
+	for n2 in wide: was[n2] = F[n2].on; F[n2].on = false
+	var near := _refl_path(flip_wid, pos, to)
+	for n2 in wide: F[n2].on = was[n2]
+	return near if not near.pts.is_empty() or _foot_of(flip_wid, pos, 0.9) != "" else way
 
 ## (the turned picture) a thing of this water: the shadow goes to it and does what her image would have done
 func _shadow_use(k: String) -> void:
 	var o: Dictionary = objs[k]
-	var way := _refl_path(flip_wid, pos, o.rstand)
+	var way := _shadow_way(o.rstand)
 	if way.pts.is_empty() and _flat(pos, o.rstand) > 0.3: await _her_no(); return
 	busy = true
 	if not way.pts.is_empty(): _shadow_go(way.pts)
 	while not route.is_empty(): await get_tree().process_frame
+	if flip_homing or (way.left <= 0.25 and _flat(pos, o.rstand) > 0.4): busy = false; return      # (it was taken back to her on the way)
 	if way.left > 0.25:      # something stands in its way: it has come as near as it can
 		busy = false; await _her_no(); return
 	await call("_do_" + k)
@@ -546,7 +648,7 @@ func _shadow_tap(sp: Vector2) -> void:
 		_shadow_use(best); return
 	var o := cam.project_ray_origin(sp); var dr := cam.project_ray_normal(sp)
 	var g := o + dr * (-o.y / dr.y); g.y = 0.0
-	var way := _refl_path(flip_wid, pos, g)
+	var way := _shadow_way(g)
 	if not way.pts.is_empty() and _foot_of(flip_wid, g, 0.12) != "":      # a place it can stand on
 		_shadow_go(way.pts); tapring.position = Vector3(g.x, 0.02, g.z); tap_p = 0.0; return
 	if not way.pts.is_empty(): _shadow_go(way.pts)      # anywhere else: as near as its footing comes
@@ -587,6 +689,10 @@ func _play_flipdemo() -> void:
 	print("DEMO she woke at ", pos, ", the water by her: ", _flip_water_near())
 	await sign.call(); await idle.call()      # the picture turns over
 	print("DEMO 1 turned over: ", flip_on, ", she stays at ", flip_anchor); await wait(2.4); await snap.call("demo_1_harbour_turned")
+	_tap_at(Vector3(4.25, 0, 10.2))      # the far corner of the quay: farther from her than a shadow may go
+	var far := 0.0; var n1 := 0
+	while n1 < 900 and (n1 < 30 or not route.is_empty() or flip_homing): await get_tree().process_frame; n1 += 1; far = maxf(far, _flat(pos, flip_anchor))
+	print("DEMO 1 the far corner: it went ", snappedf(far, 0.01), " m from her and is now at ", pos); await wait(0.6)
 	var hub: Vector3 = N["hub1"]
 	_tap_at(hub); await wait(2.6); await snap.call("demo_2_shadow_on_the_mole")
 	while a_wL < 0.9 and not done.has("wheel1"): await get_tree().process_frame
@@ -1182,7 +1288,9 @@ func _harbour() -> void:
 	tile_hole = Rect2(BX0 - 0.08, BZ0 - 0.08, BX1 - BX0 + 0.16, BZ1 - BZ0 + 0.16); tiles(HX0, HZ0, HX1, HZ1, 1.0); tile_hole = Rect2()
 	glass(BX0, BZ0, BX1, BZ1)
 	W["H"] = {"r": [BX0, BZ0, BX1, BZ1], "heads": [R(-MOLE_W, BZ0 - 0.6, MOLE_W, MOLE_A)],
-		"foot": {"stub": R(-MOLE_W, BZ0 - 0.6, MOLE_W, MOLE_A + 0.02), "gap": R(-MOLE_W, MOLE_A - 0.02, MOLE_W, MOLE_B + 0.02), "far": R(-MOLE_W, MOLE_B - 0.02, MOLE_W, MOLE_C)}}
+		"foot": {"stub": R(-MOLE_W, BZ0 - 0.6, MOLE_W, MOLE_A + 0.02), "gap": R(-MOLE_W, MOLE_A - 0.02, MOLE_W, MOLE_B + 0.02), "far": R(-MOLE_W, MOLE_B - 0.02, MOLE_W, MOLE_C),
+			# (the quay all round the basin: the shadow has the run of the court, as far as it may go from her)
+			"qn": R(HX0 + 0.45, HZ0 + 0.45, HX1 - 0.45, BZ0 - 0.3), "qw": R(HX0 + 0.45, HZ0 + 0.45, BX0 - 0.3, HZ1 - 0.45), "qe": R(BX1 + 0.3, HZ0 + 0.45, HX1 - 0.45, HZ1 - 0.45), "qs": R(HX0 + 0.45, BZ1 + 0.3, HX1 - 0.45, HZ1 - 0.45)}}
 	WL.append("H")
 	for both in [self, mroot]:
 		var twin: bool = both == mroot
@@ -1243,7 +1351,10 @@ func _basin() -> void:
 	tile_hole = Rect2(TPX0 - 0.08, TPZ0 - 0.08, TPX1 - TPX0 + 0.16, TPZ1 - TPZ0 + 0.16); tiles(TX0, TZ0, TX1, TZ1, 1.0); tile_hole = Rect2()
 	glass(TPX0, TPZ0, TPX1, TPZ1)
 	W["T"] = {"r": [TPX0, TPZ0, TPX1, TPZ1], "heads": [R(TWX0, TG_REAL + 0.2, TWX1, TZ1 - 0.4)],
-		"foot": {"a": R(TWX0, TG_WATER + 0.15, TWX1, TZ1 - 0.4), "wg": R(TWX0, TG_WATER - 0.15, TWX1, TG_WATER + 0.15, false), "b": R(TWX0, TZ0 + 0.65, TWX1, TG_WATER - 0.15)}}
+		"foot": {"a": R(TWX0, TG_WATER + 0.15, TWX1, TZ1 - 0.4), "wg": R(TWX0, TG_WATER - 0.15, TWX1, TG_WATER + 0.15, false), "b": R(TWX0, TZ0 + 0.65, TWX1, TG_WATER - 0.15),
+			# (round the water by its other side: a long way, and farther from her than a shadow may go)
+			"n": R(TWX0, TPZ1 + 0.3, TX1 - 0.45, TZ1 - 0.4), "e": R(TPX1 + 0.3, TZ0 + 0.65, TX1 - 0.45, TZ1 - 0.4), "s": R(TWX0, TZ0 + 0.65, TX1 - 0.45, TPZ0 - 0.3)},
+		"wide": ["n", "e", "s"]}
 	WL.append("T")
 	wall(TX0, TZ0, TX0 + 0.3, TZ1, 2.3, true)      # the west wall
 	stoa(-1.3, TZ0, TX1, TZ0 + 0.3)      # the north side, east of the sluice: a row of columns
@@ -2583,6 +2694,8 @@ func _process(dt: float) -> void:
 	super._process(dt)
 	if flip_moving: _flip_post()
 	if flip_icon != null: _flip_icon_frame(dt)
+	_smoke_frame(dt)
+	if flip_on and not flip_busy and not flip_homing and _flat(pos, flip_anchor) > FLIP_LEASH: _shadow_home()      # too far from her
 	if flip_demo and not ended and not busy and not flip_busy and not flip_on and rects.has("S2") and rects["S2"].on and pos.z < TZ0 - 0.9: route.clear(); _end()      # (the trial ends behind the second sluice)
 	if not flip_on and not flip_busy and woke: _stele_watch()
 	if flip_on or flip_busy: return      # (the shadow is played: her image stays with her, and the floor's own rules are not the shadow's)

@@ -1142,10 +1142,12 @@ func _box(sz: Vector3) -> BoxMesh:
 
 func cypress(p: Vector3, h := 2.2) -> void:
 	thing("cypress", p, h * 1.04, "leaf:cyp~,trunk:trunk", p.x * 1.7 + p.z)
+	solids.append(Vector3(p.x, p.z, 0.34))
 	decal(p + Vector3(0.14, 0, -0.14), 0.8, 0.6, 0.2, 0.78)
 
 func urn(p: Vector3, sc := 1.0, pl := "terra") -> void:
 	thing("amphora", p, 0.52 * sc, "terra:%s,band:wood" % pl, p.x * 2.3 + p.z * 1.1)
+	solids.append(Vector3(p.x, p.z, 0.27 * sc))
 
 func vine(x: float, z: float, along_x: bool, length: float) -> void:
 	var n := maxi(1, int(round(length / 0.85)))   # ivy over the edge of the floor, hanging down the wall below it
@@ -1401,9 +1403,11 @@ func parapet(a: Vector3, b: Vector3, h := 0.34) -> void:
 func tree(p: Vector3, s := 1.0, leaf := "leaf") -> void:
 	thing("olive", p, 1.8 * s + 0.25, "leaf:%s~,trunk:trunk,stone:stone,soil:trunk" % leaf, PI * 0.5 * (int(absf(p.x * 3.0 + p.z)) % 4))   # its planter stays square to the court
 	decal(p + Vector3(0.3, 0, -0.3), 1.5 * s, 1.1 * s, 0.2, 0.78)
+	solids.append(Vector3(p.x, p.z, 0.62 * s))
 
 func bush(p: Vector3, s := 1.0, leaf := "leaf2") -> void:
 	thing("bush", p, 0.0, "leaf:%s~,flower:crim" % leaf, p.z * 1.9, 0.82 * s)
+	solids.append(Vector3(p.x, p.z, 0.36 * s))
 
 ## a bronze lamp stand: lion paws on a marble footing, a fluted column, a swan-neck arm, and a lantern hanging from it
 func lantern(p: Vector3, li: int, dirx := 1.0) -> void:
@@ -1413,6 +1417,7 @@ func lantern(p: Vector3, li: int, dirx := 1.0) -> void:
 	var c := p + Vector3(0.327 * k * dirx, 0.692 * k, 0)      # where the lantern hangs
 	var h := halo(0.9, Color(1.0, 0.8, 0.45, 0.5)); h.position = c; add_child(h)
 	lights[li] = Vector4(c.x, 0.2, c.z, 0.5)
+	solids.append(Vector3(p.x, p.z, 0.24))      # (the stand itself she walks round)
 	blockers.append(Vector3(p.x + 0.26 * dirx, p.z, 0.62))   # the stand and the lantern on its arm: a tap on them sends her beside them, not into them
 	decal(p + Vector3(0.1, 0, -0.1), 0.5, 0.36, 0.2, 0.78)
 
@@ -4818,9 +4823,41 @@ func _ground_under(sp: Vector2):
 		if in_rect(rr, cand): bp = cand
 	return bp
 
+## a way that would lead through something that stands (a tree, a lamp stand, an urn, a plinth) is led round it, on
+## the side where there is floor (`ok`). Where there is floor on neither side it is left as it was.
+func _round_solids(from: Vector3, pts: Array, ok: Callable) -> Array:
+	var path := [Vector3(from.x, 0, from.z)]
+	for q in pts: path.append(Vector3(q.x, 0, q.z))
+	for round_i in 8:
+		var changed := false
+		for i in range(path.size() - 1):
+			var a: Vector3 = path[i]; var b: Vector3 = path[i + 1]; var ab := b - a
+			if ab.length() < 0.05: continue
+			for s in solids:
+				var c := Vector3(s.x, 0, s.y); var rr: float = s.z + 0.14
+				var tt := clampf((c - a).dot(ab) / ab.length_squared(), 0.0, 1.0)
+				var q2 := a + ab * tt
+				if tt < 0.02 or tt > 0.98 or (q2 - c).length() > rr - 0.01: continue
+				var nrm := (q2 - c).normalized() if (q2 - c).length() > 0.02 else Vector3(-ab.z, 0, ab.x).normalized()
+				var d := c + nrm * (rr + 0.1)
+				if not ok.call(d): d = c - nrm * (rr + 0.1)
+				if not ok.call(d): continue
+				path.insert(i + 1, d); changed = true; break
+			if changed: break
+		if not changed: break
+	path.remove_at(0)
+	return path
+
+## floor of an open walkable area, whatever stands on it
+func _is_floor(p: Vector3) -> bool:
+	for n in rects:
+		if rects[n].on and in_rect(rects[n], p): return true
+	return false
+
 func walk_to(p: Vector3, cap := WALK) -> bool:
 	var pts := find_path(pos, p)
 	if pts.is_empty(): return false
+	pts = _round_solids(pos, pts, _is_floor)
 	if not refl_out.is_empty() and not refl_stay: _refl_return()      # she walks on: her reflection comes back to her
 	speed_cap = cap; face_to = null
 	route.clear()
