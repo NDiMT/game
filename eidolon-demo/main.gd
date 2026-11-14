@@ -5143,7 +5143,7 @@ func _process(dt: float) -> void:
 	else: cam_t = cam_t.lerp(pos + vel * 0.55, 1.0 - exp(-2.4 * dt))
 	if dt > 0.0:      # the eye never starts with a jerk: it may slow as fast as it likes, but it gathers speed gradually
 		var cv := (cam_t - cam_was) / dt
-		cam_vel = cv if cv.length() <= cam_vel.length() else cam_vel.move_toward(cv, 9.0 * dt)
+		cam_vel = cam_vel.move_toward(cv, (9.0 if cv.length() > cam_vel.length() else 40.0) * dt)      # (it gathers speed gently; it may slow four times as fast, but not in one frame)
 		cam_t = cam_was + cam_vel * dt
 	cam.position = cam_t + cam.basis.y * (1.9 if cam.size > 5.0 else 0.85) + cam.basis.z * 34.0
 	if shot != null: cam.position = (shot.c as Vector3) + cam.basis.z * maxf(34.0, cam.size * 1.33)   # a very wide still (the map) from further back, or the sea at its foot falls behind the eye and is cut off

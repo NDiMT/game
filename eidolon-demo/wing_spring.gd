@@ -126,6 +126,19 @@ func _ready() -> void:
 	super._ready()
 	if "spring" in OS.get_cmdline_user_args(): _play_spring()
 
+## the eye's width goes toward a width, gathering speed gradually. It starts from the speed the width really has:
+## an act's own tween may be holding the width at the same time, and when that lets go this must not leap ahead
+var sp_eye_v := 0.0
+var sp_eye_f := -10
+var sp_eye_seen := 0.0
+func _sp_eye_size(to: float, dt: float) -> void:
+	if dt <= 0.0: return
+	sp_eye_v = (cam.size - sp_eye_seen) / dt if Engine.get_process_frames() == sp_eye_f + 1 else 0.0
+	sp_eye_f = Engine.get_process_frames(); sp_eye_seen = cam.size
+	var w := 1.5      # a damped spring: it neither starts nor stops with a jerk, and does not swing past
+	sp_eye_v += ((to - cam.size) * w * w - sp_eye_v * 2.0 * w) * dt
+	cam.size += sp_eye_v * dt
+
 ## While her reflection is out on one of this wing's waters and nothing else holds the eye, the eye rests between
 ## the two of them, and takes in a little more when they are far apart: these pools are long, and what her
 ## reflection does at the far end is what matters
@@ -145,7 +158,7 @@ func _process(dt: float) -> void:
 			var rm := (m as ShaderMaterial).next_pass as ShaderMaterial
 			if rm != null: rm.set_shader_parameter("fade_a", sp_sea_a)
 	if busy or shot != null or not started: return      # (an act holds the eye)
-	if pos.z > UZ0 - 0.5:      # (she is not in this wing)
+	if not ((pos.x > -21.5 and pos.z < UZ0 - 0.5) or (pos.z < -60.0 and pos.x > -32.5)):      # (she is not in this wing: its lane and its east courts, or its west court; what lies behind the Gate is as far north, but west of these)
 		if sp_eye: sp_eye = false; cam_focus_on = false
 		return
 	if sp_eye_s0 < 0.0:
@@ -158,10 +171,10 @@ func _process(dt: float) -> void:
 		if sp_eye:
 			cam_focus = pos.lerp(img, 0.5 if d < 12.0 else 6.0 / d) + Vector3(0, 0.4, 0); cam_focus_on = true
 			var across := absf((pos.x - pos.z) - (img.x - img.z)) * 0.7071      # how far apart the two are across the screen
-			cam.size = lerpf(cam.size, clampf(across + 3.4, sp_eye_s0, sp_eye_s0 + 4.5), 1.0 - exp(-1.4 * dt))
+			_sp_eye_size(clampf(across + 3.4, sp_eye_s0, sp_eye_s0 + 4.5), dt)
 	else:
 		if sp_eye: sp_eye = false; cam_focus_on = false      # it is back under her feet: the eye goes back to her...
-		if not cam_focus_on and absf(cam.size - sp_eye_s0) > 0.01: cam.size = lerpf(cam.size, sp_eye_s0, 1.0 - exp(-1.4 * dt))      # ...and to its own width
+		if not cam_focus_on and absf(cam.size - sp_eye_s0) > 0.01: _sp_eye_size(sp_eye_s0, dt)      # ...and to its own width
 
 # ---------------------------------------------------------------- small builders
 ## the pit of a pool court made deep enough for what stands tall over its water (the colossi), and shut off from
