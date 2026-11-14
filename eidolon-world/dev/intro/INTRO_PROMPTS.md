@@ -2,8 +2,8 @@
 
 The intro is one amphora, drawn by a script (stylised, not a photograph), seen close on its picture panel. Each
 card is the painting in that panel; at every change of scene the vase turns and the next painting comes round. The
-words appear on the black band under the panel, a sentence or two at a time, in the game's own letter. Small things
-move inside the paintings.
+words appear on the black band under the panel, a sentence or two at a time, in the game's own letter. In each
+painting one simple thing happens, once, and then the picture stands still.
 
 Everything is in `amphora/`:
 
@@ -11,14 +11,14 @@ Everything is in `amphora/`:
   face), just come alive (in colour, still no face), with her face, and veiled (the veil hides hair and face).
   Every scene is drawn from this one sheet, so that he and she are the same people throughout.
 - `panels/card1.jpg … card7.jpg` — the seven paintings, flat, as they are wrapped onto the vase; `all_scenes.jpg`
-  shows them together.
+  shows them together. `panels/card2_end.jpg` is card 2 as it ends (she has stepped down).
 - `layers/cardN/` — each painting cut into layers (every element alone on a transparent ground, at 2048 px, plus
   the bare clay background and, in cards 5 to 7, the band of sea).
 - `prompts/` — the prompts they were made with (Gemini image model `gemini-3-pro-image`).
 - `tools/gen.py` sends a prompt and reference images to the model (the key is read from a private file outside the
   repository). `tools/install.py` turns the drawings into panels. `tools/vase.py` draws the vase, wraps the paintings
   on it, turns it, writes the words, moves the small things, and writes the film. `tools/layers.py` cuts the layers.
-- `clips/cardN.mp4` — the moving pictures (the painted figures in motion, one loop each).
+- `clips/cardN.mp4` — the moving pictures (the painted figures in motion; each plays once).
 - `intro_amphora.mp4` — the film (1080×1920, 24 fps).
 
 ## The words (one card each; a new line here is a new page on the vase)
@@ -45,9 +45,12 @@ Everything is in `amphora/`:
    (marble, women's skin), added red (cloth), on warm orange clay.
 2. **Character sheet** first (`prompts/character_sheet.txt`), six figures in one row.
 3. **Each scene** (`prompts/cardN.txt`) is drawn new from the sheet alone: the model gets the sheet and a description
-   of the scene, and is told that the people must be exactly those of the sheet. Three scenes then got a correction
-   pass (`prompts/cardN_fix*.txt`): the picture itself is given back with one thing to change (the veil must hide
-   the face completely; Theron's tunic and head as on the sheet; white skin).
+   of the scene, and is told that the people must be exactly those of the sheet. The seven scenes were drawn a second
+   time from nothing, this time *for the movement*: every figure stands in a quiet, stable pose in strict profile
+   with both feet on the ground, figures do not overlap unless they must, and there is room where someone is going
+   to move (empty ground in front of the block in card 2, shore in front of her in card 5). What used to go wrong in
+   motion is simply not in the pictures: no oar (card 6, 7), the veil already on her head with only its front edge
+   still to come down (card 4), the reflection's arm white from the start (card 6).
 4. **Into panels** (`tools/install.py`): cropped square (the sea scenes are cropped to their sea, so that it runs
    from edge to edge), one clay colour for all seven, the added red turned to the red of Ione's dress in the game,
    and the sea given a deep sea colour.
@@ -63,28 +66,32 @@ Everything is in `amphora/`:
 
 ## How the figures move
 
-The figures themselves move: hands, steps, cloth. Each painting was given to a video model (`gemini-omni-1.2-flash`,
-through `tools/genvid.py`) as the first frame of a clip of up to 15 seconds; the prompt (`prompts/motion/cardN.txt`)
-says what happens, in order, and that the camera, the ground and the drawing itself do not change. The action goes
-forward and does not return: the clips are not loops. The clips are in `clips/`.
+One simple action in each picture, calm and steady, and then stillness. Each painting was given to a video model
+(`gemini-omni-1.2-flash`, through `tools/genvid.py`) as the first frame of an 8-second clip; the prompt
+(`prompts/motion/cardN.txt`) names the one thing that happens and says that everything else, the camera and the
+drawing itself do not change. The clips are in `clips/`.
+
+Card 2 is made between two pictures: the painting is the first frame and a second drawing of the same scene, with
+her standing on the ground beside the block (`prompts/card2_end_pose.txt`, `panels/card2_end.jpg`), is the last
+(`LAST=8` in `tools/genvid.py`). Given only the first frame, the model kept her on the block or slid the block
+along under her; given where she must end, she steps down and stands there.
 
 `tools/vidprep.py` turns a clip into the frames the vase wears: the clip's colours are fitted to the painting (each
 channel by itself, on flat places only); where nothing ever moves, the painting itself is kept (so it stays crisp
-and cannot shimmer). On the vase each picture is still as it comes round, then begins; it plays once, slows to rest
-over its last second, and after that only breathes (a few of its last frames, very slowly, to and fro).
+and cannot shimmer); the clip is cut at its stillest frame after the action (`END=`), and places that must not move
+can be kept as painted (`STILLBOX=`: in card 2 everything but her, in card 7 the veil on the water). On the vase
+each picture is still as it comes round, begins a moment later, plays once, slows to rest over its last second, and
+then stands still.
 
 | Card | What happens |
 |---|---|
-| 1 | Theron strokes the statue's cheek, steps back to look at the whole of her, comes close again and lays his hand on her shoulder. The statue is stone and does not move; the olive branch sways |
-| 2 | she steps down from the block and stands; nothing more (the clip is cut there: after it she turned toward the viewer) |
-| 3 | she walks along the rocks into the wind, feeling her face, and stops by the water; Theron watches from the doorway, hides his eyes and goes inside |
-| 4 | her face is seen first; then Theron lowers the veil over her hair and her face, smooths it, and stands (the painting was redrawn for this: she is unveiled in it, and he holds the veil above her) |
-| 5 | she takes two small steps to the water's edge and stands there; the woman in the water does the same |
-| 6 | she sits up and rows two strokes, lays the oar down, leans over the side and touches the water; rings spread (in the painting the arms of the woman in the water are white, as hers are) |
-| 7 | the empty boat rocks; the veil drifts away; on the shore Theron walks to the edge, stretches out his arm, lets it sink |
-
-Card 5 was first drawn with her bending over the water from a rock; the video model refused that picture three
-times, so she was redrawn standing upright on a low shore (`prompts/card5_fix3_standing.txt`), which it accepted.
+| 1 | Theron's hand strokes the statue's cheek once and rests there; his head bows a little. He does not step; the statue, the branch and the bench do not move |
+| 2 | she steps down from the block, takes two small steps and stands, in profile, before the goddess's mirror |
+| 3 | she stands on the rock with her hand at her cheek; only the wind moves her hair, her shawl and her skirt |
+| 4 | her face is seen; then Theron draws the front edge of the veil down in front of it like a curtain, lets go, and lowers his arms |
+| 5 | she takes a few small steps forward along the shore and stands; the woman in the water does the same |
+| 6 | kneeling in the boat, she lowers her hand the last small way until her fingertips touch the water; rings spread |
+| 7 | the empty boat rocks very slightly; on the shore Theron slowly holds out his open hand toward it, and keeps it there |
 
 ## What the intro holds back
 

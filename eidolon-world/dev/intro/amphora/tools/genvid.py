@@ -8,10 +8,14 @@ c, pf, out = int(sys.argv[1]), sys.argv[2], sys.argv[3]
 cv = Image.new('RGB', (1920, 1080), (26, 20, 24)); cv.paste(Image.open(S + '/v/big/panel%d.png' % c).convert('RGB').resize((1080, 1080), Image.LANCZOS), (420, 0))
 cv.save(S + '/vid/first%d.png' % c); b = io.BytesIO(); cv.save(b, 'JPEG', quality=96); img = base64.b64encode(b.getvalue()).decode()
 part = {'type': 'image', 'data': img, 'mime_type': 'image/jpeg'}
-inp = [part] + ([part] if os.environ.get('LOOP', '1') == '1' else []) + [{'type': 'text', 'text': open(pf).read()}]
+last = os.environ.get('LAST')      # LAST=n: panel n is the last frame (the first and the last picture differ)
+if last:
+    cv2 = Image.new('RGB', (1920, 1080), (26, 20, 24)); cv2.paste(Image.open(S + '/v/big/panel%s.png' % last).convert('RGB').resize((1080, 1080), Image.LANCZOS), (420, 0))
+    b2 = io.BytesIO(); cv2.save(b2, 'JPEG', quality=96); part2 = {'type': 'image', 'data': base64.b64encode(b2.getvalue()).decode(), 'mime_type': 'image/jpeg'}
+inp = [part] + ([part2] if last else ([part] if os.environ.get('LOOP', '1') == '1' else [])) + [{'type': 'text', 'text': open(pf).read()}]
 body = {'model': os.environ.get('MODEL', 'gemini-omni-1.2-flash'), 'input': inp, 'store': False, 'background': False, 'stream': False,
         'response_format': {'type': 'video', 'aspect_ratio': '16:9', 'resolution': os.environ.get('RES', '1080p'), 'duration': os.environ.get('DUR', '8s')}}
-if os.environ.get('LOOP', '1') != '1' and os.environ.get('TASK', '1') == '1': body['generation_config'] = {'video_config': {'task': 'image_to_video'}}
+if not last and os.environ.get('LOOP', '1') != '1' and os.environ.get('TASK', '1') == '1': body['generation_config'] = {'video_config': {'task': 'image_to_video'}}
 with tempfile.NamedTemporaryFile('w', suffix='.json', delete=False) as f: json.dump(body, f); bf = f.name
 r = subprocess.run(['curl', '-s', '-m', '900', '-K', os.path.expanduser('~/.config/eidolon/gemini_curl'), '-H', 'Content-Type: application/json', '-d', '@' + bf, 'https://generativelanguage.googleapis.com/v1beta/interactions'], capture_output=True)
 os.unlink(bf)

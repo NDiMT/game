@@ -30,6 +30,7 @@ mx = np.zeros((1100, 1100), np.float32)
 for k in range(N): mx = np.maximum(mx, ndi.gaussian_filter(np.abs(fit(F[k]) - f0).sum(2), 2.0))
 M = ndi.binary_dilation(mx > 42, iterations=12).astype(np.float32)
 STILL = {} if ONCE else {1: [(0, 760, 250, 1100)]}      # places where the clip went wrong and the painting is kept (card 1: its waves fade away near the end)
+if os.environ.get('STILLBOX'): STILL[c] = STILL.get(c, []) + [tuple(int(v) for v in b.split(',')) for b in os.environ['STILLBOX'].split(';')]      # STILLBOX=x0,y0,x1,y1;... : more places kept as painted
 for (x0, y0, x1, y1) in STILL.get(c, []): M[y0:y1, x0:x1] = 0
 M = ndi.gaussian_filter(M, 5.0)[..., None]
 print('  moving part of the picture: %.1f%%' % (100 * float((M > 0.5).mean())), ' last against first (moving part): %.2f' % float((np.abs(fit(F[N - 1]) - f0) * M).sum() / (M.sum() * 3 + 1)))

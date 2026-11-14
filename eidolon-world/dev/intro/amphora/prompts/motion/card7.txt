@@ -4,14 +4,15 @@ the vase began to move. LOCKED-OFF STATIC CAMERA: no zoom, no pan, no tilt, no c
 ground, the black bands at the left and right, and everything that is not named below stay perfectly still.
 The drawing stays exactly as painted: the same flat colours, the same outlines and incised lines, no shading, no 3D,
 no light effects, no new objects, no new figures, no text. Every figure keeps its exact look, clothes and proportions
-from the first frame to the last. Movement is calm, slow and continuous, one action flowing into the next. In the
-last second everything comes to rest and holds still. Single continuous shot, no cuts. Silent: no music, no voices.
+from the first frame to the last. There is very little movement: ONE simple action, calm, slow and steady. Whatever
+is not named below does not move at all. In the last two seconds everything has come to rest and holds perfectly
+still. Single continuous shot, no cuts. Silent: no music, no voices.
 
-WHAT HAPPENS, IN ORDER:
-- The empty boat rocks very gently on the still water and drifts a little; its oar swings slowly.
-- The red veil floating on the water drifts slowly away to the right, undulating; the thin pale rings round it widen
-  and fade.
-- The small man on the shore at the left walks three slow steps forward to the edge of the shore, stretches his arm
-  out toward the sea, holds it there, then lets the arm sink and bows his head.
-- The reflection of the boat trembles a little as water does.
-- The sea is a flat, calm, dark band and stays so. Nothing rises out of the water. The sun does not move.
+WHAT HAPPENS:
+- The small empty boat lies on the calm water; it rocks only very slightly and does not travel. Nobody is in it.
+- The red veil floats on the water at the right; it drifts very slowly a little to the right, and the thin pale rings
+  round it widen slowly.
+- The dark bearded man on the shore at the left stands still: his feet do not move and he does not walk. Slowly he
+  raises one arm and holds his open hand out toward the boat, then keeps it there, still.
+- He stays in strict profile; he never turns toward the viewer.
+- The sea is a flat, calm, dark band and stays so. The sun does not move.

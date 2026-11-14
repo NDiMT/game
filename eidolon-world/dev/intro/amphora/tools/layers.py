@@ -10,25 +10,26 @@ SC = 2048 / 1100.0
 # name, box (in 1100-pixel units), which pixels inside the box belong to it
 #   all: whatever is not bare clay; dark: black slip; bright: cream-white; colour: purple-red and white (not black);
 #   notbright: black and purple-red (not the cream-white)
-#   red: the red cloth alone; seed:x,y: the one thing that holds that point; sea: the band of sea, made whole
+#   red: the red cloth alone; bluer: a thin pale cloth (whatever is bluer than the clay); seed:x,y: the one thing that holds that point; sea: the band of sea, made whole
 L = {
- 1: [('sun', (105, 75, 255, 225), 'dark'), ('waves', (0, 905, 242, 1056), 'all'), ('plinth', (608, 975, 842, 1060), 'dark'),
-     ('theron', (255, 195, 690, 1060), 'notbright'), ('statue', (630, 215, 828, 990), 'bright'),
-     ('bench_and_tools', (870, 650, 1100, 1060), 'all'), ('olive_branch', (545, 0, 1100, 215), 'dark', (770, 215, 1100, 475)), ('ground_line', (0, 1040, 1100, 1072), 'all')],
- 2: [('theron', (55, 420, 405, 1008), 'notbright_thick'), ('aphrodite', (652, 150, 1100, 1010), 'all_thick', (630, 200, 652, 440)),
-     ('plinth', (400, 952, 670, 1010), 'dark'), ('ione', (378, 200, 652, 952), 'all_thick'), ('temple', (150, 30, 1000, 660), 'thin'), ('ground_line', (0, 990, 1100, 1024), 'all')],
- 3: [('sun', (105, 95, 258, 246), 'dark'), ('waves', (0, 708, 437, 876), 'all'), ('ione', (383, 140, 885, 872), 'seed:600,600', (383, 872, 660, 940, 'bright')),
-     ('rocks_door_theron', (0, 400, 1100, 1000), 'all')],
- 4: [('wrapped_mirror_1', (0, 70, 270, 340), 'all'), ('wrapped_mirror_2', (0, 400, 270, 665), 'all'), ('bare_mirror', (835, 70, 1100, 330), 'all'),
-     ('cloth_on_peg', (858, 503, 980, 858), 'all', (895, 462, 945, 503, 'red')), ('hand_mirror_and_peg', (880, 458, 1100, 650), 'all'),
-     ('ione_with_her_face', (585, 190, 860, 1030), 'all'), ('veil_held_above', (520, 80, 810, 760), 'red'),
-     ('theron', (300, 60, 600, 1030), 'all', (600, 60, 800, 300, 'dark')), ('ground_line', (0, 1000, 1100, 1040), 'all')],
- 5: [('sea', None, 'sea'), ('gull_1', (540, 15, 670, 105), 'all'), ('gull_2', (950, 215, 1070, 305), 'all'), ('sun', (770, 45, 915, 195), 'dark'),
-     ('ione_veiled', (150, 0, 400, 585), 'colour', (190, 540, 380, 590, 'dark')), ('shore', (0, 540, 460, 616), 'dark'),
-     ('reflection', (120, 614, 420, 1090), 'all'), ('sun_road', (760, 614, 930, 1098), 'all')],
- 6: [('sea', None, 'sea'), ('sun', (75, 50, 225, 195), 'dark'), ('boat_and_ione', (100, 230, 945, 677), 'all'), ('reflection', (100, 678, 960, 1096), 'all')],
- 7: [('sea', None, 'sea'), ('sun', (845, 225, 990, 365), 'dark'), ('theron_on_shore', (0, 480, 225, 712), 'all'), ('boat', (310, 600, 760, 748), 'dark'),
-     ('veil', (776, 738, 1022, 804), 'red'), ('boat_reflection', (300, 748, 770, 892), 'all'), ('rings', (740, 715, 1100, 840), 'all')],
+ 1: [('sun', (40, 35, 165, 160), 'dark'), ('plinth', (425, 955, 680, 1042), 'dark'),
+     ('theron', (105, 140, 445, 1042), 'notbright', (445, 225, 505, 410)), ('statue', (440, 160, 670, 970), 'bright'),
+     ('bench_and_tools', (775, 700, 1100, 1042), 'all'), ('olive_branch', (720, 0, 1075, 365), 'dark'), ('ground_line', (0, 1040, 1100, 1062), 'all')],
+ 2: [('theron', (40, 400, 345, 906), 'notbright_thick'), ('plinth', (348, 858, 568, 908), 'dark'),
+     ('ione', (348, 235, 570, 862), 'all_thick', (325, 780, 348, 865, 'bright')), ('aphrodite', (755, 235, 1080, 908), 'all_thick'),
+     ('temple', (150, 30, 960, 908), 'thin'), ('ground_line', (0, 900, 1100, 925), 'all')],
+ 3: [('sun', (110, 95, 240, 220), 'dark'), ('waves', (0, 690, 446, 965), 'dark'), ('ione', (370, 100, 800, 890), 'seed:500,600', (395, 880, 560, 948, 'bright'), (440, 240, 810, 590, 'bluer'), (450, 765, 790, 892, 'soft')),
+     ('rocks_door_theron', (0, 380, 1100, 1000), 'all')],
+ 4: [('wrapped_mirror_1', (40, 95, 260, 335), 'all'), ('wrapped_mirror_2', (40, 370, 260, 605), 'all'), ('bare_mirror', (820, 100, 1060, 338), 'all'),
+     ('cloth_on_peg', (855, 370, 1005, 775), 'all'),
+     ('theron', (265, 110, 500, 1010), 'all', (500, 125, 712, 200, 'dark'), (500, 200, 640, 335, 'dark'), (500, 975, 522, 1010, 'dark')),
+     ('ione_veil_on_her_head', (440, 125, 740, 1010), 'all'), ('ground_line', (0, 1008, 1100, 1030), 'all')],
+ 5: [('sea', None, 'sea'), ('gull_1', (525, 70, 610, 120), 'all'), ('gull_2', (940, 245, 1000, 285), 'all'), ('sun', (745, 130, 885, 268), 'dark'),
+     ('ione_veiled', (215, 55, 372, 545), 'colour', (225, 500, 340, 525, 'dark')), ('shore', (0, 518, 690, 552), 'dark'),
+     ('reflection', (205, 553, 375, 1050), 'all'), ('sun_road', (735, 553, 900, 1098), 'all')],
+ 6: [('sea', None, 'sea'), ('sun', (200, 88, 348, 236), 'dark'), ('boat_and_ione', (120, 220, 980, 634), 'all'), ('reflection', (110, 634, 985, 1040), 'all')],
+ 7: [('sea', None, 'sea'), ('sun', (805, 105, 960, 262), 'dark'), ('theron_on_shore', (0, 135, 375, 712), 'all'), ('boat', (380, 605, 738, 722), 'dark'),
+     ('veil', (780, 680, 1095, 812), 'red'), ('boat_reflection', (375, 712, 740, 835), 'all'), ('rings', (735, 705, 1100, 815), 'all')],
 }
 SEACOL = np.array([20, 54, 68], np.float32)
 def sel(a, dg, kind):
@@ -39,7 +40,9 @@ def sel(a, dg, kind):
     elif k == 'bright': al = al * np.clip((lum - 150) / 30.0, 0, 1)
     elif k == 'colour': al = al * np.clip(np.maximum(sat - 28, lum - 95) / 20.0, 0, 1)
     elif k == 'notbright': al = al * np.clip((165 - lum) / 25.0, 0, 1)
+    elif k == 'soft': al = np.clip((dg - 20) / 18.0, 0, 1) * np.clip((np.abs(a - SEACOL).sum(2) - 30) / 25.0, 0, 1)      # pale paint that is close to the clay's own colour
     elif k == 'red': al = al * np.clip((a[..., 0] - a[..., 1] * 1.6) / 20.0, 0, 1)
+    elif k == 'bluer': al = np.clip((a[..., 2] - 99) / 14.0, 0, 1) * np.clip((np.abs(a - SEACOL).sum(2) - 30) / 25.0, 0, 1)      # a thin pale cloth: whatever is bluer than the clay
     elif k.startswith('seed:'):
         sx, sy = [int(int(v) * SC) for v in k[5:].split(',')]; lab, n = ndi.label(al > 0.3); kk = lab[sy - sel.org[1], sx - sel.org[0]]; assert kk > 0
         al = al * ndi.binary_dilation(lab == kk, iterations=3)
@@ -56,13 +59,13 @@ for c, layers in L.items():
         if f.endswith('.png'): os.remove(d + '/' + f)
     seam = np.abs(a - SEACOL).sum(2) < 45; rows = np.where(seam.mean(1) > 0.5)[0]; sea_top = rows.min() if len(rows) > 100 else H
     for n, lay in enumerate(layers, 1):
-        name, box, kind = lay[0], lay[1], lay[2]; extra = lay[3] if len(lay) > 3 else None
+        name, box, kind = lay[0], lay[1], lay[2]; extras = lay[3:]
         if kind == 'sea':      # the band of sea, whole: where something lies on it, sea is laid under
             rgb = np.where(seam[..., None], a, SEACOL + np.random.default_rng(c).normal(0, 1.5, (H, W, 1))); alp = np.zeros((H, W), np.float32); alp[sea_top:] = 255
             Image.fromarray(np.dstack([np.clip(rgb, 0, 255) * (alp[..., None] > 0), alp]).astype(np.uint8), 'RGBA').save('%s/%02d_%s.png' % (d, n, name), optimize=True); names.append(name)
             allm[sea_top - 3:] = 1; continue
         al = np.zeros((H, W), np.float32)
-        for bx, kd in [(box, kind)] + ([(extra[:4], extra[4] if len(extra) > 4 else kind)] if extra else []):
+        for bx, kd in [(box, kind)] + [(e[:4], e[4] if len(e) > 4 else kind) for e in extras]:
             x0, y0, x1, y1 = [int(v * SC) for v in bx]; sel.org = (x0, y0)
             al[y0:y1, x0:x1] = np.maximum(al[y0:y1, x0:x1], sel(a[y0:y1, x0:x1], dg[y0:y1, x0:x1], kd))
         al = al * (1 - taken); taken = np.maximum(taken, (al > 0.5).astype(np.float32))
