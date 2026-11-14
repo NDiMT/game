@@ -53,30 +53,47 @@ const SP2_QZ0 := -74.45
 const SP2_QZ1 := -61.6
 const SP2_ISLE := Vector3(-22.5, 0, -63.935) # the islet where the third palm sets her down
 const SP2_LEVER := Vector3(-22.35, 0, -63.75)
-const SP2_DOOR := Vector3(-18.55, 0, -62.7)  # the sluice it opens: the door of the third court, in the lane's east side
+const SP2_DOOR := Vector3(-18.55, 0, -65.4)  # the sluice it opens: the door of the third court, in the lane's east side
 const SP2_IDLER_YAW := [91.285, 88.72]       # how the two idle wheels stand, so that their teeth lie in the gaps of their neighbours (degrees)
 const SP2_B_OFF := -4.32                     # and by how much the second's own wheel is set round on its drum for the same
+# ---------------------------------------------------------------- P.3 what each one wants
+const SP3_X0 := -18.7
+const SP3_X1 := -6.9
+const SP3_Z0 := -73.9
+const SP3_Z1 := -63.2
+const SP3_C := Vector3(-12.4, 0, -68.6)      # the middle of the exedra's curve
+const SP3_RA := 3.6                          # the five places stand on this curve...
+const SP3_RI := 2.85                         # ...and the rail that joins them runs on this one
+const SP3_P := Vector3(-11.4, 0, -67.6)      # the round basin before them
+const SP3_PR := 3.5
+const SP3_SEA := Vector3(27.6, 0, -74.6)     # where the one that wants the sea looks: far out to the east
+const SP3_NAMES := ["the sea", "the wall", "the one beside it", "the empty place"]
+const SP3_POSES := ["reach", "mourn", "pray", "calm"]
 
 var sp_col := {}      # the colossi, by name: {"p": foot, "q": which quarter the arm points to (0 north, 1 east, 2 south, 3 west), "w": its water, "pair": the one geared to it, "view": where the eye rests while it turns}
 var sp_chan: Array = []      # the course of the water once the spring runs: [from, to] pieces, in order
+var sp3_at := [2, 1, 0, 3]   # at which of the five places each of the four stands (0: the end by the opening .. 4: the end by the wall), in the order of SP3_NAMES
+var sp3_sol := []            # where each of them is in the list of things she walks round
+var sp3_h := []              # their heads, and their twins': [statue * 2 + (1 for the twin)] = {"sk", "ni", "hi", "n0", "h0", "yaw", "bow"}
 
 func _init() -> void:
 	super._init(); wing_open["N"] = true
 
 func _hollows() -> Array:
-	return super._hollows() + [[SP1_X0 + 0.5, SP1_Z0 + 0.5, SP1_X1 - 0.5, SP1_Z1 - 0.5], [SP2_X0 + 0.5, SP2_Z0 + 0.5, SP2_X1 - 0.5, SP2_Z1 - 0.5]]
+	return super._hollows() + [[SP1_X0 + 0.5, SP1_Z0 + 0.5, SP1_X1 - 0.5, SP1_Z1 - 0.5], [SP2_X0 + 0.5, SP2_Z0 + 0.5, SP2_X1 - 0.5, SP2_Z1 - 0.5],
+		[SP3_X0 + 0.5, SP3_Z0 + 0.5, SP3_X1 - 0.5, SP3_Z1 - 0.5]]
 
 func _wings() -> void:
 	super._wings()
-	_sp_court1(); _sp_court2()
+	_sp_court1(); _sp_court2(); _sp_court3()
 
 func _wing_things() -> void:
 	super._wing_things()
-	_sp_things1(); _sp_things2()
+	_sp_things1(); _sp_things2(); _sp_things3()
 
 func _wing_nav() -> void:
 	super._wing_nav()
-	_sp_nav1(); _sp_nav2()
+	_sp_nav1(); _sp_nav2(); _sp_nav3()
 
 func _ready() -> void:
 	super._ready()
@@ -636,6 +653,290 @@ func _do_sp_lever2() -> void:
 	rects["SP3d"].on = true
 	await _refl_melt()
 
+
+# ---------------------------------------------------------------- P.3 what each one wants
+## An exedra: a curved bench under a low wall, and before it five places on a bronze rail, four statues of her, and
+## a round basin. Above they all look straight ahead. In the water each looks elsewhere: one out to sea, one at the
+## wall, one at another of them, one at the empty place. A statue pushed off its place runs in along its spur, round
+## the rail, and out onto the place that is empty. When the first three have what they want, the fourth still looks
+## at the empty place: what it wants is not stone
+func _sp3_ang(i: float) -> float:
+	return deg_to_rad(275.0 - 25.0 * i)
+
+func _sp3_pt(a: float, r: float) -> Vector3:
+	return SP3_C + Vector3(cos(a), 0, sin(a)) * r
+
+func _sp3_place(i: int) -> Vector3:
+	return _sp3_pt(_sp3_ang(i), SP3_RA)
+
+func _sp3_hole() -> int:
+	for k in 5:
+		if not (k in sp3_at): return k
+	return 0
+
+## a flat strip of bronze let into the floor, from a to b
+func _sp_strip(a: Vector3, b: Vector3, w: float, pl := "gold", y := 0.003, h := 0.01) -> MeshInstance3D:
+	var l := _flat(a, b)
+	var m := blk(Vector3(-l * 0.5, 0, -w * 0.5), Vector3(l * 0.5, h, w * 0.5), pl)
+	m.position = (a + b) * 0.5 + Vector3(0, y + h * 0.5, 0); m.rotation.y = -atan2(b.z - a.z, b.x - a.x)
+	return m
+
+## a block on a curve about c: from angle a0 to a1 (radians), between two radii and two heights
+func _sp_arc_blk(c: Vector3, a0: float, a1: float, r0: float, r1: float, y0: float, y1: float, pl := "stone") -> void:
+	var am := (a0 + a1) * 0.5; var rm := (r0 + r1) * 0.5
+	var l := absf(a1 - a0) * r1 + 0.012
+	var m := blk(Vector3(-l * 0.5, 0, -(r1 - r0) * 0.5), Vector3(l * 0.5, y1 - y0, (r1 - r0) * 0.5), pl)
+	m.position = c + Vector3(cos(am), 0, sin(am)) * rm + Vector3(0, (y0 + y1) * 0.5, 0); m.rotation.y = -(am + PI * 0.5)
+
+## a round pool in a court: the court with a square opening, its four corners covered, a round kerb
+func _sp_round(c: Vector3, r: float, x0: float, z0: float, x1: float, z1: float, sky: String, depth := 0.0) -> void:
+	var qx0 := c.x - r; var qz0 := c.z - r; var qx1 := c.x + r; var qz1 := c.z + r
+	_pool_court(x0, z0, x1, z1, qx0, qz0, qx1, qz1, "stone", sky)
+	if depth > 0.0: _sp_pit(sky, depth)
+	tile_hole = Rect2(qx0 - 0.08, qz0 - 0.08, r * 2.0 + 0.16, r * 2.0 + 0.16); tiles(x0, z0, x1, z1, 1.0); tile_hole = Rect2()
+	glass(qx0, qz0, qx1, qz1)
+	for k in 4:
+		var corner := Vector3(qx0 if k in [1, 2] else qx1, 0, qz0 if k in [2, 3] else qz1)
+		_sp_cover(corner, _sp_arc(c, r, 90.0 * k, 90.0 * (k + 1), 18))
+	turned(c, [[r + 0.08, 0.04], [r + 0.08, 0.06], [r, 0.06], [r, -0.06]], "shade", 72)
+
+func _sp_court3() -> void:
+	var c := SP3_C
+	_sp_round(SP3_P, SP3_PR, SP3_X0, SP3_Z0, SP3_X1, SP3_Z1, "PoolSkySp3")
+	var fn := R(c.x - 4.25, c.z - 4.25, SP3_X1 - 0.45, SP3_P.z - SP3_PR - 0.45); var fw := R(c.x - 4.25, c.z - 4.25, SP3_P.x - SP3_PR - 0.45, SP3_Z1 - 0.45)
+	var fc := R(SP3_P.x - SP3_PR - 0.45, SP3_P.z - SP3_PR - 0.45, c.x - 1.8, c.z - 1.8)
+	W["SP3"] = {"r": [SP3_P.x - SP3_PR, SP3_P.z - SP3_PR, SP3_P.x + SP3_PR, SP3_P.z + SP3_PR], "round": true, "c": SP3_P, "rad": SP3_PR, "far": 12.0,
+		"heads": [fn, fw, fc], "foot": {"n": fn, "w": fw, "c": fc}}
+	WL.append("SP3")
+	# the rail: a ring of two bronze lines, and a spur from it out to each place; at each place a bronze socket
+	var a_lo := _sp3_ang(4.0); var a_hi := _sp3_ang(0.0); var n := 20
+	for k in n:
+		var a0 := lerpf(a_lo, a_hi, float(k) / n); var a1 := lerpf(a_lo, a_hi, float(k + 1) / n)
+		for g in [-0.15, 0.15]: _sp_strip(_sp3_pt(a0, SP3_RI + g), _sp3_pt(a1, SP3_RI + g), 0.035)
+		if k % 2 == 0: _sp_strip(_sp3_pt((a0 + a1) * 0.5, SP3_RI - 0.21), _sp3_pt((a0 + a1) * 0.5, SP3_RI + 0.21), 0.07, "dark", 0.002, 0.006)      # the sleepers under it
+	for i in 5:
+		var a := _sp3_ang(i); var t := Vector3(-sin(a), 0, cos(a))
+		for g in [-0.15, 0.15]: _sp_strip(_sp3_pt(a, SP3_RI) + t * g, _sp3_pt(a, SP3_RA - 0.34) + t * g, 0.035)
+		for k in 2: _sp_strip(_sp3_pt(a, SP3_RI + 0.25 + 0.25 * k) - t * 0.21, _sp3_pt(a, SP3_RI + 0.25 + 0.25 * k) + t * 0.21, 0.07, "dark", 0.002, 0.006)
+		turned(_sp3_place(i), [[0.44, 0.0], [0.44, 0.012], [0.35, 0.012], [0.35, 0.0]], "gold", 28)
+		turned(_sp3_place(i), [[0.35, 0.0], [0.35, 0.006], [0.0, 0.006]], "shade", 28)
+	# the four, each on a plinth shod with bronze; and their twins in the water
+	for both in [self, mroot]:
+		var twin: bool = both == mroot
+		var flat := "flat2" if twin else "flat"
+		for i in 4:
+			var a := _sp3_ang(sp3_at[i])
+			var nd := Node3D.new(); nd.position = _sp3_pt(a, SP3_RA); nd.rotation.y = atan2(-cos(a), -sin(a)); both.add_child(nd)
+			cyl(Vector3.ZERO, 0.32, 0.3, 0.07, pal("shade", flat), 20, nd); cyl(Vector3(0, 0.07, 0), 0.26, 0.26, 0.1, pal("stone", flat), 20, nd)
+			turned(Vector3.ZERO, [[0.345, 0.0], [0.345, 0.035], [0.31, 0.04]], "gold", 24, nd)
+			for w in 4:      # the four small wheels it runs on
+				var wh := cyl(Vector3.ZERO, 0.045, 0.045, 0.03, pal("gold", flat), 10, nd); wh.rotation.x = PI * 0.5; wh.position = Vector3(0.15 if w % 2 == 0 else -0.15, 0.03, 0.3 if w < 2 else -0.3)
+			var st := her_statue(Vector3(0, 0.17, 0), 0.0, SP3_POSES[i], 1.0, nd)
+			N["sp3_st%d%s" % [i, "_m" if twin else ""]] = nd
+			var h := {"sk": null, "yaw": 0.0, "bow": 0.0}
+			var sks := st.find_children("*", "Skeleton3D", true, false)
+			if not sks.is_empty():
+				var sk: Skeleton3D = sks[0]
+				h.sk = sk; h.hi = _bone(sk, "Head"); h.ni = _bone(sk, "Neck")
+				h.h0 = sk.get_bone_pose_rotation(h.hi) if h.hi >= 0 else Quaternion.IDENTITY; h.n0 = sk.get_bone_pose_rotation(h.ni) if h.ni >= 0 else Quaternion.IDENTITY
+			if twin: sp3_h[i * 2 + 1] = h
+			else: sp3_h.append(h); sp3_h.append({})
+	# the exedra: a low curved wall, a bench along its foot, a pier at each end
+	var w0 := deg_to_rad(155.0); var w1 := deg_to_rad(292.0); var wn := 24
+	for k in wn:
+		var a0 := lerpf(w0, w1, float(k) / wn); var a1 := lerpf(w0, w1, float(k + 1) / wn)
+		_sp_arc_blk(c, a0, a1, 4.75, 5.0, 0.0, 1.3, "stone"); _sp_arc_blk(c, a0, a1, 4.72, 5.03, 0.0, 0.14, "shade")
+		_sp_arc_blk(c, a0, a1, 4.7, 5.05, 1.3, 1.36, "shade"); _sp_arc_blk(c, a0, a1, 4.73, 5.02, 1.36, 1.42, "stone")
+		_sp_arc_blk(c, a0, a1, 4.33, 4.75, 0.0, 0.36, "stone"); _sp_arc_blk(c, a0, a1, 4.29, 4.75, 0.36, 0.42, "shade")      # the bench
+		if k % 3 == 1: _sp_arc_blk(c, lerpf(a0, a1, 0.3), lerpf(a0, a1, 0.7), 4.71, 4.75, 0.42, 1.3, "shade")      # a flat rib on the wall, behind every third seat
+		if k % 3 == 0: _sp_arc_blk(c, lerpf(a0, a1, -0.08), lerpf(a0, a1, 0.08), 4.27, 4.75, 0.0, 0.5, "shade")      # the bench's arm rests
+	for e in [w0, w1]:
+		var pp := c + Vector3(cos(e), 0, sin(e)) * 4.875
+		blk(pp + Vector3(-0.27, 0, -0.27), pp + Vector3(0.27, 1.7, 0.27), "stone"); blk(pp + Vector3(-0.31, 0, -0.31), pp + Vector3(0.31, 0.16, 0.31), "shade")
+		blk(pp + Vector3(-0.31, 1.7, -0.31), pp + Vector3(0.31, 1.77, 0.31), "shade"); ball(pp + Vector3(0, 1.86, 0), 0.1, pal("gold"))
+		solids.append(Vector3(pp.x, pp.z, 0.42))
+	N["sp3_wallpt"] = c + Vector3(cos(w0), 0, sin(w0)) * 4.875
+	# edges
+	parapet(Vector3(SP3_X0 + 0.5, 0, SP3_Z0 + 0.1), Vector3(SP3_X1 - 0.1, 0, SP3_Z0 + 0.1)); parapet(Vector3(SP3_X1 - 0.1, 0, SP3_Z0 + 0.1), Vector3(SP3_X1 - 0.1, 0, SP3_Z1 - 0.1))
+	parapet(Vector3(SP3_X0 + 0.1, 0, SP3_Z1 - 0.1), Vector3(SP3_X1 - 0.1, 0, SP3_Z1 - 0.1))
+	_sp_chan(Vector3(SP3_X0 + 0.02, 0, SP2_DOOR.z), Vector3(c.x - 5.9, 0, SP2_DOOR.z), false)      # a stub of the channel, through the door
+	stele("sp_stele3", Vector3(SP3_X0 + 0.8, 0, SP3_Z1 - 1.0), PI * 0.5, ["Each one is something\nI wished she were.", "In the water\neach looks at what it wants.\nNone of them looks at me."])
+	_look_add("", _sp3_pt(deg_to_rad(225.0), SP3_RI), 0.3, ["a bronze rail, a spur to each place", "one place is empty. whatever is pushed runs to it"])
+	_look_add("", _sp3_pt(deg_to_rad(262.0), 4.5), 0.8, ["a bench, for whoever was to sit and choose", "five places. he only ever made four of these"])
+	_look_add("", SP3_P + Vector3(1.6, 0, 1.6), 0.3, ["a shallow basin. above, they all look ahead", "in the water not one of them does"])
+	urn(Vector3(SP3_X1 - 0.8, 0, SP3_Z0 + 0.9), 1.0); urn(Vector3(SP3_X0 + 0.75, 0, SP3_Z0 + 2.6), 0.9, "rose"); cypress(Vector3(SP3_X0 + 0.7, 0, SP3_Z0 + 0.8), 1.3)
+
+func _sp_things3() -> void:
+	for i in 4: objs["sp3_st%d" % i] = {"at": Vector3.ZERO, "stand": Vector3.ZERO, "mark": false, "hits": []}
+	objs["sp3_place"] = {"at": Vector3.ZERO, "stand": Vector3.ZERO, "mark": false, "hits": []}
+	_sp3_sync()
+	_sp3_heads_now()
+
+func _sp_nav3() -> void:
+	var c := SP3_C
+	rects["SP3n"] = R(c.x - 4.25, c.z - 4.25, SP3_X1 - 0.45, SP3_P.z - SP3_PR - 0.45)
+	rects["SP3w"] = R(c.x - 4.25, c.z - 4.25, SP3_P.x - SP3_PR - 0.45, SP3_Z1 - 0.45)
+	rects["SP3c"] = R(SP3_P.x - SP3_PR - 0.45, SP3_P.z - SP3_PR - 0.45, c.x - 1.8, c.z - 1.8)
+	rects["SP3e"] = R(SP3_X0 + 0.45, SP2_DOOR.z - 0.9, SP3_P.x - SP3_PR - 0.45, SP3_Z1 - 0.45)      # inside the door
+	for k in 13:      # the bench, where it crosses the corner
+		var a := deg_to_rad(195.0 + 5.0 * k)
+		solids.append(Vector3(c.x + cos(a) * 4.6, c.z + sin(a) * 4.6, 0.36))
+	for i in 4:
+		var p := _sp3_place(sp3_at[i])
+		sp3_sol.append(solids.size()); solids.append(Vector3(p.x, p.z, 0.45))
+
+## where she stands to push the statue at a place off toward another: behind it and to the side away from where it goes
+func _sp3_push_at(from: int, to: int) -> Vector3:
+	return _sp3_pt(_sp3_ang(from) + deg_to_rad(12.5 if to > from else -12.5), 4.05)
+
+## what can be tapped, and what she walks round, set to where the four stand now
+func _sp3_sync() -> void:
+	for i in 4:
+		var p := _sp3_place(sp3_at[i])
+		objs["sp3_st%d" % i].at = p + Vector3(0, 1.0, 0); objs["sp3_st%d" % i].hits = [p + Vector3(0, 0.15, 0), p + Vector3(0, 1.8, 0)]
+		if i < sp3_sol.size(): solids[sp3_sol[i]] = Vector3(p.x, p.z, 0.45)
+	var h := _sp3_hole(); var hp := _sp3_place(h)
+	objs["sp3_place"].at = hp + Vector3(0, 0.3, 0); objs["sp3_place"].hits = [hp + Vector3(0, 0.02, 0), hp + Vector3(0, 0.5, 0)]
+	objs["sp3_place"].stand = _sp3_pt(_sp3_ang(h) + deg_to_rad(-12.5 if h >= 2 else 12.5), 4.05)
+
+## which of the four have what they want
+func _sp3_sat() -> Array:
+	return [sp3_at[0] == 0, sp3_at[1] == 4, absi(sp3_at[2] - sp3_at[3]) == 1, flags.get("sp3_posed", false)]
+
+## how far round a statue's head must turn (from straight ahead) to look at a place
+func _sp3_yaw_to(i: int, target: Vector3) -> float:
+	var at := _sp3_place(sp3_at[i])
+	return clampf(angle_difference(atan2(SP3_C.x - at.x, SP3_C.z - at.z), atan2(target.x - at.x, target.z - at.z)), -1.25, 1.25)
+
+## a head set as it is noted to be: turned by its yaw (half in the neck, half in the head), bowed by its bow
+func _sp3_head_set(h: Dictionary) -> void:
+	var sk: Skeleton3D = h.get("sk")
+	if sk == null or int(h.hi) < 0: return
+	sk.set_bone_pose_rotation(h.hi, h.h0)
+	if int(h.ni) >= 0: sk.set_bone_pose_rotation(h.ni, h.n0)
+	var la := _bone(sk, "LeftArm"); var ra := _bone(sk, "RightArm")
+	var left := (sk.get_bone_global_pose(la).origin - sk.get_bone_global_pose(ra).origin).normalized()
+	var yw: float = h.yaw
+	if int(h.ni) >= 0:
+		_bend(sk, "Neck", Vector3.UP, yw * 0.5); _bend(sk, "Head", Vector3.UP, yw * 0.5)
+	else: _bend(sk, "Head", Vector3.UP, yw)
+	if absf(float(h.bow)) > 0.0005: _bend(sk, "Head", Basis(Vector3.UP, yw) * left, float(h.bow))
+
+## what each head should be doing as things stand: [yaw, bow] for statue i (twin: its twin in the water). The twins
+## look at what they want; a statue above looks ahead, until it has what it wants: then it looks as its twin does.
+## At the end all of them bow
+func _sp3_head_want(i: int, twin: bool) -> Array:
+	var tg: Array = [SP3_SEA, N["sp3_wallpt"], _sp3_place(sp3_at[3]), _sp3_place(_sp3_hole())]
+	var y := _sp3_yaw_to(i, tg[i])
+	return [y if (twin or _sp3_sat()[i]) else 0.0, 0.34 if flags.get("sp3_done", false) else 0.0]
+
+func _sp3_heads_now() -> void:
+	for i in 4:
+		for t in 2:
+			var h: Dictionary = sp3_h[i * 2 + t]
+			var w := _sp3_head_want(i, t == 1)
+			h.yaw = w[0]; h.bow = w[1]; _sp3_head_set(h)
+
+## the heads go to what they should be doing, slowly
+func _sp3_heads(secs := 0.9) -> void:
+	var t := create_tween().set_parallel().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT); var any := false
+	for i in 4:
+		for k in 2:
+			var h: Dictionary = sp3_h[i * 2 + k]
+			var w := _sp3_head_want(i, k == 1)
+			var y0: float = h.yaw; var b0: float = h.bow; var y1: float = w[0]; var b1: float = w[1]
+			if absf(y0 - y1) < 0.01 and absf(b0 - b1) < 0.01: continue
+			any = true
+			t.tween_method(func(v: float) -> void:
+				h.yaw = lerpf(y0, y1, v); h.bow = lerpf(b0, b1, v); _sp3_head_set(h), 0.0, 1.0, secs)
+	if any: await t.finished
+	else: t.kill()
+
+func use(k: String) -> void:
+	if k.begins_with("sp3_st"):
+		var i := int(k.substr(6))
+		objs[k].stand = _sp3_push_at(sp3_at[i], _sp3_hole())
+	await super.use(k)
+
+func _do_sp3_st0() -> void: await _sp3_slide(0)
+func _do_sp3_st1() -> void: await _sp3_slide(1)
+func _do_sp3_st2() -> void: await _sp3_slide(2)
+func _do_sp3_st3() -> void: await _sp3_slide(3)
+
+## she lays her hands on a statue and pushes: it runs in along its spur, round the rail, and out to the empty place
+func _sp3_slide(i: int) -> void:
+	var from: int = sp3_at[i]; var to := _sp3_hole()
+	var a0 := _sp3_ang(from); var a1 := _sp3_ang(to)
+	var sp := _sp3_place(from)
+	await face(sp)
+	var d := sp - pos; d.y = 0.0; d = d.normalized(); var lat := Vector3(d.z, 0, -d.x)
+	tgtL = sp + Vector3(0, 1.32, 0) - d * 0.2 - lat * 0.13; tgtR = sp + Vector3(0, 1.32, 0) - d * 0.2 + lat * 0.13
+	var s0 := cam.size
+	cam_focus = SP3_C + Vector3(0.7, 0.4, 0.7); cam_focus_on = true
+	create_tween().tween_property(cam, "size", 10.0, 1.4).set_trans(Tween.TRANS_SINE)
+	var up := tw(); up.tween_property(self, "a_wL", 1.0, 0.6); up.tween_property(self, "a_wR", 1.0, 0.6); up.tween_property(self, "a_lean", 0.2, 0.6)
+	await up.finished
+	await wait(0.25)
+	var mv := func(a: float, r: float) -> void:
+		for sfx in ["", "_m"]:
+			var nd: Node3D = N["sp3_st%d%s" % [i, sfx]]
+			nd.position = _sp3_pt(a, r); nd.rotation.y = atan2(-cos(a), -sin(a))
+	var t := create_tween()
+	t.tween_method(func(v: float) -> void: mv.call(a0, v), SP3_RA, SP3_RI, 1.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	t.tween_method(func(v: float) -> void: mv.call(v, SP3_RI), a0, a1, maxf(1.3, absf(a1 - a0) * SP3_RI / 0.95)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	t.tween_method(func(v: float) -> void: mv.call(a1, v), SP3_RI, SP3_RA, 1.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	var push := create_tween().set_parallel(); push.tween_property(self, "tgtL", tgtL + d * 0.22, 0.6); push.tween_property(self, "tgtR", tgtR + d * 0.22, 0.6)      # her hands go a little way with it
+	await wait(0.65)
+	var dn := tw(); dn.tween_property(self, "a_wL", 0.0, 0.6); dn.tween_property(self, "a_wR", 0.0, 0.6); dn.tween_property(self, "a_lean", 0.0, 0.6)
+	await t.finished
+	sp3_at[i] = to
+	_sp3_sync()
+	await _sp3_heads(0.9)
+	await wait(0.3)
+	cam_focus_on = false
+	create_tween().tween_property(cam, "size", s0, 1.4).set_trans(Tween.TRANS_SINE)
+
+## P.3: the empty place. She steps onto it and takes the stance. The one that looked at the empty place has what it
+## wanted. If the other three have too, all four bow their heads, and the sluice across the lane goes down
+func _do_sp3_place() -> void:
+	var h := _sp3_hole(); var pl := _sp3_place(h); var back := pos
+	if not refl_out.is_empty(): await _refl_melt()
+	var s0 := cam.size
+	cam_focus = SP3_C + Vector3(0.7, 0.4, 0.7); cam_focus_on = true
+	create_tween().tween_property(cam, "size", 10.0, 1.4).set_trans(Tween.TRANS_SINE)
+	await go([pl], 0.8)
+	await face(SP3_C)
+	await wait(0.4)
+	var f := (SP3_C - pl).normalized(); var lat := Vector3(f.z, 0, -f.x)
+	tgtL = pl + f * 0.21 + Vector3(0, 1.44, 0) + lat * 0.03; tgtR = pl + f * 0.21 + Vector3(0, 1.44, 0) - lat * 0.03
+	var up := tw(); up.tween_property(self, "a_wR", 1.0, 1.2); up.tween_property(self, "a_wL", 1.0, 1.2)
+	await up.finished
+	posing = true; flags["sp3_posed"] = true
+	await _sp3_heads(1.0)      # the one that wanted the empty place looks at her
+	var sat := _sp3_sat()
+	if sat[0] and sat[1] and sat[2]:
+		await wait(0.9)
+		flags["sp3_done"] = true
+		await _sp3_heads(1.5)      # they bow
+		await wait(0.9)
+		for k in ["sp3_st0", "sp3_st1", "sp3_st2", "sp3_st3", "sp3_place"]: done[k] = true
+		cam_focus = Vector3(-18.8, 0.4, SP2_Z0 + 1.5)
+		await wait(2.4)
+		await sluice_open("sp_s3", 2.6)
+		rects["SP3g"].on = true
+		await wait(0.7)
+		cam_focus = SP3_C + Vector3(0.7, 0.4, 0.7)
+		await wait(1.2)
+	else:
+		await wait(2.4)
+	posing = false; flags["sp3_posed"] = false
+	var dn := tw(); dn.tween_property(self, "a_wR", 0.0, 0.8); dn.tween_property(self, "a_wL", 0.0, 0.8)
+	await dn.finished
+	if not flags.get("sp3_done", false): await _sp3_heads(0.9)
+	await go([back], 0.8)
+	cam_focus_on = false
+	create_tween().tween_property(cam, "size", s0, 1.4).set_trans(Tween.TRANS_SINE)
+
 # ---------------------------------------------------------------- the run that tries the wing by taps
 func _sp_refl_at() -> String:
 	return str(((refl_out.holder as Node3D).position).snapped(Vector3.ONE * 0.01)) if not refl_out.is_empty() else "under her"
@@ -693,6 +994,25 @@ func _play_spring() -> void:
 		print("SPRING P.2 the third turned: ", cq.call(), ", reflection ", _sp_refl_at())
 		await _tap_wait(objs["sp_lever2"].at)
 		print("SPRING P.2 lever ", done.has("sp_lever2"), " door ", rects["SP3d"].on, ", reflection ", _sp_refl_at())
+	if from <= 3 and not (only and from < 3):
+		var st := func() -> String:
+			var row := ["_", "_", "_", "_", "_"]
+			for i in 4: row[sp3_at[i]] = ["sea", "wall", "beside", "empty"][i]
+			return str(row) + " content " + str(_sp3_sat())
+		await _tap_wait(Vector3(SP3_X0 + 1.6, 0, SP2_DOOR.z))
+		print("SPRING P.3 in the court at ", pos.snapped(Vector3.ONE * 0.01), ": ", st.call())
+		await _tap_wait(objs["sp3_st1"].at)      # the one that wants the wall, to the empty place by the wall
+		print("SPRING P.3 pushed the one that wants the wall: ", st.call())
+		await _tap_wait(objs["sp3_st2"].at)
+		print("SPRING P.3 pushed the one that wants the one beside it: ", st.call())
+		await _tap_wait(objs["sp3_st0"].at)      # the one that wants the sea, to the end by the opening
+		print("SPRING P.3 pushed the one that wants the sea: ", st.call())
+		await _tap_wait(objs["sp3_place"].at)      # the trap: she takes the empty place before all the rest are content
+		print("SPRING P.3 on the empty place too soon: sluice ", rects["SP3g"].on, ", she at ", pos.snapped(Vector3.ONE * 0.01), " ", st.call())
+		await _tap_wait(objs["sp3_st3"].at)      # the one that wants the empty place goes beside the one that wants it
+		print("SPRING P.3 pushed the one that wants the empty place: ", st.call())
+		await _tap_wait(objs["sp3_place"].at)
+		print("SPRING P.3 on the empty place: bowed ", flags.get("sp3_done", false), " sluice ", rects["SP3g"].on, ", she at ", pos.snapped(Vector3.ONE * 0.01))
 	print("SPRING done ", wings_done)
 	get_tree().quit()
 
@@ -708,4 +1028,14 @@ func _sp_open_to(k: int) -> void:
 		for d in ["sp_lever2", "sp_palm_A", "sp_col_A", "sp_palm_B", "sp_col_B", "sp_palm_C", "sp_col_C"]: done[d] = true
 		for sfx in ["", "_m"]: (N["sp_lever2" + sfx] as Node3D).rotation.z = 0.6
 		pos = Vector3(-19.5, 0, SP2_DOOR.z); yaw = -PI * 0.5
+	if k >= 4:
+		sp3_at = [0, 4, 1, 2]; flags["sp3_done"] = true
+		for i in 4:
+			for sfx in ["", "_m"]:
+				var nd: Node3D = N["sp3_st%d%s" % [i, sfx]]; var a := _sp3_ang(sp3_at[i])
+				nd.position = _sp3_pt(a, SP3_RA); nd.rotation.y = atan2(-cos(a), -sin(a))
+		_sp3_sync(); _sp3_heads_now()
+		for d in ["sp3_st0", "sp3_st1", "sp3_st2", "sp3_st3", "sp3_place"]: done[d] = true
+		rects["SP3g"].on = true; (N["sp_s3"] as Node3D).position.y = -1.25
+		pos = Vector3(-19.5, 0, SP2_Z0 + 1.2); yaw = PI
 	cam_t = pos
