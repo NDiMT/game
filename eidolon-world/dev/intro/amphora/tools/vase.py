@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # EIDOLON intro: seven scenes painted on a turning amphora. A stylised vase (a surface of revolution drawn by this
 # script), the camera close on its picture panel, the words written on the black band under it.
-import sys, os, math, pickle, subprocess
+import sys, os, math, pickle, subprocess, json
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 from scipy import ndimage as ndi
@@ -392,7 +392,10 @@ def sample(strip, hx, hy):      # bilinear
     return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy
 
 # ---------------------------------------------------------------- the film
+VO = json.load(open(S + '/voice/dur.json')) if os.path.exists(S + '/voice/dur.json') and os.environ.get('NOVOICE') != '1' else None      # the narrator: how long she takes over each page (seconds); the pages keep her time
+VO_MARKS = []      # (second, card, page): where each page begins, for laying the voice under the film
 def timeline():
+    del VO_MARKS[:]
     # (phi in slots, scene shown in front, how far each of its lines is written, global fade)
     ev = []
     def seg(d, f):
@@ -404,16 +407,18 @@ def timeline():
     for i in range(7):
         card = TEXTS[i]
         seg(2.6 if i else 3.0, lambda u, i=i: (i - 1 + ease(u), i, Z, 1.0))            # it turns: the next picture comes round
-        seg(0.8, lambda u, i=i: (float(i), i, Z, 1.0))
+        seg(0.5 if VO else 0.8, lambda u, i=i: (float(i), i, Z, 1.0))
         base = 0
         for p, pg in enumerate(card):
             n = len(pg)
             def st(vals, base=base, n=n): return [0.0] * base + vals + [0.0] * (NL - base - n)
+            VO_MARKS.append((len(ev) / float(FPS), i + 1, p + 1))
+            tot = float(sum(len(l) for l in pg))
             for j in range(n):
-                d = 0.75 + 0.03 * len(pg[j])
+                d = VO[i][p] * len(pg[j]) / tot if VO else 0.75 + 0.03 * len(pg[j])      # with the narrator, a line is written as she comes to it
                 seg(d, lambda u, i=i, j=j, n=n, d=d, st=st: (float(i), i, st([1.0] * j + [ease(min(1.0, u * d / 0.8))] + [0.0] * (n - j - 1)), 1.0))
             last = p == len(card) - 1
-            seg((3.0 if i < 6 else 4.5) if last else 1.5, lambda u, i=i, n=n, st=st: (float(i), i, st([1.0] * n), 1.0))
+            seg((((1.4 if i < 6 else 3.6) if last else 0.5) if VO else ((3.0 if i < 6 else 4.5) if last else 1.5)), lambda u, i=i, n=n, st=st: (float(i), i, st([1.0] * n), 1.0))
             if not last: seg(0.6, lambda u, i=i, n=n, st=st: (float(i), i, st([1.0 - ease(u)] * n), 1.0)); seg(0.25, lambda u, i=i: (float(i), i, Z, 1.0))
             base += n
     seg(2.8, lambda u: (6.0 + ease(u) * 1.0, 6, final_wr(6), 1.0 - u * u))                       # it turns away, into the haze
@@ -470,7 +475,7 @@ def render(f0, f1, out):
     ff.stdin.close(); ff.wait()
 
 if __name__ == '__main__':
-    if sys.argv[1] == 'len': print(len(timeline()))
+    if sys.argv[1] == 'len': print(len(timeline())); json.dump(VO_MARKS, open(S + '/v/vo_marks.json', 'w'))
     elif sys.argv[1] == 'stills':
         ev = timeline(); os.environ['STILL'] = S + '/v/still_%05d.png'
         for f in [int(x) for x in sys.argv[2].split(',')]: render(f, f + 1, S + '/v/_tmp.mp4')

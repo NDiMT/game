@@ -21,8 +21,10 @@ Everything is in `amphora/`:
   on it, turns it, writes the words, moves the small things, and writes the film. `tools/layers.py` cuts the layers.
 - `clips/cardN.mp4` — the moving pictures (the painted figures in motion; each plays once; card 2 has two, a and b).
 - `music/` — the score: two takes (`score_a.mp3`, `score_b.mp3`) and the description they were made from
-  (`prompt.txt`). The film carries take A.
-- `intro_amphora.mp4` — the film (1080×1920, 24 fps), with the music.
+  (`prompt.txt`). The film carries take B.
+- `voice/` — the narrator: one file for each page of words (`cNpM.flac`, with its text), how long each takes
+  (`durations.json`) and the second at which each begins in the film (`page_times.json`).
+- `intro_amphora.mp4` — the film (1080×1920, 24 fps, 2 min 35 s), with the narrator and the music.
 
 ## The words (one card each; a new line here is a new page on the vase)
 
@@ -113,14 +115,28 @@ then stands still.
 | 6 | kneeling in the boat, she lowers her hand the last small way until her fingertips touch the water; rings spread |
 | 7 | the empty boat rocks very slightly; on the shore Theron slowly holds out his open hand toward it, and keeps it there |
 
+## The narrator
+
+A woman's voice, low and hushed, close to a whisper, grave and unhurried: the teller of an old legend. She was made
+with `gemini-3.8-flash-tts` (`tools/gentts.py`): the voice is `en-gb-tutor-12` of the voice library (a British woman,
+low, "deep, velvety and unhurried"), and the manner is given as a style note, not in the words. Every page of words
+is one file, so that its length is known exactly.
+
+The film keeps her time: `tools/vase.py` reads the lengths (`voice/durations.json`) and writes each page as she
+speaks it, a line as she comes to it; when she has finished a page it stays a moment and fades. That makes the film
+2 min 35 s (without her it is 2 min 9 s: `NOVOICE=1`). `vase.py len` writes the second at which each page begins;
+`tools/laynarration.py` lays the pages at those seconds, each at the same loudness.
+
 ## The music
 
 An original piece in the manner of the quiet prologue of an old epic: low strings, a far-off woman's voice without
 words, a few notes of a lyre, no drums. It was made with `lyria-3.5` (`tools/genmus.py`) from one description
-(`music/prompt.txt`) that gives the mood, the instruments and a line for each eighteen seconds, so that the music
-turns where the cards turn: near silence for the sculptor, warmth as she comes alive, darker for the veil, glass-still
-for the sea, the widest swell as she rows out, and a falling away at the end. It is trimmed to the film's length,
-faded in and out, and set to -16 LUFS.
+(`music/prompt.txt`) that gives the mood, the instruments and a line for each eighteen seconds. Two takes were made;
+take B is used: it dies away early, so that the last card is spoken into near silence.
+
+`tools/mixaudio.sh` puts the two together: the score is drawn out to the film's length (tempo only, about a sixth
+slower; the pitch stays), the voice is evened a little and lifted, and the music sinks about 10 dB while she speaks
+and comes back in the gaps. The whole is at about -17 LUFS.
 
 ## What the intro holds back
 
