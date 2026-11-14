@@ -166,7 +166,35 @@ const SH_TURN := """shader_type canvas_item;
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear, repeat_disable;
 uniform vec2 c = vec2(0.5); uniform float r = 0.0; uniform float aspect = 0.5625;
 uniform float from_s = 0.0; uniform float to_s = 0.0; uniform float turn = 1.0;
+uniform int mode = 0;      // 0: a ring spreads from the finger. 1: the whole picture tips over through the sea. 2: the eye goes down, past the waterline, into what the water shows
+const vec3 SEA = vec3(0.325, 0.565, 0.635);
 void fragment(){
+	float pp = clamp(r / 1.35, 0.0, 1.0); float st = mix(from_s, to_s, pp);      // 0: as it is; 1: turned over
+	if (mode == 1) {
+		float th = 3.14159265 * st; float D = 2.6;
+		vec2 q = SCREEN_UV - 0.5;
+		float den = D * cos(th) - q.y * sin(th);
+		float Y = q.y * D / (abs(den) < 0.0001 ? 0.0001 : den);
+		float X = q.x * (D + Y * sin(th)) / D;
+		float inside = smoothstep(0.5, 0.494, abs(X)) * smoothstep(0.5, 0.494, abs(Y)) * step(0.0, D + Y * sin(th));
+		float w = sin(3.14159265 * st);
+		vec2 a = clamp(vec2(X, Y) + 0.5, vec2(0.0), vec2(1.0));
+		vec3 sea = SEA + 0.03 * sin(SCREEN_UV.y * 42.0 + TIME * 1.6 + sin(SCREEN_UV.x * 9.0) * 1.5) * w;
+		COLOR = vec4(mix(sea, texture(screen_tex, a).rgb, inside), 1.0);
+	} else if (mode == 2) {
+		float y = SCREEN_UV.y + st; vec2 a = vec2(SCREEN_UV.x, y);
+		float w = sin(3.14159265 * st); float under = max(y - 1.0, 0.0);
+		if (y > 1.0) {
+			a.y = 2.0 - y;
+			float dp = min(under * 3.0, 1.0);      // the water bends what it shows, more the farther from the line
+			a.x += sin(under * 70.0 + TIME * 3.0) * 0.007 * w * dp;
+			a.y += sin(under * 110.0 - TIME * 4.2 + SCREEN_UV.x * 5.0) * 0.009 * w * dp;
+		}
+		vec3 col = texture(screen_tex, clamp(a, vec2(0.0), vec2(1.0))).rgb;
+		col = mix(col, vec3(0.6, 0.85, 0.88), 0.14 * w * step(1.0, y));
+		float line = exp(-(y - 1.0) * (y - 1.0) / 0.000012) * w;
+		COLOR = vec4(col + line * 0.06, 1.0);
+	} else {
 	vec2 d = (SCREEN_UV - c) * vec2(aspect, 1.0); float dist = length(d); float edge = dist - r;
 	float lip = exp(-(edge * edge) / 0.0011) * smoothstep(0.0, 0.08, r);      // the ring itself: it bends what it passes over, and carries a little light
 	vec2 n = dist > 0.0001 ? d / dist : vec2(0.0);
@@ -174,6 +202,7 @@ void fragment(){
 	float s = mix(from_s, to_s, smoothstep(0.006, -0.006, edge)) * turn;
 	vec3 col = mix(texture(screen_tex, a).rgb, texture(screen_tex, vec2(a.x, 1.0 - a.y)).rgb, s);
 	COLOR = vec4(col + lip * 0.10, 1.0);
+	}
 }"""
 var flip_test := OS.get_environment("FLIP") == "1"      # every water turns the picture
 var flip_demo := OS.has_feature("flipdemo") or OS.get_environment("FLIP") == "demo"      # the trial as a thing to play: the first two waters turn the picture, and it ends behind the second sluice
@@ -204,6 +233,7 @@ func _flip_setup() -> void:
 	flip_rect = ColorRect.new(); flip_rect.set_anchors_preset(Control.PRESET_FULL_RECT); flip_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var cs := Shader.new(); cs.code = SH_TURN
 	flip_mat = ShaderMaterial.new(); flip_mat.shader = cs; flip_mat.set_shader_parameter("turn", 1.0 if flip_turn else 0.0)
+	flip_mat.set_shader_parameter("mode", {"turn": 1, "dive": 2}.get(OS.get_environment("FLIP_FX"), 0))
 	flip_rect.material = flip_mat; flip_rect.visible = false; cl.add_child(flip_rect)
 	for m in timed:
 		if m is ShaderMaterial and (m as ShaderMaterial).shader == shaders["glass"]: flip_glass.append([m, float((m as ShaderMaterial).get_shader_parameter("blur_px"))])
