@@ -189,3 +189,13 @@ water turns it back. It is switched off unless `FLIP=1` (or the run `-- flip`, w
   `-- flipdemo` plays both rooms through as a player would and prints what happens.
 - Not done: every other water still sends her image out as before; only what has a twin under `mroot` is in the
   water.
+
+**As it stands now (the water is a door).** One being, two worlds: a sign under the picture (shown where she stands by a
+turnable water) turns the world; the eye goes down to the waterline and under it (`_flip_real`, a real change of the
+eye's steepness; under the water the same world is drawn turned over). Turned, she is the shadow and only walks, on
+what that water gives to stand on (`W[wid].foot`); the water shows her, in colour, under the shadow's feet. The sign
+turns the world back wherever the shadow stands by the water on floor that is floor in the world too (`_walkable`),
+and she is then there: so she crosses the mole in the turned world and stands on its far piece (`rects["Hf"]`), and
+passes the world's grille of the second room by walking past it where the turned world has none. Things of a turning
+water (the wheels) are hers to do, with her own hands, where she can come to them. A pane over the picture gives the
+two worlds their looks (warm / cool, a soft vignette). Trees, urns, bushes and lamp stands are solid (`_round_solids`).
