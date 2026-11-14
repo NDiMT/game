@@ -126,10 +126,12 @@ func _init() -> void:
 	title_sub = "I  ·  The Veiled Gate\ntap to begin"; end_sub = "end of the first chapter\ntap to begin again"
 	if flip_demo: title_sub = "the turning water  ·  a trial\ntap to begin"; end_sub = "end of the trial\ntap to begin again"
 	if match_demo: title_sub = "the still water  ·  a trial\ntap to begin"
+	if figure_demo: title_sub = "the face in the water  ·  a trial\ntap to begin"
+	if geo_demo: title_sub = "the hall of images  ·  a trial\ntap to begin"
 
 func _hollows() -> Array:
 	return [[HX0 + 0.5, HZ0 + 0.5, HX1 - 0.5, HZ1 - 0.5], [TX0 + 0.5, TZ0 + 0.5, TX1 - 0.5, TZ1 - 0.5], [VX0 + 0.5, VZ0 + 0.5, VX1 - 0.5, VZ1 - 0.5],
-		[FX0 + 0.5, FZ0 - 0.1, FX1 - 0.5, FZ1 - 0.5], [GX0 + 0.5, GZ0 + 0.5, GX1 - 0.5, GZ1 - 0.5], [UX0 + 0.5, UZ0 + 0.5, UX1 - 0.5, UZ1 - 0.5]] + ([[MT_X0 + 0.3, MT_Z0 + 0.5, MT_X1 - 0.3, MT_Z1 - 0.5]] if match_demo else [])
+		[FX0 + 0.5, FZ0 - 0.1, FX1 - 0.5, FZ1 - 0.5], [GX0 + 0.5, GZ0 + 0.5, GX1 - 0.5, GZ1 - 0.5], [UX0 + 0.5, UZ0 + 0.5, UX1 - 0.5, UZ1 - 0.5]] + ([[MT_X0 + 0.3, MT_Z0 + 0.5, MT_X1 - 0.3, MT_Z1 - 0.5]] if match_demo else []) + (_fig_hollows() if figure_demo else []) + ([[GH_X0 + 0.2, GH_Z0 + 0.2, GH_X1 - 0.2, GH_Z1 - 0.2]] if geo_demo else [])
 
 # ---------------------------------------------------------------- small builders
 func R(x0: float, z0: float, x1: float, z1: float, on := true, h := 0.0) -> Dictionary:
@@ -250,9 +252,11 @@ void fragment(){
 	}
 }"""
 var flip_test := OS.get_environment("FLIP") == "1"      # every water turns the picture
+var geo_demo := OS.has_feature("geodemo") or OS.get_environment("FLIP") == "geo"      # the trial of the hall of images: ways that join where their pictures join
+var figure_demo := OS.has_feature("figuredemo") or OS.get_environment("FLIP") == "figure"      # the trial of the face in the water: three courts where a picture is made whole in the water
 var match_demo := OS.has_feature("matchdemo") or OS.get_environment("FLIP") == "match"      # the trial of the still water: one new court, where the world and what its water shows are to be made to agree
-var flip_demo := OS.has_feature("flipdemo") or OS.get_environment("FLIP") == "demo" or match_demo      # the trial as a thing to play: the first two waters turn the picture, and it ends behind the second sluice
-var FLIP_DEMO_WATERS := ["M"] if match_demo else ["H", "T"]
+var flip_demo := OS.has_feature("flipdemo") or OS.get_environment("FLIP") == "demo" or match_demo or figure_demo or geo_demo      # the trial as a thing to play: the first two waters turn the picture, and it ends behind the second sluice
+var FLIP_DEMO_WATERS := ["M"] if match_demo else ([] if (figure_demo or geo_demo) else ["H", "T"])
 var flip_wid := ""      # the water the picture was turned over at
 var flip_anchor := Vector3.ZERO      # where she stands, while her shadow is played
 var flip_anchor_yaw := 0.0
@@ -652,6 +656,740 @@ func _unhandled_input(ev: InputEvent) -> void:
 	if flip_on and flip_turn and (ev is InputEventScreenTouch or ev is InputEventScreenDrag):
 		ev = ev.duplicate(); ev.position.y = get_viewport().get_visible_rect().size.y - ev.position.y
 	super._unhandled_input(ev)
+
+# ---------------------------------------------------------------- the hall of images (a trial)
+## One great hall over still water. She walks on what is low: the quays, and the causeways over the water. What is
+## high (a balcony, a bridge that turns, a lift, the aqueduct to the gate) she cannot climb to; but the water shows it,
+## and so does the bronze mirror let into the island's floor. Where the picture of a high way meets the end of a low
+## one, the two are one way: she walks on into the picture (her image, upside down, walks the high way) and she
+## comes out where the picture of a high way meets another low one. Three wheels change the pictures: one turns the
+## bridge, one lifts the lift, one slides the mirror along its groove. In the world the gate is sealed; in the water
+## it stands open, and she goes through it there.
+## (Seen along the eye's line, a point at height h stands over the ground point (x - h, z - h), and its picture in the
+## water over (x + h, z + h): a low point p and a high point q are one place in the picture when q = p - (h, h).)
+const GH_X0 := 60.0
+const GH_X1 := 76.0
+const GH_Z0 := 0.0
+const GH_Z1 := 15.0
+const GH_NB := 1.6      # the face of the great north building
+const GMID := 1.66
+const GHIGH := 3.26
+const GH_PIV := Vector3(67.29, 1.66, 2.54)      # the turning bridge's pivot
+const GH_LIFT := Vector3(63.74, 0, 5.34)      # the lift
+const GH_P3 := Vector3(67.0, 0, 9.3)      # the end of the island's way, at the mirror's groove
+const GH_STOPS := [65.4, 67.0, 68.6]      # where the mirror rests along its groove
+var gh := {"q": 0, "l": GMID, "m": 2, "refl": false, "h": 0.0}      # the bridge (0: it points south, 1: east), the lift's height, the mirror's stop; she walks in the picture, at this height
+var gh_hr := {}      # the high ways: name -> rect (with its height h)
+var gh_wheels := {}
+var gh_busy := false
+var gh_ev_focus = null
+var gh_ev_t := 0.0
+var gh_mirror: Node3D
+var gh_trough := []      # the two dark floors of the groove, either side of the mirror
+var gh_glass := []
+var gh_said := {}
+
+func _gb(a: Vector3, b: Vector3, m: String, both: Node) -> MeshInstance3D:
+	var twin := both == mroot
+	if twin and b.y <= 0.0: return null
+	if twin: a.y = maxf(a.y, 0.0)
+	var mi := blk(a, b, m, both); mi.material_override = pal(m, "flat2" if twin else "flat")
+	return mi
+
+func _gc(p: Vector3, r0: float, r1: float, h: float, m: String, both: Node, seg := 16) -> MeshInstance3D:
+	return cyl(p, r0, r1, h, pal(m, "flat2" if both == mroot else "flat"), seg, both)
+
+func _gthing(file: String, p: Vector3, height: float, parts: String, yaw := 0.0, across := 0.0) -> void:
+	for both in [self, mroot]:
+		var n := Node3D.new(); n.position = p; n.rotation.y = yaw; both.add_child(n)
+		prop_model(file, n, height, across, both == mroot, false, parts.replace("~", "") if both == mroot else parts)      # (in the picture the leaves do not sway)
+
+## a column of the hall, whole or broken off, in the world and in its picture
+func _gcol(p: Vector3, h: float, r := 0.17, broken := false) -> void:
+	for both in [self, mroot]:
+		_gc(p, r * 1.4, r * 1.4, 0.07, "shade", both, 20); _gc(p + Vector3(0, 0.07, 0), r * 1.12, r, h - 0.07 - (0.0 if broken else 0.17), "stone", both, 14)
+		if broken: _gc(p + Vector3(0, h - 0.02, 0), r * 0.98, r * 0.55, 0.09, "shade", both, 7)
+		else:
+			_gc(p + Vector3(0, h - 0.17, 0), r, r * 1.32, 0.1, "stone", both, 16)
+			_gb(p + Vector3(-r * 1.45, h - 0.07, -r * 1.45), p + Vector3(r * 1.45, h, r * 1.45), "shade", both)
+
+## a balustrade from a to b (level, along x or z)
+func _grail(a: Vector3, b: Vector3, both: Node) -> void:
+	var d := b - a; var n := maxi(1, int(d.length() / 0.24))
+	for i in n + 1: _gc(a + d * (float(i) / n), 0.032, 0.045, 0.33, "stone", both, 6)
+	_gb(Vector3(minf(a.x, b.x) - 0.05, a.y + 0.33, minf(a.z, b.z) - 0.05), Vector3(maxf(a.x, b.x) + 0.05, a.y + 0.41, maxf(a.z, b.z) + 0.05), "stone", both)
+
+## a statue of her, in the world and in its picture: whole, or toppled (lying), or sunk to the knees
+func _gstatue(p: Vector3, yaw: float, pose: String, how := "") -> void:
+	for both in [self, mroot]:
+		var s := her_statue(p, yaw, pose, 1.0, both)
+		if how == "fallen": s.rotation = Vector3(0, yaw, PI * 0.5); s.position = p + Vector3(0, 0.22, 0)
+		elif how == "sunk": s.rotation = Vector3(0.18, yaw, -0.12); s.position = p - Vector3(0, 0.75, 0)
+
+func _gh_build() -> void:
+	var px0 := 62.0; var px1 := 74.0; var pz0 := GH_NB; var pz1 := 13.0      # the water
+	var ix0 := 64.5; var ix1 := 70.5; var iz0 := 8.0; var iz1 := 12.4      # the island
+	floors.append([GH_X0, GH_Z0, GH_X1, GH_Z1, -0.18])
+	# the hall's floor: the quays west and east, a low wall to the south, and the water between, deep
+	blk(Vector3(GH_X0, -1.6, GH_NB), Vector3(px0, 0, GH_Z1), "stone"); blk(Vector3(px1, -1.6, GH_NB), Vector3(GH_X1, 0, GH_Z1), "stone")
+	blk(Vector3(px0, -1.6, pz1), Vector3(px1, 0, GH_Z1), "stone")
+	dentils(GH_X0, GH_Z0, GH_X1, GH_Z1, -0.18)
+	tiles(GH_X0, GH_NB, px0, GH_Z1, 1.0); tiles(px1, GH_NB, GH_X1, GH_Z1, 1.0)
+	var pit := MeshInstance3D.new(); var pm := BoxMesh.new(); pm.size = Vector3(px1 - px0, 9.0, pz1 - pz0); pit.mesh = pm
+	pit.position = Vector3((px0 + px1) * 0.5, -0.19 - 4.5, (pz0 + pz1) * 0.5)
+	var pmat := ShaderMaterial.new(); pmat.shader = shaders["pit"]; pmat.set_shader_parameter("y0", -0.2); pmat.set_shader_parameter("y1", -9.0)
+	pit.material_override = pmat; pit.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(pit)
+	for r in [[px0, pz0, px1, iz0], [px0, iz0, ix0, pz1], [ix1, iz0, px1, pz1], [ix0, iz1, ix1, pz1]]:
+		var g := glass(r[0], r[1], r[2], r[3], 0.4); g.set_shader_parameter("wave", 0.35); g.set_shader_parameter("clear", 0.35); gh_glass.append(g)
+	for both in [self, mroot]:      # the kerb round the water
+		for r in [[px0 - 0.08, pz0, px0, pz1], [px1, pz0, px1 + 0.08, pz1], [px0, pz1, px1, pz1 + 0.08]]: _gb(Vector3(r[0], 0, r[1]), Vector3(r[2], 0.05, r[3]), "shade", both)
+	# the causeways (low): west to the water's middle, from the east quay, and to the island
+	for r in [[61.9, 3.75, 64.0, 4.65], [72.8, 3.75, 74.1, 4.65], [70.4, 10.75, 74.1, 11.65]]:
+		blk(Vector3(r[0], -0.9, r[1]), Vector3(r[2], 0.03, r[3]), "stone"); blk(Vector3(r[0] - 0.03, -0.1, r[1] - 0.03), Vector3(r[2] + 0.03, -0.04, r[3] + 0.03), "shade")
+	# the island, with the groove of the mirror along its north edge
+	blk(Vector3(ix0, -1.0, 9.3), Vector3(ix1, 0.03, iz1), "stone"); blk(Vector3(ix0 - 0.04, -0.12, 9.26), Vector3(ix1 + 0.04, -0.05, iz1 + 0.04), "shade")
+	tiles(ix0, 9.3, ix1, iz1, 0.9)
+	for both in [self, mroot]: _gb(Vector3(ix0, -0.4, iz0), Vector3(ix1, 0.08, iz0 + 0.1), "gold", both)      # its bronze rim
+	for e in [ix0, ix1 - 0.1]: blk(Vector3(e, -0.4, iz0), Vector3(e + 0.1, 0.03, 9.3), "stone")
+	for i in 2:
+		var tr := MeshInstance3D.new(); tr.mesh = _box(Vector3(1, 0.06, 1.2)); tr.material_override = pal("dark", "flat"); add_child(tr); gh_trough.append(tr)
+	gh_mirror = Node3D.new(); add_child(gh_mirror)
+	var mq := MeshInstance3D.new(); var qm := QuadMesh.new(); qm.size = Vector2(1.2, 1.2); qm.orientation = PlaneMesh.FACE_Y; mq.mesh = qm
+	var mm := StandardMaterial3D.new(); mm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; mm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; mm.albedo_color = Color(0.86, 0.9, 0.96, 0.16); mm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	mq.material_override = mm; mq.position = Vector3(0, -0.012, 0); gh_mirror.add_child(mq)
+	for e in [-1.0, 1.0]:
+		blk(Vector3(e * 0.6 - 0.045, -0.06, -0.6), Vector3(e * 0.6 + 0.045, 0.0, 0.6), "gold", gh_mirror)
+		blk(Vector3(-0.6, -0.06, e * 0.6 - 0.045), Vector3(0.6, 0.0, e * 0.6 + 0.045), "gold", gh_mirror)
+	_gh_mirror_at(float(GH_STOPS[gh.m]))
+	# the great north building: a high wall of arches, with the balcony at mid height and the gate at the top
+	for both in [self, mroot]:
+		_gb(Vector3(GH_X0, -1.6, GH_Z0 - 0.4), Vector3(GH_X1, 5.6, GH_NB), "stone", both)
+		_gb(Vector3(GH_X0 - 0.05, 5.6, GH_Z0 - 0.45), Vector3(GH_X1 + 0.05, 5.78, GH_NB + 0.1), "shade", both)
+		_gb(Vector3(GH_X0 - 0.03, 2.45, GH_NB), Vector3(GH_X1 + 0.03, 2.55, GH_NB + 0.07), "shade", both)
+		for i in 9:      # its arches: dark, deep, with a pale band round each
+			var ax := GH_X0 + 1.0 + i * 1.75
+			if absf(ax - GH_LIFT.x) < 0.9: continue
+			_gb(Vector3(ax - 0.45, 0.0, GH_NB), Vector3(ax + 0.45, 1.25, GH_NB + 0.02), "dark", both)
+			_gb(Vector3(ax - 0.55, 1.25, GH_NB), Vector3(ax + 0.55, 1.36, GH_NB + 0.05), "shade", both)
+			_gb(Vector3(ax - 0.32, 3.6, GH_NB), Vector3(ax + 0.32, 4.7, GH_NB + 0.02), "dark", both)
+			_gb(Vector3(ax - 0.42, 4.7, GH_NB), Vector3(ax + 0.42, 4.8, GH_NB + 0.05), "shade", both)
+		for i in 10: _gb(Vector3(GH_X0 + 0.12 + i * 1.75, 0, GH_NB), Vector3(GH_X0 + 0.38 + i * 1.75, 5.6, GH_NB + 0.12), "shade", both)      # its pilasters
+		# the balcony (mid height) and the pivot of the bridge at its east end
+		_gb(Vector3(62.34, GMID - 0.14, GH_NB), Vector3(66.84, GMID, 2.99), "stone", both)
+		for cx in [62.9, 64.6, 66.3]: _gb(Vector3(cx - 0.12, GMID - 0.6, GH_NB), Vector3(cx + 0.12, GMID - 0.14, 2.6), "shade", both)
+		_grail(Vector3(62.4, GMID, 2.95), Vector3(66.84, GMID, 2.95), both)
+		_gb(Vector3(66.84, GMID - 0.14, GH_NB), Vector3(67.74, GMID, 2.99), "stone", both)
+		_gc(GH_PIV + Vector3(0, -0.22, 0), 0.5, 0.5, 0.08, "gold", both, 24)
+		# the aqueduct (high) from the gate to the lift
+		_gb(Vector3(63.29, GHIGH - 0.18, GH_NB), Vector3(64.19, GHIGH, 4.64), "stone", both)
+		_gb(Vector3(63.25, GHIGH - 0.34, GH_NB), Vector3(64.23, GHIGH - 0.18, 4.64), "shade", both)
+		_grail(Vector3(63.27, GHIGH, GH_NB + 0.1), Vector3(63.27, GHIGH, 4.6), both); _grail(Vector3(64.21, GHIGH, GH_NB + 0.1), Vector3(64.21, GHIGH, 4.6), both)
+		# the gate in the wall at the aqueduct's end: a deep doorway with a pediment over it
+		_gb(Vector3(63.0, GHIGH, GH_NB), Vector3(63.18, GHIGH + 2.0, GH_NB + 0.16), "stone", both); _gb(Vector3(64.3, GHIGH, GH_NB), Vector3(64.48, GHIGH + 2.0, GH_NB + 0.16), "stone", both)
+		_gb(Vector3(62.9, GHIGH + 2.0, GH_NB), Vector3(64.58, GHIGH + 2.18, GH_NB + 0.2), "shade", both)
+		_gb(Vector3(63.18, GHIGH, GH_NB - 0.3), Vector3(64.3, GHIGH + 2.0, GH_NB), "dark", both)
+	# the gate: in the world a slab of stone shuts it; in the water it stands open, and light comes through
+	blk(Vector3(63.18, GHIGH, GH_NB - 0.05), Vector3(64.3, GHIGH + 2.0, GH_NB + 0.04), "shade")
+	for k in 4: blk(Vector3(63.2, GHIGH + 0.3 + k * 0.45, GH_NB + 0.04), Vector3(64.28, GHIGH + 0.34 + k * 0.45, GH_NB + 0.06), "dark")
+	var lit := blk(Vector3(63.2, GHIGH, GH_NB - 0.28), Vector3(64.28, GHIGH + 1.98, GH_NB - 0.26), "lamp", mroot); lit.material_override = under_mat(Color("ffe2a0"))
+	# the turning bridge, on its pivot
+	for both in [self, mroot]:
+		var qn := Node3D.new(); qn.position = GH_PIV; both.add_child(qn); N["ghq_m" if both == mroot else "ghq"] = qn
+		_gb(Vector3(0.45, -0.14, -0.45), Vector3(3.85, 0, 0.45), "stone", qn); _gb(Vector3(0.45, -0.3, -0.38), Vector3(3.85, -0.14, 0.38), "shade", qn)
+		_grail(Vector3(0.5, 0, -0.42), Vector3(3.8, 0, -0.42), qn); _grail(Vector3(0.5, 0, 0.42), Vector3(3.8, 0, 0.42), qn)
+		qn.rotation.y = -PI * 0.5
+	# the lift: a column out of the water, and the platform with its upper shaft that rides on it
+	for both in [self, mroot]:
+		_gc(GH_LIFT + Vector3(0, -0.6, 0), 0.36, 0.36, GMID - 0.2 + 0.6, "stone", both, 16)
+		var ln := Node3D.new(); ln.position = Vector3(GH_LIFT.x, gh.l, GH_LIFT.z); both.add_child(ln); N["ghl_m" if both == mroot else "ghl"] = ln
+		_gb(Vector3(-0.45, -0.16, -0.7), Vector3(0.45, 0, 0.7), "stone", ln); _gb(Vector3(-0.5, -0.3, -0.72), Vector3(0.5, -0.16, 0.72), "gold", ln)
+		_gc(Vector3(0, -1.75, 0), 0.3, 0.3, 1.45, "shade", ln, 16)
+		_grail(Vector3(-0.42, 0, -0.66), Vector3(-0.42, 0, 0.66), ln); _grail(Vector3(0.42, 0, -0.66), Vector3(0.42, 0, 0.66), ln)
+	# the wheels: on the balcony (the bridge), on the east quay (the lift), on the island (the mirror)
+	for w in [["K1", Vector3(65.7, GMID, 1.75), PI * 0.5, GMID, GH_PIV + Vector3(1.6, 0, 1.6)], ["K2", Vector3(75.2, 0, 6.6), 0.0, 0.0, GH_LIFT + Vector3(0, 2.4, 0)], ["K3", Vector3(69.6, 0, 11.9), -PI * 0.5, 0.0, Vector3(67.0, 0, 8.6)]]:
+		for both in [self, mroot]:
+			var wd := winch(w[1], w[2], both, both == mroot)
+			N[("wheel%s_m" if both == mroot else "wheel%s") % w[0]] = wd.wheel
+			if both == self: N["hub" + w[0]] = wd.hub; N["hubn" + w[0]] = wd.n
+		var hub: Vector3 = N["hub" + w[0]]; var hn: Vector3 = N["hubn" + w[0]]
+		gh_wheels[w[0]] = {"stand": Vector3(hub.x, w[3], hub.z) + hn * 0.56, "h": w[3], "focus": w[4]}
+		if w[3] == 0.0: solids.append(Vector3(w[1].x, w[1].z, 0.45))
+	# what stands about: half-ruined statues of her, broken columns, trees, jars, lamps, reeds
+	_gstatue(Vector3(61.0, 0, 7.2), PI * 0.5, "mourn"); _gstatue(Vector3(75.0, 0, 9.2), -PI * 0.5, "pray")
+	_gstatue(Vector3(71.6, 0, 7.4), PI * 0.25, "reach", "sunk"); _gstatue(Vector3(65.8, 0.03, 11.2), PI * 0.5, "calm", "fallen")
+	for c in [[60.7, 12.2, 2.6, false], [61.6, 13.6, 1.3, true], [73.4, 13.6, 2.6, false], [75.2, 12.4, 0.9, true], [69.8, 9.8, 1.1, true], [64.9, 9.7, 0.7, true]]:
+		_gcol(Vector3(c[0], 0.03 if c[0] > 64 and c[0] < 71 else 0.0, c[1]), c[2], 0.17, c[3])
+	for c in [[66.0, 13.6, 1.8], [69.0, 13.6, 0.6]]: _gcol(Vector3(c[0], 0, c[1]), c[2], 0.17, c[2] < 1.0)      # (the south wall's columns)
+	for both in [self, mroot]:
+		_gb(Vector3(px0, 0, 13.25), Vector3(px1, 0.5, 13.75), "stone", both); _gb(Vector3(px0 - 0.03, 0.5, 13.22), Vector3(px1 + 0.03, 0.58, 13.78), "shade", both)
+		_gc(Vector3(66.6, -0.5, 6.2), 0.21, 0.21, 0.62, "stone", both, 12); _gc(Vector3(70.4, -0.5, 3.2), 0.19, 0.19, 0.45, "shade", both, 12)      # drums fallen into the water
+	_gthing("cypress", Vector3(60.8, 0, 2.3), 2.5, "leaf:cyp~,trunk:trunk"); _gthing("cypress", Vector3(75.2, 0, 2.3), 2.5, "leaf:cyp~,trunk:trunk")
+	_gthing("olive", Vector3(61.0, 0, 10.0), 2.1, "leaf:leaf~,trunk:trunk,stone:stone,soil:trunk", 0.3)
+	_gthing("broken_statue", Vector3(75.0, 0, 11.4), 1.9, "stone:marble", -PI * 0.6); _gthing("broken_statue", Vector3(61.0, 0, 5.4), 1.7, "stone:marble", PI * 0.4)
+	_gthing("amphora", Vector3(61.3, 0, 2.9), 0.55, "terra:terra,band:wood"); _gthing("amphora", Vector3(70.1, 0.03, 12.0), 0.5, "terra:terra,band:wood", 1.2)
+	_gthing("amphora", Vector3(74.6, 0, 3.0), 0.5, "terra:clay,band:wood", 0.5); _gthing("bush", Vector3(75.3, 0, 4.9), 0.0, "leaf:leaf2~,flower:crim", 0.0, 0.8)
+	_gthing("lamp", Vector3(61.3, 0, 3.6), 1.7, "gold:gold,stone:marble,glow:lamp,frame:wood"); _gthing("lamp", Vector3(74.7, 0, 5.4), 1.7, "gold:gold,stone:marble,glow:lamp,frame:wood")
+	for p in [Vector3(62.3, 0, 12.6), Vector3(73.6, 0, 8.4), Vector3(63.0, 0, 8.2)]: thing("reeds", p, 0.0, "leaf:leaf~,trunk:wood~,pad:leaf2,flower:rose", p.x * 0.9 + p.z * 1.7, 0.95)
+	for p in [Vector3(61.0, 0, 7.2), Vector3(75.0, 0, 9.2), Vector3(61.0, 0, 5.4), Vector3(75.0, 0, 11.4), Vector3(60.8, 0, 2.3), Vector3(75.2, 0, 2.3), Vector3(61.0, 0, 10.0), Vector3(60.7, 0, 12.2), Vector3(75.2, 0, 12.4), Vector3(61.3, 0, 2.9), Vector3(74.6, 0, 3.0), Vector3(75.3, 0, 4.9), Vector3(61.3, 0, 3.6), Vector3(74.7, 0, 5.4)]:
+		solids.append(Vector3(p.x, p.z, 0.42))
+	for p in [Vector3(65.8, 0, 11.2), Vector3(69.8, 0, 9.8), Vector3(64.9, 0, 9.7), Vector3(70.1, 0, 12.0)]: solids.append(Vector3(p.x, p.z, 0.4 if p.x != 65.8 else 0.6))
+	# floor: the low ways (hers), and the high ones (her picture's)
+	rects["GHw"] = R(60.35, 2.05, 61.85, 14.6); rects["GHc1"] = R(61.5, 3.8, 64.0, 4.6)
+	rects["GHe"] = R(74.15, 2.05, 75.65, 14.6); rects["GHc2"] = R(72.8, 3.8, 74.5, 4.6); rects["GHc4"] = R(70.3, 10.8, 74.5, 11.6)
+	rects["GHi"] = R(64.75, GH_P3.z, 70.45, 12.15)
+	gh_hr["B1"] = R(62.34, 2.0, 66.84, 2.8, true, GMID); gh_hr["Qp"] = R(66.6, 2.1, 67.74, 2.98, true, GMID)
+	gh_hr["Q"] = R(66.84, 2.9, 67.74, 6.39, true, GMID)
+	gh_hr["L"] = R(63.29, 4.64, 64.19, 6.04, true, gh.l); gh_hr["G"] = R(63.29, 1.75, 64.19, 4.66, true, GHIGH)
+	stele("gh_st0", Vector3(61.1, 0, 4.2), 0.0, ["The water keeps what the stone forgot.", "Where two pictures meet,\nthe way goes on."])
+	stele("gh_st1", Vector3(69.0, 0, 10.6), 0.0, ["A mirror does not ripple.", "Set it where the picture\nmust fall."])
+
+## the joins: a low point and a high one that are one place in the picture, while what makes them so holds
+func _gh_joins() -> Array:
+	var out := [{"p": Vector3(64.0, 0, 4.2), "q": Vector3(62.34, GMID, 2.54), "name": "balcony"}]
+	if int(gh.q) == 1: out.append({"p": Vector3(72.8, 0, 4.2), "q": Vector3(71.14, GMID, 2.54), "name": "bridge"})
+	if absf(float(gh.l) - GHIGH) < 0.01 and int(gh.m) == 1: out.append({"p": GH_P3, "q": Vector3(GH_LIFT.x, GHIGH, 6.04), "name": "lift"})
+	return out
+
+func _gh_mirror_at(x: float) -> void:
+	gh_mirror.position = Vector3(x, 0, 8.7)
+	var a := 64.5; var b := 70.5
+	(gh_trough[0] as Node3D).position = Vector3((a + x - 0.6) * 0.5, -0.33, 8.7); (gh_trough[0] as Node3D).scale = Vector3(maxf(x - 0.6 - a, 0.01), 1, 1)
+	(gh_trough[1] as Node3D).position = Vector3((x + 0.6 + b) * 0.5, -0.33, 8.7); (gh_trough[1] as Node3D).scale = Vector3(maxf(b - x - 0.6, 0.01), 1, 1)
+
+## (she begins on the west quay, awake)
+func _gh_begin() -> void:
+	_wake_now(); pos = Vector3(61.1, 0, 5.0); yaw = PI * 0.5; cam_t = pos
+	cam_focus = pos; cam_focus_on = true
+
+## is the ground point g a mirror (water, or the bronze where it lies)?
+func _gh_shows(g: Vector3) -> bool:
+	var m: float = GH_STOPS[gh.m]
+	if g.x > m - 0.6 and g.x < m + 0.6 and g.z > 8.1 and g.z < 9.3: return true
+	if g.x < 62.0 or g.x > 74.0 or g.z < GH_NB or g.z > 13.0: return false
+	if g.x > 64.5 and g.x < 70.5 and g.z > 8.0 and g.z < 12.4: return false
+	for n in ["GHc1", "GHc2", "GHc4"]:
+		if in_rect(rects[n], g): return false
+	return true
+
+## the way within one height: the low floor (rects), or the high ways at that height
+func _gh_way(h: float, a: Vector3, b: Vector3) -> Array:
+	if h < 0.01: return find_path(a, b)
+	var saved := rects; var hr := {}
+	for n in gh_hr:
+		if gh_hr[n].on and absf(float(gh_hr[n].h) - h) < 0.01: hr[n] = gh_hr[n]
+	rects = hr
+	var pts := find_path(a, b)
+	rects = saved
+	return pts
+
+## the way from where she is to (p, at height h): over joins, as few as may be. Returns legs [{h, pts, join}] or []
+func _gh_plan(to: Vector3, to_h: float) -> Array:
+	var start := {"p": Vector3(pos.x, 0, pos.z), "h": float(gh.h)}
+	var goal := {"p": Vector3(to.x, 0, to.z), "h": to_h}
+	var js := _gh_joins()
+	var nodes := [start, goal]
+	for j in js:
+		nodes.append({"p": Vector3(j.p.x, 0, j.p.z), "h": 0.0, "j": j, "side": "p"}); nodes.append({"p": Vector3(j.q.x, 0, j.q.z), "h": float(j.q.y), "j": j, "side": "q"})
+	var prev := {0: -1}; var q := [0]
+	while not q.is_empty():
+		var c: int = q.pop_front()
+		if c == 1: break
+		for k in nodes.size():
+			if prev.has(k): continue
+			var a: Dictionary = nodes[c]; var b: Dictionary = nodes[k]
+			var ok := false
+			if a.has("j") and b.has("j") and a.j == b.j and a.side != b.side: ok = true      # through the picture
+			elif absf(float(a.h) - float(b.h)) < 0.01 and (_flat(a.p, b.p) < 0.05 or not _gh_way(a.h, a.p, b.p).is_empty()): ok = true
+			if ok: prev[k] = c; q.append(k)
+	if not prev.has(1): return []
+	var chain := [1]
+	while prev[chain[0]] != -1: chain.push_front(prev[chain[0]])
+	var legs := []
+	for i in range(chain.size() - 1):
+		var a: Dictionary = nodes[chain[i]]; var b: Dictionary = nodes[chain[i + 1]]
+		if a.has("j") and b.has("j") and a.j == b.j and a.side != b.side: legs.append({"join": b}); continue
+		legs.append({"h": a.h, "pts": _gh_way(a.h, a.p, b.p) if _flat(a.p, b.p) >= 0.05 else []})
+	return legs
+
+## she goes there, over whatever joins it takes; then `then` (a wheel to turn) if given
+func _gh_go(to: Vector3, to_h: float, then := Callable()) -> void:
+	var legs := _gh_plan(to, to_h)
+	print("GH go to ", to, " h ", to_h, ": ", legs.size(), " legs")
+	if legs.is_empty() and not (absf(float(gh.h) - to_h) < 0.01 and _flat(pos, to) < 0.05): await _her_no(); return
+	gh_busy = true
+	for lg in legs:
+		if lg.has("join"):
+			await _gh_cross(lg.join)
+		elif not (lg.pts as Array).is_empty():
+			route.clear(); speed_cap = PLAY_WALK; face_to = null
+			for q in lg.pts: route.append({"p": Vector3(q.x, 0, q.z)})
+			while not route.is_empty(): await get_tree().process_frame
+	gh_busy = false
+	if then.is_valid(): await then.call()
+
+## through the picture: low to high (she steps into the water's picture and walks on as her image), or high to low
+func _gh_cross(n: Dictionary) -> void:
+	var j: Dictionary = n.j
+	if n.side == "q":      # into the picture
+		if not gh_said.has("in"): gh_said["in"] = true; say("she walks on in the picture")
+		var sk := create_tween(); sk.tween_property(self, "sink_main", 1.95, 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		await sk.finished
+		gh.refl = true; gh.h = float(j.q.y); pos = Vector3(j.q.x, gh.h, j.q.z)
+	else:      # out of it
+		gh.refl = false; gh.h = 0.0; pos = Vector3(j.p.x, 0, j.p.z)
+		var ru := create_tween(); ru.tween_property(self, "sink_main", 0.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		await ru.finished
+	print("GH through the picture at the ", j.name, ": she is ", "in the picture, at " if gh.refl else "out of it, at ", pos)
+
+func _gh_pre(_dt: float) -> void:
+	pos.y = float(gh.h)
+	if H.has("main"): (H["main"].holder as Node3D).visible = not bool(gh.refl) or sink_main < 1.9
+	if bool(gh.refl) and sink_main > 0.0 and not gh_busy: sink_main = 1.95
+	if H.has("mir"):
+		(H["mir"].holder as Node3D).visible = true
+		var hm := _hermod(H["mir"])
+		if hm != null:      # in the picture her image does with its own hands what she does: reaching for the wheels' images
+			hm.own = bool(gh.refl)
+			if hm.own:
+				hm.wL = a_wL; hm.wR = a_wR; hm.bow = a_lean
+				hm.tL = Vector3(tgtL.x, -tgtL.y, tgtL.z); hm.tR = Vector3(tgtR.x, -tgtR.y, tgtR.z)
+
+func _gh_post(dt: float) -> void:
+	var see := Vector3(pos.x + pos.y, 0, pos.z + pos.y) if bool(gh.refl) else Vector3(pos.x, 0, pos.z)      # where she is seen: her image's place, when she walks in the picture
+	if gh_ev_t > 0.0: gh_ev_t -= dt
+	cam_focus = (gh_ev_focus as Vector3) if (gh_ev_t > 0.0 and gh_ev_focus != null) else see
+	cam_focus_on = true
+	if started and woke and not ended and not gh_said.has("hint") and Time.get_ticks_msec() > 22000 and not bool(gh.refl): gh_said["hint"] = true; say("where a way meets the picture of another, it goes on")
+	if bool(gh.refl) and not ended and pos.z < 2.3 and absf(float(gh.h) - GHIGH) < 0.01 and not flags.get("gh_end", false): route.clear(); _gh_end()
+
+func _gh_end() -> void:
+	if flags.get("gh_end", false): return
+	flags["gh_end"] = true
+	print("GH through the gate, in the picture")
+	route.append({"p": Vector3(GH_LIFT.x, 0, GH_NB - 0.4)})
+	await wait(1.4)
+	_end()
+
+## the eye goes to what a wheel works, for a while
+func _gh_show(at: Vector3, t := 3.2) -> void:
+	gh_ev_focus = Vector3(at.x + at.y, 0, at.z + at.y) if at.y > 0.5 else at; gh_ev_t = t
+
+## a tap: a wheel (she goes and turns it), or a place, low or high (seen in the world or in its picture)
+func _gh_tap(sp: Vector2) -> void:
+	if busy or gh_busy: print("GH tap: busy ", busy, " ", gh_busy); return
+	var px := get_viewport().get_visible_rect().size.x / 720.0
+	var bw := ""; var bd := 60.0 * px
+	for id in gh_wheels:
+		var hub: Vector3 = N["hub" + id]
+		var cands := [hub]
+		if float(gh_wheels[id].h) > 0.5: cands.append(Vector3(hub.x, -hub.y, hub.z))
+		for q in cands:
+			var d := cam.unproject_position(q).distance_to(sp)
+			if d < bd: bd = d; bw = id
+	if bw != "":
+		var w: Dictionary = gh_wheels[bw]
+		_gh_go(w.stand, w.h, func() -> void: await _gh_turn(bw))
+		return
+	# a high place: on the high way itself, or its picture in the water
+	var o := cam.project_ray_origin(sp); var dr := cam.project_ray_normal(sp)
+	var best = null; var bh := 0.0
+	for n in gh_hr:
+		var r: Dictionary = gh_hr[n]
+		if not r.on: continue
+		var h: float = r.h
+		var a := o + dr * ((h - o.y) / dr.y)
+		var g := o + dr * (-o.y / dr.y)
+		var pic := Vector3(g.x - h, 0, g.z - h)
+		if in_rect(r, Vector3(a.x, 0, a.z), 0.15): best = Vector3(clampf(a.x, r.x0, r.x1), 0, clampf(a.z, r.z0, r.z1)); bh = h
+		elif _gh_shows(g) and in_rect(r, pic, 0.15): best = Vector3(clampf(pic.x, r.x0, r.x1), 0, clampf(pic.z, r.z0, r.z1)); bh = h
+	if best != null: tapring.position = Vector3(best.x + bh, 0.02, best.z + bh) if bh > 0.5 else Vector3(best.x, 0.02, best.z); tap_p = 0.0; _gh_go(best, bh); return
+	var gp = _ground_under(sp)
+	if gp != null:
+		tapring.position = Vector3((gp as Vector3).x, 0.02, (gp as Vector3).z); tap_p = 0.0
+		_gh_go(gp, 0.0)
+
+## a wheel is turned (by her, or by her image in the picture), and what it works moves
+func _gh_turn(id: String) -> void:
+	busy = true
+	var w: Dictionary = gh_wheels[id]
+	var opens := func() -> void:
+		if id == "K1":      # the bridge turns a quarter round
+			gh.q = 1 - int(gh.q)
+			var to := 0.0 if int(gh.q) == 1 else -PI * 0.5
+			for k in ["ghq", "ghq_m"]: create_tween().tween_property(N[k], "rotation:y", to, 2.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			if int(gh.q) == 1: gh_hr["Q"] = R(67.6, 2.1, 71.14, 2.98, true, GMID)
+			else: gh_hr["Q"] = R(66.84, 2.9, 67.74, 6.39, true, GMID)
+			_gh_show(GH_PIV + Vector3(1.8, 0, 1.0) if int(gh.q) == 1 else GH_PIV + Vector3(0.5, 0, 2.0))
+			await wait(2.3)
+		elif id == "K2":      # the lift goes up, or down
+			gh.l = GHIGH if absf(float(gh.l) - GMID) < 0.01 else GMID
+			for k in ["ghl", "ghl_m"]: create_tween().tween_property(N[k], "position:y", float(gh.l), 2.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			gh_hr["L"].h = gh.l
+			_gh_show(Vector3(GH_LIFT.x, float(gh.l), 5.3))
+			await wait(2.7)
+		else:      # the mirror slides along its groove to the next stop
+			gh.m = (int(gh.m) + 1) % GH_STOPS.size()
+			var x0 := gh_mirror.position.x; var x1: float = GH_STOPS[gh.m]
+			create_tween().tween_method(func(v: float) -> void: _gh_mirror_at(v), x0, x1, 1.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			_gh_show(Vector3(x1, 0, 8.4))
+			await wait(1.9)
+		print("GH wheel ", id, ": bridge ", ["south", "east"][gh.q], ", lift ", gh.l, ", mirror at ", GH_STOPS[gh.m], " | joins ", _gh_joins().map(func(j): return j.name))
+	await _shadow_wheel(id, Vector3(w.focus), opens)
+	busy = false
+
+## (the trial, played through as a player would: FLIP=geo ... -- geodemo)
+func _play_geo() -> void:
+	var dir := OS.get_environment("SHOT_DIR")
+	var snap := func(n: String) -> void:
+		if dir != "": await RenderingServer.frame_post_draw; get_viewport().get_texture().get_image().save_png("%s/%s.png" % [dir, n])
+	var idle := func() -> void:
+		var still := 0
+		while still < 18:
+			await get_tree().process_frame
+			still = still + 1 if (not busy and not gh_busy and route.is_empty() and pending == "") else 0
+	var at := func(p: Vector3) -> Vector2: return cam.unproject_position(p)
+	await get_tree().create_timer(1.0).timeout
+	tap(Vector2(360, 640)); await wait(6.0); await snap.call("g0_start")
+	print("GH begins at ", pos)
+	# 1: along the causeway, and on into the picture of the balcony
+	tap(at.call(Vector3(63.6 + GMID, 0, 2.5 + GMID))); await idle.call()      # (a tap on the balcony's picture in the water)
+	print("GH 1: in the picture ", gh.refl, " at ", pos); await wait(0.6); await snap.call("g1_on_the_balcony")
+	# 2: the wheel on the balcony turns the bridge east; across it, and out onto the east causeway
+	tap(at.call(Vector3((N["hubK1"] as Vector3).x, -(N["hubK1"] as Vector3).y, (N["hubK1"] as Vector3).z))); await idle.call()
+	await snap.call("g2_bridge_turned")
+	tap(at.call(Vector3(73.6, 0, 4.2))); await idle.call()
+	print("GH 2: in the picture ", gh.refl, " at ", pos); await snap.call("g3_out_on_the_east")
+	# 3: the lift up, the mirror under the island's end; then into the picture of the lift, and up the aqueduct to the gate
+	tap(at.call(N["hubK2"])); await idle.call(); await snap.call("g4_lift_up")
+	tap(at.call(Vector3(72.0, 0, 11.2))); await idle.call()
+	for i in 2:
+		tap(at.call(N["hubK3"])); await idle.call()
+	await snap.call("g5_mirror_set")
+	tap(at.call(Vector3(GH_P3.x, 0, 9.6))); await idle.call()
+	tap(at.call(Vector3(GH_LIFT.x + GHIGH, 0, 5.4 + GHIGH))); await idle.call()
+	print("GH 3: in the picture ", gh.refl, " at ", pos, " height ", gh.h); await snap.call("g6_on_the_lift")
+	tap(at.call(Vector3(GH_LIFT.x + GHIGH, 0, 2.2 + GHIGH))); await idle.call()
+	var n2 := 0
+	while not ended and n2 < 600: await get_tree().process_frame; n2 += 1
+	await wait(2.0)
+	print("GH ended: ", ended); await snap.call("g9_end")
+	get_tree().quit()
+
+# ---------------------------------------------------------------- the face in the water (a trial)
+## Three courts by themselves in the sea, one after another. In each a medallion of square stones stands on two posts
+## over a still water, leaning so that, from where the eye is, its face is turned away: in the world one sees the
+## edges of the stones; in the water their undersides, and on them a picture. A tap on a stone's picture in the water
+## (or, where its top can be seen, on the stone) turns it a quarter round. When the picture in the water is whole the
+## water is still and the gate to the south opens.
+## 1: her face (four stones). 2: her walk to the sea (three stones, chained by bronze wheels: a stone turns its
+## neighbours too). 3: her with the mirror (nine stones, the middle one fixed); on top the sculptor cut his own seal,
+## whole as the stones are found: to make hers, his must be broken.
+const FG_X0 := 33.0
+const FG_X1 := 45.0
+const FG_GX := 39.0
+const FG_TH := 0.08      # the thickness of a stone
+var fg_lay := []      # the courts: their measures (`_fig_layout`), and once built their things and their state
+var fg_taps := 0
+var fg_wait := 0.0
+var fg_look_t := 0.0
+var fg_tw := {}      # the tween that turns each stone just now
+
+func _fig_specs() -> Array:
+	return [
+		{"nx": 2, "nz": 2, "s": 1.5, "tilt": 31.0, "pic": "face", "top": "", "start": [1, 0, 3, 2], "off": [0, 0, 0, 0], "links": {}, "fixed": [],
+			"lines": ["He carved her face where no one would look.", "Under the stone. Only the water sees it."]},
+		{"nx": 3, "nz": 1, "s": 1.3, "tilt": 31.0, "pic": "frieze", "top": "", "start": [1, 0, 1], "off": [0, 0, 0], "links": {0: [1], 1: [0, 2], 2: [1]}, "fixed": [],
+			"lines": ["Some stones he chained together,", "so that mending one would break the next."]},
+		{"nx": 3, "nz": 3, "s": 1.15, "tilt": 14.0, "pic": "mirror", "top": "seal", "start": [0, 0, 0, 0, 0, 0, 0, 0, 0], "off": [1, 3, 2, 2, 0, 1, 3, 1, 2], "links": {}, "fixed": [4],
+			"lines": ["On top he cut his own seal.", "Hers he hid underneath."]},
+	]
+
+## the measures of the three courts. The medallion's frame: X to the right of the picture (the right of the view), T
+## the face of its top, Z down the picture. Its lowest edge stands half a metre over the water. Its image in the water
+## is seen where the ground point (x + y, z + y) of each of its points is: the pool is made to hold all of that.
+func _fig_layout() -> Array:
+	if not fg_lay.is_empty(): return fg_lay
+	var z0 := 0.0
+	for sp in _fig_specs():
+		var phi := deg_to_rad(float(sp.tilt))
+		var X := Vector3(1, 0, -1).normalized()
+		var T := Vector3(-sin(phi) / sqrt(2.0), cos(phi), -sin(phi) / sqrt(2.0))
+		var Z := X.cross(T)
+		var g := 0.05; var s: float = sp.s
+		var W := (int(sp.nx) * s + (int(sp.nx) - 1) * g) * 0.5; var D := (int(sp.nz) * s + (int(sp.nz) - 1) * g) * 0.5
+		var hc := 0.5 + D * sin(phi)
+		var pts := []
+		for u in [-W, W]:
+			for v in [-D, D]:
+				var c := Vector3(0, hc, 0) + X * float(u) + Z * float(v)
+				pts.append(Vector2(c.x + c.y, c.z + c.y))
+		var mir_c := Vector2.ZERO
+		for q in pts: mir_c += (q as Vector2) / 4.0
+		for u in [-(W - 0.25), W - 0.25]:
+			var c2 := Vector3(0, hc, 0) + X * float(u) - Z * D
+			pts.append(Vector2(c2.x, c2.z))
+		var lo := Vector2(1e9, 1e9); var hi := Vector2(-1e9, -1e9)
+		for q in pts: lo = Vector2(minf(lo.x, q.x), minf(lo.y, q.y)); hi = Vector2(maxf(hi.x, q.x), maxf(hi.y, q.y))
+		lo -= Vector2(0.45, 0.45); hi += Vector2(0.45, 0.45)
+		var off := Vector2(FG_GX - (lo.x + hi.x) * 0.5, z0 + 2.8 - lo.y)      # where the medallion's middle goes, over the ground
+		var pool := [lo.x + off.x, lo.y + off.y, hi.x + off.x, hi.y + off.y]
+		var z1: float = float(pool[3]) + 2.6
+		var C := Vector3(off.x, hc, off.y)
+		var view := Vector2(C.x - hc, C.z - hc).lerp(mir_c + off, 0.62)
+		fg_lay.append({"spec": sp, "X": X, "T": T, "Z": Z, "W": W, "D": D, "g": g, "hc": hc, "C": C, "pool": pool, "court": [FG_X0, z0, FG_X1, z1],
+			"view": Vector3(view.x, 0, view.y), "top_k": (cos(phi) - sqrt(2.0) * sin(phi)) / sqrt(3.0), "k": (sp.start as Array).duplicate(), "solved": false})
+		z0 = z1 + 2.2
+	return fg_lay
+
+func _fig_hollows() -> Array:
+	var out := []
+	for L in _fig_layout(): out.append([float(L.court[0]) + 0.3, float(L.court[1]) + 0.5, float(L.court[2]) - 0.3, float(L.court[3]) - 0.5])
+	return out
+
+## a face of a stone, `y` over (or under) its middle, its picture taken from the medallion's picture as the stone lies
+## when it is turned `off` quarters round
+func _fig_quad(s: float, y: float, lc: Vector3, off: int, W: float, D: float, mat: Material) -> MeshInstance3D:
+	var rb := Basis(Vector3.UP, -float(off) * PI * 0.5)
+	var vs := PackedVector3Array(); var uvs := PackedVector2Array(); var ns := PackedVector3Array()
+	var h := s * 0.5 - 0.01
+	for q in [Vector2(-h, -h), Vector2(h, -h), Vector2(h, h), Vector2(-h, -h), Vector2(h, h), Vector2(-h, h)]:
+		vs.append(Vector3(q.x, y, q.y)); ns.append(Vector3(0, signf(y), 0))
+		var m := lc + rb * Vector3(q.x, 0, q.y)
+		uvs.append(Vector2((m.x + W) / (2.0 * W), (m.z + D) / (2.0 * D)))
+	var arr := []; arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = vs; arr[Mesh.ARRAY_TEX_UV] = uvs; arr[Mesh.ARRAY_NORMAL] = ns
+	var am := ArrayMesh.new(); am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	var mi := MeshInstance3D.new(); mi.mesh = am; mi.material_override = mat; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
+func _fig_mat(tx: Texture2D, c: Color) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new(); m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.albedo_color = c
+	if tx != null: m.albedo_texture = tx; m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	return m
+
+func _fig_build() -> void:
+	var lay := _fig_layout()
+	for ri in lay.size():
+		var L: Dictionary = lay[ri]; var sp: Dictionary = L.spec
+		var c: Array = L.court; var p: Array = L.pool
+		var x0: float = c[0]; var z0: float = c[1]; var x1: float = c[2]; var z1: float = c[3]
+		_pool_court(x0, z0, x1, z1, p[0], p[1], p[2], p[3], "stone", "PoolSkyF%d" % ri)
+		tile_hole = Rect2(p[0] - 0.08, p[1] - 0.08, p[2] - p[0] + 0.16, p[3] - p[1] + 0.16); tiles(x0, z0, x1, z1, 1.0); tile_hole = Rect2()
+		var gm := glass(p[0], p[1], p[2], p[3], 0.35)
+		gm.set_shader_parameter("wave", 0.3); gm.set_shader_parameter("clear", 0.55)
+		L["glass"] = gm
+		# its low walls: open to the north where one comes in (but in the first), a gate to the south
+		if ri == 0: parapet(Vector3(x0 + 0.1, 0, z0 + 0.1), Vector3(x1 - 0.1, 0, z0 + 0.1))
+		else:
+			parapet(Vector3(x0 + 0.1, 0, z0 + 0.1), Vector3(FG_GX - 0.7, 0, z0 + 0.1)); parapet(Vector3(FG_GX + 0.7, 0, z0 + 0.1), Vector3(x1 - 0.1, 0, z0 + 0.1))
+		parapet(Vector3(x0 + 0.1, 0, z0 + 0.1), Vector3(x0 + 0.1, 0, z1 - 0.1)); parapet(Vector3(x1 - 0.1, 0, z0 + 0.1), Vector3(x1 - 0.1, 0, z1 - 0.1))
+		parapet(Vector3(x0 + 0.1, 0, z1 - 0.1), Vector3(FG_GX - 0.7, 0, z1 - 0.1)); parapet(Vector3(FG_GX + 0.7, 0, z1 - 0.1), Vector3(x1 - 0.1, 0, z1 - 0.1))
+		for e in [-1.0, 1.0]: blk(Vector3(FG_GX + e * 0.7 - 0.09, 0, z1 - 0.22), Vector3(FG_GX + e * 0.7 + 0.09, 2.0, z1 - 0.04), "stone")
+		leaf("fgx%d" % ri, Vector3(FG_GX, 0, z1 - 0.13), false, 0.61, 1.75)
+		var zn: float = (float(lay[ri + 1].court[1])) if ri + 1 < lay.size() else z1 + 3.4
+		blk(Vector3(FG_GX - 0.7, -0.18, z1), Vector3(FG_GX + 0.7, 0.0, zn), "stone")      # the landing to the next
+		cypress(Vector3(x0 + 0.95, 0, z0 + 0.95)); cypress(Vector3(x1 - 0.95, 0, z0 + 0.95)); urn(Vector3(x0 + 0.9, 0, z1 - 0.9)); urn(Vector3(x1 - 0.9, 0, z1 - 0.9))
+		# the medallion
+		var tex: Texture2D = load("res://figure/%s.jpg" % String(sp.pic))
+		var picm := _fig_mat(tex, Color(0.9, 0.9, 0.9)); L["mats"] = [picm]
+		var topm := _fig_mat(load("res://figure/%s.jpg" % String(sp.top)) if String(sp.top) != "" else null, Color(0.88, 0.85, 0.82) if String(sp.top) != "" else Color("d9c8ae"))
+		var nx: int = sp.nx; var nz: int = sp.nz; var s: float = sp.s; var g: float = L.g; var W: float = L.W; var D: float = L.D
+		var X: Vector3 = L.X; var Z: Vector3 = L.Z; var C: Vector3 = L.C
+		L["tiles"] = []; L["tiles_m"] = []; L["gears"] = {}
+		for both in [self, mroot]:
+			var twin: bool = both == mroot
+			var gold: Material = under_mat(Color("c98f2c")) if twin else pal("gold")
+			var stone: Material = under_mat(Color("857fa4")) if twin else pal("stone")
+			var med := Node3D.new(); med.transform = Transform3D(Basis(X, L.T, Z), C); both.add_child(med)
+			for u in [-(W - 0.25), W - 0.25]:      # its two posts, under its far edge
+				var tp := C + X * float(u) - Z * D
+				cyl(Vector3(tp.x, -0.4, tp.z), 0.09, 0.11, tp.y + 0.4 - 0.03, stone, 12, both)
+			for e in [-1.0, 1.0]:      # its bronze frame
+				blk(Vector3(-W - 0.07, -0.05, e * (D + 0.04) - 0.035), Vector3(W + 0.07, 0.05, e * (D + 0.04) + 0.035), "gold", med).material_override = gold
+				blk(Vector3(e * (W + 0.04) - 0.035, -0.05, -D - 0.07), Vector3(e * (W + 0.04) + 0.035, 0.05, D + 0.07), "gold", med).material_override = gold
+			for i in nx * nz:
+				var lc := Vector3(-W + s * 0.5 + (i % nx) * (s + g), 0, -D + s * 0.5 + (i / nx) * (s + g))
+				var tn := Node3D.new(); tn.position = lc; med.add_child(tn)
+				blk(Vector3(-s * 0.5 + 0.01, -FG_TH * 0.5, -s * 0.5 + 0.01), Vector3(s * 0.5 - 0.01, FG_TH * 0.5, s * 0.5 - 0.01), "stone", tn).material_override = stone
+				tn.add_child(_fig_quad(s, FG_TH * 0.5 + 0.003, lc, 0, W, D, topm))
+				tn.add_child(_fig_quad(s, -(FG_TH * 0.5 + 0.003), lc, int(sp.off[i]), W, D, picm))
+				tn.rotation.y = -float(sp.start[i]) * PI * 0.5
+				(L["tiles_m" if twin else "tiles"] as Array).append(tn)
+				if i in (sp.fixed as Array):      # a stone that does not turn: four bronze studs
+					for q in [Vector2(-1, -1), Vector2(1, -1), Vector2(1, 1), Vector2(-1, 1)]:
+						for fy in [-1.0, 1.0]: cyl(lc + Vector3(q.x * (s * 0.5 - 0.1), fy * FG_TH * 0.5 - 0.03, q.y * (s * 0.5 - 0.1)), 0.045, 0.045, 0.06, gold, 8, med)
+			for a in (sp.links as Dictionary):      # the bronze wheels that chain two stones, on the lower edge of the frame
+				for b in sp.links[a]:
+					if int(b) <= int(a): continue
+					var gx := -W + s * 0.5 + (int(a) % nx + 0.5) * (s + g)
+					var gn := Node3D.new(); gn.position = Vector3(gx, 0, D + 0.24); med.add_child(gn)
+					cyl(Vector3(0, -0.06, 0), 0.19, 0.19, 0.12, gold, 16, gn)
+					for ti in 8:
+						var tq := blk(Vector3(-0.035, -0.06, 0.17), Vector3(0.035, 0.06, 0.25), "gold", gn); tq.material_override = gold
+						var hold := Node3D.new(); gn.add_child(hold); hold.rotation.y = TAU * ti / 8.0; tq.reparent(hold, false)
+					var key := "%d-%d" % [a, b]
+					if not (L.gears as Dictionary).has(key): L.gears[key] = []
+					(L.gears[key] as Array).append(gn)
+		# floor
+		rects["Fn%d" % ri] = R(x0 + 0.5, z0 + 0.6, x1 - 0.5, float(p[1]) - 0.3)
+		rects["Fw%d" % ri] = R(x0 + 0.5, z0 + 0.6, float(p[0]) - 0.3, z1 - 0.5)
+		rects["Fe%d" % ri] = R(float(p[2]) + 0.3, z0 + 0.6, x1 - 0.5, z1 - 0.5)
+		rects["Fs%d" % ri] = R(x0 + 0.5, float(p[3]) + 0.3, x1 - 0.5, z1 - 0.5)
+		rects["Fg%d" % ri] = R(FG_GX - 0.3, z1 - 0.7, FG_GX + 0.3, z1 + 0.3, false)
+		rects["Fl%d" % ri] = R(FG_GX - 0.4, z1 - 0.1, FG_GX + 0.4, zn + 0.9)
+		stele("fg_st%d" % ri, Vector3(FG_GX - 1.6, 0, z0 + 1.3), 0.0, sp.lines)
+
+## (the trial begins in the first court, with her awake)
+func _fig_begin() -> void:
+	_wake_now()
+	var L: Dictionary = _fig_layout()[0]
+	pos = Vector3(FG_GX - 1.6, 0, float(L.court[1]) + 1.3); yaw = 0.0; cam_t = L.view
+	cam_focus = L.view; cam_focus_on = true
+
+## the court she is in
+func _fig_room() -> int:
+	var lay := _fig_layout(); var ri := 0
+	for i in lay.size():
+		if pos.z > float(lay[i].court[1]) - 0.4: ri = i
+	return ri
+
+func _fig_frame(dt: float) -> void:
+	var lay := _fig_layout()
+	cam_focus = lay[_fig_room()].view; cam_focus_on = true
+	if fg_look_t > 0.0:
+		fg_look_t -= dt
+		if fg_look_t <= 0.0: look_at_pt = null
+	if started and woke and fg_taps == 0 and not ended:
+		fg_wait += dt
+		if fg_wait > 10.0 and not flags.get("fg_hint", false): flags["fg_hint"] = true; say("tap a stone's picture in the water: it turns")
+	var last: Dictionary = lay[lay.size() - 1]
+	if not ended and bool(last.solved) and pos.z > float(last.court[3]) + 1.6: route.clear(); _end()
+
+## a tap: on a stone's picture in the water (or on a stone whose top can be seen) it turns; anywhere else she walks there
+func _fig_tap(sp: Vector2) -> void:
+	var lay := _fig_layout()
+	var best := Vector2i(-1, -1); var bd := 1e9
+	for ri in lay.size():
+		var L: Dictionary = lay[ri]
+		if bool(L.solved): continue
+		var s: float = L.spec.s
+		for i in (L.tiles as Array).size():
+			var b: Vector3 = (L.tiles_m[i] as Node3D).global_position
+			var r := cam.unproject_position(b).distance_to(cam.unproject_position(b + (L.X as Vector3) * s * 0.5))      # half a stone, on the screen
+			var d := cam.unproject_position(b).distance_to(sp) / r
+			if float(L.top_k) > 0.2:      # (its top can be seen)
+				var a: Vector3 = (L.tiles[i] as Node3D).global_position
+				d = minf(d, cam.unproject_position(a).distance_to(sp) / r / 0.8)
+			if d < 1.25 and d < bd: bd = d; best = Vector2i(ri, i)
+	if best.x >= 0:
+		hold_id = -1
+		if best.y in (lay[best.x].spec.fixed as Array):      # it does not turn: it knocks
+			var tn: Node3D = lay[best.x].tiles[best.y]; var tm: Node3D = lay[best.x].tiles_m[best.y]
+			for n in [tn, tm]:
+				var q := create_tween(); q.tween_property(n, "rotation:y", n.rotation.y - 0.08, 0.08); q.tween_property(n, "rotation:y", n.rotation.y, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			return
+		_fig_turn(best.x, best.y); return
+	if busy: return
+	var gp = _ground_under(sp)
+	if gp != null: walk_to(gp, PLAY_WALK); tapring.position = Vector3((gp as Vector3).x, 0.02, (gp as Vector3).z); tap_p = 0.0
+
+## a stone turns a quarter round, and those chained to it
+func _fig_turn(ri: int, i: int) -> void:
+	var L: Dictionary = _fig_layout()[ri]; var sp: Dictionary = L.spec
+	fg_taps += 1
+	look_at_pt = (L.tiles_m[i] as Node3D).global_position; fg_look_t = 1.4
+	var who := [i] + ((sp.links as Dictionary).get(i, []) as Array)
+	for j in who:
+		L.k[j] = int(L.k[j]) + 1
+		var to := -float(L.k[j]) * PI * 0.5
+		for n in [L.tiles[j], L.tiles_m[j]]:
+			var old = fg_tw.get(n)
+			if old != null and (old as Tween).is_valid(): (old as Tween).kill()
+			var q := create_tween(); q.tween_property(n, "rotation:y", to, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			fg_tw[n] = q
+	for j in who:      # the wheels between the stones that turned
+		if j == i: continue
+		var key := "%d-%d" % [mini(i, j), maxi(i, j)]
+		for gn in (L.gears as Dictionary).get(key, []): create_tween().tween_property(gn, "rotation:y", (gn as Node3D).rotation.y + PI * 0.5, 0.42).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if _fig_whole(L) and not bool(L.solved):
+		L.solved = true
+		await wait(0.55)
+		_fig_still(ri)
+
+func _fig_whole(L: Dictionary) -> bool:
+	var sp: Dictionary = L.spec
+	for j in (L.k as Array).size():
+		if j in (sp.fixed as Array): continue
+		if posmod(int(L.k[j]) - int(sp.off[j]), 4) != 0: return false
+	return true
+
+## the picture is whole: the water is still, the picture clears, and the gate opens
+func _fig_still(ri: int) -> void:
+	var L: Dictionary = _fig_layout()[ri]
+	print("FIG court ", ri + 1, " whole, after ", fg_taps, " taps in all")
+	var gm: ShaderMaterial = L.glass
+	var q := create_tween().set_parallel(true)
+	q.tween_method(func(v: float) -> void: gm.set_shader_parameter("wave", v), 0.3, 0.0, 2.0).set_trans(Tween.TRANS_SINE)
+	q.tween_method(func(v: float) -> void: gm.set_shader_parameter("blur_px", v), 0.35, 0.0, 2.0).set_trans(Tween.TRANS_SINE)
+	for m in L.mats: q.tween_property(m, "albedo_color", Color(1.0, 1.0, 1.0), 2.0).set_trans(Tween.TRANS_SINE)
+	say("the water is still")
+	await wait(1.1)
+	create_tween().tween_property(N["fgx%d" % ri], "position:y", -2.0, 2.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	rects["Fg%d" % ri].on = true
+
+## the taps that make a court's picture whole from where its stones are (for the play-through)
+func _fig_solution(L: Dictionary) -> Array:
+	var sp: Dictionary = L.spec; var d := []
+	for j in (L.k as Array).size(): d.append(posmod(int(sp.off[j]) - int(L.k[j]), 4))
+	var plan := []
+	if (sp.links as Dictionary).is_empty():
+		for j in d.size():
+			if not (j in (sp.fixed as Array)):
+				for n in int(d[j]): plan.append(j)
+	else:      # three in a row, each turning its neighbours: taps a, b, c on them give a+b, a+b+c, b+c
+		var c := posmod(int(d[1]) - int(d[0]), 4); var a := posmod(int(d[1]) - int(d[2]), 4); var b := posmod(int(d[0]) - a, 4)
+		for n in a: plan.append(0)
+		for n in b: plan.append(1)
+		for n in c: plan.append(2)
+	return plan
+
+## (the trial, played through as a player would: FLIP=figure ... -- figuredemo)
+func _play_figure() -> void:
+	var dir := OS.get_environment("SHOT_DIR")
+	var snap := func(n: String) -> void:
+		if dir != "": await RenderingServer.frame_post_draw; get_viewport().get_texture().get_image().save_png("%s/%s.png" % [dir, n])
+	var idle := func() -> void:
+		var still := 0
+		while still < 14:
+			await get_tree().process_frame
+			still = still + 1 if (not busy and route.is_empty() and pending == "") else 0
+	await get_tree().create_timer(1.0).timeout
+	tap(Vector2(360, 640)); await wait(8.0); await snap.call("f0_start")
+	var lay := _fig_layout()
+	for ri in lay.size():
+		var L: Dictionary = lay[ri]
+		var plan := _fig_solution(L)
+		print("FIG court ", ri + 1, ": the stones are at ", L.k, ", ", plan.size(), " taps to make it whole: ", plan)
+		var first := true
+		for i in plan:
+			_fig_tap(cam.unproject_position((L.tiles_m[i] as Node3D).global_position)); await wait(0.75)
+			if first: first = false; await snap.call("f%d_a_one_turned" % (ri + 1))
+		await wait(2.6); await snap.call("f%d_b_whole" % (ri + 1))
+		print("FIG court ", ri + 1, ": whole ", L.solved, ", the stones at ", L.k)
+		await wait(1.6)
+		_tap_at(Vector3(FG_GX, 0, float(L.court[3]) + 1.2)); await idle.call()
+		print("FIG through gate ", ri + 1, ": she at ", pos)
+		if ri + 1 < lay.size():
+			_tap_at(Vector3(FG_GX - 1.6, 0, float(lay[ri + 1].court[1]) + 1.3)); await idle.call()
+			await wait(3.5); await snap.call("f%d_c_entered" % (ri + 2))
+		else:
+			_tap_at(Vector3(FG_GX, 0, float(L.court[3]) + 2.6)); await idle.call()
+	var n2 := 0
+	while not ended and n2 < 600: await get_tree().process_frame; n2 += 1
+	await wait(2.5)
+	print("FIG ended: ", ended, " at ", pos, ", ", fg_taps, " taps"); await snap.call("f9_end")
+	get_tree().quit()
 
 # ---------------------------------------------------------------- the court of the still water (a trial)
 ## A court by itself in the sea: a terrace to the north where she begins, a terrace to the south with the way out, and
@@ -1111,6 +1849,8 @@ func _world() -> void:
 	mroot = Node3D.new(); mroot.name = "MirrorPool"; mroot.transform = Transform3D(Basis(Vector3(1, 0, 0), Vector3(0, -1, 0), Vector3(0, 0, 1)), Vector3.ZERO); add_child(mroot)
 	_harbour(); _causeway(); _basin(); _well(); _fountain(); _forecourt(); _atrium()
 	if match_demo: _match_room()
+	if figure_demo: _fig_build()
+	if geo_demo: _gh_build()
 	_temple()
 	_wings()
 	_strip_refl(mroot)
@@ -2274,6 +3014,10 @@ func tap(sp: Vector2) -> void:
 	if started and not ended and not woke:
 		if not busy: _wake()
 		return
+	if geo_demo and started and not ended and woke:      # (the trial of the hall of images: a wheel, or a place, in the world or in its picture)
+		_gh_tap(sp); return
+	if figure_demo and started and not ended and woke:      # (the trial of the face in the water: a stone, or a place to walk to)
+		_fig_tap(sp); return
 	if flip_on or flip_busy:      # the turned picture: the shadow is played
 		if flip_on and started and not ended: _shadow_tap(sp)
 		return
@@ -2862,12 +3606,15 @@ func _do_place6() -> void:
 
 # ---------------------------------------------------------------- frame, and the runs that try the chapter
 func _process(dt: float) -> void:
+	if geo_demo: _gh_pre(dt)
 	if flip_moving: _flip_pre()
 	super._process(dt)
 	if flip_moving: _flip_post()
 	if flip_icon != null: _flip_icon_frame(dt)
 	_smoke_frame(dt)
 	if flip_on and not flip_busy and not flip_homing and _flat(pos, flip_anchor) > FLIP_LEASH: _shadow_home()      # too far from her
+	if figure_demo: _fig_frame(dt)
+	if geo_demo: _gh_post(dt)
 	if match_demo and not ended and not flip_on and not flip_busy and pos.z > MT_Z1 + 0.7: route.clear(); _end()
 	if flip_demo and not ended and not busy and not flip_busy and not flip_on and rects.has("S2") and rects["S2"].on and pos.z < TZ0 - 0.9: route.clear(); _end()      # (the trial ends behind the second sluice)
 	if not flip_on and not flip_busy and woke: _stele_watch()
@@ -2911,6 +3658,10 @@ func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	_flip_setup()
 	if match_demo: _match_begin()
+	if figure_demo: _fig_begin()
+	if geo_demo: _gh_begin()
+	if "geodemo" in args: hand_play = true; _play_geo()
+	if "figuredemo" in args: hand_play = true; _play_figure()
 	if "matchdemo" in args: hand_play = true; _play_match()
 	if "flipdemo" in args: hand_play = true; _play_flipdemo()
 	if "views" in args: _views()
