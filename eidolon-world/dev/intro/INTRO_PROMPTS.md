@@ -1,146 +1,90 @@
-# EIDOLON · Intro: the seven cards and their image prompts
+# EIDOLON · Intro: seven scenes on a turning amphora
 
-Each card is one painted scene in the manner of a Greek vase, delivered as separate layers so that it can be animated.
-The words are added in the animation; the pictures carry no text.
+The intro is one amphora, drawn by a script (stylised, not a photograph), seen close on its picture panel. Each
+card is the painting in that panel; at every change of scene the vase turns and the next painting comes round. The
+words appear on the black band under the panel, a sentence or two at a time, in the game's own letter. Small things
+move inside the paintings.
 
-## Style block (paste at the start of every prompt)
+Everything is in `amphora/`:
 
-```
-Ancient Greek vase painting, flat 2D illustration. Figures as flat dark brown-black slip silhouettes with thin
-incised orange detail lines, on a warm orange terracotta clay ground. Worn, chipped, slightly cracked glaze, with
-small pale flakes where the slip has come off. A band of Greek meander ornament across the top and a thin dark
-ground line. No shading, no perspective, no gradients, profile figures. Portrait 9:16, 941 x 1672 px. No text.
-```
+- `character_sheet.jpg` — Theron (standing, kneeling) and Ione in her four states: marble statue (all white, no
+  face), just come alive (in colour, still no face), with her face, and veiled (the veil hides hair and face).
+  Every scene is drawn from this one sheet, so that he and she are the same people throughout.
+- `panels/card1.jpg … card7.jpg` — the seven paintings, flat, as they are wrapped onto the vase; `all_scenes.jpg`
+  shows them together.
+- `layers/cardN/` — each painting cut into layers (every element alone on a transparent ground, at 2048 px, plus
+  the bare clay background and, in cards 5 to 7, the band of sea).
+- `prompts/` — the prompts they were made with (Gemini image model `gemini-3-pro-image`).
+- `tools/gen.py` sends a prompt and reference images to the model (the key is read from a private file outside the
+  repository). `tools/install.py` turns the drawings into panels. `tools/vase.py` draws the vase, wraps the paintings
+  on it, turns it, writes the words, moves the small things, and writes the film. `tools/layers.py` cuts the layers.
+- `clips/cardN.mp4` — the moving pictures (the painted figures in motion, one loop each).
+- `intro_amphora.mp4` — the film (1080×1920, 24 fps).
 
-## Layer rules (paste at the end of every prompt)
+## The words (one card each; a new line here is a new page on the vase)
 
-```
-Deliver the scene as separate PNG layers, all 941 x 1672, each element in its final position on a fully
-transparent background, plus one background layer and one composite of everything together. Leave the stated
-area of plain clay empty for text. Do not put pale outlines round the dark figures.
-```
+1. On Kythira there lived a sculptor named Theron.
+   From white marble he carved a woman, and loved her more than stone should be loved.
+2. After Theron's prayers, Aphrodite gave her life, on one condition:
+   "Leave her face smooth. A face is carved by living, from within."
+3. They called her Ione. And life began to carve her a face, a face the sculptor had never imagined.
+   He could not bear a face he had not carved himself.
+4. So he covered her face with a veil, so that he need not see it.
+   And he hid every mirror, so that she never would.
+   For as long as she had not seen her own face, she was still only what he had made.
+5. But there was one mirror he could not hide: the sea.
+   One morning the Aegean lay still as glass, and at the water's edge Ione saw a veiled woman looking up at her.
+   She had never seen her before.
+6. She wanted to see her closer.
+   So that morning Ione rowed out alone, to where the water lay stillest, and leaned over the side to look.
+7. The sea took her. There was no wave to blame.
 
----
+## How the pictures were made
 
-## Card 1 (animated)
+1. **Style**: authentic Attic black-figure: flat black slip figures in profile with incised lines, added cream-white
+   (marble, women's skin), added red (cloth), on warm orange clay.
+2. **Character sheet** first (`prompts/character_sheet.txt`), six figures in one row.
+3. **Each scene** (`prompts/cardN.txt`) is drawn new from the sheet alone: the model gets the sheet and a description
+   of the scene, and is told that the people must be exactly those of the sheet. Three scenes then got a correction
+   pass (`prompts/cardN_fix*.txt`): the picture itself is given back with one thing to change (the veil must hide
+   the face completely; Theron's tunic and head as on the sheet; white skin).
+4. **Into panels** (`tools/install.py`): cropped square (the sea scenes are cropped to their sea, so that it runs
+   from edge to edge), one clay colour for all seven, the added red turned to the red of Ione's dress in the game,
+   and the sea given a deep sea colour.
 
-> On Kythira there lived a sculptor named Theron.
-> From white marble he carved a woman,
-> and loved her more than stone should be loved.
+## How the vase is drawn (what makes it the game's)
 
-```
-A sculptor, a bearded man in a short belted tunic, stands in profile and rests one hand on the shoulder of a
-standing marble woman, painted cream-white, smooth and faceless. Beside them a workbench with a mallet and
-chisels, an olive branch in the upper corner, and stylised spiral waves with a low sun on the horizon at the left.
-Layers: background (clay, meander, ground line, sun) · sculptor without his raised arm · the raised arm alone ·
-marble woman · tools and bench · olive branch · waves.
-Empty clay for text: the lower third, under the ground line.
-```
+- The light is the game's: flat facets that turn with the vase, warm where the sun falls and lilac in the shade;
+  no photographic shine; the black slip is a deep plum, never dead black.
+- Behind it, the pale haze over the sea, with soft slanting light; the film begins and ends in that haze.
+- The red is the red of Ione's dress; the sea is sea-coloured.
+- The words are in the game's letter (EB Garamond Italic), large and clean over the old glaze.
+- The vase is old: a net of fine cracks, breaks, flakes lost from the glaze. The words are not worn.
 
-## Card 2 (animated)
+## How the figures move
 
-> Aphrodite gave her life, on one condition:
-> *"Leave her face smooth.
-> A face is carved by living, from within."*
+The figures themselves move: hands, steps, cloth. Each painting was given to a video model (`gemini-omni-1.2-flash`,
+through `tools/genvid.py`) as both the first and the last frame of an 8 or 10 second clip, so the clip ends where it
+began and loops; the prompt (`prompts/motion/cardN.txt`) names what moves and says that the camera, the ground and
+the drawing itself do not change. The clips are in `clips/`.
 
-```
-Inside a simple temple front (two pale columns and a pediment), the goddess Aphrodite stands tall at the right
-in a long draped robe, hair bound up, holding a round bronze mirror in both hands. At the left the sculptor
-kneels on one knee, hands raised. Between them the marble woman, cream-white, faceless, takes her first step;
-her hands have just turned the colour of living skin. Three thin rays of light fall from the pediment.
-Layers: background (clay, meander, temple, ground line) · Aphrodite without her forearms · the mirror with
-both hands and forearms · kneeling sculptor · marble woman in three slightly different walking frames
-(same size and position) · rays.
-Empty clay for text: the lower third, under the ground line.
-```
+`tools/vidprep.py` turns a clip into the frames the vase wears: the clip's colours are fitted to the painting; where
+nothing ever moves, the painting itself is kept (so it stays crisp and cannot shimmer); the last frames lean into
+the first. Where a clip's end does not meet its beginning (cards 5, 6, 7) it is played forward and then back, so
+there is no join at all. On the vase each picture begins to move as it comes round.
 
-## Card 3 (animated)
+Card 5 was first drawn with her bending over the water from a rock; the video model refused that picture three
+times, so she was redrawn standing upright on a low shore (`prompts/card5_fix3_standing.txt`), which it accepted.
 
-> They called her Ione.
-> And life began to carve her a face,
-> a face the sculptor had never imagined.
-> He could not bear a face he had not carved himself.
-
-```
-A young woman walks barefoot over rocks by the sea, in a long terracotta-red dress, her long dark hair and the
-hem of the dress streaming in the wind. One hand touches her own face. Far behind her, small, the sculptor
-stands watching in a plain doorway on a low rise. A low sun on the horizon and two rows of spiral waves at the left.
-Layers: background (clay, meander, horizon with sun, rocks, doorway) · the woman with short hair and a
-straight dress · the streaming hair alone · the flying part of the dress alone · sculptor in the doorway ·
-waves · one or two thin strokes of wind.
-Empty clay for text: the upper third, between the meander and her head.
-```
-
-## Card 4
-
-> So he covered her face with a veil, so that he need not see it.
-> And he hid every mirror, so that she never would.
-> For as long as she had not seen her own face,
-> she was still only what he had made.
-
-```
-An interior: a plain wall with a shelf and two pegs. The sculptor stands behind the young woman in the red
-dress and lowers a long terracotta-red veil over her head with both hands; she stands still, hands at her
-sides. Around them, three standing mirrors and one hand mirror on the shelf, each wrapped in cloth and tied
-with cord, like shrouded figures. One round mirror at the right is still bare, a second cloth hangs ready
-beside it.
-Layers: background (clay, meander, wall, shelf, ground line) · the woman, bare-headed · the veil alone, as it
-hangs once it covers her head and shoulders · sculptor without his arms · his two arms alone, raised, holding
-the veil's edge · each wrapped mirror as its own layer · the bare round mirror · the cloth that will cover it.
-Empty clay for text: the lower third, under the ground line.
-```
-
-## Card 5
-
-> But there was one mirror he could not hide: the sea.
-> One morning the Aegean lay still as glass,
-> and at the water's edge Ione saw a veiled woman looking up at her.
-> She had never seen her before.
-
-```
-A wide, completely still sea fills the lower half, drawn as a flat pale band with only two or three thin
-horizontal lines: no waves at all. A low sun sits on the horizon with its reflection lying under it as a
-broken column of short strokes. At the right a low rocky shore with the sculptor's small house; the veiled
-woman in the red dress stands at the water's edge, looking down at the sea. Her figure is mirrored, upside
-down and slightly paler, in the water at her feet. Two gulls hang in the sky.
-Layers: background (clay, meander, sky) · the still sea band · sun · the sun's reflection · shore and house ·
-the veiled woman · her reflection alone · gulls.
-Empty clay for text: the upper third, between the meander and the horizon.
-```
-
-## Card 6
-
-> She wanted to see her closer.
-> So that morning Ione rowed out alone, to where the water lay stillest,
-> and leaned over the side to look.
-
-```
-A small rowing boat on the same still sea, seen in profile, moving left, away from the shore. The veiled woman
-in the red dress sits in it and rows, her head turned down towards the water beside the boat. The boat and the rower are mirrored upside
-down in the flat water, and the mirrored woman seems to look back up at her. Thin ring-shaped ripples spread from the oar blades. Far behind at the right, small, the shore
-with the house and its dark doorway; the low sun at the left.
-Layers: background (clay, meander, sky, sun) · the still sea band · shore and house, small · boat hull ·
-the woman's body, seated · her two arms with the oars as one layer · the reflection of boat and rower as one
-layer · ripple rings (three sizes, separate) .
-Empty clay for text: the upper third.
-```
-
-## Card 7
-
-> The sea took her.
-> There was no wave to blame.
-
-```
-The same still sea, almost empty. The small boat drifts with no one in it, one oar trailing in the water, its
-reflection under it. A long terracotta-red veil floats on the surface beside the boat, spread out and slowly
-sinking at one end. A few thin ripple rings widen where something went under. No waves, no storm, the same
-low sun. On the far shore, very small, the sculptor stands at the water's edge.
-Layers: background (clay, meander, sky, sun) · the still sea band · the empty boat · the loose oar · the boat's
-reflection · the floating veil · ripple rings (three sizes, separate) · far shore with the small sculptor.
-Empty clay for text: the lower third, under the water.
-```
-
----
+| Card | What moves |
+|---|---|
+| 1 | Theron strokes the statue's cheek, lifts and lowers his mallet, shifts his feet; the olive branch sways. The statue is stone and does not move |
+| 2 | Theron raises and lowers his hands in prayer; she takes one hesitant step down from the block and back, her arms finding balance; the goddess tilts the mirror, the dove lifts its wings |
+| 3 | she walks into the wind, her hand at her cheek, hair, shawl and skirt streaming; Theron in the doorway looks and hides his eyes again |
+| 4 | Theron draws the veil down and smooths it, shifting his feet; the veil sways; the cloth on the peg stirs |
+| 5 | she takes a small step to the water's edge and back, lifts her hand to her veil; the woman in the water does the same; the gulls beat their wings; the sun's road shimmers |
+| 6 | she reaches her hand down to the water until she touches it, rings spread, she draws it back; the boat rides; the reflection follows |
+| 7 | the empty boat rocks; the veil drifts; on the shore Theron steps forward, stretches out his arm, lets it sink |
 
 ## What the intro holds back
 
