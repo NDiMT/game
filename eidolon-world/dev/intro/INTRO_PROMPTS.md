@@ -64,27 +64,27 @@ Everything is in `amphora/`:
 ## How the figures move
 
 The figures themselves move: hands, steps, cloth. Each painting was given to a video model (`gemini-omni-1.2-flash`,
-through `tools/genvid.py`) as both the first and the last frame of an 8 or 10 second clip, so the clip ends where it
-began and loops; the prompt (`prompts/motion/cardN.txt`) names what moves and says that the camera, the ground and
-the drawing itself do not change. The clips are in `clips/`.
+through `tools/genvid.py`) as the first frame of a clip of up to 15 seconds; the prompt (`prompts/motion/cardN.txt`)
+says what happens, in order, and that the camera, the ground and the drawing itself do not change. The action goes
+forward and does not return: the clips are not loops. The clips are in `clips/`.
 
-`tools/vidprep.py` turns a clip into the frames the vase wears: the clip's colours are fitted to the painting; where
-nothing ever moves, the painting itself is kept (so it stays crisp and cannot shimmer); the last frames lean into
-the first. Where a clip's end does not meet its beginning (cards 5, 6, 7) it is played forward and then back, so
-there is no join at all. On the vase each picture begins to move as it comes round.
+`tools/vidprep.py` turns a clip into the frames the vase wears: the clip's colours are fitted to the painting (each
+channel by itself, on flat places only); where nothing ever moves, the painting itself is kept (so it stays crisp
+and cannot shimmer). On the vase each picture is still as it comes round, then begins; it plays once, slows to rest
+over its last second, and after that only breathes (a few of its last frames, very slowly, to and fro).
+
+| Card | What happens |
+|---|---|
+| 1 | Theron strokes the statue's cheek, steps back to look at the whole of her, comes close again and lays his hand on her shoulder. The statue is stone and does not move; the olive branch sways |
+| 2 | Theron prays; she lifts her hands and looks at them, steps down from the block and stands on the ground; he lowers his hands and looks up at her; the goddess tilts the mirror, the dove lifts its wings |
+| 3 | she walks along the rocks into the wind, feeling her face, and stops by the water; Theron watches from the doorway, hides his eyes and goes inside |
+| 4 | Theron draws the veil down over her and smooths it, shifting his feet; the veil sways (two one-way clips in which he then covers the last bare mirror were not used: in one he jumps past her in a single frame, in the other the view slides sideways) |
+| 5 | (still the earlier clip, played forward and back: the one-way clip showed a face under the veil, and was not used) she steps to the water's edge and back, her hand at her veil; the woman in the water does the same |
+| 6 | she sits up and rows two strokes, lays the oar down, leans over the side and touches the water; rings spread |
+| 7 | the empty boat rocks; the veil drifts away; on the shore Theron walks to the edge, stretches out his arm, lets it sink |
 
 Card 5 was first drawn with her bending over the water from a rock; the video model refused that picture three
 times, so she was redrawn standing upright on a low shore (`prompts/card5_fix3_standing.txt`), which it accepted.
-
-| Card | What moves |
-|---|---|
-| 1 | Theron strokes the statue's cheek, lifts and lowers his mallet, shifts his feet; the olive branch sways. The statue is stone and does not move |
-| 2 | Theron raises and lowers his hands in prayer; she takes one hesitant step down from the block and back, her arms finding balance; the goddess tilts the mirror, the dove lifts its wings |
-| 3 | she walks into the wind, her hand at her cheek, hair, shawl and skirt streaming; Theron in the doorway looks and hides his eyes again |
-| 4 | Theron draws the veil down and smooths it, shifting his feet; the veil sways; the cloth on the peg stirs |
-| 5 | she takes a small step to the water's edge and back, lifts her hand to her veil; the woman in the water does the same; the gulls beat their wings; the sun's road shimmers |
-| 6 | she reaches her hand down to the water until she touches it, rings spread, she draws it back; the boat rides; the reflection follows |
-| 7 | the empty boat rocks; the veil drifts; on the shore Theron steps forward, stretches out his arm, lets it sink |
 
 ## What the intro holds back
 

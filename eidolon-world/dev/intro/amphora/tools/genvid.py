@@ -11,6 +11,7 @@ part = {'type': 'image', 'data': img, 'mime_type': 'image/jpeg'}
 inp = [part] + ([part] if os.environ.get('LOOP', '1') == '1' else []) + [{'type': 'text', 'text': open(pf).read()}]
 body = {'model': os.environ.get('MODEL', 'gemini-omni-1.2-flash'), 'input': inp, 'store': False, 'background': False, 'stream': False,
         'response_format': {'type': 'video', 'aspect_ratio': '16:9', 'resolution': os.environ.get('RES', '1080p'), 'duration': os.environ.get('DUR', '8s')}}
+if os.environ.get('LOOP', '1') != '1' and os.environ.get('TASK', '1') == '1': body['generation_config'] = {'video_config': {'task': 'image_to_video'}}
 with tempfile.NamedTemporaryFile('w', suffix='.json', delete=False) as f: json.dump(body, f); bf = f.name
 r = subprocess.run(['curl', '-s', '-m', '900', '-K', os.path.expanduser('~/.config/eidolon/gemini_curl'), '-H', 'Content-Type: application/json', '-d', '@' + bf, 'https://generativelanguage.googleapis.com/v1beta/interactions'], capture_output=True)
 os.unlink(bf)

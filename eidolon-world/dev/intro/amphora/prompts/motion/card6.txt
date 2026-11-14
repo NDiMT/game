@@ -1,18 +1,19 @@
-The two attached images are the same picture: it is both the FIRST FRAME and the LAST FRAME of the video, so the
-animation ends exactly where it began and can loop.
+The attached picture is the FIRST FRAME of the video.
 Bring this ancient Greek black-figure vase painting to life as flat 2D cut-out animation, as if the painted figures on
 the vase began to move. LOCKED-OFF STATIC CAMERA: no zoom, no pan, no tilt, no camera movement at all. The orange clay
 ground, the black bands at the left and right, and everything that is not named below stay perfectly still.
 The drawing stays exactly as painted: the same flat colours, the same outlines and incised lines, no shading, no 3D,
-no light effects, no new objects, no new figures, no text. Every figure keeps its exact look, clothes and proportions.
-Movement is calm, slow and continuous. Single continuous shot, no cuts. Silent: no music, no voices, no sound.
+no light effects, no new objects, no new figures, no text. Every figure keeps its exact look, clothes and proportions
+from the first frame to the last. Movement is calm, slow and continuous, one action flowing into the next. In the
+last second everything comes to rest and holds still. Single continuous shot, no cuts. Silent: no music, no voices.
 
-WHAT MOVES:
-- The veiled woman kneeling in the boat leans farther over the side, slowly stretches her white hand down toward the
-  water until her fingers almost touch it, holds, then draws the hand back and sits up a little. HER FACE STAYS
-  COMPLETELY HIDDEN UNDER THE RED VEIL the whole time.
-- The boat rocks very gently under her; the oar dips and lifts a little.
-- The reflection of the boat and of the woman, upside down in the dark water, mirrors every movement exactly, and
-  trembles a little as water does.
-- The sea itself stays flat and still, a flat dark band. The sun does not move.
-At the end she is back exactly in her first pose.
+WHAT HAPPENS, IN ORDER:
+- The veiled woman in the boat sits up, takes the oar in both hands and pulls two slow strokes; the boat glides
+  gently forward over the still water and comes to rest.
+- She lays the oar down along the boat, turns to the side, and leans far over the edge of the boat, looking down.
+- Slowly she stretches her white hand down toward the water until her fingertips touch it; thin pale rings spread
+  from the touch. She holds still, looking.
+- The red veil covers her head completely the whole time; no face is ever seen.
+- The reflection of the boat and of the woman, upside down in the dark water, follows every movement, and trembles a
+  little as water does.
+- The sea is a flat, calm, dark band and stays so. The sun does not move.

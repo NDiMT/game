@@ -1,18 +1,19 @@
-The two attached images are the same picture: it is both the FIRST FRAME and the LAST FRAME of the video, so the
-animation ends exactly where it began and can loop.
+The attached picture is the FIRST FRAME of the video.
 Bring this ancient Greek black-figure vase painting to life as flat 2D cut-out animation, as if the painted figures on
 the vase began to move. LOCKED-OFF STATIC CAMERA: no zoom, no pan, no tilt, no camera movement at all. The orange clay
 ground, the black bands at the left and right, and everything that is not named below stay perfectly still.
 The drawing stays exactly as painted: the same flat colours, the same outlines and incised lines, no shading, no 3D,
-no light effects, no new objects, no new figures, no text. Every figure keeps its exact look, clothes and proportions.
-Movement is calm, slow and continuous. Single continuous shot, no cuts. Silent: no music, no voices, no sound.
+no light effects, no new objects, no new figures, no text. Every figure keeps its exact look, clothes and proportions
+from the first frame to the last. Movement is calm, slow and continuous, one action flowing into the next. In the
+last second everything comes to rest and holds still. Single continuous shot, no cuts. Silent: no music, no voices.
 
-WHAT MOVES:
-- The kneeling bearded man on the left prays: he raises his two open hands, lowers them, raises them again, and bows
-  his head a little each time.
-- The young woman in the red dress in the middle has just come alive. She lifts her front foot and takes one slow,
-  hesitant step down from the black block, sways, moves her arms to keep her balance, then steps back up to where she
-  stood. HER FACE STAYS A BLANK, SMOOTH, EMPTY WHITE SHAPE THE WHOLE TIME: no eyes, no eyebrows, no nose, no mouth.
-- The goddess on the right slowly tilts her round hand mirror toward the young woman and back; the dove on her wrist
-  lifts its wings once.
-At the end all three are back exactly in their first pose.
+WHAT HAPPENS, IN ORDER:
+- The kneeling bearded man raises his two open hands in prayer and bows his head, twice.
+- The young woman in the red dress on the black block comes alive: she lifts her head, raises her two hands and
+  looks at them, turning them; then she lifts her foot, steps slowly down from the block onto the ground, and takes
+  one more small step forward toward the goddess, and stands.
+- The kneeling man lowers his hands and looks up at her in wonder.
+- The goddess on the right holds her round hand mirror up toward the young woman and tilts it slowly; the dove on
+  her wrist lifts its wings once.
+- THE YOUNG WOMAN'S FACE STAYS A BLANK, SMOOTH, EMPTY WHITE SHAPE THE WHOLE TIME: no eyes, no eyebrows, no nose, no
+  mouth. The temple, the block and the ground line do not move.

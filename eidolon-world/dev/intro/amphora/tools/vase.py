@@ -138,6 +138,7 @@ class Scene:
         gt = a[5:95]; self.gfill = np.concatenate([gt, gt[::-1]] * 7, 0)[:PH]          # plain ground, to lay where something is lifted off
         self.base = a.copy(); self.els = []; self.fx = []
         self.vdir = S + '/v/vf/c%d' % c; self.vn = len([f for f in os.listdir(self.vdir) if f.endswith('.jpg')]) if os.path.isdir(self.vdir) else 0; self.vc = {}      # the scene's moving picture, if it has one
+        self.once = self.vn > 0 and os.path.exists(self.vdir + '/mode.txt') and open(self.vdir + '/mode.txt').read().strip() == 'once'
         rng = np.random.default_rng(100 + c)
         self.strokes = [(rng.uniform(0, 1), rng.uniform(0.08, 0.92), rng.uniform(60, 150), rng.uniform(0.4, 1.0), rng.uniform(0, 6.28)) for _ in range(7)]
     def lift(self, name, box, kind, only=None, thick=0, cut=(), seed=None, **kw):
@@ -172,13 +173,25 @@ class Scene:
             soft = ndi.gaussian_filter(hole.astype(np.float32), 1.0)[..., None]
             self.base[Y0:Y1, X0:X1] = sub * (1 - soft) + fill * soft
         self.els.append(dict(name=name, org=(X0, Y0), patch=patch, kind=kind, **kw))
+    def vframe(self, k):
+        if k not in self.vc:
+            if len(self.vc) > 5: self.vc.clear()
+            self.vc[k] = np.asarray(Image.open('%s/%04d.jpg' % (self.vdir, k)).convert('RGB'))
+        return self.vc[k]
     def frame(self, t):
-        if self.vn:      # a loop of frames: the figures themselves move
-            k = int(round(t * FPS)) % self.vn
-            if k not in self.vc:
-                if len(self.vc) > 3: self.vc.clear()
-                self.vc[k] = np.asarray(Image.open('%s/%04d.jpg' % (self.vdir, k)).convert('RGB'))
-            return self.vc[k]
+        if self.vn:      # a moving picture: the figures themselves move
+            N = self.vn
+            if self.once:      # it plays once, slows to rest over its last second, and then only breathes
+                L = (N - 1) / float(FPS)
+                if t <= L - 1.0: p = t
+                elif t <= L + 1.0: u = (t - (L - 1.0)) / 2.0; p = (L - 1.0) + (2 * u - u * u)
+                else: p = L - 0.5 * (1 - math.cos(2 * math.pi * (t - L - 1.0) / 5.0)) / 2.0
+                x = min(max(p * FPS, 0.0), N - 1.0)
+            else: x = float(int(round(t * FPS)) % N)
+            k = int(x); f = x - k
+            a = self.vframe(k)
+            if f < 0.03 or k + 1 >= N: return a
+            return (a.astype(np.float32) * (1 - f) + self.vframe(k + 1).astype(np.float32) * f).astype(np.uint8)      # between two frames (only while it is slow)
         out = self.base.copy()
         if self.sea.any():      # the still sea: a few thin lights that come and go
             ys, xs = np.where(self.sea); sy0, sy1, sx0, sx1 = ys.min(), ys.max(), xs.min(), xs.max()
@@ -413,7 +426,7 @@ def render(f0, f1, out):
     orn_aged = {}      # the ornament bands with their marks of age, for each of the five places round the vase
     hy = ty(h); cov3 = cov[..., None]
     y_pan = int(ty(PAN_H0)); x_pan = int(tx(-PANEL * 0.5)); y_t0 = int(ty(TXT_H0)); y_t1 = y_t0 + txt[0][0].shape[0]
-    T0 = [next(j for j, e in enumerate(ev) if e[1] == i and e[0] == float(i)) / FPS - 1.0 for i in range(7)]      # each picture begins to move as it comes round
+    T0 = [next(j for j, e in enumerate(ev) if e[1] == i and e[0] == float(i)) / FPS - (0.5 if sc[i].once else 1.0) for i in range(7)]      # each picture begins to move as it comes round
     loc = lambda i, t: max(0.0, t - T0[i]) if 0 <= i <= 6 else 0.0
     def slot_tex(i, t, wr):      # the strip of the vase that carries scene i (None: a plain side)
         ph = (i if i is not None else -1) % 5
