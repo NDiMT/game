@@ -11,14 +11,15 @@ Everything is in `amphora/`:
   face), just come alive (in colour, still no face), with her face, and veiled (the veil hides hair and face).
   Every scene is drawn from this one sheet, so that he and she are the same people throughout.
 - `panels/card1.jpg … card7.jpg` — the seven paintings, flat, as they are wrapped onto the vase; `all_scenes.jpg`
-  shows them together. `panels/card2_end.jpg` is card 2 as it ends (she has stepped down).
+  shows them together. Card 2 has two more: `panels/card2_statue.jpg` (as it begins: she is still marble) and
+  `panels/card2_end.jpg` (as it ends: she has stepped down).
 - `layers/cardN/` — each painting cut into layers (every element alone on a transparent ground, at 2048 px, plus
   the bare clay background and, in cards 5 to 7, the band of sea).
 - `prompts/` — the prompts they were made with (Gemini image model `gemini-3-pro-image`).
 - `tools/gen.py` sends a prompt and reference images to the model (the key is read from a private file outside the
   repository). `tools/install.py` turns the drawings into panels. `tools/vase.py` draws the vase, wraps the paintings
   on it, turns it, writes the words, moves the small things, and writes the film. `tools/layers.py` cuts the layers.
-- `clips/cardN.mp4` — the moving pictures (the painted figures in motion; each plays once).
+- `clips/cardN.mp4` — the moving pictures (the painted figures in motion; each plays once; card 2 has two, a and b).
 - `intro_amphora.mp4` — the film (1080×1920, 24 fps).
 
 ## The words (one card each; a new line here is a new page on the vase)
@@ -71,23 +72,36 @@ One simple action in each picture, calm and steady, and then stillness. Each pai
 (`prompts/motion/cardN.txt`) names the one thing that happens and says that everything else, the camera and the
 drawing itself do not change. The clips are in `clips/`.
 
-Card 2 is made between two pictures: the painting is the first frame and a second drawing of the same scene, with
-her standing on the ground beside the block (`prompts/card2_end_pose.txt`, `panels/card2_end.jpg`), is the last
-(`LAST=8` in `tools/genvid.py`). Given only the first frame, the model kept her on the block or slid the block
-along under her; given where she must end, she steps down and stands there.
+Card 2 is two clips, each made between two pictures (`LAST=n` in `tools/genvid.py` gives the last frame):
+
+- **a, the statue comes alive**: from `panels/card2_statue.jpg` (the same painting with her all in white marble,
+  `prompts/card2_statue.txt`) to the painting itself. Colour rises through her from the feet to the head; she does
+  not move.
+- **b, she steps down**: from the painting to `panels/card2_end.jpg` (she stands on the ground beside the block,
+  `prompts/card2_end_pose.txt`). Given only a first frame the model kept her on the block, or slid the block along
+  under her; given where she must end, she steps down and stands there.
+
+`tools/join2.py` puts the two one after the other (a short pause between), and turns the red that rises in her
+dress to the game's red.
+
+Card 3 was tried on a tall rock stair down to the sea, so that she would have a long way to come down: the video
+model refused that picture every time (six tries, with and without the man, with and without the sea). On the low
+rock it accepts her walking.
 
 `tools/vidprep.py` turns a clip into the frames the vase wears: the clip's colours are fitted to the painting (each
 channel by itself, on flat places only); where nothing ever moves, the painting itself is kept (so it stays crisp
 and cannot shimmer); the clip is cut at its stillest frame after the action (`END=`), and places that must not move
-can be kept as painted (`STILLBOX=`: in card 2 everything but her, in card 7 the veil on the water). On the vase
+can be kept as painted (`STILLBOX=`: in card 2 everything but her, in card 7 the veil on the water). `FITPANEL=`
+and `PANEL=` name the painting a clip begins on and the painting kept where nothing moves, when they are not the
+card's own (card 2a begins on the statue). On the vase
 each picture is still as it comes round, begins a moment later, plays once, slows to rest over its last second, and
 then stands still.
 
 | Card | What happens |
 |---|---|
 | 1 | Theron's hand strokes the statue's cheek once and rests there; his head bows a little. He does not step; the statue, the branch and the bench do not move |
-| 2 | she steps down from the block, takes two small steps and stands, in profile, before the goddess's mirror |
-| 3 | she stands on the rock with her hand at her cheek; only the wind moves her hair, her shawl and her skirt |
+| 2 | she is white marble on the block; colour rises through her, feet to head, and she is alive (still without a face); then she steps down from the block, takes two small steps and stands, in profile, before the goddess's mirror |
+| 3 | she takes a few slow steps on the rock, her hand at her cheek, the wind in her hair and shawl; in the doorway Theron lowers his hand, turns, goes inside, and the door shuts |
 | 4 | her face is seen; then Theron draws the front edge of the veil down in front of it like a curtain, lets go, and lowers his arms |
 | 5 | she takes a few small steps forward along the shore and stands; the woman in the water does the same |
 | 6 | kneeling in the boat, she lowers her hand the last small way until her fingertips touch the water; rings spread |

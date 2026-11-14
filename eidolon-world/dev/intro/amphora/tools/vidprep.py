@@ -15,7 +15,8 @@ if os.environ.get('END'):      # END=a,b (seconds): the clip is cut at its still
     mv = [float(np.abs(F[k + 1][::4, ::4].astype(np.int16) - F[k - 1][::4, ::4]).mean()) for k in range(a_, b_)]
     e = a_ + int(np.argmin(mv)); print('  cut at frame', e, '(%.2f s)' % (e / 24.0)); F = F[:e + 1]
 N = len(F)
-P = np.asarray(Image.open(S + '/v/panel%d.png' % c).convert('RGB')).astype(np.float32)
+pim = lambda n: np.asarray(Image.open(S + '/v/big/panel%s.png' % n).convert('RGB').resize((1100, 1100), Image.LANCZOS)).astype(np.float32) if int(n) > 7 else np.asarray(Image.open(S + '/v/panel%s.png' % n).convert('RGB')).astype(np.float32)
+P = pim(os.environ.get('FITPANEL', c))      # FITPANEL=n: the painting the clip begins on, when that is not the card's own (its colours are fitted to this one)
 dk = [float(np.abs(F[k][::4, ::4].astype(np.float32) - P[::4, ::4]).mean()) for k in range(12)]      # a clip may open on a frame or two that are off-colour: begin at the first true one
 st = next(k for k in range(12) if dk[k] < 1.15 * min(dk)); F = F[st:]; N = len(F); print('  begins at frame', st, [round(v, 1) for v in dk[:6]])
 # the colours are fitted on flat places only (inside a colour, away from every line): there a small shift of the
@@ -34,7 +35,8 @@ if os.environ.get('STILLBOX'): STILL[c] = STILL.get(c, []) + [tuple(int(v) for v
 for (x0, y0, x1, y1) in STILL.get(c, []): M[y0:y1, x0:x1] = 0
 M = ndi.gaussian_filter(M, 5.0)[..., None]
 print('  moving part of the picture: %.1f%%' % (100 * float((M > 0.5).mean())), ' last against first (moving part): %.2f' % float((np.abs(fit(F[N - 1]) - f0) * M).sum() / (M.sum() * 3 + 1)))
-d = S + '/v/vf/c%d' % c; os.makedirs(d, exist_ok=True)
+if os.environ.get('PANEL'): P = pim(os.environ['PANEL'])      # PANEL=n: the painting that is kept where nothing moves
+d = os.environ.get('OUTDIR') or S + '/v/vf/c%d' % c; os.makedirs(d, exist_ok=True)
 for f in os.listdir(d): os.remove(d + '/' + f)
 T = 8; first = None
 PING = () if ONCE else (5, 6, 7)      # clips whose end does not meet their beginning: they are played forward and then back, so there is no join at all

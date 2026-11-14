@@ -5,7 +5,7 @@ from PIL import Image, ImageDraw
 from scipy import ndimage as ndi
 S = '/tmp/claude-0/-home-user-game/9db9e6f7-f322-58a8-a673-ecffb8a05976/scratchpad/gem'
 CLAY = np.array([231, 150, 88], np.float32); RED = np.array([178, 60, 46], np.float32); SEA = np.array([20, 54, 68], np.float32)
-SRC = {1: 'z1', 2: 'z2', 3: 'z3', 4: 'z4', 5: 'z5', 6: 'z6', 7: 'z7', 8: 'z2end'}
+SRC = {1: 'z1', 2: 'z2', 3: 'z3', 4: 'z4', 5: 'z5', 6: 'z6', 7: 'z7', 8: 'z2end', 10: 'z2stat'}
 def hsv(a):
     r, g, b = a[..., 0], a[..., 1], a[..., 2]; mx = a.max(2); mn = a.min(2); d = mx - mn + 1e-6
     h = np.where(mx == r, ((g - b) / d) % 6, np.where(mx == g, (b - r) / d + 2, (r - g) / d + 4)) * 60.0
