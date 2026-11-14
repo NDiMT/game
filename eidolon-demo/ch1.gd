@@ -222,7 +222,15 @@ func floor_plain(x0: float, z0: float, x1: float, z1: float, tile := 1.0) -> voi
 
 ## a wall: a base course, the wall with its pilasters and panels, a string course, dentils and a cornice; it ends in
 ## piers. twin: its copy in the water as well, in plain colours
+## the house stands open to the sea: where a wall would close a court there is a balustrade (WALLS=1 brings the walls
+## back; wall_keep = true round a call keeps one that is part of a building)
+var walls_on := OS.get_environment("WALLS") == "1"
+var wall_keep := false
 func wall(x0: float, z0: float, x1: float, z1: float, h: float, twin := false, y0 := 0.0) -> void:
+	if not walls_on and not wall_keep and y0 == 0.0:
+		if (x1 - x0) >= (z1 - z0): parapet(Vector3(x0, 0, (z0 + z1) * 0.5), Vector3(x1, 0, (z0 + z1) * 0.5))
+		else: parapet(Vector3((x0 + x1) * 0.5, 0, z0), Vector3((x0 + x1) * 0.5, 0, z1))
+		return
 	blk(Vector3(x0, y0, z0), Vector3(x1, h, z1), "stone")
 	if y0 == 0.0: blk(Vector3(x0 - 0.03, 0, z0 - 0.03), Vector3(x1 + 0.03, 0.14, z1 + 0.03), "shade")
 	cornice(x0, z0, x1, z1, h, 0.04, 0.06)
@@ -416,6 +424,7 @@ var land_paths: Array = []      # narrow floors that are paths over land, not br
 var land_rects: Array = []
 func _island() -> void:
 	land_rects = []; land_bridges = []
+	if OS.get_environment("LAND") != "1": return      # (the house stands in the sea, on its terraces; LAND=1 brings the island back)
 	var x0 := 1e9; var z0 := 1e9; var x1 := -1e9; var z1 := -1e9
 	for f in floors:
 		land_rects.append([f[0], f[1], f[2], f[3]])
@@ -962,7 +971,9 @@ func _atrium() -> void:
 		_ublk(Vector3(sx, 0, UZ0 + 0.3), Vector3(sx + 0.3, top, LAND_Z), "stone", UC_STONE if k % 2 == 0 else UC_TOP)
 		blk(Vector3(sx + 0.3, top - 0.03, UZ0 + 0.3), Vector3(sx + 0.32, top, LAND_Z + 0.02), "shade")
 	# the north wall, with the Gate and the door of the Spring in it. In the water it is breached beside the Gate
+	wall_keep = true      # (the Gate's own wall stays a wall: the water shows a breach in it that the wall itself has not)
 	wall(UX0, UZ0, GATE_X - 1.95, UZ0 + 0.3, 3.2); wall(GATE_X + 1.95, UZ0, -20.44, UZ0 + 0.3, 3.2); wall(-18.56, UZ0, UX1, UZ0 + 0.3, 3.2)
+	wall_keep = false
 	blk(Vector3(-20.44, 2.35, UZ0), Vector3(-18.56, 3.2, UZ0 + 0.3), "stone")
 	_ublk(Vector3(UX0, 0, UZ0), Vector3(BREACH_X0, 3.2, UZ0 + 0.3), "stone", UC_STONE, false); _ublk(Vector3(BREACH_X1, 0, UZ0), Vector3(GATE_X - 1.95, 3.2, UZ0 + 0.3), "stone", UC_STONE, false)
 	_ublk(Vector3(BREACH_X0, POD_H + 2.05, UZ0), Vector3(BREACH_X1, 3.2, UZ0 + 0.3), "stone", UC_STONE, false); _ublk(Vector3(GATE_X + 1.95, 0, UZ0), Vector3(-21.0, 3.2, UZ0 + 0.3), "stone", UC_STONE, false)

@@ -1034,7 +1034,9 @@ func _sp_court4() -> void:
 			"thr": R(dx - 0.6, SP4_HZ + 0.1, dx + 0.6, SP4_QZ0), "jet": R(dx - 0.45, SP4_QZ0, dx + 0.45, SP4_T.z - 0.8), "T": R(SP4_T.x - 0.9, SP4_T.z - 0.9, SP4_T.x + 0.9, SP4_T.z + 0.9)}}
 	WL.append("SP4")
 	# the house: two pieces of wall and the lintel of its doorway, with their twins; the doorway, dark
+	wall_keep = true      # (the spring house is a building: its front stays a wall)
 	wall(SP4_HX0, SP4_Z0, dx - 0.65, SP4_HZ, SP4_HH, true); wall(dx + 0.65, SP4_Z0, SP4_HX1, SP4_HZ, SP4_HH, true)
+	wall_keep = false
 	blk(Vector3(dx - 0.65, 2.02, SP4_Z0), Vector3(dx + 0.65, SP4_HH, SP4_HZ), "stone"); cornice(dx - 0.65, SP4_Z0, dx + 0.65, SP4_HZ, SP4_HH, 0.04, 0.06)
 	blk(Vector3(dx - 0.65, 2.02, SP4_Z0), Vector3(dx + 0.65, SP4_HH, SP4_HZ), "stone", mroot).material_override = under_mat(Color("d8ccb9"))
 	blk(Vector3(dx - 0.65, 0, SP4_Z0 + 0.2), Vector3(dx + 0.65, 2.02, SP4_HZ - 0.5), "dark")

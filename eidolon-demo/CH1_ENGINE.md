@@ -118,3 +118,17 @@ The seven shader lights are all taken (`lantern(p, i)` uses one each): new lamps
   wing's channel (`chan_run`) and the basin takes it (`_hub_fill`). `HUB=1|2|3` (environment) starts with so many
   waters in; runs: `-- hub`, `-- gate`.
 - **Gate slots.** `sluice(key, c, along_x, ...)`: `along_x` = the WAY through it runs along x (its leaf lies along z).
+
+## The house stands in the sea (latest)
+
+The island and the closing walls were tried and taken out again: the courts are terraces in the sea, edged with
+balustrades, as in the first demo.
+
+- `_island()` returns at once unless `LAND=1` is set: no ground, no trees. A court's podium, its arcade and the sea
+  are what is seen round it.
+- `wall(...)` draws a balustrade along the wall's line unless `WALLS=1` is set. A wall that is part of a building or
+  of a puzzle is kept by setting `wall_keep = true` round the call (the Gate's own wall in the atrium, whose
+  reflection has a breach the wall has not; the front of the spring house). Walls built directly with `blk` for a
+  puzzle (the wall with the arch in court F) are not touched.
+- Two parts must not be built on the same ground: before adding a court, list the floors that exist
+  (`floors`), or render the `whole` view. (The Spring's second court and the shrine's round room once overlapped.)
