@@ -124,6 +124,7 @@ var cs_courts: Array = []    # the courts with such waters: in them her ordinary
 func _init() -> void:
 	old_world = false
 	title_sub = "I  ·  The Veiled Gate\ntap to begin"; end_sub = "end of the first chapter\ntap to begin again"
+	if flip_demo: title_sub = "the turning water  ·  a trial\ntap to begin"; end_sub = "end of the trial\ntap to begin again"
 
 func _hollows() -> Array:
 	return [[HX0 + 0.5, HZ0 + 0.5, HX1 - 0.5, HZ1 - 0.5], [TX0 + 0.5, TZ0 + 0.5, TX1 - 0.5, TZ1 - 0.5], [VX0 + 0.5, VZ0 + 0.5, VX1 - 0.5, VZ1 - 0.5],
@@ -174,7 +175,10 @@ void fragment(){
 	vec3 col = mix(texture(screen_tex, a).rgb, texture(screen_tex, vec2(a.x, 1.0 - a.y)).rgb, s);
 	COLOR = vec4(col + lip * 0.10, 1.0);
 }"""
-var flip_test := OS.get_environment("FLIP") == "1"
+var flip_test := OS.get_environment("FLIP") == "1"      # every water turns the picture
+var flip_demo := OS.has_feature("flipdemo") or OS.get_environment("FLIP") == "demo"      # the trial as a thing to play: the first two waters turn the picture, and it ends behind the second sluice
+const FLIP_DEMO_WATERS := ["H", "T"]
+var flip_rect_w := []      # the water the picture was turned over at
 var flip_turn := OS.get_environment("FLIP_TURN") != "0"      # (FLIP_TURN=0: the looks change places but the picture is not turned upside down)
 var flip_on := false
 var flip_busy := false
@@ -210,21 +214,25 @@ func _flip_setup() -> void:
 	print("FLIP her materials ", her_mats.size(), ", her image's ", flip_mir.size())
 
 ## the picture turns over (or back), from where the finger fell on the water
-func _flip(sp: Vector2, wu: Array) -> void:
+func _flip(sp: Vector2, wu: Array, walking := false) -> void:      # walking: she is on her way somewhere else (the picture turns back by itself): she is not stopped, and the eye stays with her
 	flip_busy = true; flip_r = 0.0
 	var to := 0.0 if flip_on else 1.0
 	var vs := get_viewport().get_visible_rect().size
-	hold_id = -1; route.clear(); pending = ""
-	if to > 0.5:      # the water comes to the middle of the view first: the picture turns over about its middle line, so the water stays where it is
-		var r: Array = W[WL[wu[0]]].r
-		cam_focus = Vector3((r[0] + r[2]) * 0.5, 0, (r[1] + r[3]) * 0.5) + Vector3(1, 0, 1) * ((1.9 if cam.size > 5.0 else 0.85) / 0.8165); cam_focus_on = true
+	if not walking: hold_id = -1; route.clear(); pending = ""
+	if to > 0.5 and not wu.is_empty(): flip_rect_w = W[WL[wu[0]]].r
+	# the water comes to the middle of the view first: the picture turns over about its middle line, so the water stays where it is
+	var r: Array = flip_rect_w
+	var mid := Vector3((r[0] + r[2]) * 0.5, 0, (r[1] + r[3]) * 0.5)
+	if not walking: cam_focus = mid + Vector3(1, 0, 1) * ((1.9 if cam.size > 5.0 else 0.85) / 0.8165); cam_focus_on = true
+	var want := cam.size
+	if to > 0.5:
 		flip_size = cam.size
 		var need: float = (float(r[2]) - float(r[0]) + float(r[3]) - float(r[1])) * 0.7071 * 1.16      # the whole water in view, with some of the world round it
-		if need > cam.size: create_tween().tween_property(cam, "size", need, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		var n := 0
-		while ((cam_t - cam_focus).length() > 0.1 or absf(cam.size - maxf(need, flip_size)) > 0.05) and n < 180: await get_tree().process_frame; n += 1
-	var on_screen := Vector2(sp.x, vs.y - sp.y) if (flip_on and flip_turn) else sp
-	if to > 0.5: on_screen = cam.unproject_position(wu[1])
+		if need > cam.size: want = need; create_tween().tween_property(cam, "size", need, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	var t0 := Time.get_ticks_msec()      # (by the clock, not by frames: a slow device must not wait longer)
+	while not walking and ((cam_t - cam_focus).length() > 0.1 or absf(cam.size - want) > 0.05) and Time.get_ticks_msec() - t0 < 2600: await get_tree().process_frame
+	var on_screen: Vector2 = cam.unproject_position(wu[1]) if wu.size() > 1 else cam.unproject_position(pos + Vector3(0, 0.9, 0) if walking else mid)
+	if flip_on and flip_turn: on_screen.y = vs.y - on_screen.y
 	flip_mi.visible = true; flip_rect.visible = true
 	flip_mat.set_shader_parameter("c", Vector2(on_screen.x / vs.x, on_screen.y / vs.y)); flip_mat.set_shader_parameter("aspect", vs.x / vs.y)
 	flip_mat.set_shader_parameter("from_s", 1.0 - to); flip_mat.set_shader_parameter("to_s", to); flip_mat.set_shader_parameter("r", 0.0); flip_r = 0.0
@@ -242,11 +250,18 @@ func _flip(sp: Vector2, wu: Array) -> void:
 	await tw3.finished
 	flip_on = to > 0.5
 	flip_mat.set_shader_parameter("from_s", to); flip_mat.set_shader_parameter("r", 0.0)
+	if not walking: cam_focus_on = false      # the eye follows her again, in either picture
 	if not flip_on:
-		flip_mi.visible = false; flip_rect.visible = false; cam_focus_on = false
+		flip_mi.visible = false; flip_rect.visible = false
 		if absf(cam.size - flip_size) > 0.05: create_tween().tween_property(cam, "size", flip_size, 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	flip_busy = false
+	if flip_demo and flip_on and not flags.get("flip_said", false) and not done.has("wheel1"): flags["flip_said"] = true; say("in the water the mole is whole  ·  tap the wheel there")
 	print("FLIP ", "over" if flip_on else "back")
+
+## (the trial) the words under the picture speak of the turning water
+func say(s: String) -> void:
+	if flip_demo and s.begins_with("tap the water"): s = "tap the water: the world turns over"
+	super.say(s)
 
 ## while the picture is turned over, a finger on the screen means the place it would have meant the right way up
 func _unhandled_input(ev: InputEvent) -> void:
@@ -287,6 +302,44 @@ func _play_flip() -> void:
 	await wait(2.2)
 	await snap.call("flip_7_back")
 	print("FLIP run done at ", pos)
+	get_tree().quit()
+
+## (the trial, played through as a player would: FLIP=demo ... -- flipdemo) both rooms, with the picture turned over in each
+func _play_flipdemo() -> void:
+	var dir := OS.get_environment("SHOT_DIR")
+	var snap := func(n: String) -> void:
+		if dir != "": await RenderingServer.frame_post_draw; get_viewport().get_texture().get_image().save_png("%s/%s.png" % [dir, n])
+	var turned := func() -> void:
+		var n := 0
+		while not flip_busy and n < 90: await get_tree().process_frame; n += 1
+		while flip_busy: await get_tree().process_frame
+	await get_tree().create_timer(1.0).timeout
+	tap(Vector2(360, 640)); await wait(0.5)      # the title
+	tap(Vector2(360, 640))      # she wakes
+	await settled
+	await wait(1.0)
+	_tap_at(Vector3(2.2, 0, 6.6)); await turned.call()      # open water: the picture turns over
+	print("DEMO 1 turned over: ", flip_on); await wait(1.0); await snap.call("demo_1_harbour_turned")
+	var hub: Vector3 = N["hub1"]
+	await _tap_wait(Vector3(hub.x, -hub.y, hub.z))      # the wheel in the water: her image goes to it along the whole mole
+	print("DEMO 1 wheel ", done.has("wheel1"), " sluice ", rects["S1"].on, " still turned: ", flip_on); await wait(0.8); await snap.call("demo_2_wheel_turned")
+	await _tap_wait(Vector3(-2.3, 0, -9.0))      # she walks on, into the second room: the picture turns back as she leaves the water
+	while flip_busy: await get_tree().process_frame
+	await wait(1.5)
+	print("DEMO 2 on the walk at ", pos, " turned: ", flip_on); await snap.call("demo_3_second_room")
+	_tap_at(Vector3(0.5, 0, -10.2)); await turned.call()      # the second water
+	print("DEMO 2 turned over: ", flip_on); await wait(1.0); await snap.call("demo_4_trough_turned")
+	var h2: Vector3 = N["hub2"]
+	_tap_at(Vector3(h2.x, -h2.y, h2.z)); await wait(7.0)      # the wheel in this water: her image is stopped at the grille that stands in the water
+	print("DEMO 2 first try: wheel ", done.has("wheel2"), " turned: ", flip_on); await snap.call("demo_5_stopped_at_grille")
+	await _tap_wait(Vector3(-2.3, 0, TG_REAL + 0.6))      # she walks on, past where that grille stands
+	await _tap_wait(Vector3(h2.x, -h2.y, h2.z))
+	print("DEMO 2 second try: wheel ", done.has("wheel2"), " sluice ", rects["S2"].on, " turned: ", flip_on); await wait(0.8); await snap.call("demo_6_second_wheel")
+	_tap_at(Vector3(-2.05, 0, TZ0 - 1.6))      # through the sluice: the end
+	var n2 := 0
+	while not ended and n2 < 900: await get_tree().process_frame; n2 += 1
+	await wait(2.5)
+	print("DEMO ended: ", ended, " turned: ", flip_on, " at ", pos); await snap.call("demo_7_end")
 	get_tree().quit()
 
 ## the still surface of a pool
@@ -1598,6 +1651,9 @@ func walk(p: Vector3, cap := 1.25) -> void:
 
 func _send_reflection(pi: int, to: Vector3, _sp: Vector2) -> void:
 	if busy: return
+	if flip_on or flip_test or (flip_demo and WL[pi] in FLIP_DEMO_WATERS):      # (the trial) open water turns the picture over, and back. A thing in the water is still a thing: her image goes to it
+		if not flip_busy and refl_busy == 0: _flip(_sp, [pi, to])
+		return
 	refl_ring.position = Vector3(to.x, 0.03, to.z); refl_p = 0.0
 	hold_id = -1; route.clear(); pending = ""
 	refl_busy += 1
@@ -1648,11 +1704,6 @@ func tap(sp: Vector2) -> void:
 	if started and not ended and not woke:
 		if not busy: _wake()
 		return
-	if flip_test and started and not ended:      # (the trial) a tap on a water turns the picture over, and a tap on a water turns it back
-		if flip_busy: return
-		if not busy:
-			var wu = _water_under(sp)
-			if wu != null: _flip(sp, wu); return
 	if started and not ended and not busy and flags.get("posed3", false):      # she stands as a statue on the empty place
 		var px0 := get_viewport().get_visible_rect().size.x / 720.0
 		if flags.get("stone3", false):      # and is stone: nothing answers but the bronze
@@ -2234,6 +2285,10 @@ func _do_place6() -> void:
 # ---------------------------------------------------------------- frame, and the runs that try the chapter
 func _process(dt: float) -> void:
 	super._process(dt)
+	if flip_on and not flip_busy and not busy and refl_busy == 0 and not flip_rect_w.is_empty() and _rect_dist(pos, flip_rect_w) > 3.2: _flip(Vector2.ZERO, [], true)      # she has walked away from the water the picture was turned at: it turns back
+	if flip_demo and not ended and not busy and not flip_busy and rects.has("S2") and rects["S2"].on and pos.z < TZ0 - 0.9:      # (the trial ends behind the second sluice)
+		if flip_on: _flip(Vector2.ZERO, [], true)
+		else: route.clear(); _end()
 	if not refl_out.is_empty() and not busy and refl_w != "" and _rect_dist(pos, W[refl_w].r) > float(W[refl_w].get("far", 3.2)): _refl_melt()      # she has left that water
 	var inside := false
 	for c in cs_courts:
@@ -2273,6 +2328,7 @@ func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	_flip_setup()
 	if "flip" in args: flip_test = true; _play_flip()
+	if "flipdemo" in args: hand_play = true; _play_flipdemo()
 	if "views" in args: _views()
 	if "act1" in args: _play_act1()
 	if OS.get_environment("HUB") != "": _hub_instant(int(OS.get_environment("HUB")))

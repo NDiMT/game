@@ -154,6 +154,11 @@ water turns it back. It is switched off unless `FLIP=1` (or the run `-- flip`, w
   at the floor's height, `mir_<key>` for each water below it, `_cs_water`). All of them followed her everywhere, so
   that in any pool her image was several bodies, one below another (dark and blurred, it only looked too long). A
   `mir_<key>` body now shows only while she is in its own water's court (`ch1._process`).
-- Not done: nothing in the game answers to the turned world yet (she walks in it as before, by taps); a tap on a
-  water turns the picture and no longer sends her image out, so the courts' own puzzles are not playable with
-  `FLIP=1`; only what has a twin under `mroot` is in the water.
+- **As a thing to play** (`FLIP=demo`, or the export preset `WebFlip`, which carries the feature `flipdemo`): in the
+  first two waters (`FLIP_DEMO_WATERS`: the harbour and the trough) a tap on open water turns the picture over and
+  back; a thing in the water is still a thing (the wheels: her image goes to them, in either picture); if she walks
+  away from the water the picture turns back by itself, without stopping her; behind the second sluice the trial
+  ends with the end card. The turn is asked for in `_send_reflection` (that is where a tap on open water arrives).
+  `-- flipdemo` plays both rooms through as a player would and prints what happens.
+- Not done: every other water still sends her image out as before; only what has a twin under `mroot` is in the
+  water.
