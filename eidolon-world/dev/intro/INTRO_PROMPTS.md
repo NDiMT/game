@@ -20,7 +20,9 @@ Everything is in `amphora/`:
   repository). `tools/install.py` turns the drawings into panels. `tools/vase.py` draws the vase, wraps the paintings
   on it, turns it, writes the words, moves the small things, and writes the film. `tools/layers.py` cuts the layers.
 - `clips/cardN.mp4` — the moving pictures (the painted figures in motion; each plays once; card 2 has two, a and b).
-- `intro_amphora.mp4` — the film (1080×1920, 24 fps).
+- `music/` — the score: two takes (`score_a.mp3`, `score_b.mp3`) and the description they were made from
+  (`prompt.txt`). The film carries take A.
+- `intro_amphora.mp4` — the film (1080×1920, 24 fps), with the music.
 
 ## The words (one card each; a new line here is a new page on the vase)
 
@@ -110,6 +112,15 @@ then stands still.
 | 5 | she takes a few small steps forward along the shore and stands; the woman in the water does the same |
 | 6 | kneeling in the boat, she lowers her hand the last small way until her fingertips touch the water; rings spread |
 | 7 | the empty boat rocks very slightly; on the shore Theron slowly holds out his open hand toward it, and keeps it there |
+
+## The music
+
+An original piece in the manner of the quiet prologue of an old epic: low strings, a far-off woman's voice without
+words, a few notes of a lyre, no drums. It was made with `lyria-3.5` (`tools/genmus.py`) from one description
+(`music/prompt.txt`) that gives the mood, the instruments and a line for each eighteen seconds, so that the music
+turns where the cards turn: near silence for the sculptor, warmth as she comes alive, darker for the veil, glass-still
+for the sea, the widest swell as she rows out, and a falling away at the end. It is trimmed to the film's length,
+faded in and out, and set to -16 LUFS.
 
 ## What the intro holds back
 
