@@ -791,7 +791,7 @@ class LmKneel extends SkeletonModifier3D:
 		var sk := get_skeleton()
 		var hi := _b(sk, "Hips"); var la := _b(sk, "LeftArm"); var ra := _b(sk, "RightArm")
 		if hi < 0 or la < 0 or ra < 0: return
-		var sc := maxf(sk.global_transform.basis.get_scale().y, 0.001)
+		var sc := maxf(absf(sk.global_transform.basis.get_scale().y), 0.001)      # (her reflection's body is turned over: its scale reads as negative)
 		var left := (sk.get_bone_global_pose(la).origin - sk.get_bone_global_pose(ra).origin).normalized()
 		var fwd := left.cross(Vector3.UP).normalized()
 		var feet := []
