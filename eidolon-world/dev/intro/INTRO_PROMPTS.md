@@ -72,17 +72,21 @@ One simple action in each picture, calm and steady, and then stillness. Each pai
 (`prompts/motion/cardN.txt`) names the one thing that happens and says that everything else, the camera and the
 drawing itself do not change. The clips are in `clips/`.
 
-Card 2 is two clips, each made between two pictures (`LAST=n` in `tools/genvid.py` gives the last frame):
+Card 2 is two clips that run on as one, each made between two pictures (`LAST=n` in `tools/genvid.py` gives the
+last frame):
 
 - **a, the statue comes alive**: from `panels/card2_statue.jpg` (the same painting with her all in white marble,
   `prompts/card2_statue.txt`) to the painting itself. Colour rises through her from the feet to the head; she does
   not move.
-- **b, she steps down**: from the painting to `panels/card2_end.jpg` (she stands on the ground beside the block,
-  `prompts/card2_end_pose.txt`). Given only a first frame the model kept her on the block, or slid the block along
-  under her; given where she must end, she steps down and stands there.
+- **b, she steps down**: from the very last frame of clip a (`FIRSTIMG=` in `tools/genvid.py`) to
+  `panels/card2_end.jpg` (she stands on the ground beside the block, `prompts/card2_end_pose.txt`). Given only a
+  first frame the model kept her on the block, or slid the block along under her; given where she must end, she
+  steps down and stands there. Beginning b on a's own last frame matters: when b began on the painting instead, her
+  pose at the join was a little different and the two had to be dissolved into each other, which showed as a ghost.
 
-`tools/join2.py` puts the two one after the other (a short pause between), and turns the red that rises in her
-dress to the game's red.
+`tools/join2.py join` puts the two end to end (and takes out the frames the model holds inside a movement, which
+read as a stutter); `tools/vidprep.py` then treats them as one clip, cut where she has come to stand; `tools/join2.py
+red` turns the red that rises in her dress to the game's red.
 
 Card 3 was tried on a tall rock stair down to the sea, so that she would have a long way to come down: the video
 model refused that picture every time (six tries, with and without the man, with and without the sea). On the low

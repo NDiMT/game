@@ -6,6 +6,7 @@ from PIL import Image
 S = '/tmp/claude-0/-home-user-game/9db9e6f7-f322-58a8-a673-ecffb8a05976/scratchpad/gem'
 c, pf, out = int(sys.argv[1]), sys.argv[2], sys.argv[3]
 cv = Image.new('RGB', (1920, 1080), (26, 20, 24)); cv.paste(Image.open(S + '/v/big/panel%d.png' % c).convert('RGB').resize((1080, 1080), Image.LANCZOS), (420, 0))
+if os.environ.get('FIRSTIMG'): cv = Image.open(os.environ['FIRSTIMG']).convert('RGB').resize((1920, 1080), Image.LANCZOS)      # FIRSTIMG=file: a ready 16:9 frame to begin on (the last frame of the clip before, so that two clips run on as one)
 cv.save(S + '/vid/first%d.png' % c); b = io.BytesIO(); cv.save(b, 'JPEG', quality=96); img = base64.b64encode(b.getvalue()).decode()
 part = {'type': 'image', 'data': img, 'mime_type': 'image/jpeg'}
 last = os.environ.get('LAST')      # LAST=n: panel n is the last frame (the first and the last picture differ)
