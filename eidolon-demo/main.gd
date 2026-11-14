@@ -668,6 +668,7 @@ const GLSL_GLINT := """float glints(vec2 p, float tm, vec2 cell, float dens){
 const SH_GLASS := """shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never;
 uniform float time_s = 0.0; uniform float blur_px = 3.2; uniform float wave = 1.0; uniform float lod = 1.0;
+uniform float clear = 0.0;   // 1: the water shows what is in it plainly (no pale veil over it, no glints): the picture turned over
 uniform vec4 lost_rect = vec4(0.0); uniform float lost_a = 0.0; uniform float lost_x = 0.0;   // lost_x: the crossing runs along x
 uniform vec4 lost_rect2 = vec4(0.0); uniform float lost_x2 = 0.0;   // a second leg of it (none if the rectangle is empty)
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear_mipmap, repeat_disable;
@@ -701,8 +702,8 @@ void fragment(){
 		}
 		c = mix(c, vec3(0.12, 0.29, 0.39), ls * lost_a * 0.62);
 	}
-	c = mix(c, vec3(0.6, 0.85, 0.88), 0.24);
-	c = mix(c, vec3(1.0), clamp(l * 0.3 + l2 * 0.45, 0.0, 1.0));
+	c = mix(c, vec3(0.6, 0.85, 0.88), 0.24 * (1.0 - clear * 0.8));
+	c = mix(c, vec3(1.0), clamp(l * 0.3 + l2 * 0.45, 0.0, 1.0) * (1.0 - clear));
 	ALBEDO = c;
 }"""
 ## what the pool shows where nothing stands over it: the sky

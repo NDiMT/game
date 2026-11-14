@@ -140,6 +140,130 @@ func under_mat(c: Color) -> StandardMaterial3D:
 		var m := StandardMaterial3D.new(); m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; m.albedo_color = c; m.cull_mode = BaseMaterial3D.CULL_DISABLED; N[k] = m
 	return N[k]
 
+## ---- the turn-over (a trial, in one court; FLIP=1). A tap on a pool turns the whole picture over: a ring spreads
+## from the finger, and behind it the world is what the water showed (soft, rippling, upside down), while the water
+## shows its picture plainly and upright. A second tap on the water turns it back.
+## The world is made soft by one sheet drawn over the whole view before every water (so the waters, drawn after it,
+## stay clear, and whatever stands in front of a water is still soft); the turning over is done on the finished picture.
+const SH_WORLDWAVE := """shader_type spatial;
+render_mode unshaded, depth_test_disabled, depth_draw_never, cull_disabled;
+uniform sampler2D screen_tex : hint_screen_texture, filter_linear, repeat_disable;
+uniform float k = 0.0; uniform float time_s = 0.0;
+void vertex(){ POSITION = vec4(VERTEX.xy, 1.0, 1.0); }
+void fragment(){
+	vec2 px = 1.0 / VIEWPORT_SIZE;
+	vec4 v = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, 0.0, 1.0);
+	vec3 w0 = (INV_VIEW_MATRIX * vec4(v.xyz / v.w, 1.0)).xyz; vec3 dir = -normalize(INV_VIEW_MATRIX[2].xyz);
+	vec3 g = w0 + dir * (-w0.y / dir.y);      // the place on the ground under this pixel: the ripples lie on the world, not on the screen
+	vec2 rip = vec2(sin(g.z * 3.1 + time_s * 1.1) + 0.6 * sin(g.x * 5.3 - time_s * 0.8), sin(g.x * 2.7 + time_s * 0.9) + 0.6 * sin(g.z * 6.1 + time_s * 1.3)) * px * 4.5 * k;
+	vec2 uv = SCREEN_UV + rip;
+	vec3 c = texture(screen_tex, uv).rgb * 0.2;
+	for (int i = 0; i < 8; i++) { float a = float(i) * 0.7854; c += texture(screen_tex, uv + vec2(cos(a), sin(a)) * px * 2.2 * k * (1.0 + 0.5 * float(i % 2))).rgb * 0.1; }
+	ALBEDO = mix(c, vec3(0.6, 0.85, 0.88), 0.2 * k);
+}"""
+const SH_TURN := """shader_type canvas_item;
+uniform sampler2D screen_tex : hint_screen_texture, filter_linear, repeat_disable;
+uniform vec2 c = vec2(0.5); uniform float r = 0.0; uniform float aspect = 0.5625;
+uniform float from_s = 0.0; uniform float to_s = 0.0; uniform float turn = 1.0;
+void fragment(){
+	vec2 d = (SCREEN_UV - c) * vec2(aspect, 1.0); float dist = length(d); float edge = dist - r;
+	float lip = exp(-(edge * edge) / 0.0011) * smoothstep(0.0, 0.08, r);      // the ring itself: it bends what it passes over, and carries a little light
+	vec2 n = dist > 0.0001 ? d / dist : vec2(0.0);
+	vec2 a = SCREEN_UV - n * lip * 0.022 * vec2(1.0 / aspect, 1.0);
+	float s = mix(from_s, to_s, smoothstep(0.006, -0.006, edge)) * turn;
+	vec3 col = mix(texture(screen_tex, a).rgb, texture(screen_tex, vec2(a.x, 1.0 - a.y)).rgb, s);
+	COLOR = vec4(col + lip * 0.10, 1.0);
+}"""
+var flip_test := OS.get_environment("FLIP") == "1"
+var flip_turn := OS.get_environment("FLIP_TURN") != "0"      # (FLIP_TURN=0: the looks change places but the picture is not turned upside down)
+var flip_on := false
+var flip_busy := false
+var flip_r := 0.0      # how far the ring has spread
+var flip_wave: ShaderMaterial
+var flip_mat: ShaderMaterial
+var flip_mi: MeshInstance3D
+var flip_rect: ColorRect
+var flip_glass := []      # every pool's surface, with the softness it had
+func _flip_setup() -> void:
+	var sh := Shader.new(); sh.code = SH_WORLDWAVE
+	flip_wave = ShaderMaterial.new(); flip_wave.shader = sh; flip_wave.render_priority = -8; timed.append(flip_wave)
+	var q := QuadMesh.new(); q.size = Vector2(2, 2)
+	flip_mi = MeshInstance3D.new(); flip_mi.mesh = q; flip_mi.material_override = flip_wave; flip_mi.extra_cull_margin = 16000.0
+	flip_mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; flip_mi.visible = false; add_child(flip_mi)
+	var cl := CanvasLayer.new(); cl.layer = 0; add_child(cl)
+	flip_rect = ColorRect.new(); flip_rect.set_anchors_preset(Control.PRESET_FULL_RECT); flip_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var cs := Shader.new(); cs.code = SH_TURN
+	flip_mat = ShaderMaterial.new(); flip_mat.shader = cs; flip_mat.set_shader_parameter("turn", 1.0 if flip_turn else 0.0)
+	flip_rect.material = flip_mat; flip_rect.visible = false; cl.add_child(flip_rect)
+	for m in timed:
+		if m is ShaderMaterial and (m as ShaderMaterial).shader == shaders["glass"]: flip_glass.append([m, float((m as ShaderMaterial).get_shader_parameter("blur_px"))])
+
+## the picture turns over (or back), from where the finger fell on the water
+func _flip(sp: Vector2, wu: Array) -> void:
+	flip_busy = true; flip_r = 0.0
+	var to := 0.0 if flip_on else 1.0
+	var vs := get_viewport().get_visible_rect().size
+	hold_id = -1; route.clear(); pending = ""
+	if to > 0.5:      # the water comes to the middle of the view first: the picture turns over about its middle line, so the water stays where it is
+		var r: Array = W[WL[wu[0]]].r
+		cam_focus = Vector3((r[0] + r[2]) * 0.5, 0, (r[1] + r[3]) * 0.5) + Vector3(1, 0, 1) * ((1.9 if cam.size > 5.0 else 0.85) / 0.8165); cam_focus_on = true
+		var n := 0
+		while (cam_t - cam_focus).length() > 0.1 and n < 150: await get_tree().process_frame; n += 1
+	var on_screen := Vector2(sp.x, vs.y - sp.y) if (flip_on and flip_turn) else sp
+	if to > 0.5: on_screen = cam.unproject_position(wu[1])
+	flip_mi.visible = true; flip_rect.visible = true
+	flip_mat.set_shader_parameter("c", Vector2(on_screen.x / vs.x, on_screen.y / vs.y)); flip_mat.set_shader_parameter("aspect", vs.x / vs.y)
+	flip_mat.set_shader_parameter("from_s", 1.0 - to); flip_mat.set_shader_parameter("to_s", to); flip_mat.set_shader_parameter("r", 0.0); flip_r = 0.0
+	var T := 1.9
+	var tw3 := create_tween().set_parallel(true)
+	tw3.tween_method(func(v: float) -> void: flip_r = v; flip_mat.set_shader_parameter("r", v), 0.0, 1.35, T).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw3.tween_method(func(v: float) -> void: flip_wave.set_shader_parameter("k", v), 1.0 - to, to, T * 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	for g in flip_glass:
+		var gm: ShaderMaterial = g[0]; var b0: float = g[1]
+		tw3.tween_method(func(v: float) -> void: gm.set_shader_parameter("clear", v); gm.set_shader_parameter("wave", 1.0 - v); gm.set_shader_parameter("blur_px", b0 * (1.0 - v)), 1.0 - to, to, T * 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await tw3.finished
+	flip_on = to > 0.5
+	flip_mat.set_shader_parameter("from_s", to); flip_mat.set_shader_parameter("r", 0.0)
+	if not flip_on: flip_mi.visible = false; flip_rect.visible = false; cam_focus_on = false
+	flip_busy = false
+	print("FLIP ", "over" if flip_on else "back")
+
+## while the picture is turned over, a finger on the screen means the place it would have meant the right way up
+func _unhandled_input(ev: InputEvent) -> void:
+	if flip_on and flip_turn and (ev is InputEventScreenTouch or ev is InputEventScreenDrag):
+		ev = ev.duplicate(); ev.position.y = get_viewport().get_visible_rect().size.y - ev.position.y
+	super._unhandled_input(ev)
+
+## (the trial) she stands by the forecourt's pool; the water is tapped, she walks a little in the turned world, and the water is tapped again
+func _play_flip() -> void:
+	started = true; title_box.hide(); hint.hide()
+	if not woke: _wake_now()
+	var mid := Vector3((GPX0 + GPX1) * 0.5, 0, (GPZ0 + GPZ1) * 0.5)
+	pos = Vector3(GPX0 - 0.55, 0, GPZ0 + 2.2); yaw = PI * 0.5; cam.size = PLAY_SIZE; cam_t = pos
+	var dir := OS.get_environment("SHOT_DIR")
+	var snap := func(n: String) -> void:
+		if dir != "": await RenderingServer.frame_post_draw; get_viewport().get_texture().get_image().save_png("%s/%s.png" % [dir, n])
+	await wait(2.5)
+	await snap.call("flip_1_before")
+	_tap_at(mid + Vector3(0.6, 0, 0.4))
+	await wait(1.6)
+	while flip_busy and flip_r < 0.42: await get_tree().process_frame
+	await snap.call("flip_2_turning")
+	while flip_busy: await get_tree().process_frame
+	await wait(2.0)
+	await snap.call("flip_3_over")
+	_tap_at(Vector3(GPX0 - 0.55, 0, GPZ1 - 0.6))      # she walks along the rim, in the turned world
+	await wait(3.2)
+	await snap.call("flip_4_walked")
+	_tap_at(mid + Vector3(-0.8, 0, -0.5))
+	while not flip_busy: await get_tree().process_frame
+	while flip_busy and flip_r < 0.5: await get_tree().process_frame
+	await snap.call("flip_5_turning_back")
+	while flip_busy: await get_tree().process_frame
+	await wait(2.0)
+	await snap.call("flip_6_back")
+	get_tree().quit()
+
 ## the still surface of a pool
 func glass(x0: float, z0: float, x1: float, z1: float, blur := 0.6) -> ShaderMaterial:
 	var wq := QuadMesh.new(); wq.size = Vector2(x1 - x0, z1 - z0); wq.orientation = PlaneMesh.FACE_Y
@@ -1499,6 +1623,11 @@ func tap(sp: Vector2) -> void:
 	if started and not ended and not woke:
 		if not busy: _wake()
 		return
+	if flip_test and started and not ended:      # (the trial) a tap on a water turns the picture over
+		if flip_busy: return
+		if not busy:
+			var wu = _water_under(sp)
+			if wu != null: _flip(sp, wu); return
 	if started and not ended and not busy and flags.get("posed3", false):      # she stands as a statue on the empty place
 		var px0 := get_viewport().get_visible_rect().size.x / 720.0
 		if flags.get("stone3", false):      # and is stone: nothing answers but the bronze
@@ -2109,6 +2238,8 @@ func _ground_under(sp: Vector2):
 func _ready() -> void:
 	super._ready()
 	var args := OS.get_cmdline_user_args()
+	_flip_setup()
+	if "flip" in args: flip_test = true; _play_flip()
 	if "views" in args: _views()
 	if "act1" in args: _play_act1()
 	if OS.get_environment("HUB") != "": _hub_instant(int(OS.get_environment("HUB")))
