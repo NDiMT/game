@@ -163,6 +163,7 @@ var her_mats: Array = []
 var posing := false
 var cam_focus_on := false
 var cam_up_k := 1.0
+var cam_pitch := 35.264      # how steeply the eye looks down, in degrees (always this; the turn of the picture brings it down to the waterline and up again)
 var cam_vel := Vector3.ZERO      # how fast the point the eye keeps is moving (see _process: it gathers speed gradually)
 var cam_focus := Vector3.ZERO
 var refl_mat: ShaderMaterial
@@ -469,6 +470,7 @@ render_mode ambient_light_disabled, specular_disabled;
 uniform vec3 c_top : source_color; uniform vec3 c_z : source_color; uniform vec3 c_x : source_color;
 uniform vec3 fog_col : source_color;
 uniform vec4 l0; uniform vec4 l1; uniform vec4 l2; uniform vec4 l3; uniform vec4 l4; uniform vec4 l5; uniform vec4 l6;
+global uniform vec3 view_ax;      // the way the eye looks (from the world toward it): the mist lies round that line
 uniform float sway = 0.0; uniform float time_s = 0.0; uniform float marble = 0.0; uniform float tone_var = 0.0; uniform float rim = 0.0; uniform float flat_n = 0.0; uniform vec3 shadow_col = vec3(0.66, 0.66, 0.86); uniform float mist_k = 0.96; uniform vec3 centre; uniform float mist_r = 7.0; uniform vec3 mist_col : source_color;
 varying vec3 wp; varying vec3 wn;
 float h3(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
@@ -507,7 +509,7 @@ void fragment(){
 	float l = lit(l0, wp) + lit(l1, wp) + lit(l2, wp) + lit(l3, wp) + lit(l4, wp) + lit(l5, wp) + lit(l6, wp);
 	col = mix(col, col * vec3(1.06, 0.97, 0.80) + vec3(0.09, 0.055, 0.0), clamp(l, 0.0, 1.0) * 0.85);
 	col = mix(col, fog_col, smoothstep(-1.35, -4.6, wp.y) * 0.9);
-	vec3 d3 = wp - centre; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
+	vec3 d3 = wp - centre; float md = length(d3 - view_ax * dot(d3, view_ax));
 	col = mix(col, mist_col, smoothstep(mist_r * 0.8, mist_r * 1.7, md) * mist_k);
 	ALBEDO = col; ROUGHNESS = 1.0;
 }
@@ -716,13 +718,14 @@ void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment(){ ALBEDO = mix(top_c, low_c, clamp((wp.y - y0) / (y1 - y0), 0.0, 1.0)); }"""
 const SH_SEA := """shader_type spatial;
 render_mode unshaded, cull_disabled;
+global uniform vec3 view_ax;      // the way the eye looks (from the world toward it): the mist lies round that line
 uniform vec3 near_col : source_color; uniform vec3 far_col : source_color; uniform vec3 centre; uniform float mist_r = 7.0; uniform float time_s = 0.0; uniform float mist_k = 1.0;
 varying vec3 wp;
 //GLINT
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment(){
 	if ((HOLLOW_WP) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
-	vec3 d3 = wp - centre; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
+	vec3 d3 = wp - centre; float md = length(d3 - view_ax * dot(d3, view_ax));
 	float m = smoothstep(mist_r * 0.8, mist_r * 1.75, md) * mist_k;
 	vec2 p = wp.xz * 1.1;
 	float lines = smoothstep(0.93, 0.995, sin(p.x * 2.3 + sin(p.y * 1.7 + time_s * 0.45) * 1.9 + sin(p.x * 0.31 - p.y * 0.53) * 2.3 + time_s * 0.2) * 0.5 + 0.5);   // (the third wave keeps the lines from repeating like a wallpaper when the whole map is in view)
@@ -762,6 +765,7 @@ void fragment(){
 const SH_FOG := """shader_type spatial;
 render_mode unshaded, cull_disabled;
 uniform sampler2D noise_tex : repeat_enable, filter_linear;
+global uniform vec3 view_ax;      // the way the eye looks (from the world toward it): the mist lies round that line
 uniform float time_s = 0.0; uniform vec3 hero; uniform float dens = 0.5; uniform float scale = 0.05; uniform vec2 vel = vec2(0.02, 0.01);
 uniform float clear_r = 0.0; uniform vec3 col : source_color; uniform float far_a = 2.0; uniform float far_b = 9.0;
 varying vec3 wp;
@@ -770,7 +774,7 @@ void fragment(){
 	if ((HOLLOW_WP) && wp.y < -0.1) discard;   // the hollow under the first court holds the mirror pool
 	vec2 uv = wp.xz * scale;
 	float n = texture(noise_tex, uv + vel * time_s).r * 0.62 + texture(noise_tex, uv * 2.3 - vel.yx * time_s * 1.7 + 0.37).r * 0.38;
-	vec3 d3 = wp - hero; float md = length(d3 - vec3(0.57735) * dot(d3, vec3(0.57735)));
+	vec3 d3 = wp - hero; float md = length(d3 - view_ax * dot(d3, view_ax));
 	float a = mix(0.72, 1.0, n) * dens * smoothstep(far_a, far_b, md);
 	if (clear_r > 0.0) a *= smoothstep(clear_r * 0.3, clear_r, distance(wp.xz, hero.xz));
 	ALBEDO = col; ALPHA = a;
@@ -1642,6 +1646,7 @@ func _hollow_glsl(v: String) -> String:
 	return " || ".join(parts) if not parts.is_empty() else "false"
 
 func _ready() -> void:
+	RenderingServer.global_shader_parameter_add("view_ax", RenderingServer.GLOBAL_VAR_TYPE_VEC3, Vector3(0.57735, 0.57735, 0.57735))      # (before any shader is made)
 	for k in [["base", SH], ["two", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;")],
 			["mir", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled, shadows_disabled;")],
 			["water", SH_WATER], ["cloth", SH_CLOTH], ["sheet", SH_SHEET], ["mirror", SH_MIRROR], ["ring", SH_RING], ["sea", SH_SEA], ["refl", SH_REFL], ["glass", SH_GLASS], ["pit", SH_PIT], ["face", SH_FACE], ["foam", SH_FOAM], ["fog", SH_FOG], ["shard", SH_SHARD], ["pane", SH_PANE]]:
@@ -5151,6 +5156,8 @@ func _process(dt: float) -> void:
 		var cv := (cam_t - cam_was) / dt
 		cam_vel = cam_vel.move_toward(cv, (9.0 if cv.length() > cam_vel.length() else 40.0) * dt)      # (it gathers speed gently; it may slow four times as fast, but not in one frame)
 		cam_t = cam_was + cam_vel * dt
+	cam.rotation_degrees.x = -cam_pitch
+	RenderingServer.global_shader_parameter_set("view_ax", cam.basis.z)
 	cam.position = cam_t + cam.basis.y * (1.9 if cam.size > 5.0 else 0.85) * cam_up_k + cam.basis.z * 34.0      # (cam_up_k: 1 as always; the turned picture brings it to -1, so that she keeps her place on the screen)
 	if shot != null: cam.position = (shot.c as Vector3) + cam.basis.z * maxf(34.0, cam.size * 1.33)   # a very wide still (the map) from further back, or the sea at its foot falls behind the eye and is cut off
 	if old_world and started and not ended and pos.z < KZ0 - 0.25: _end()
