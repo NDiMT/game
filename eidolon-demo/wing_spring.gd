@@ -92,8 +92,8 @@ const SP4_S := Vector3(-17.65, 0, -83.25)    # the colossus on the west rim
 const SP4_T := Vector3(-12.5, 0, -81.1)      # the round landing at the end of the door's jetty
 const SP4_LEVER := Vector3(-16.3, 0, -80.75) # the lever of the head-gate
 const SP4_GATE := Vector3(-15.3, 0, -79.7)   # the head-gate, across the channel where it leaves the pool
-const SP4_KEEP := Vector3(-11.82, 1.3, -84.83)      # the keeper where the pin hangs, on the door's east jamb
-const SP4_HOLE := Vector3(-11.95, 2.27, -84.17)     # and the hole it belongs in, in the strap across the break
+const SP4_KEEP := Vector3(-11.75, 1.2, -84.07)      # the keeper where the pin hangs, on the front post of the east grille
+const SP4_HOLE := Vector3(-11.95, 1.96, -84.17)     # and the hole it belongs in, in the hasp that hangs under the break
 
 var sp_col := {}      # the colossi, by name: {"p": foot, "q": which quarter the arm points to (0 north, 1 east, 2 south, 3 west), "w": its water, "pair": the one geared to it, "view": where the eye rests while it turns}
 var sp_chan: Array = []      # the course of the water once the spring runs: [from, to] pieces, in order
@@ -758,7 +758,7 @@ func _sp_court3() -> void:
 				var wh := cyl(Vector3.ZERO, 0.045, 0.045, 0.03, pal("gold", flat), 10, nd); wh.rotation.x = PI * 0.5; wh.position = Vector3(0.15 if w % 2 == 0 else -0.15, 0.03, 0.3 if w < 2 else -0.3)
 			var st := her_statue(Vector3(0, 0.17, 0), 0.0, SP3_POSES[i], 1.0, nd)
 			N["sp3_st%d%s" % [i, "_m" if twin else ""]] = nd
-			var h := {"sk": null, "yaw": 0.0, "bow": 0.0}
+			var h := {"sk": null, "st": st, "yaw": 0.0, "bow": 0.0}
 			var sks := st.find_children("*", "Skeleton3D", true, false)
 			if not sks.is_empty():
 				var sk: Skeleton3D = sks[0]
@@ -833,15 +833,16 @@ func _sp3_yaw_to(i: int, target: Vector3) -> float:
 	var at := _sp3_place(sp3_at[i])
 	return clampf(angle_difference(atan2(SP3_C.x - at.x, SP3_C.z - at.z), atan2(target.x - at.x, target.z - at.z)), -1.25, 1.25)
 
-## a head set as it is noted to be: turned by its yaw (half in the neck, half in the head), bowed by its bow
+## a statue set as it is noted to be: turned by its yaw (part on its plinth, part in the neck and the head), its head bowed by its bow
 func _sp3_head_set(h: Dictionary) -> void:
 	var sk: Skeleton3D = h.get("sk")
+	var yw: float = float(h.yaw) * 0.55      # (the rest of the turn is the whole figure's, on its plinth: a head alone is too small a sign in the water)
+	if h.get("st") != null: (h.st as Node3D).rotation.y = float(h.yaw) * 0.45
 	if sk == null or int(h.hi) < 0: return
 	sk.set_bone_pose_rotation(h.hi, h.h0)
 	if int(h.ni) >= 0: sk.set_bone_pose_rotation(h.ni, h.n0)
 	var la := _bone(sk, "LeftArm"); var ra := _bone(sk, "RightArm")
 	var left := (sk.get_bone_global_pose(la).origin - sk.get_bone_global_pose(ra).origin).normalized()
-	var yw: float = h.yaw
 	if int(h.ni) >= 0:
 		_bend(sk, "Neck", Vector3.UP, yw * 0.5); _bend(sk, "Head", Vector3.UP, yw * 0.5)
 	else: _bend(sk, "Head", Vector3.UP, yw)
@@ -1002,6 +1003,7 @@ func _sp_court4() -> void:
 	blk(Vector3(dx - 0.65, 0, SP4_Z0 + 0.2), Vector3(dx + 0.65, 2.02, SP4_HZ - 0.5), "dark")
 	blk(Vector3(dx - 0.65, 0, SP4_Z0 + 0.2), Vector3(dx + 0.65, 2.02, SP4_HZ - 0.5), "dark", mroot).material_override = under_mat(Color("5b5474"))
 	blk(Vector3(dx - 0.65, 0, SP4_HZ - 0.5), Vector3(dx + 0.65, 0.014, SP4_HZ + 0.06), "shade")      # its sill
+	blk(Vector3(SP4_HX0 + 0.45, SP4_HH + 0.06, SP4_Z0 + 0.12), Vector3(SP4_HX1 - 0.45, SP4_HH + 0.3, SP4_HZ - 0.18), "stone"); blk(Vector3(SP4_HX0 + 0.4, SP4_HH + 0.3, SP4_Z0 + 0.07), Vector3(SP4_HX1 - 0.4, SP4_HH + 0.36, SP4_HZ - 0.13), "shade")      # a low attic over it
 	for both in [self, mroot]:
 		var twin: bool = both == mroot
 		var sfx := "_m" if twin else ""
@@ -1030,12 +1032,14 @@ func _sp_court4() -> void:
 		var hr := TorusMesh.new(); hr.inner_radius = 0.045; hr.outer_radius = 0.065; hr.rings = 14; hr.ring_segments = 6
 		prim(hr, Vector3(0.45, -1.05, 0.05), pal("gold", flat), dr).rotation.x = PI * 0.5
 		# the strap across the break, with the hole for the pin; the keeper on the jamb; the pin
-		blk(Vector3(SP4_HOLE.x - 0.22, SP4_HOLE.y - 0.1, SP4_ROW + 0.3), Vector3(SP4_JOINT.x + 0.3, SP4_HOLE.y + 0.1, SP4_ROW + 0.325), "gold", both)
+		blk(Vector3(SP4_HOLE.x - 0.22, by + 0.07, SP4_ROW + 0.3), Vector3(SP4_JOINT.x + 0.3, by + 0.23, SP4_ROW + 0.325), "gold", both)      # (a strap on the east piece, across the break...)
+		blk(Vector3(SP4_HOLE.x - 0.12, SP4_HOLE.y - 0.13, SP4_ROW + 0.3), Vector3(SP4_HOLE.x + 0.12, by + 0.07, SP4_ROW + 0.325), "gold", both)      # (...its tongue, hanging under the beam, with the hole...)
+		blk(Vector3(SP4_HOLE.x - SP4_JOINT.x - 0.1, SP4_HOLE.y - by - 0.11, 0.245), Vector3(SP4_HOLE.x - SP4_JOINT.x + 0.1, 0.0, 0.27), "gold", bm)      # (...and behind it the tongue of the west piece: their holes meet only when the beam is level)
 		var ho := cyl(Vector3.ZERO, 0.036, 0.036, 0.01, pal("dark", flat), 12, both); ho.rotation.x = PI * 0.5; ho.position = Vector3(SP4_HOLE.x, SP4_HOLE.y, SP4_ROW + 0.328)
-		for kx in [-0.16, 0.24]:
-			var rv := cyl(Vector3.ZERO, 0.022, 0.022, 0.012, pal("gold", flat), 8, both); rv.rotation.x = PI * 0.5; rv.position = Vector3(SP4_HOLE.x + kx, SP4_HOLE.y, SP4_ROW + 0.33)
-		blk(SP4_KEEP + Vector3(-0.07, 0.16, -0.04), SP4_KEEP + Vector3(0.07, 0.19, 0.08), "gold", both); blk(SP4_KEEP + Vector3(-0.07, -0.02, -0.04), SP4_KEEP + Vector3(0.07, 0.27, -0.02), "gold", both)
-		var pin := _sp4_pin(both, twin); pin.position = SP4_KEEP + Vector3(0, 0.08, 0.02); N["sp4_pin" + sfx] = pin
+		for kx in [-0.16, 0.0, 0.16, 0.4]:
+			var rv := cyl(Vector3.ZERO, 0.022, 0.022, 0.012, pal("dark", flat), 8, both); rv.rotation.x = PI * 0.5; rv.position = Vector3(SP4_HOLE.x + kx, by + 0.15, SP4_ROW + 0.33)
+		blk(SP4_KEEP + Vector3(-0.07, 0.16, -0.06), SP4_KEEP + Vector3(0.12, 0.19, 0.06), "gold", both)      # (a small shelf with a slot: the pin hangs in it by its collar)
+		var pin := _sp4_pin(both, twin); pin.position = SP4_KEEP + Vector3(0, 0.08, 0.0); N["sp4_pin" + sfx] = pin
 		# the two grilles that fence the door in, from the wall to the water's edge (they leave the door room to pass behind them)
 		for gx in [dx - 0.85, dx + 0.85]: leaf("", Vector3(gx, 0, SP4_ROW + 0.02), true, 0.4, 1.5, both, twin)
 		# the jetty and its landing
@@ -1187,11 +1191,11 @@ func _do_sp_door4() -> void:
 	await wait(0.4)
 	# the pin: a step to the east jamb, a hand to the keeper, the pin up to the strap and home
 	refl_token += 1
-	await _refl_walk_pts(e, [Vector3(SP4_DOOR_X + 0.32, 0, SP4_ROW + 0.1)], 0.0, refl_token, 0.7)
-	var r2 := create_tween(); r2.tween_property(hd, "rotation:y", hd.rotation.y + angle_difference(hd.rotation.y, PI - 0.5), 0.4).set_trans(Tween.TRANS_SINE)
+	await _refl_walk_pts(e, [Vector3(SP4_DOOR_X + 0.42, 0, SP4_ROW + 0.26)], 0.0, refl_token, 0.7)
+	var r2 := create_tween(); r2.tween_property(hd, "rotation:y", hd.rotation.y + angle_difference(hd.rotation.y, PI * 0.5 + 0.3), 0.4).set_trans(Tween.TRANS_SINE)
 	await r2.finished
 	var pn: Node3D = N["sp4_pin"]; var pm: Node3D = N["sp4_pin_m"]
-	var p0 := pn.position; var p1 := p0 + Vector3(-0.02, 0.22, 0.12); var p2 := Vector3(SP4_HOLE.x, SP4_HOLE.y, SP4_ROW + 0.64); var p3 := Vector3(SP4_HOLE.x, SP4_HOLE.y, SP4_ROW + 0.37)
+	var p0 := pn.position; var p1 := p0 + Vector3(-0.04, 0.24, 0.05); var p2 := Vector3(SP4_HOLE.x, SP4_HOLE.y, SP4_ROW + 0.66); var p3 := Vector3(SP4_HOLE.x, SP4_HOLE.y, SP4_ROW + 0.39)
 	var grip := func() -> void: hm.tR = Vector3(pn.position.x, -pn.position.y, pn.position.z + 0.03)
 	grip.call()
 	var g0 := create_tween().set_parallel(); g0.tween_property(hm, "wR", 1.0, 0.7); g0.tween_property(hm, "bow", 0.06, 0.7)
