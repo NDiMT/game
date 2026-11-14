@@ -20,7 +20,6 @@ const BZ1 := 9.6
 const MOLE_W := 0.5      # half the width of the mole, which runs south from the quay along x = 0
 const MOLE_A := 5.0      # the stub ends here...
 const MOLE_B := 6.8      # ...and the piece that is left in the open begins here
-var mole_b := MOLE_B - (0.7 if (OS.has_feature("flipdemo") or OS.get_environment("FLIP") in ["demo", "1"]) else 0.0)      # (in the trial of the turning water it begins 0.7 m nearer: she herself comes to stand before the wheel there)
 const MOLE_C := 8.4      # and ends here
 const HERPL := Vector3(0, 0, 3.75)      # the plinth she wakes on, on the stub, facing the sea
 const WHEEL1 := Vector3(0, 0, 7.75)      # the wheel of the first sluice, on the far piece
@@ -126,10 +125,11 @@ func _init() -> void:
 	old_world = false
 	title_sub = "I  ·  The Veiled Gate\ntap to begin"; end_sub = "end of the first chapter\ntap to begin again"
 	if flip_demo: title_sub = "the turning water  ·  a trial\ntap to begin"; end_sub = "end of the trial\ntap to begin again"
+	if match_demo: title_sub = "the still water  ·  a trial\ntap to begin"
 
 func _hollows() -> Array:
 	return [[HX0 + 0.5, HZ0 + 0.5, HX1 - 0.5, HZ1 - 0.5], [TX0 + 0.5, TZ0 + 0.5, TX1 - 0.5, TZ1 - 0.5], [VX0 + 0.5, VZ0 + 0.5, VX1 - 0.5, VZ1 - 0.5],
-		[FX0 + 0.5, FZ0 - 0.1, FX1 - 0.5, FZ1 - 0.5], [GX0 + 0.5, GZ0 + 0.5, GX1 - 0.5, GZ1 - 0.5], [UX0 + 0.5, UZ0 + 0.5, UX1 - 0.5, UZ1 - 0.5]]
+		[FX0 + 0.5, FZ0 - 0.1, FX1 - 0.5, FZ1 - 0.5], [GX0 + 0.5, GZ0 + 0.5, GX1 - 0.5, GZ1 - 0.5], [UX0 + 0.5, UZ0 + 0.5, UX1 - 0.5, UZ1 - 0.5]] + ([[MT_X0 + 0.3, MT_Z0 + 0.5, MT_X1 - 0.3, MT_Z1 - 0.5]] if match_demo else [])
 
 # ---------------------------------------------------------------- small builders
 func R(x0: float, z0: float, x1: float, z1: float, on := true, h := 0.0) -> Dictionary:
@@ -250,8 +250,9 @@ void fragment(){
 	}
 }"""
 var flip_test := OS.get_environment("FLIP") == "1"      # every water turns the picture
-var flip_demo := OS.has_feature("flipdemo") or OS.get_environment("FLIP") == "demo"      # the trial as a thing to play: the first two waters turn the picture, and it ends behind the second sluice
-const FLIP_DEMO_WATERS := ["H", "T"]
+var match_demo := OS.has_feature("matchdemo") or OS.get_environment("FLIP") == "match"      # the trial of the still water: one new court, where the world and what its water shows are to be made to agree
+var flip_demo := OS.has_feature("flipdemo") or OS.get_environment("FLIP") == "demo" or match_demo      # the trial as a thing to play: the first two waters turn the picture, and it ends behind the second sluice
+var FLIP_DEMO_WATERS := ["M"] if match_demo else ["H", "T"]
 var flip_wid := ""      # the water the picture was turned over at
 var flip_anchor := Vector3.ZERO      # where she stands, while her shadow is played
 var flip_anchor_yaw := 0.0
@@ -267,6 +268,11 @@ var flip_icon: Control      # the sign that turns the world over: it shows only 
 var flip_icon_a := 0.0
 var flip_icon_wid := ""
 var flip_mask_vp: SubViewport
+var FLIP_LEASH := 99.0 if match_demo else 5.5      # how far from her the shadow may go: farther, and it is with her again (in the court of the still water it has the run of the place)
+var flip_homing := false
+var smoke := []      # the puffs of the shadow when it goes back to her: {n, a, b, t0, life, ph, lift}
+var smoke_t := -1.0
+var smoke_dur := 1.0
 var flip_mask_cam: Camera3D
 const FLIP_PITCH := 35.264
 var flip_k := 0.0      # how much the turned picture ripples and blurs just now
@@ -296,8 +302,7 @@ func _flip_setup() -> void:
 	flip_mask_cam.cull_mask = 1 << 19; flip_mask_vp.add_child(flip_mask_cam); flip_mask_cam.current = true
 	for mm0 in (H["main"].holder as Node).find_children("*", "MeshInstance3D", true, false): (mm0 as MeshInstance3D).set_layer_mask_value(20, true)
 	flip_mat.set_shader_parameter("her_mask", flip_mask_vp.get_texture()); flip_mat.set_shader_parameter("dark", FLIP_DARK)
-	_flip_icon_setup()
-	if flip_demo or flip_test: _gravity_setup()
+	_flip_icon_setup(); _smoke_setup()
 	flip_rect.material = flip_mat; flip_rect.visible = _flip_pane_always(); cl.add_child(flip_rect)
 	for m in timed:
 		if m is ShaderMaterial and (m as ShaderMaterial).shader == shaders["glass"]: flip_glass.append([m, float((m as ShaderMaterial).get_shader_parameter("blur_px"))])
@@ -327,11 +332,22 @@ func _flip(sp: Vector2, wu: Array) -> void:
 			if not walk_to(hp, PLAY_WALK): flip_busy = false; await _her_no(); return
 			while not route.is_empty(): await get_tree().process_frame
 			if _foot_of(wid, pos, 0.4) == "": flip_busy = false; return
-		flip_wid = wid; flip_anchor = pos; flip_anchor_yaw = yaw      # (the place the eye turns about)
-	else:      # she comes back where her shadow stands: the water is a door, and one comes out of it where one has gone to
+		flip_wid = wid; flip_anchor = pos; flip_anchor_yaw = yaw
+		if refl_out.is_empty(): _refl_out_now(wid)      # her image stays where she stands: it is she, now
+		var hm0 := _hermod(refl_out)      # and she stands as she stood: what her shadow does with its hands, she does not do
+		if hm0 != null: hm0.own = true; hm0.wL = 0.0; hm0.wR = 0.0; hm0.bow = 0.0
+		if refl_out.ap != null: (refl_out.ap as AnimationPlayer).play("idle", 0.4)
+	else:
 		flip_busy = true
 		hold_id = -1; route.clear(); pending = ""
-		flip_anchor = pos; flip_anchor_yaw = yaw
+		# the shadow goes back into her: it sinks where it is, and she is where she stood
+		if flip_fx == "":      # it is with her again by the time the eye is level with the water: it goes as smoke, while the eye comes down
+			if _flat(pos, flip_anchor) > 0.05: _shadow_home()
+			else: pos = flip_anchor; yaw = flip_anchor_yaw
+		else:
+			var sk := create_tween(); sk.tween_property(self, "sink_main", 1.95, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			await sk.finished
+			pos = flip_anchor; yaw = flip_anchor_yaw; cam_t = pos
 	if flip_fx == "": await _flip_real(to > 0.5); return
 	flip_r = 0.0
 	var vs := get_viewport().get_visible_rect().size
@@ -370,8 +386,62 @@ func _flip(sp: Vector2, wu: Array) -> void:
 	# and she is given her usual place in the view again (in the turned picture that is the other side of the middle line)
 	create_tween().tween_property(self, "cam_up_k", -1.0 if flip_on else 1.0, 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	flip_busy = false
-	if flip_demo and flip_on and not flags.get("flip_said", false) and not done.has("wheel1"): flags["flip_said"] = true; say("you are her shadow  ·  here things fall the other way")
+	if flip_demo and flip_on and not flags.get("flip_said", false) and not done.has("wheel1"): flags["flip_said"] = true; say("you are her shadow  ·  what you turn here, turns in the water" if match_demo else "you are her shadow  ·  here the mole is whole")
 	print("FLIP ", "over" if flip_on else "back")
+
+const SH_SMOKE := """shader_type spatial;
+render_mode unshaded, cull_disabled, depth_draw_never, blend_mix;
+uniform vec3 col = vec3(0.19, 0.18, 0.26);
+void fragment(){ float d = distance(UV, vec2(0.5)) * 2.0; ALBEDO = col; ALPHA = smoothstep(1.0, 0.0, d) * 0.46; }"""
+func _smoke_setup() -> void:
+	var sh := Shader.new(); sh.code = SH_SMOKE
+	var m := ShaderMaterial.new(); m.shader = sh; m.render_priority = 4
+	var q := QuadMesh.new(); q.size = Vector2(1, 1)
+	for i in 40:
+		var n := MeshInstance3D.new(); n.mesh = q; n.material_override = m; n.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; n.visible = false; add_child(n)
+		smoke.append({"n": n})
+
+## the shadow as smoke: it leaves the body where that stands and gathers again at `to`
+func _smoke_go(from: Vector3, to: Vector3, dur: float) -> void:
+	var rng := RandomNumberGenerator.new(); rng.seed = 7
+	for s in smoke:
+		s["a"] = from + Vector3(rng.randf_range(-0.16, 0.16), rng.randf_range(0.15, 1.55), rng.randf_range(-0.16, 0.16))
+		s["b"] = to + Vector3(rng.randf_range(-0.14, 0.14), rng.randf_range(0.15, 1.55), rng.randf_range(-0.14, 0.14))
+		s["t0"] = rng.randf_range(0.0, 0.42) * dur; s["life"] = rng.randf_range(0.48, 0.58) * dur
+		s["ph"] = rng.randf_range(0.0, TAU); s["lift"] = rng.randf_range(0.15, 0.5); s["sz"] = rng.randf_range(0.7, 1.15)
+	smoke_t = 0.0; smoke_dur = dur
+
+func _smoke_frame(dt: float) -> void:
+	if smoke_t < 0.0: return
+	smoke_t += dt
+	var cb := cam.global_transform.basis
+	for s in smoke:
+		var n: MeshInstance3D = s.n
+		var u := (smoke_t - float(s.t0)) / float(s.life)
+		if u <= 0.0 or u >= 1.0: n.visible = false; continue
+		var a: Vector3 = s.a; var b: Vector3 = s.b
+		var side := Vector3(-(b - a).z, 0, (b - a).x).normalized() if _flat(a, b) > 0.01 else Vector3.RIGHT
+		var e := smoothstep(0.0, 1.0, u)
+		var grow := smoothstep(0.0, 0.16, u) * smoothstep(1.0, 0.8, u)
+		n.visible = true
+		n.global_transform = Transform3D(cb.scaled(Vector3.ONE * float(s.sz) * (0.55 + 0.45 * sin(PI * u)) * grow), a.lerp(b, e) + Vector3.UP * sin(PI * u) * float(s.lift) + side * sin(TAU * u + float(s.ph)) * 0.13)
+	if smoke_t > smoke_dur + 0.05:
+		smoke_t = -1.0
+		for s in smoke: (s.n as Node3D).visible = false
+
+## the shadow is with her again: it goes as smoke from where it is to under her feet
+func _shadow_home() -> void:
+	if flip_homing: return
+	flip_homing = true
+	route.clear(); pending = ""
+	_smoke_go(pos, flip_anchor, 1.0)
+	var sk := create_tween(); sk.tween_property(self, "sink_main", 1.95, 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await sk.finished
+	pos = flip_anchor; yaw = flip_anchor_yaw
+	await wait(0.12)
+	var ru := create_tween(); ru.tween_property(self, "sink_main", 0.0, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await ru.finished
+	flip_homing = false
 
 ## The sign under the picture: a ring with the waterline across it, a mark above the line and the same mark, hollow, below.
 func _flip_icon_setup() -> void:
@@ -394,9 +464,7 @@ func _flip_water_near() -> String:
 
 func _flip_icon_frame(dt: float) -> void:
 	var wid := ""
-	if started and not ended and woke and not flip_busy and not busy:
-		wid = _flip_water_near()
-		if flip_on and wid != "" and not _walkable(pos): wid = ""      # (she cannot come out where, in the world, there is nothing to stand on)
+	if started and not ended and woke and not flip_busy and not busy: wid = flip_wid if flip_on else _flip_water_near()
 	flip_icon_wid = wid
 	flip_icon_a = move_toward(flip_icon_a, 1.0 if wid != "" else 0.0, dt / 0.5)
 	var vs := get_viewport().get_visible_rect().size
@@ -435,7 +503,7 @@ func _flip_real(over: bool) -> void:
 			if hm1 != null: hm1.own = false
 			H[refl_key] = refl_out; refl_out = {}; refl_w = ""
 	flip_busy = false
-	if flip_demo and flip_on and not flags.get("flip_said", false) and not done.has("wheel1"): flags["flip_said"] = true; say("you are her shadow  ·  here things fall the other way")
+	if flip_demo and flip_on and not flags.get("flip_said", false) and not done.has("wheel1"): flags["flip_said"] = true; say("you are her shadow  ·  what you turn here, turns in the water" if match_demo else "you are her shadow  ·  here the mole is whole")
 	print("FLIP ", "over" if flip_on else "back")
 
 ## (every frame of the turn, before the eye is placed) the eye's steepness and her place in the view follow the turn; and
@@ -464,53 +532,60 @@ func _flip_post() -> void:
 ## what exists on one side only changes sides with the picture: the stones of the mole's middle, the two grilles of the
 ## trough. (A thing of the world is put away by sinking; a thing of the water by being drawn flat, since "down" in the
 ## water is up in the world.)
-func _flip_world(wid: String, over: bool, _d: float) -> void:
-	var fall := func(n: Node3D, prop: String, v: float, dur: float) -> void:      # (it falls, and settles with a knock)
-		create_tween().tween_property(n, prop, v, dur).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
-	if wid == "H":      # the leaf of the mole: on end in the world, across the gap in the turned picture
-		for k in ["cross_r", "cross_m"]: fall.call(N[k], "rotation:x", 0.0 if over else PI * 0.5, 1.05)
+func _flip_world(wid: String, over: bool, d: float) -> void:
+	if wid == "M": match_view_m = over; _match_apply(); return
+	var real := func(n: Node3D, shown: bool, low: float) -> void:
+		if shown: n.visible = true
+		var q := create_tween(); q.tween_property(n, "position:y", 0.0 if shown else low, d).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		if not shown: q.tween_callback(func() -> void: n.visible = false)
+	var water := func(n: Node3D, shown: bool) -> void:
+		if shown: n.visible = true
+		var q := create_tween(); q.tween_property(n, "scale:y", 1.0 if shown else 0.001, d).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		if not shown: q.tween_callback(func() -> void: n.visible = false)
+	if wid == "H":
+		real.call(N["cross_r"], over, -0.4); water.call(N["cross_m"], not over)
 	elif wid == "T":
-		if not done.has("wheel2"):      # the grille that shuts by its own weight: down in the world, up in the turned picture (once the wheel is turned it is held up for good)
-			for k in ["g2", "g2_m"]: fall.call(N[k], "position:y", GATE_UP if over else 0.0, 0.95)
-		for k in ["g2w_r", "g2w_m"]: fall.call(N[k], "position:y", 0.0 if over else GATE_UP, 0.95)      # the grille a weight holds up: up in the world, down in the turned picture
-		for k in ["w2_r", "w2_m"]: fall.call(N[k], "position:y", W2_HI if over else W2_LO, 0.95)      # and its weight, the other way
-
-const GATE_UP := 2.05      # how high a grille stands when it is up (she passes under it)
-const W2_LO := 0.5
-const W2_HI := 3.4
-## (the trial: in the turned picture, down is up) What differs between the two worlds is what weight does. Nothing is
-## hidden: both worlds show the same things, each where its weight has brought it.
-func _gravity_setup() -> void:
-	# the middle of the mole is a leaf of stones hinged on the far piece: in the world it stands on end there
-	for k in ["cross_r", "cross_m"]:
-		var n: Node3D = N[k]; var piv := Vector3(0, 0.05, mole_b)
-		for c in n.get_children(): (c as Node3D).position -= piv
-		n.position = piv; n.scale = Vector3.ONE; n.visible = true; n.rotation.x = PI * 0.5
-	# the two grilles of the long water's walk, each in a tall frame it can rise in
-	for k in ["g2", "g2_m"]: (N[k] as Node3D).visible = true; (N[k] as Node3D).scale = Vector3.ONE; (N[k] as Node3D).position.y = 0.0
-	for k in ["g2w_r", "g2w_m"]: (N[k] as Node3D).visible = true; (N[k] as Node3D).scale = Vector3.ONE; (N[k] as Node3D).position.y = GATE_UP
-	var x0 := TX0 + 0.3; var x1 := TPX0
-	for both in [self, mroot]:
-		var flat := "flat2" if both == mroot else "flat"
-		for gz in [TG_REAL, TG_WATER]:
-			for q in [blk(Vector3(x0 - 0.15, 0, gz - 0.08), Vector3(x0 - 0.01, 4.0, gz + 0.08), "stone", both), blk(Vector3(x1 + 0.01, 0, gz - 0.08), Vector3(x1 + 0.15, 4.0, gz + 0.08), "stone", both),
-					blk(Vector3(x0 - 0.2, 4.0, gz - 0.11), Vector3(x1 + 0.2, 4.16, gz + 0.11), "shade", both)]:
-				(q as MeshInstance3D).material_override = pal("stone" if (q as MeshInstance3D).position.y < 4.0 else "shade", flat)
-		# the weight of the second grille, on its rod, over the water's edge
-		var rod := blk(Vector3(x1 + 0.3, 0.1, TG_WATER - 0.015), Vector3(x1 + 0.33, 4.0, TG_WATER + 0.015), "dark", both)
-		var arm := blk(Vector3(x1 + 0.1, 3.86, TG_WATER - 0.03), Vector3(x1 + 0.36, 3.92, TG_WATER + 0.03), "dark", both)
-		if both == mroot: rod.material_override = under_mat(Color("4a4468")); arm.material_override = under_mat(Color("4a4468"))
-		var wn := Node3D.new(); wn.position = Vector3(x1 + 0.315, W2_LO, TG_WATER); both.add_child(wn)
-		var wb := blk(Vector3(-0.15, -0.17, -0.15), Vector3(0.15, 0.17, 0.15), "stone", wn)
-		wb.material_override = under_mat(Color("857fa4")) if both == mroot else pal("shade", "flat")
-		N["w2_m" if both == mroot else "w2_r"] = wn
-
+		real.call(N["g2w_r"], over, -2.1); water.call(N["g2w_m"], not over)
+		if not done.has("wheel2"):      # (once the wheel is turned the world's grille is down for good, on both sides)
+			real.call(N["g2"], not over, -2.1); water.call(N["g2_m"], over)
 
 ## (the turned picture) the shadow walks a way over its footing
 func _shadow_go(pts: Array) -> void:
 	route.clear(); speed_cap = PLAY_WALK; face_to = null
 	pts = _round_solids(pos, pts, func(q: Vector3) -> bool: return _foot_of(flip_wid, q, 0.01) != "")
 	for q in pts: route.append({"p": Vector3(q.x, 0, q.z)})
+
+## (the turned picture) the shadow's way to a place. A way that would take it farther from her than it may go is no way:
+## then it goes by its nearer footing alone, as far as that is open (to the grille that stops it, not round the water).
+func _shadow_way(to: Vector3) -> Dictionary:
+	var way := _refl_path(flip_wid, pos, to)
+	var far := false; var a := pos
+	for q in way.pts:
+		var n := int(ceil(_flat(a, q) / 0.25)) + 1
+		for i in n + 1:
+			if _flat(a.lerp(q, float(i) / n), flip_anchor) > FLIP_LEASH - 0.15: far = true
+		a = q
+	var wide: Array = W[flip_wid].get("wide", [])
+	if not far or wide.is_empty(): return way
+	var F: Dictionary = W[flip_wid].foot; var was := {}
+	for n2 in wide: was[n2] = F[n2].on; F[n2].on = false
+	var near := _refl_path(flip_wid, pos, to)
+	for n2 in wide: F[n2].on = was[n2]
+	return near if not near.pts.is_empty() or _foot_of(flip_wid, pos, 0.9) != "" else way
+
+## (the turned picture) a thing of this water: the shadow goes to it and does what her image would have done
+func _shadow_use(k: String) -> void:
+	var o: Dictionary = objs[k]
+	var way := _shadow_way(o.rstand)
+	if way.pts.is_empty() and _flat(pos, o.rstand) > 0.3: await _her_no(); return
+	busy = true
+	if not way.pts.is_empty(): _shadow_go(way.pts)
+	while not route.is_empty(): await get_tree().process_frame
+	if flip_homing or (way.left <= 0.25 and _flat(pos, o.rstand) > 0.4): busy = false; return      # (it was taken back to her on the way)
+	if way.left > 0.25:      # something stands in its way: it has come as near as it can
+		busy = false; await _her_no(); return
+	await call("_do_" + k)
+	busy = false; settled.emit()
 
 ## (the turned picture) the shadow turns a wheel with its own hands, and what the wheel works goes
 func _shadow_wheel(id: String, focus: Vector3, opens: Callable) -> void:
@@ -555,15 +630,12 @@ func _shadow_tap(sp: Vector2) -> void:
 		if done.has(k) or not objs[k].has("water") or objs[k].water != flip_wid: continue
 		var d := _tap_dist_world(k, sp)
 		if d < bd: bd = d; best = k
-	if best != "":      # a shadow turns no wheel: it only walks. It goes to stand before the thing (she turns it, when she is there)
-		var st: Vector3 = objs[best].rstand
-		if _flat(pos, st) < 0.3: _her_no(); return
-		var way0 := _refl_path(flip_wid, pos, st)
-		if not way0.pts.is_empty(): _shadow_go(way0.pts)
-		return
+	if best != "":
+		usering.position = Vector3(objs[best].at.x, 0.03, objs[best].at.z); use_p = 0.0
+		_shadow_use(best); return
 	var o := cam.project_ray_origin(sp); var dr := cam.project_ray_normal(sp)
 	var g := o + dr * (-o.y / dr.y); g.y = 0.0
-	var way := _refl_path(flip_wid, pos, g)
+	var way := _shadow_way(g)
 	if not way.pts.is_empty() and _foot_of(flip_wid, g, 0.12) != "":      # a place it can stand on
 		_shadow_go(way.pts); tapring.position = Vector3(g.x, 0.02, g.z); tap_p = 0.0; return
 	if not way.pts.is_empty(): _shadow_go(way.pts)      # anywhere else: as near as its footing comes
@@ -580,6 +652,180 @@ func _unhandled_input(ev: InputEvent) -> void:
 	if flip_on and flip_turn and (ev is InputEventScreenTouch or ev is InputEventScreenDrag):
 		ev = ev.duplicate(); ev.position.y = get_viewport().get_visible_rect().size.y - ev.position.y
 	super._unhandled_input(ev)
+
+# ---------------------------------------------------------------- the court of the still water (a trial)
+## A court by itself in the sea: a terrace to the north where she begins, a terrace to the south with the way out, and
+## between them a water from wall to wall. In the water a pier with a bridge that turns on it, and by the east wall a
+## row of stones that rise and sink. Two wheels: A on the north terrace turns the bridge; B on the south terrace turns
+## the bridge and moves the stones, both at once.
+## The world and what the water shows are two courts with the same things, each in its own state (`mt`): a wheel moves
+## the things of the court its turner stands in (she the world's, her shadow the water's). In the world wheel A is gone
+## from its post; the water still has it. Where a thing and its image do not agree its image is red; when all agree the
+## water is still and the way out opens.
+const MT_X0 := 14.0
+const MT_X1 := 24.0
+const MT_Z0 := 0.0
+const MT_Z1 := 11.0
+const MT_PZ0 := 2.6      # the water, from wall to wall
+const MT_PZ1 := 8.4
+const MT_C := Vector3(19.0, 0, 5.5)      # the pier
+const MT_SX := 22.9      # the row of stones
+const MT_START := Vector3(19.0, 0, 1.55)
+const MT_EXIT_X := 21.5
+var mt := {"bW": 1, "bM": 1, "sW": 0, "sM": 1}      # b: the bridge (1: it joins the terraces); s: the stones (1: up). W: the world's; M: the water's
+var match_view_m := false      # the turned picture is drawn: the things of the water's court are the ones that stand, and the world's are in the water
+var mt_mat := {}      # the look of the images of the bridge and of the stones (red where they do not agree)
+const MT_CALM := Color("857fa4")
+const MT_RED := Color("c4506a")
+func _match_room() -> void:
+	var qx0 := MT_X0 + 0.42; var qx1 := MT_X1 - 0.42
+	_pool_court(MT_X0, MT_Z0, MT_X1, MT_Z1, qx0, MT_PZ0, qx1, MT_PZ1, "stone", "PoolSkyM")
+	tile_hole = Rect2(qx0 - 0.08, MT_PZ0 - 0.08, qx1 - qx0 + 0.16, MT_PZ1 - MT_PZ0 + 0.16); tiles(MT_X0, MT_Z0, MT_X1, MT_Z1, 1.0); tile_hole = Rect2()
+	glass(qx0, MT_PZ0, qx1, MT_PZ1)
+	parapet(Vector3(MT_X0 + 0.1, 0, MT_Z0 + 0.1), Vector3(MT_X1 - 0.1, 0, MT_Z0 + 0.1)); parapet(Vector3(MT_X0 + 0.1, 0, MT_Z0 + 0.1), Vector3(MT_X0 + 0.1, 0, MT_Z1 - 0.1)); parapet(Vector3(MT_X1 - 0.1, 0, MT_Z0 + 0.1), Vector3(MT_X1 - 0.1, 0, MT_Z1 - 0.1))
+	parapet(Vector3(MT_X0 + 0.1, 0, MT_Z1 - 0.1), Vector3(MT_EXIT_X - 0.7, 0, MT_Z1 - 0.1)); parapet(Vector3(MT_EXIT_X + 0.7, 0, MT_Z1 - 0.1), Vector3(MT_X1 - 0.1, 0, MT_Z1 - 0.1))
+	blk(Vector3(MT_EXIT_X - 0.7, -0.18, MT_Z1), Vector3(MT_EXIT_X + 0.7, 0.0, MT_Z1 + 1.9), "stone")      # the landing outside
+	for e in [-1.0, 1.0]: blk(Vector3(MT_EXIT_X + e * 0.7 - 0.09, 0, MT_Z1 - 0.22), Vector3(MT_EXIT_X + e * 0.7 + 0.09, 2.0, MT_Z1 - 0.04), "stone")
+	leaf("mx", Vector3(MT_EXIT_X, 0, MT_Z1 - 0.13), false, 0.61, 1.75)
+	cypress(Vector3(MT_X0 + 0.95, 0, MT_Z0 + 0.95)); cypress(Vector3(MT_X1 - 0.95, 0, MT_Z0 + 0.95)); urn(Vector3(MT_X0 + 0.9, 0, MT_Z1 - 0.9)); urn(Vector3(MT_X1 - 0.9, 0, MT_Z1 - 0.9))
+	for wk in ["b", "s"]:
+		var m := StandardMaterial3D.new(); m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; m.albedo_color = MT_CALM; m.cull_mode = BaseMaterial3D.CULL_DISABLED; mt_mat[wk] = m
+	for both in [self, mroot]:
+		var twin: bool = both == mroot
+		var flat := "flat2" if twin else "flat"
+		cyl(MT_C + Vector3(0, -0.02, 0), 0.62, 0.7, 0.1, pal("shade", flat), 24, both)      # the pier
+		# the bridge: a deck with a rail on each side, turning on the pier
+		var br := Node3D.new(); br.position = MT_C; both.add_child(br); N["mbr_m" if twin else "mbr"] = br
+		var half := (MT_PZ1 - MT_PZ0) * 0.5 + 0.12
+		var parts := [blk(Vector3(-0.46, 0.05, -half), Vector3(0.46, 0.11, half), "stone", br)]
+		for e in [-1.0, 1.0]:
+			parts.append(blk(Vector3(e * 0.43 - 0.025, 0.56, -half + 0.05), Vector3(e * 0.43 + 0.025, 0.61, half - 0.05), "gold", br))
+			for i in 7: parts.append(blk(Vector3(e * 0.43 - 0.02, 0.11, -half + 0.08 + (2.0 * half - 0.16) * i / 6.0 - 0.02), Vector3(e * 0.43 + 0.02, 0.56, -half + 0.08 + (2.0 * half - 0.16) * i / 6.0 + 0.02), "dark", br))
+		if twin:
+			for q in parts: (q as MeshInstance3D).material_override = mt_mat["b"]
+		# the stones: five, in a row by the east wall, from terrace to terrace
+		var sn := Node3D.new(); both.add_child(sn); N["mst_m" if twin else "mst"] = sn
+		for i in 5:
+			var z := MT_PZ0 + 0.62 + (MT_PZ1 - MT_PZ0 - 1.24) * i / 4.0
+			var sb := blk(Vector3(MT_SX - 0.42, 0.0 if twin else -0.4, z - 0.42), Vector3(MT_SX + 0.42, 0.07, z + 0.42), "stone", sn)      # (the image is of what stands out of the water, not of what is under it)
+			if twin: sb.material_override = mt_mat["s"]
+		# the two wheels
+		var wa := winch(Vector3(16.4, 0, MT_Z0 + 1.05), PI * 0.5, both, twin); N["wheelA_m" if twin else "wheelA"] = wa.wheel
+		var wb2 := winch(Vector3(16.4, 0, MT_Z1 - 1.05), -PI * 0.5, both, twin); N["wheelB_m" if twin else "wheelB"] = wb2.wheel
+		if not twin: N["hubA"] = wa.hub; N["hubnA"] = wa.n; N["hubB"] = wb2.hub; N["hubnB"] = wb2.n
+	solids.append(Vector3(16.4, MT_Z0 + 1.05, 0.5)); solids.append(Vector3(16.4, MT_Z1 - 1.05, 0.5))
+	# floor: hers in the world, her shadow's in the water
+	rects["Mn"] = R(MT_X0 + 0.5, MT_Z0 + 0.75, MT_X1 - 0.5, MT_PZ0 - 0.3); rects["Ms"] = R(MT_X0 + 0.5, MT_PZ1 + 0.3, MT_X1 - 0.5, MT_Z1 - 0.7)
+	rects["Mb"] = R(MT_C.x - 0.3, MT_PZ0 - 0.35, MT_C.x + 0.3, MT_PZ1 + 0.35); rects["Mst"] = R(MT_SX - 0.25, MT_PZ0 - 0.35, MT_SX + 0.25, MT_PZ1 + 0.35)
+	rects["Mx"] = R(MT_EXIT_X - 0.3, MT_Z1 - 0.75, MT_EXIT_X + 0.3, MT_Z1 + 1.6, false)
+	W["M"] = {"r": [qx0, MT_PZ0, qx1, MT_PZ1], "heads": [rects["Mn"], rects["Ms"]],
+		"foot": {"n": R(MT_X0 + 0.5, MT_Z0 + 0.75, MT_X1 - 0.5, MT_PZ0 - 0.3), "s": R(MT_X0 + 0.5, MT_PZ1 + 0.3, MT_X1 - 0.5, MT_Z1 - 0.7),
+			"b": R(MT_C.x - 0.3, MT_PZ0 - 0.35, MT_C.x + 0.3, MT_PZ1 + 0.35), "st": R(MT_SX - 0.25, MT_PZ0 - 0.35, MT_SX + 0.25, MT_PZ1 + 0.35)}}
+	WL.append("M")
+	for id in ["A", "B"]:
+		var hub: Vector3 = N["hub" + id]; var hn: Vector3 = N["hubn" + id]
+		objs["mw" + id] = {"at": Vector3(hub.x, -hub.y, hub.z), "stand": Vector3(hub.x, 0, hub.z) + hn * 0.56, "mark": false, "water": "M", "match": true, "rstand": hub + hn * 0.56,
+			"hits": [Vector3(hub.x, -hub.y - 0.4, hub.z), Vector3(hub.x, -0.1, hub.z), Vector3(hub.x, 0.2, hub.z), Vector3(hub.x, hub.y + 0.3, hub.z)]}
+	stele("m_stele", MT_START + Vector3(0.4, 0, 0.3), 0.0, ["He turned things apart.\nThe water kept them as they were.", "Where the two agree,\nthe water is still."])
+
+## (the trial begins in that court, with her awake)
+func _match_begin() -> void:
+	_wake_now(); pos = MT_START; yaw = 0.0; cam_t = pos
+	_match_apply(); _match_tint(0.0)
+
+## the things of the court are put as they are: those that stand are the world's (or, turned, the water's), and their
+## images are the other court's. Floor follows.
+func _match_apply() -> void:
+	var real := "M" if match_view_m else "W"; var img := "W" if match_view_m else "M"
+	(N["mbr"] as Node3D).rotation.y = 0.0 if mt["b" + real] == 1 else PI * 0.5; (N["mbr_m"] as Node3D).rotation.y = 0.0 if mt["b" + img] == 1 else PI * 0.5
+	for pr in [["mst", real], ["mst_m", img]]:
+		var up: bool = mt["s" + String(pr[1])] == 1
+		(N[pr[0]] as Node3D).visible = up; (N[pr[0]] as Node3D).position.y = 0.0 if up else -0.5
+	(N["wheelA"] as Node3D).visible = match_view_m; (N["wheelA_m"] as Node3D).visible = not match_view_m      # the wheel the world has lost
+	rects["Mb"].on = mt.bW == 1; rects["Mst"].on = mt.sW == 1
+	W["M"].foot["b"].on = mt.bM == 1; W["M"].foot["st"].on = mt.sM == 1
+
+## the images of the things that do not agree with them turn red, the others the pale of the water
+func _match_tint(dur := 0.9) -> void:
+	for wk in ["b", "s"]:
+		var to_c := MT_RED if mt[wk + "W"] != mt[wk + "M"] else MT_CALM
+		if dur <= 0.0: (mt_mat[wk] as StandardMaterial3D).albedo_color = to_c
+		else: create_tween().tween_property(mt_mat[wk], "albedo_color", to_c, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## a wheel has moved a thing of the court its turner stands in: `el` "b" or "s". What stands is what is seen to move.
+func _match_turn(el: String) -> void:
+	var w := "M" if flip_on else "W"
+	mt[el + w] = 1 - int(mt[el + w])
+	var v: int = mt[el + w]
+	if el == "b":
+		var q := create_tween(); q.tween_property(N["mbr"], "rotation:y", 0.0 if v == 1 else PI * 0.5, 2.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		await q.finished
+	else:
+		var sn: Node3D = N["mst"]
+		if v == 1: sn.visible = true
+		var q2 := create_tween(); q2.tween_property(sn, "position:y", 0.0 if v == 1 else -0.5, 1.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		await q2.finished
+		if v == 0: sn.visible = false
+	_match_apply(); _match_tint()
+	if mt.bW == mt.bM and mt.sW == mt.sM and not flags.get("m_still", false): _match_still()
+
+## all agree: the water is still, and the way out opens
+func _match_still() -> void:
+	flags["m_still"] = true
+	say("the water is still")
+	create_tween().tween_property(N["mx"], "position:y", -2.0, 2.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	rects["Mx"].on = true
+	print("MATCH the water is still: the way out is open")
+
+func _do_mwA() -> void:      # wheel A: the bridge
+	await _shadow_wheel("A", MT_C + Vector3(0, 0.3, 0), func() -> void: await _match_turn("b"))
+
+func _do_mwB() -> void:      # wheel B: the bridge and the stones, both
+	await _shadow_wheel("B", MT_C + Vector3(1.6, 0.3, 0), func() -> void:
+		_match_turn("s")
+		await _match_turn("b"))
+
+## (the trial, played through as a player would: FLIP=match ... -- matchdemo)
+func _play_match() -> void:
+	var dir := OS.get_environment("SHOT_DIR")
+	var snap := func(n: String) -> void:
+		if dir != "": await RenderingServer.frame_post_draw; get_viewport().get_texture().get_image().save_png("%s/%s.png" % [dir, n])
+	var idle := func() -> void:
+		var still := 0
+		while still < 14:
+			await get_tree().process_frame
+			still = still + 1 if (not busy and not flip_busy and not flip_homing and route.is_empty() and pending == "" and refl_busy == 0) else 0
+	var sign := func() -> void:
+		var n0 := 0
+		while flip_icon_wid == "" and n0 < 240: await get_tree().process_frame; n0 += 1
+		if flip_icon_wid == "": print("MATCH the sign does not show at ", pos)
+		_flip_icon_press(); await get_tree().process_frame
+	var state := func() -> String: return "world bridge %d stones %d | water bridge %d stones %d" % [mt.bW, mt.sW, mt.bM, mt.sM]
+	await get_tree().create_timer(1.0).timeout
+	tap(Vector2(360, 640)); await wait(7.0); await snap.call("m0_the_court")
+	print("MATCH begins at ", pos, ": ", state.call())
+	_tap_at(N["hubA"]); await idle.call()      # the wheel by her: in the world it is gone
+	print("MATCH wheel A in the world: ", state.call(), ", she at ", pos)
+	_tap_at(N["hubB"])      # over the bridge to wheel B: the stones rise, and the bridge turns away
+	while a_wL < 0.9: await get_tree().process_frame
+	await wait(3.4); await snap.call("m1_she_turns_wheel_b")
+	await idle.call()
+	print("MATCH wheel B in the world: ", state.call(), ", she at ", pos); await wait(0.6); await snap.call("m2_the_bridge_does_not_agree")
+	await sign.call(); await idle.call()
+	print("MATCH turned over: ", flip_on); await wait(0.8); await snap.call("m3_turned")
+	_tap_at(N["hubA"])      # her shadow, over the water's bridge, to the wheel the water still has
+	while a_wL < 0.9 and not flags.get("m_still", false): await get_tree().process_frame
+	await wait(3.4); await snap.call("m4_the_shadow_turns_wheel_a")
+	await idle.call()
+	print("MATCH wheel A in the water: ", state.call(), ", still ", flags.get("m_still", false)); await wait(0.8); await snap.call("m5_still")
+	await sign.call(); await idle.call()
+	print("MATCH turned back: ", not flip_on, ", she at ", pos); await wait(0.6); await snap.call("m6_back")
+	_tap_at(Vector3(MT_EXIT_X, 0, MT_Z1 + 1.2))
+	var n2 := 0
+	while not ended and n2 < 900: await get_tree().process_frame; n2 += 1
+	await wait(2.5)
+	print("MATCH ended: ", ended, " at ", pos); await snap.call("m7_end")
+	get_tree().quit()
 
 ## (the trial, played through as a player would: FLIP=demo ... -- flipdemo) both rooms, by her shadow
 func _play_flipdemo() -> void:
@@ -602,49 +848,36 @@ func _play_flipdemo() -> void:
 		if flip_icon_wid == "": print("DEMO the sign does not show at ", pos)
 		_flip_icon_press(); await get_tree().process_frame
 	print("DEMO she woke at ", pos, ", the water by her: ", _flip_water_near())
-	# ---- the first room: the wheel is on the far piece of the mole. She goes to it through the turned world.
-	_tap_at(N["hub1"]); await idle.call()      # (in the world she cannot come to it)
-	print("DEMO 1 the wheel from the quay: turned ", done.has("wheel1"), ", she at ", pos)
-	await sign.call(); await idle.call()
-	print("DEMO 1 turned over: ", flip_on, " at ", pos); await wait(1.0); await snap.call("demo_1_harbour_turned")
-	_tap_at(N["hub1"]); await idle.call()      # (a shadow turns no wheel)
-	print("DEMO 1 the shadow at the wheel: turned ", done.has("wheel1"))
-	_tap_at(Vector3(0, 0, 5.6)); await idle.call()      # the middle of the mole: no floor in the world
-	print("DEMO 1 on the middle of the mole at ", pos, ": the sign shows ", flip_icon_wid != ""); await snap.call("demo_2_shadow_on_the_mole")
-	_tap_at(Vector3(0, 0, mole_b + 0.3)); await idle.call()      # the far piece
-	print("DEMO 1 on the far piece at ", pos)
-	await sign.call(); await idle.call()
-	print("DEMO 1 turned back: ", not flip_on, ", she is at ", pos); await wait(0.8); await snap.call("demo_3_she_on_the_far_piece")
-	_tap_at(N["hub1"])
+	await sign.call(); await idle.call()      # the picture turns over
+	print("DEMO 1 turned over: ", flip_on, ", she stays at ", flip_anchor); await wait(2.4); await snap.call("demo_1_harbour_turned")
+	_tap_at(Vector3(4.25, 0, 10.2))      # the far corner of the quay: farther from her than a shadow may go
+	var far := 0.0; var n1 := 0
+	while n1 < 900 and (n1 < 30 or not route.is_empty() or flip_homing): await get_tree().process_frame; n1 += 1; far = maxf(far, _flat(pos, flip_anchor))
+	print("DEMO 1 the far corner: it went ", snappedf(far, 0.01), " m from her and is now at ", pos); await wait(0.6)
+	var hub: Vector3 = N["hub1"]
+	_tap_at(hub); await wait(2.6); await snap.call("demo_2_shadow_on_the_mole")
 	while a_wL < 0.9 and not done.has("wheel1"): await get_tree().process_frame
-	await wait(0.6); await snap.call("demo_3b_she_turns_the_wheel")
+	await wait(0.7); await snap.call("demo_2b_shadow_at_the_wheel")      # (she, in the water, stands as she stood)
 	await idle.call()
-	print("DEMO 1 wheel ", done.has("wheel1"), " sluice ", rects["S1"].on, " she at ", pos)
-	await sign.call(); await idle.call()
-	_tap_at(Vector3(0, 0, 4.3)); await idle.call()      # back over the mole
-	await sign.call(); await idle.call()
-	print("DEMO 1 back on the quay: ", not flip_on, " at ", pos); await snap.call("demo_4_harbour_back")
-	# ---- the second room: a grille across the walk in each world, in different places. She weaves past both.
-	_tap_at(Vector3(-2.3, 0, -9.0)); await idle.call()
+	print("DEMO 1 wheel ", done.has("wheel1"), " sluice ", rects["S1"].on, " shadow at ", pos); await snap.call("demo_3_wheel_turned")
+	await sign.call(); await idle.call()      # back
+	print("DEMO 1 turned back: ", not flip_on, ", she is at ", pos); await wait(0.8); await snap.call("demo_4_harbour_back")
+	_tap_at(Vector3(-2.3, 0, -9.0)); await idle.call()      # she walks on, into the second room
 	print("DEMO 2 on the walk at ", pos)
-	await sign.call(); await idle.call()
-	_tap_at(Vector3(-2.3, 0, -14.0)); await idle.call()      # the turned world's grille stops the shadow
-	print("DEMO 2 from the near end the shadow comes to ", pos); await snap.call("demo_5_stopped_at_the_grille")
-	await sign.call(); await idle.call()
-	_tap_at(N["hub2"]); await idle.call()      # (in the world its own grille stands before the wheel)
-	print("DEMO 2 the wheel from before the world's grille: turned ", done.has("wheel2"))
-	_tap_at(Vector3(-2.3, 0, -12.2)); await idle.call()      # she walks on, between where the two grilles stand
-	print("DEMO 2 in the world she comes to ", pos)
-	await sign.call(); await idle.call()
-	_tap_at(Vector3(-2.3, 0, -14.0)); await idle.call()      # between the two grilles she turned: the shadow walks on
-	print("DEMO 2 the shadow past both at ", pos); await snap.call("demo_6_shadow_past_both")
-	await sign.call(); await idle.call()
-	print("DEMO 2 turned back: ", not flip_on, ", she is at ", pos)
-	_tap_at(N["hub2"])
-	while a_wL < 0.9 and not done.has("wheel2"): await get_tree().process_frame
-	await wait(0.6); await snap.call("demo_7_she_turns_the_second_wheel")
+	await sign.call(); await idle.call()      # its water
+	print("DEMO 2 turned over: ", flip_on, " at ", pos); await wait(0.8); await snap.call("demo_5_trough_turned")
+	var h2: Vector3 = N["hub2"]
+	_tap_at(h2); await idle.call()      # the wheel: the shadow is stopped by the grille that stands here, in the turned picture
+	print("DEMO 2 first try: wheel ", done.has("wheel2"), " shadow at ", pos); await snap.call("demo_6_stopped_at_the_grille")
+	await sign.call(); await idle.call()      # back
+	_tap_at(Vector3(-2.3, 0, TG_REAL + 0.6)); await idle.call()      # she walks on, past where that grille stood
+	print("DEMO 2 she walked on to ", pos)
+	await sign.call(); await idle.call()      # over again
+	_tap_at(h2); await wait(2.0); await snap.call("demo_7_shadow_past_the_grille")
 	await idle.call()
-	print("DEMO 2 wheel ", done.has("wheel2"), " sluice ", rects["S2"].on, " she at ", pos)
+	print("DEMO 2 second try: wheel ", done.has("wheel2"), " sluice ", rects["S2"].on, " shadow at ", pos); await snap.call("demo_8_second_wheel")
+	await sign.call(); await idle.call()      # back
+	print("DEMO 2 turned back: ", not flip_on, ", she is at ", pos)
 	_tap_at(Vector3(-2.05, 0, TZ0 - 1.6))      # through the sluice: the end
 	var n2 := 0
 	while not ended and n2 < 900: await get_tree().process_frame; n2 += 1
@@ -877,6 +1110,7 @@ func _cs_deep_pit(sky: String, depth: float) -> void:
 func _world() -> void:
 	mroot = Node3D.new(); mroot.name = "MirrorPool"; mroot.transform = Transform3D(Basis(Vector3(1, 0, 0), Vector3(0, -1, 0), Vector3(0, 0, 1)), Vector3.ZERO); add_child(mroot)
 	_harbour(); _causeway(); _basin(); _well(); _fountain(); _forecourt(); _atrium()
+	if match_demo: _match_room()
 	_temple()
 	_wings()
 	_strip_refl(mroot)
@@ -1216,7 +1450,7 @@ func _harbour() -> void:
 	tile_hole = Rect2(BX0 - 0.08, BZ0 - 0.08, BX1 - BX0 + 0.16, BZ1 - BZ0 + 0.16); tiles(HX0, HZ0, HX1, HZ1, 1.0); tile_hole = Rect2()
 	glass(BX0, BZ0, BX1, BZ1)
 	W["H"] = {"r": [BX0, BZ0, BX1, BZ1], "heads": [R(-MOLE_W, BZ0 - 0.6, MOLE_W, MOLE_A)],
-		"foot": {"stub": R(-MOLE_W, BZ0 - 0.6, MOLE_W, MOLE_A + 0.02), "gap": R(-MOLE_W, MOLE_A - 0.02, MOLE_W, mole_b + 0.02), "far": R(-MOLE_W, mole_b - 0.02, MOLE_W, MOLE_C),
+		"foot": {"stub": R(-MOLE_W, BZ0 - 0.6, MOLE_W, MOLE_A + 0.02), "gap": R(-MOLE_W, MOLE_A - 0.02, MOLE_W, MOLE_B + 0.02), "far": R(-MOLE_W, MOLE_B - 0.02, MOLE_W, MOLE_C),
 			# (the quay all round the basin: the shadow has the run of the court, as far as it may go from her)
 			"qn": R(HX0 + 0.45, HZ0 + 0.45, HX1 - 0.45, BZ0 - 0.3), "qw": R(HX0 + 0.45, HZ0 + 0.45, BX0 - 0.3, HZ1 - 0.45), "qe": R(BX1 + 0.3, HZ0 + 0.45, HX1 - 0.45, HZ1 - 0.45), "qs": R(HX0 + 0.45, BZ1 + 0.3, HX1 - 0.45, HZ1 - 0.45)}}
 	WL.append("H")
@@ -1224,11 +1458,11 @@ func _harbour() -> void:
 		var twin: bool = both == mroot
 		var flat := "flat2" if twin else "flat"
 		# the mole: the stub that is left on the quay, and the piece in the open with the wheel
-		for seg in [[BZ0, MOLE_A], [mole_b, MOLE_C]]:
+		for seg in [[BZ0, MOLE_A], [MOLE_B, MOLE_C]]:
 			var d := blk(Vector3(-MOLE_W, 0, seg[0]), Vector3(MOLE_W, 0.05, seg[1]), "stone", both); d.material_override = pal("stone", flat)
 			for e in [-1.0, 1.0]: blk(Vector3(e * MOLE_W - 0.04, 0.05, seg[0]), Vector3(e * MOLE_W + 0.04, 0.085, seg[1]), "shade", both)
 		# the broken ends: stones fallen askew
-		for rb in [[Vector3(-0.22, 0.05, MOLE_A - 0.12), 0.5, 0.13], [Vector3(0.24, 0.05, MOLE_A - 0.07), -0.4, 0.1], [Vector3(0.12, 0.05, mole_b + 0.1), 0.9, 0.12], [Vector3(-0.27, 0.05, mole_b + 0.06), -0.2, 0.09]]:
+		for rb in [[Vector3(-0.22, 0.05, MOLE_A - 0.12), 0.5, 0.13], [Vector3(0.24, 0.05, MOLE_A - 0.07), -0.4, 0.1], [Vector3(0.12, 0.05, MOLE_B + 0.1), 0.9, 0.12], [Vector3(-0.27, 0.05, MOLE_B + 0.06), -0.2, 0.09]]:
 			var bk := blk(Vector3(-rb[2], 0, -0.08), Vector3(rb[2], 0.07, 0.08), "stone", both); bk.position = rb[0] + Vector3(0, 0.035, 0); bk.rotation.y = rb[1]
 		# her plinth
 		cyl(HERPL, 0.32, 0.3, 0.07, pal("shade", flat), 20, both); cyl(HERPL + Vector3(0, 0.07, 0), 0.26, 0.26, 0.1, pal("stone", flat), 20, both)
@@ -1241,7 +1475,7 @@ func _harbour() -> void:
 		var crs := Node3D.new(); both.add_child(crs); N["cross_m" if twin else "cross_r"] = crs
 		var n1 := 4
 		for k in n1:
-			var s0 := MOLE_A + (mole_b - MOLE_A) * k / n1; var s1 := MOLE_A + (mole_b - MOLE_A) * (k + 1) / n1
+			var s0 := MOLE_A + (MOLE_B - MOLE_A) * k / n1; var s1 := MOLE_A + (MOLE_B - MOLE_A) * (k + 1) / n1
 			var sb := blk(Vector3(-MOLE_W + 0.03 + 0.03 * (k % 2), 0, -(s1 - s0) * 0.5 + 0.07), Vector3(MOLE_W - 0.03 - 0.03 * ((k + 1) % 2), 0.05, (s1 - s0) * 0.5 - 0.07), "stone", crs)
 			if twin: sb.material_override = under_mat(Color("857fa4"))
 			sb.position += Vector3(0, 0, (s0 + s1) * 0.5); sb.rotation.y = 0.03 * sin(k * 2.3 + 0.7)
@@ -1281,7 +1515,8 @@ func _basin() -> void:
 	W["T"] = {"r": [TPX0, TPZ0, TPX1, TPZ1], "heads": [R(TWX0, TG_REAL + 0.2, TWX1, TZ1 - 0.4)],
 		"foot": {"a": R(TWX0, TG_WATER + 0.15, TWX1, TZ1 - 0.4), "wg": R(TWX0, TG_WATER - 0.15, TWX1, TG_WATER + 0.15, false), "b": R(TWX0, TZ0 + 0.65, TWX1, TG_WATER - 0.15),
 			# (round the water by its other side: a long way, and farther from her than a shadow may go)
-			"n": R(TWX0, TPZ1 + 0.3, TX1 - 0.45, TZ1 - 0.4), "e": R(TPX1 + 0.3, TZ0 + 0.65, TX1 - 0.45, TZ1 - 0.4)}}
+			"n": R(TWX0, TPZ1 + 0.3, TX1 - 0.45, TZ1 - 0.4), "e": R(TPX1 + 0.3, TZ0 + 0.65, TX1 - 0.45, TZ1 - 0.4), "s": R(TWX0, TZ0 + 0.65, TX1 - 0.45, TPZ0 - 0.3)},
+		"wide": ["n", "e", "s"]}
 	WL.append("T")
 	wall(TX0, TZ0, TX0 + 0.3, TZ1, 2.3, true)      # the west wall
 	stoa(-1.3, TZ0, TX1, TZ0 + 0.3)      # the north side, east of the sluice: a row of columns
@@ -1721,8 +1956,6 @@ func _nav() -> void:
 	rects["Hq"] = R(HX0 + 0.45, HZ0 + 0.75, HX1 - 0.45, BZ0 - 0.3)      # the quay
 	rects["Hw"] = R(HX0 + 0.45, HZ0 + 0.75, BX0 - 0.3, HZ1 - 0.45); rects["He"] = R(BX1 + 0.3, HZ0 + 0.75, HX1 - 0.45, HZ1 - 0.45); rects["Hs"] = R(HX0 + 0.45, BZ1 + 0.3, HX1 - 0.45, HZ1 - 0.45)
 	rects["Hm"] = R(-MOLE_W + 0.2, BZ0 - 0.35, MOLE_W - 0.2, MOLE_A - 0.3)      # the stub of the mole
-	if flip_demo or flip_test:      # the far piece: floor for her too, once she has come to it through the turned world
-		rects["Hf"] = R(-MOLE_W + 0.15, mole_b + 0.06, MOLE_W - 0.15, MOLE_C - 0.3); solids.append(Vector3(WHEEL1.x, WHEEL1.z, 0.62))
 	rects["S1"] = R(-0.3, HZ0 - 0.6, 0.3, HZ0 + 0.8, false)      # through the first sluice
 	solids.append(Vector3(HERPL.x, HERPL.z, 0.42))
 	rects["P"] = R(-0.85, TZ1 - 0.45, 0.85, HZ0 - 0.55)      # the causeway
@@ -2003,15 +2236,19 @@ func walk_to(p: Vector3, cap := WALK) -> bool:
 
 func use(k: String) -> void:
 	var o: Dictionary = objs[k]
-	if o.has("water") and (flip_test or (flip_demo and o.water in FLIP_DEMO_WATERS)):      # (the trial) a thing in a turning water: the picture turns over first; the shadow is what does things there
+	if o.has("match"):      # a wheel of the court of the still water, in the world: she turns it herself, if she can come to it and it is there
 		if busy or flip_busy: return
-		var st := Vector3(o.rstand.x, 0, o.rstand.z)      # (she does it herself, with her own hands, if she can come to it: through the turned world, if need be)
+		var st := Vector3(o.rstand.x, 0, o.rstand.z)
 		if not walk_to(st, PLAY_WALK): await _her_no(); return
 		busy = true
 		while not route.is_empty(): await get_tree().process_frame
 		if _flat(pos, st) > 0.3: busy = false; return
+		if k == "mwA": busy = false; await face(N["hubA"]); await _her_no(); return      # (in the world its wheel is gone: only the water has it)
 		await call("_do_" + k)
-		busy = false; settled.emit()
+		busy = false; settled.emit(); return
+	if o.has("water") and (flip_test or (flip_demo and o.water in FLIP_DEMO_WATERS)):      # (the trial) a thing in a turning water: the picture turns over first; the shadow is what does things there
+		if busy or flip_busy: return
+		walk_to(_head_point(o.water), PLAY_WALK)      # (she goes to the water's edge; the sign turns the world, and the shadow does the thing)
 		return
 	if o.has("water"):      # a thing in a water: her reflection goes to it
 		if busy: return
@@ -2162,21 +2399,18 @@ func _do_wheel1() -> void:
 	var opens := func() -> void:
 		await sluice_open("s1", 2.6)
 		rects["S1"].on = true; done["wheel1"] = true
-	if flip_demo or flip_test: await _shadow_wheel("1", Vector3(0, 0.4, 2.6), opens)
+	if flip_on: await _shadow_wheel("1", Vector3(0, 0.4, 2.6), opens)
 	else: await _refl_wheel("1", "H", Vector3(0, 0.4, 2.6), 10.5, opens)
 
 ## I.3: the wheel behind the grille. Her reflection passes where the grille is not (in the water there is none
 ## there), and turns it: the grille and the sluice beyond it go down
 func _do_wheel2() -> void:
 	var opens := func() -> void:
-		if flip_demo or flip_test:      # (the trial) the wheel draws that grille up and holds it
-			for kq in ["g2", "g2_m"]: create_tween().tween_property(N[kq], "position:y", GATE_UP, 2.6).set_trans(Tween.TRANS_SINE)
-		else:
-			if (N["g2"] as Node3D).position.y > -2.0: create_tween().tween_property(N["g2"], "position:y", -2.1, 2.6).set_trans(Tween.TRANS_SINE)
-			if (N["g2_m"] as Node3D).visible: var gq := create_tween(); gq.tween_property(N["g2_m"], "scale:y", 0.001, 2.6).set_trans(Tween.TRANS_SINE); gq.tween_callback(func() -> void: (N["g2_m"] as Node3D).visible = false)
+		if (N["g2"] as Node3D).position.y > -2.0: create_tween().tween_property(N["g2"], "position:y", -2.1, 2.6).set_trans(Tween.TRANS_SINE)
+		if (N["g2_m"] as Node3D).visible: var gq := create_tween(); gq.tween_property(N["g2_m"], "scale:y", 0.001, 2.6).set_trans(Tween.TRANS_SINE); gq.tween_callback(func() -> void: (N["g2_m"] as Node3D).visible = false)
 		await sluice_open("s2", 2.8)
 		rects["Tg"].on = true; rects["S2"].on = true; done["wheel2"] = true
-	if flip_demo or flip_test: await _shadow_wheel("2", Vector3(-1.6, 0.4, -13.6), opens)
+	if flip_on: await _shadow_wheel("2", Vector3(-1.6, 0.4, -13.6), opens)
 	else: await _refl_wheel("2", "T", Vector3(-1.6, 0.4, -13.6), 9.5, opens)
 
 ## I.4: the windlass of the well. She lowers the empty bucket until it touches the water; there it meets its own
@@ -2632,6 +2866,9 @@ func _process(dt: float) -> void:
 	super._process(dt)
 	if flip_moving: _flip_post()
 	if flip_icon != null: _flip_icon_frame(dt)
+	_smoke_frame(dt)
+	if flip_on and not flip_busy and not flip_homing and _flat(pos, flip_anchor) > FLIP_LEASH: _shadow_home()      # too far from her
+	if match_demo and not ended and not flip_on and not flip_busy and pos.z > MT_Z1 + 0.7: route.clear(); _end()
 	if flip_demo and not ended and not busy and not flip_busy and not flip_on and rects.has("S2") and rects["S2"].on and pos.z < TZ0 - 0.9: route.clear(); _end()      # (the trial ends behind the second sluice)
 	if not flip_on and not flip_busy and woke: _stele_watch()
 	if flip_on or flip_busy: return      # (the shadow is played: her image stays with her, and the floor's own rules are not the shadow's)
@@ -2673,6 +2910,8 @@ func _ready() -> void:
 	super._ready()
 	var args := OS.get_cmdline_user_args()
 	_flip_setup()
+	if match_demo: _match_begin()
+	if "matchdemo" in args: hand_play = true; _play_match()
 	if "flipdemo" in args: hand_play = true; _play_flipdemo()
 	if "views" in args: _views()
 	if "act1" in args: _play_act1()
