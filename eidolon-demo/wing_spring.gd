@@ -96,6 +96,8 @@ const SP4_HOLE := Vector3(-11.95, 1.96, -84.17)     # and the hole it belongs in
 
 var sp_col := {}      # the colossi, by name: {"p": foot, "q": which quarter the arm points to (0 north, 1 east, 2 south, 3 west), "w": its water, "pair": the one geared to it, "view": where the eye rests while it turns}
 var sp_chan: Array = []      # the course of the water once the spring runs: [from, to] pieces, in order
+var sp_eye := false          # the eye is resting between her and her reflection (see _process)
+var sp_eye_s0 := -1.0        # the width it keeps when it follows her (taken when she first comes into the wing)
 var sp3_at := [2, 1, 0, 3]   # at which of the five places each of the four stands (0: the end by the opening .. 4: the end by the wall), in this order: the one that wants the sea, the wall, the one beside it, the empty place
 var sp3_sol := []            # where each of them is in the list of things she walks round
 var sp3_h := []              # their heads, and their twins': [statue * 2 + (1 for the twin)] = {"sk", "ni", "hi", "n0", "h0", "yaw", "bow"}
@@ -122,6 +124,29 @@ func _wing_nav() -> void:
 func _ready() -> void:
 	super._ready()
 	if "spring" in OS.get_cmdline_user_args(): _play_spring()
+
+## While her reflection is out on one of this wing's waters and nothing else holds the eye, the eye rests between
+## the two of them, and takes in a little more when they are far apart: these pools are long, and what her
+## reflection does at the far end is what matters
+func _process(dt: float) -> void:
+	super._process(dt)
+	if busy or shot != null or not started: return      # (an act holds the eye)
+	if pos.z > UZ0 - 0.5:      # (she is not in this wing)
+		if sp_eye: sp_eye = false; cam_focus_on = false
+		return
+	if sp_eye_s0 < 0.0:
+		if cam_focus_on: return
+		sp_eye_s0 = cam.size      # the width the eye keeps when it follows her
+	if not refl_out.is_empty() and refl_w.begins_with("SP"):
+		var img: Vector3 = (refl_out.holder as Node3D).position + Vector3(0.9, 0, 0.9)      # (where its body is seen in the water)
+		var d := _flat(pos, img)
+		if d > 2.5: sp_eye = true
+		if sp_eye:
+			cam_focus = pos.lerp(img, 0.5 if d < 12.0 else 6.0 / d) + Vector3(0, 0.4, 0); cam_focus_on = true
+			cam.size = lerpf(cam.size, clampf(sp_eye_s0 + (d - 4.5) * 0.45, sp_eye_s0, sp_eye_s0 + 3.2), 1.0 - exp(-1.4 * dt))
+	else:
+		if sp_eye: sp_eye = false; cam_focus_on = false      # it is back under her feet: the eye goes back to her...
+		if not cam_focus_on and absf(cam.size - sp_eye_s0) > 0.01: cam.size = lerpf(cam.size, sp_eye_s0, 1.0 - exp(-1.4 * dt))      # ...and to its own width
 
 # ---------------------------------------------------------------- small builders
 ## the pit of a pool court made deep enough for what stands tall over its water (the colossi), and shut off from
