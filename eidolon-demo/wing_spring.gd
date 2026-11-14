@@ -347,7 +347,7 @@ func _refl_path(wid: String, from: Vector3, to: Vector3) -> Dictionary:
 	if not wid.begins_with("SP"): return super._refl_path(wid, from, to)
 	var F: Dictionary = W[wid].foot
 	var a := _foot_of(wid, from, 0.9)
-	if a == "": return {"pts": [], "left": 1e9, "h": 0.0}
+	if a == "": return {"pts": [], "left": 1e9, "h": 0.0, "hs": []}
 	var prev := {a: ""}; var q := [a]
 	while not q.is_empty():
 		var c: String = q.pop_front()
@@ -377,7 +377,8 @@ func _refl_path(wid: String, from: Vector3, to: Vector3) -> Dictionary:
 			pt = Vector3(clampf(mid.x, pr[0], pr[2]), 0, clampf(mid.z, pr[1], pr[3]))
 		pts.append(pt); cur = pt
 	pts.append(dest)
-	return {"pts": pts, "left": bd, "h": 0.0}
+	var hs := []; hs.resize(pts.size()); hs.fill(0.0)
+	return {"pts": pts, "left": bd, "h": 0.0, "hs": hs}
 
 # ---------------------------------------------------------------- P.1 the gilded palm
 ## A round pool with an islet in its middle, where the lever of the door stands. No way across, not in the water
@@ -397,7 +398,7 @@ func _sp_court1() -> void:
 	turned(c, [[r + 0.08, 0.04], [r + 0.08, 0.06], [r, 0.06], [r, -0.06]], "shade", 72)
 	var rim_n := R(qx0 - 1.5, qz0 - 1.5, qx1, qz0); var rim_w := R(qx0 - 1.5, qz0 - 1.5, qx0, qz1)
 	W["SP1"] = {"r": [qx0, qz0, qx1, qz1], "heads": [R(-13.1, -57.4, SP1_X1 - 0.45, qz0 - 0.45), R(qx0 - 0.9, qz0 - 0.45, qx0 - 0.45, qz1)],
-		"foot": {"n": rim_n, "w": rim_w, "isle": R(SP1_ISLE.x - 0.65, SP1_ISLE.z - 0.9, SP1_ISLE.x + 0.65, SP1_ISLE.z + 0.75)}}
+		"foot": {"n": rim_n, "w": rim_w, "isle": R(SP1_ISLE.x - 0.65, SP1_ISLE.z - 0.9, SP1_ISLE.x + 0.65, SP1_ISLE.z + 0.75)}, "far": 9.0}
 	WL.append("SP1")
 	_sp_colossus("1", SP1_S, 0, "SP1", SP1_S + Vector3(2.3, 0.4, 2.9))
 	for both in [self, mroot]:
