@@ -96,6 +96,7 @@ const SP4_HOLE := Vector3(-11.95, 1.96, -84.17)     # and the hole it belongs in
 
 var sp_col := {}      # the colossi, by name: {"p": foot, "q": which quarter the arm points to (0 north, 1 east, 2 south, 3 west), "w": its water, "pair": the one geared to it, "view": where the eye rests while it turns}
 var sp_chan: Array = []      # the course of the water once the spring runs: [from, to] pieces, in order
+var sp_sea_a := 0.6          # how strong her own image on the sea is drawn (see _process)
 var sp_eye := false          # the eye is resting between her and her reflection (see _process)
 var sp_eye_s0 := -1.0        # the width it keeps when it follows her (taken when she first comes into the wing)
 var sp3_at := [2, 1, 0, 3]   # at which of the five places each of the four stands (0: the end by the opening .. 4: the end by the wall), in this order: the one that wants the sea, the wall, the one beside it, the empty place
@@ -130,6 +131,19 @@ func _ready() -> void:
 ## reflection does at the far end is what matters
 func _process(dt: float) -> void:
 	super._process(dt)
+	# Her own image on the sea lies under the floors, some three metres down. The pits of the courts with a colossus
+	# are deep enough to show it through their water, as a second reflection far out in the pool: in those courts
+	# it is faded away
+	var deep := false
+	for c in [[SP1_X0, SP1_Z0, SP1_X1, SP1_Z1], [SP2_X0, SP2_Z0, SP2_X1, SP2_Z1], [SP4_X0, SP4_Z0, SP4_X1, SP4_Z1]]:
+		if pos.x > c[0] and pos.x < c[2] and pos.z > c[1] and pos.z < c[3]: deep = true
+	if H.has("refl"): (H["refl"].holder as Node3D).visible = not deep      # (and the body that stands for her under the sea is put away: at a court's edge it is under the floor either way)
+	var sea_a := 0.0 if deep else 0.6
+	if absf(sp_sea_a - sea_a) > 0.001:
+		sp_sea_a = move_toward(sp_sea_a, sea_a, dt * 2.0)
+		for m in her_mats:
+			var rm := (m as ShaderMaterial).next_pass as ShaderMaterial
+			if rm != null: rm.set_shader_parameter("fade_a", sp_sea_a)
 	if busy or shot != null or not started: return      # (an act holds the eye)
 	if pos.z > UZ0 - 0.5:      # (she is not in this wing)
 		if sp_eye: sp_eye = false; cam_focus_on = false
