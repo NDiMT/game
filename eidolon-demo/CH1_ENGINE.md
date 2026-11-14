@@ -150,6 +150,10 @@ water turns it back. It is switched off unless `FLIP=1` (or the run `-- flip`, w
   the dark her image has), and her image in the water has her own colours; turned back, she is herself again and
   her image is dark. (The owner: "when I play in the reflection, Ione is still black".)
 - Before it turns, the view opens until the whole water is in it, and closes again afterwards.
+- Found by it, and put right for the whole game: her image has one body for each level of water (`mir` for waters
+  at the floor's height, `mir_<key>` for each water below it, `_cs_water`). All of them followed her everywhere, so
+  that in any pool her image was several bodies, one below another (dark and blurred, it only looked too long). A
+  `mir_<key>` body now shows only while she is in its own water's court (`ch1._process`).
 - Not done: nothing in the game answers to the turned world yet (she walks in it as before, by taps); a tap on a
   water turns the picture and no longer sends her image out, so the courts' own puzzles are not playable with
   `FLIP=1`; only what has a twin under `mroot` is in the water.

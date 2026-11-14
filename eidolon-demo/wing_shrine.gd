@@ -498,7 +498,7 @@ func _process(dt: float) -> void:
 	if not flags.get("sh_arr", false) and started and woke and not busy and not ended and shot == null and pos.z < UZ0 - 0.2 and pos.z > SH_SZ1 - 0.5 and absf(pos.x - SH_X) < 0.9: _sh_arrive()      # (only on the stair behind the Gate: other wings reach as far north)
 	var mine := _sh_here(pos)      # behind the Gate the waters lie at the floor's height: the bodies that mirror her in waters of other levels are put away
 	for k in H:
-		if String(k).begins_with("mir_"): (H[k].holder as Node3D).visible = not mine
+		if mine and String(k).begins_with("mir_"): (H[k].holder as Node3D).visible = false
 	if not sh_still.is_empty() and refl_busy == 0:      # it keeps its eyes on her
 		var hd: Node3D = sh_still.holder
 		hd.rotation.y = lerp_angle(hd.rotation.y, atan2(pos.x - hd.position.x, pos.z - hd.position.z), 1.0 - exp(-1.6 * dt))

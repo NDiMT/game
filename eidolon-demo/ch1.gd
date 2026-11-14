@@ -479,7 +479,7 @@ func _cs_water(key: String, x0: float, z0: float, x1: float, z1: float, level: f
 		gl = prim(dm, Vector3((x0 + x1) * 0.5, level + 0.012, (z0 + z1) * 0.5), g); gl.scale = Vector3(x1 - x0, 1, z1 - z0)
 	else: gl = prim(wq, Vector3((x0 + x1) * 0.5, level + 0.012, (z0 + z1) * 0.5), g)
 	gl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	N[key + "_mr"] = mr; N[key + "_glass"] = gl; N[key + "_level"] = level
+	N[key + "_mr"] = mr; N[key + "_glass"] = gl; N[key + "_level"] = level; N[key + "_rect"] = [x0, z0, x1, z1]
 	cs_mirs.append(["mir_" + key, mr])
 	return mr
 
@@ -2239,6 +2239,14 @@ func _process(dt: float) -> void:
 	for c in cs_courts:
 		if pos.x > c[0] and pos.x < c[2] and pos.z > c[1] and pos.z < c[3]: inside = true
 	if H.has("mir"): (H["mir"].holder as Node3D).visible = not inside      # in a court whose water lies below the floor, that water's own body mirrors her
+	for k in H:      # and such a body shows only in its own water's court: everywhere else it lay under her other image, one body below another
+		if not String(k).begins_with("mir_"): continue
+		var wr = N.get(String(k).substr(4) + "_rect")
+		if wr == null: continue
+		var own := false
+		for c in cs_courts:
+			if wr[0] >= c[0] - 0.01 and wr[2] <= c[2] + 0.01 and wr[1] >= c[1] - 0.01 and wr[3] <= c[3] + 0.01 and pos.x > c[0] and pos.x < c[2] and pos.z > c[1] and pos.z < c[3]: own = true
+		(H[k].holder as Node3D).visible = own
 	if not hub_pending.is_empty() and not hub_busy and not busy and woke and pos.x > UX0 + 0.6 and pos.x < UX1 - 0.4 and pos.z > UZ0 and pos.z < UZ1: _hub_fill(hub_pending.pop_front())
 	if flags.get("gate_open", false) and not beyond and not ended and not flags.get("fin", false) and pos.z < UZ0 - 0.15: flags["fin"] = true; _ch1_finale()
 	var fy = _floor_y(pos)      # the stair and the podium: she stands as high as the floor is there
