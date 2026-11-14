@@ -2989,7 +2989,11 @@ func _look_add(key: String, foot: Vector3, h: float, lines: Array, big := false)
 	looks[key] = {"foot": foot, "top": foot + Vector3(0, h, 0), "lines": lines, "i": 0, "big": big}
 
 ## a stele of the sculptor's: an upright slab with lines of his writing on it
+var steles: Array = []      # the lines that used to be cut on slabs: {p: where the slab stood, lines, done}. They come by themselves as she comes to the place (see _stele_watch)
+var stele_busy := false
 func stele(key: String, p: Vector3, yaw: float, lines: Array) -> void:
+	if not old_world:      # (the slabs are gone: the owner wants no stones to tap for the words)
+		steles.append({"p": p, "lines": lines, "done": false}); return
 	if FileAccess.file_exists("res://props/stele.glb"): thing("stele", p, 0.0, STELE_PARTS, yaw)
 	else:
 		var n := Node3D.new(); n.position = p; n.rotation.y = yaw; add_child(n)
@@ -5312,6 +5316,18 @@ func _hold(node: Node3D, who: String) -> void:      # a thing goes into her righ
 	var sk: Skeleton3D = e.sk
 	carry = {"node": node, "sk": sk, "bone": _bone(sk, "RightHand"), "flip": who != "main"}
 	node.visible = true; node.rotation = Vector3(0, 0, PI * 0.5 if who != "main" else -PI * 0.5)      # it hangs from the hand by its ring
+
+## the words of a place come by themselves, once, when she comes near where its slab stood: one line after another
+func _stele_watch() -> void:
+	if stele_busy or busy or not started or ended: return
+	for s in steles:
+		if s.done or Vector2(pos.x - s.p.x, pos.z - s.p.z).length() > 2.6: continue
+		s.done = true; stele_busy = true
+		for l in s.lines:
+			quote("look", l, 4.2, true)
+			await wait(5.4)
+		stele_busy = false
+		return
 
 func _hermod(e: Dictionary) -> HerMod:
 	for c in (e.sk as Skeleton3D).get_children():

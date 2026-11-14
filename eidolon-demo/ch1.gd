@@ -149,7 +149,7 @@ func under_mat(c: Color) -> StandardMaterial3D:
 const SH_WORLDWAVE := """shader_type spatial;
 render_mode unshaded, depth_test_disabled, depth_draw_never, cull_disabled;
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear, repeat_disable;
-uniform float k = 0.0; uniform float time_s = 0.0;
+uniform float k = 0.0; uniform float veil = 0.0; uniform float time_s = 0.0;      // k: how much it ripples and blurs; veil: the pale of the water over it
 void vertex(){ POSITION = vec4(VERTEX.xy, 1.0, 1.0); }
 void fragment(){
 	vec2 px = 1.0 / VIEWPORT_SIZE;
@@ -160,7 +160,7 @@ void fragment(){
 	vec2 uv = SCREEN_UV + rip;
 	vec3 c = texture(screen_tex, uv).rgb * 0.2;
 	for (int i = 0; i < 8; i++) { float a = float(i) * 0.7854; c += texture(screen_tex, uv + vec2(cos(a), sin(a)) * px * 2.2 * k * (1.0 + 0.5 * float(i % 2))).rgb * 0.1; }
-	ALBEDO = mix(c, vec3(0.6, 0.85, 0.88), 0.2 * k);
+	ALBEDO = mix(c, vec3(0.6, 0.85, 0.88), 0.2 * veil);
 }"""
 const SH_TURN := """shader_type canvas_item;
 uniform sampler2D screen_tex : hint_screen_texture, filter_linear, repeat_disable;
@@ -185,6 +185,8 @@ var flip_turn := OS.get_environment("FLIP_TURN") != "0"      # (FLIP_TURN=0: the
 var flip_on := false
 var flip_busy := false
 var flip_r := 0.0      # how far the ring has spread
+var flip_k := 0.0      # how much the turned picture ripples and blurs just now
+const FLIP_CALM := 0.3      # what it settles to once it has turned: the turned picture must be easy to read and to play in
 var flip_wave: ShaderMaterial
 var flip_mat: ShaderMaterial
 var flip_mi: MeshInstance3D
@@ -233,6 +235,9 @@ func _flip(sp: Vector2, wu: Array) -> void:
 			if _foot_of(wid, pos, 0.4) == "": flip_busy = false; return
 		flip_wid = wid; flip_anchor = pos; flip_anchor_yaw = yaw
 		if refl_out.is_empty(): _refl_out_now(wid)      # her image stays where she stands: it is she, now
+		var hm0 := _hermod(refl_out)      # and she stands as she stood: what her shadow does with its hands, she does not do
+		if hm0 != null: hm0.own = true; hm0.wL = 0.0; hm0.wR = 0.0; hm0.bow = 0.0
+		if refl_out.ap != null: (refl_out.ap as AnimationPlayer).play("idle", 0.4)
 	else:
 		flip_busy = true
 		hold_id = -1; route.clear(); pending = ""
@@ -255,7 +260,8 @@ func _flip(sp: Vector2, wu: Array) -> void:
 	_flip_world(flip_wid, to > 0.5, T * 0.8)
 	var tw3 := create_tween().set_parallel(true)
 	tw3.tween_method(func(v: float) -> void: flip_r = v; flip_mat.set_shader_parameter("r", v), 0.0, 1.35, T).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tw3.tween_method(func(v: float) -> void: flip_wave.set_shader_parameter("k", v), 1.0 - to, to, T * 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw3.tween_method(func(v: float) -> void: flip_k = v; flip_wave.set_shader_parameter("k", v), flip_k, to, T * 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw3.tween_method(func(v: float) -> void: flip_wave.set_shader_parameter("veil", v), 1.0 - to, to, T * 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	for g in flip_glass:
 		var gm: ShaderMaterial = g[0]; var b0: float = g[1]
 		tw3.tween_method(func(v: float) -> void: gm.set_shader_parameter("clear", v); gm.set_shader_parameter("wave", 1.0 - v); gm.set_shader_parameter("blur_px", b0 * (1.0 - v)), 1.0 - to, to, T * 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -269,7 +275,11 @@ func _flip(sp: Vector2, wu: Array) -> void:
 	flip_mat.set_shader_parameter("from_s", to); flip_mat.set_shader_parameter("r", 0.0)
 	if not flip_on:
 		flip_mi.visible = false; flip_rect.visible = false
-		if not refl_out.is_empty(): H[refl_key] = refl_out; refl_out = {}; refl_w = ""      # her image is under her feet again
+		if not refl_out.is_empty():      # her image is under her feet again, and does as she does
+			var hm1 := _hermod(refl_out)
+			if hm1 != null: hm1.own = false
+			H[refl_key] = refl_out; refl_out = {}; refl_w = ""
+	if flip_on: create_tween().tween_method(func(v: float) -> void: flip_k = v; flip_wave.set_shader_parameter("k", v), flip_k, FLIP_CALM, 1.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)      # it settles: only a slow breath of the ripple is left
 	# and she is given her usual place in the view again (in the turned picture that is the other side of the middle line)
 	create_tween().tween_property(self, "cam_up_k", -1.0 if flip_on else 1.0, 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	flip_busy = false
@@ -392,11 +402,13 @@ func _play_flipdemo() -> void:
 	tap(Vector2(360, 640)); await wait(0.5)      # the title
 	tap(Vector2(360, 640))      # she wakes
 	await settled
-	await wait(1.0)
+	await wait(1.6); await snap.call("demo_0_words_of_the_place")
 	_tap_at(Vector3(2.2, 0, 6.6)); await idle.call()      # open water: the picture turns over
-	print("DEMO 1 turned over: ", flip_on, ", she stays at ", flip_anchor); await wait(0.8); await snap.call("demo_1_harbour_turned")
+	print("DEMO 1 turned over: ", flip_on, ", she stays at ", flip_anchor); await wait(2.4); await snap.call("demo_1_harbour_turned")
 	var hub: Vector3 = N["hub1"]
 	_tap_at(hub); await wait(2.6); await snap.call("demo_2_shadow_on_the_mole")
+	while a_wL < 0.9 and not done.has("wheel1"): await get_tree().process_frame
+	await wait(0.7); await snap.call("demo_2b_shadow_at_the_wheel")      # (she, in the water, stands as she stood)
 	await idle.call()
 	print("DEMO 1 wheel ", done.has("wheel1"), " sluice ", rects["S1"].on, " shadow at ", pos); await snap.call("demo_3_wheel_turned")
 	_tap_at(Vector3(2.2, 0, 6.6)); await idle.call()      # open water again: back
@@ -2388,6 +2400,7 @@ func _do_place6() -> void:
 func _process(dt: float) -> void:
 	super._process(dt)
 	if flip_demo and not ended and not busy and not flip_busy and not flip_on and rects.has("S2") and rects["S2"].on and pos.z < TZ0 - 0.9: route.clear(); _end()      # (the trial ends behind the second sluice)
+	if not flip_on and not flip_busy and woke: _stele_watch()
 	if flip_on or flip_busy: return      # (the shadow is played: her image stays with her, and the floor's own rules are not the shadow's)
 	if not refl_out.is_empty() and not busy and refl_w != "" and _rect_dist(pos, W[refl_w].r) > float(W[refl_w].get("far", 3.2)): _refl_melt()      # she has left that water
 	var inside := false
