@@ -157,7 +157,8 @@ func _process(dt: float) -> void:
 		if d > 2.5: sp_eye = true
 		if sp_eye:
 			cam_focus = pos.lerp(img, 0.5 if d < 12.0 else 6.0 / d) + Vector3(0, 0.4, 0); cam_focus_on = true
-			cam.size = lerpf(cam.size, clampf(sp_eye_s0 + (d - 4.5) * 0.45, sp_eye_s0, sp_eye_s0 + 3.2), 1.0 - exp(-1.4 * dt))
+			var across := absf((pos.x - pos.z) - (img.x - img.z)) * 0.7071      # how far apart the two are across the screen
+			cam.size = lerpf(cam.size, clampf(across + 3.4, sp_eye_s0, sp_eye_s0 + 4.5), 1.0 - exp(-1.4 * dt))
 	else:
 		if sp_eye: sp_eye = false; cam_focus_on = false      # it is back under her feet: the eye goes back to her...
 		if not cam_focus_on and absf(cam.size - sp_eye_s0) > 0.01: cam.size = lerpf(cam.size, sp_eye_s0, 1.0 - exp(-1.4 * dt))      # ...and to its own width
