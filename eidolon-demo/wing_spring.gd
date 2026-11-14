@@ -67,7 +67,6 @@ const SP3_RI := 2.85                         # ...and the rail that joins them r
 const SP3_P := Vector3(-11.4, 0, -67.6)      # the round basin before them
 const SP3_PR := 3.5
 const SP3_SEA := Vector3(27.6, 0, -74.6)     # where the one that wants the sea looks: far out to the east
-const SP3_NAMES := ["the sea", "the wall", "the one beside it", "the empty place"]
 const SP3_POSES := ["reach", "mourn", "pray", "calm"]
 # ---------------------------------------------------------------- P.4 the missing Caryatid
 const SP4_X0 := -21.0
@@ -97,7 +96,7 @@ const SP4_HOLE := Vector3(-11.95, 1.96, -84.17)     # and the hole it belongs in
 
 var sp_col := {}      # the colossi, by name: {"p": foot, "q": which quarter the arm points to (0 north, 1 east, 2 south, 3 west), "w": its water, "pair": the one geared to it, "view": where the eye rests while it turns}
 var sp_chan: Array = []      # the course of the water once the spring runs: [from, to] pieces, in order
-var sp3_at := [2, 1, 0, 3]   # at which of the five places each of the four stands (0: the end by the opening .. 4: the end by the wall), in the order of SP3_NAMES
+var sp3_at := [2, 1, 0, 3]   # at which of the five places each of the four stands (0: the end by the opening .. 4: the end by the wall), in this order: the one that wants the sea, the wall, the one beside it, the empty place
 var sp3_sol := []            # where each of them is in the list of things she walks round
 var sp3_h := []              # their heads, and their twins': [statue * 2 + (1 for the twin)] = {"sk", "ni", "hi", "n0", "h0", "yaw", "bow"}
 
@@ -247,7 +246,6 @@ func _sp_colossus_body(n: Node3D, twin: bool) -> void:
 		_gild_arm(st, sk, "Right")
 		if not twin and not N.has("sp_girth"):
 			N["sp_girth"] = _sp_girth_of(n, sk, st)
-			print("SP colossus: palm at ", (to_n * (sk.get_bone_global_pose(hi).origin + dir * (sk.get_bone_global_pose(mi).origin - sk.get_bone_global_pose(hi).origin).length() * 0.5)).snapped(Vector3.ONE * 0.01), " wanted ", want, "; top of head ", snappedf((to_n * sk.get_bone_global_pose(_bone(sk, "HeadTop_End")).origin).y, 0.01))
 	# the plate: a shallow gilded dish
 	var plate := turned(Vector3(0, SP_H - 0.06, SP_R), [[0.0, 0.0], [0.3, 0.0], [SP_PLATE, 0.045], [SP_PLATE, 0.06], [SP_PLATE - 0.05, 0.05], [0.0, 0.05]], "gold", 28, n)
 	if twin:
@@ -303,7 +301,6 @@ func _sp_girth_of(frame: Node3D, sk: Skeleton3D, st: Node3D) -> PackedFloat32Arr
 			c = maxf(l, r) if maxf(l, r) > 0.0 else mean
 		out[b] = c
 	for b in 36: g[b] = out[(b + 35) % 36] * 0.25 + out[b] * 0.5 + out[(b + 1) % 36] * 0.25
-	print("SP colossus: girth at her hands, faces hit ", got, "/36, mean ", snappedf(mean, 0.01))
 	return g
 
 ## the point of a colossus's marble at world yaw wy from its axis, at the height of her hands
@@ -1096,7 +1093,7 @@ func _sp4_beam_to(a: float, secs: float, hand := true) -> void:
 ## as long as she holds it
 func _do_sp4_place() -> void:
 	var pl := SP4_PL
-	if not refl_out.is_empty() and _flat((refl_out.holder as Node3D).position, pl) < 0.5: await _refl_melt()
+	if not refl_out.is_empty() and ((N["sp4_six_m"] as Node3D).visible or _flat((refl_out.holder as Node3D).position, pl) < 0.5): await _refl_melt()      # (the first time, her reflection must come with her: it takes the place of the sixth the water showed)
 	var s0 := cam.size
 	cam_focus = Vector3(-13.0, 0.9, -82.9); cam_focus_on = true
 	create_tween().tween_property(cam, "size", 9.4, 1.6).set_trans(Tween.TRANS_SINE)
@@ -1328,7 +1325,7 @@ func _play_spring() -> void:
 		print("SPRING P.3 pushed the one that wants the empty place: ", st.call())
 		await _tap_wait(objs["sp3_place"].at)
 		print("SPRING P.3 on the empty place: bowed ", flags.get("sp3_done", false), " sluice ", rects["SP3g"].on, ", she at ", pos.snapped(Vector3.ONE * 0.01))
-	if from <= 4:
+	if from <= 4 and not (only and from < 4):
 		var st4 := func() -> String: return "posed %s, beam hangs %.3f, door at %.2f, pinned %s, arm points %d" % [flags.get("sp4_posed", false), (N["sp4_beam"] as Node3D).rotation.z, (N["sp4_door"] as Node3D).position.x, flags.get("sp4_pinned", false), sp_col["4"].q]
 		await _tap_wait(Vector3(-17.6, 0, -80.9))
 		print("SPRING P.4 in the court at ", pos.snapped(Vector3.ONE * 0.01), ": ", st4.call())
@@ -1349,10 +1346,12 @@ func _play_spring() -> void:
 		print("SPRING P.4 the door: reflection ", _sp_refl_at(), ", ", st4.call())
 		await _tap_wait(objs["sp_gate4"].at)      # she steps down (the pin holds the beam) and opens the head-gate
 		print("SPRING P.4 the head-gate: she at ", pos.snapped(Vector3.ONE * 0.01), ", ", st4.call(), ", gate open ", done.has("sp_gate4"), ", wings ", wings_done)
-		await _tap_wait(Vector3(-19.5, 0, UZ0 + 2.2))      # and back down the lane to the atrium
-		var guard := 0
-		while hub_n < 1 and guard < 4000: await get_tree().process_frame; guard += 1
-		print("SPRING back in the atrium at ", pos.snapped(Vector3.ONE * 0.01), ": waters in the basin ", hub_n)
+		if only: await wait(7.0)      # (a run of this court alone ends with the water on its way down the lane)
+		else:
+			await _tap_wait(Vector3(-19.5, 0, UZ0 + 2.2))      # and back down the lane to the atrium
+			var guard := 0
+			while hub_n < 1 and guard < 4000: await get_tree().process_frame; guard += 1
+			print("SPRING back in the atrium at ", pos.snapped(Vector3.ONE * 0.01), ": waters in the basin ", hub_n)
 	print("SPRING done ", wings_done)
 	get_tree().quit()
 
