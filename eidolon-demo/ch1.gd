@@ -479,16 +479,14 @@ func _flip_pane_always() -> bool: return flip_fx == "" and (flip_demo or flip_te
 ## Under the water the same world is drawn, turned over; at the line the two pictures are the same picture, so nothing
 ## jumps. What changes sides (who is dark, the stones, the grilles, the waters' look) changes there, at the line.
 func _flip_real(over: bool) -> void:
-	var T := 2.7
-	flip_mi.visible = true; flip_rect.visible = true
+	var H2 := 1.25      # the eye comes down to the waterline, rests there a moment (she above the line, her shadow below it), and goes on
+	flip_rect.visible = true
 	flip_mask_vp.size = Vector2i(get_viewport().get_visible_rect().size * 0.5); flip_mask_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	flip_moving = true
-	if not over:      # the turned picture comes clear first
-		var c0 := create_tween().set_parallel(true)
-		c0.tween_method(func(v: float) -> void: flip_k = v; flip_wave.set_shader_parameter("k", v), flip_k, 0.0, T * 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		c0.tween_method(func(v: float) -> void: flip_wave.set_shader_parameter("veil", v), 0.5, 0.0, T * 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	var tw3 := create_tween()
-	tw3.tween_property(self, "flip_th", -1.0 if over else 1.0, T).from(1.0 if over else -1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw3.tween_property(self, "flip_th", 0.0, H2).from(1.0 if over else -1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw3.tween_interval(0.42)
+	tw3.tween_property(self, "flip_th", -1.0 if over else 1.0, H2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await tw3.finished
 	await get_tree().process_frame
 	flip_moving = false; flip_mask_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
@@ -508,7 +506,7 @@ func _flip_real(over: bool) -> void:
 func _flip_pre() -> void:
 	var v := flip_th
 	cam_pitch = FLIP_PITCH * absf(v); cam_up_k = v * absf(v)
-	var side := 1.0 if v >= 0.0 else -1.0
+	var side := flip_side if absf(v) < 0.0005 else (1.0 if v > 0.0 else -1.0)
 	if side == flip_side: return
 	flip_side = side
 	var over := side < 0.0
@@ -516,18 +514,14 @@ func _flip_pre() -> void:
 	for mm2 in flip_mir: (mm2 as ShaderMaterial).set_shader_parameter("tint", Vector3.ONE if over else FLIP_DARK)
 	for g in flip_glass:
 		var gm: ShaderMaterial = g[0]
-		gm.set_shader_parameter("clear", 1.0 if over else 0.0); gm.set_shader_parameter("wave", 0.0 if over else 1.0); gm.set_shader_parameter("blur_px", 0.0 if over else float(g[1]))
+		gm.set_shader_parameter("clear", 0.7 if over else 0.0); gm.set_shader_parameter("wave", 0.55 if over else 1.0); gm.set_shader_parameter("blur_px", float(g[1]) * (0.4 if over else 1.0))
 	_flip_world(flip_wid, over, 0.55)
-	if over:
-		var c1 := create_tween().set_parallel(true)
-		c1.tween_method(func(x: float) -> void: flip_k = x; flip_wave.set_shader_parameter("k", x), 0.0, FLIP_CALM, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		c1.tween_method(func(x: float) -> void: flip_wave.set_shader_parameter("veil", x), 0.0, 0.5, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 ## (every frame of the turn, once the eye is placed) the picture is told where the eye is
 func _flip_post() -> void:
 	var vs := get_viewport().get_visible_rect().size
 	var lr := cam.unproject_position(Vector3(flip_anchor.x, 0, flip_anchor.z)).y / vs.y
-	flip_mat.set_shader_parameter("th", flip_th); flip_mat.set_shader_parameter("line", lr if flip_th >= 0.0 else 1.0 - lr)
+	flip_mat.set_shader_parameter("th", flip_side * maxf(absf(flip_th), 0.0001)); flip_mat.set_shader_parameter("line", lr if flip_side > 0.0 else 1.0 - lr)      # (at rest on the line the picture is still the side it came from)
 	flip_mask_cam.global_transform = cam.global_transform; flip_mask_cam.size = cam.size; flip_mask_cam.near = cam.near; flip_mask_cam.far = cam.far
 
 ## what exists on one side only changes sides with the picture: the stones of the mole's middle, the two grilles of the
