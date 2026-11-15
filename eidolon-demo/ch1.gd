@@ -1387,12 +1387,22 @@ func _go_build(lv: int) -> void:
 		if gs.cells[k] != "gate": continue
 		var gv := _go_ij(k); var g := _go_w(gv.x, gv.y)
 		blk(g + Vector3(-1.0, WATER - 0.8, -1.0), g + Vector3(1.0, 0.0, 1.0), "stone", go_root).material_override = pal("stone", "flat")
-		var gn := Node3D.new(); gn.position = g; gn.rotation.y = float(OS.get_environment("GATE_YAW")) if OS.get_environment("GATE_YAW") != "" else -PI * 0.25; go_root.add_child(gn)      # the gate: a small gateway of worn marble with a pediment and double doors, made in Tripo (props/gateway, its own colours); its door faces her board
-		prop_model("gateway", gn, 2.5, 0.0, false, false, "")
-		var glow := SphereMesh.new(); glow.radius = 0.55; glow.height = 1.1; glow.radial_segments = 14; glow.rings = 7
-		prim(glow, Vector3(0, 0.9, 0.25), mat(Color(1.0, 0.82, 0.5, 0.16), true), gn).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		for e in [Vector3(1.25, 0, -0.55), Vector3(-0.55, 0, 1.25)]: _gh_brazier(g + e)      # (a fire on either hand of the door, not before it)
-		lights[6] = Vector4(g.x + 0.5, 1.2, g.z + 0.5, 0.85); lights[4] = Vector4(g.x + 1.25, 1.0, g.z - 0.55, 0.7); lights[5] = Vector4(g.x - 0.55, 1.0, g.z + 1.25, 0.7)
+		var ent := Vector2i(1, 0)      # the side she comes in from: the arch stands across her way, and she walks through it
+		for d in [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]:
+			if gs.cells.has(_go_key(gv.x + d.x, gv.y + d.y)): ent = d; break
+		gs["gate_in"] = ent
+		var gn := Node3D.new(); gn.position = g; gn.rotation.y = atan2(float(ent.x), float(ent.y)); go_root.add_child(gn)      # the gate: an arch of worn marble under a pediment, made in Tripo (props/arch, its own colours)
+		prop_model("arch", gn, 2.7, 0.0, false, false, "")
+		for k3 in 3:      # its light: soft, in the opening, seen from both sides
+			var lq := QuadMesh.new(); lq.size = Vector2(0.66 - k3 * 0.14, 1.6 - k3 * 0.22)
+			var lm := MeshInstance3D.new(); lm.mesh = lq; lm.material_override = mat(Color(1.0, 0.86, 0.55, 0.28 + k3 * 0.12), true); lm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			var ms := StandardMaterial3D.new(); ms.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; ms.albedo_color = Color(1.0, 0.9, 0.66, 0.42 + k3 * 0.22); ms.cull_mode = BaseMaterial3D.CULL_DISABLED; ms.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			lm.material_override = ms; lm.position = Vector3(0, 0.95 + k3 * 0.02, 0.0); gn.add_child(lm)
+		var glow := SphereMesh.new(); glow.radius = 0.9; glow.height = 1.8; glow.radial_segments = 14; glow.rings = 7
+		prim(glow, Vector3(0, 1.0, 0), mat(Color(1.0, 0.82, 0.5, 0.1), true), gn).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var side := Vector3(float(ent.y), 0, -float(ent.x))
+		for e in [side * 0.95 + Vector3(ent.x, 0, ent.y) * 0.45, -side * 0.95 + Vector3(ent.x, 0, ent.y) * 0.45]: _gh_brazier(g + e)      # (a fire on either hand of the arch)
+		lights[6] = Vector4(g.x, 1.2, g.z, 0.95); lights[4] = Vector4(g.x + side.x * 0.95, 1.0, g.z + side.z * 0.95, 0.7); lights[5] = Vector4(g.x - side.x * 0.95, 1.0, g.z - side.z * 0.95, 0.7)
 	# what lies about the board, in the sea: the same things as about the square
 	_gh_around()
 	var cx := _go_cx(lv)
@@ -1712,7 +1722,9 @@ func _go_again() -> void:
 func _go_win() -> void:
 	gs.won = true; _go_dots()
 	print("GO level ", int(gs.lv) + 1, " done")
-	await wait(0.9)
+	var gi: Vector2i = gs.get("gate_in", Vector2i(1, 0))      # through the arch, into its light
+	route.clear(); speed_cap = 1.1; route.append({"p": pos - Vector3(gi.x, 0, gi.y) * 1.0})
+	await wait(1.1)
 	if int(gs.lv) + 1 >= GO_LEVELS.size():
 		print("GO all levels done"); _end(); return
 	var f := create_tween(); f.tween_property(go_fade, "color:a", 1.0, 0.7)
