@@ -3431,13 +3431,14 @@ func _ivr_far() -> void:
 	for f in [
 			[1231, 346, 1.3, 8.0, 0.04, "rock2"], [1396, 717, 1.4, 7.5, 0.1, "far1"],
 			[300, 880, 1.0, 15.0, 0.42, "far"],      # (under the colonnade on the left)
-			[340, 442, 0.75, 19.0, 0.64, "far"],      # (the tall tower behind it)
-			[565, 468, 0.85, 24.0, 0.68, "far"], [455, 600, 0.75, 22.0, 0.66, "far"],      # (the hill going down to the left from the temple)
+			[340, 442, 0.75, 19.0, 0.68, "far"],      # (the tall tower behind it)
+			[575, 470, 1.5, 24.0, 0.74, "hill"], [455, 590, 1.3, 22.0, 0.72, "hill"],      # (the hill going down to the left from the temple: broad and soft, deep in the haze)
 			[905, 420, 0.95, 26.5, 0.6, "far"],      # (the crown the colossus stands on)
 			[1365, 222, 1.1, 36.0, 0.72, "far"]]:
 		var top: Vector3 = P.call(float(f[0]), float(f[1]), float(f[3]))
-		var st := _iv_st(); _ivr_crag(st, top, float(f[2]), rng, false, 0.62, false, String(f[5]) != "rock2")
-		_iv_commit(st, String(f[5]), self, float(f[4]), fog.call(top.y, float(f[2]), String(f[5]) == "far1"), false)
+		var pal := "far" if String(f[5]) == "hill" else String(f[5])
+		var st := _iv_st(); _ivr_crag(st, top, float(f[2]), rng, false, 0.5 if String(f[5]) == "hill" else 0.62, false, String(f[5]) == "far" or String(f[5]) == "far1")
+		_iv_commit(st, pal, self, float(f[4]), fog.call(top.y, float(f[2]), pal == "far1"), false)
 	# the colonnade on the left, going away to the right as the picture's: low, its lintel over all of it, on its rock
 	var c0: Vector3 = P.call(182, 852, 15.0)
 	var cs := _iv_st()
