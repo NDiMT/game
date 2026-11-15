@@ -2004,10 +2004,18 @@ const IV_PAL := {      # top, lit face, face half turned away, face in shade (sa
 	"terra": ["dc6b4b", "c75a3e", "a8452f", "7c3022"],
 	"pmarble": ["fde5c7", "dcbfa0", "b49680", "8e705c"],
 	"pterra": ["c65a3e", "a84a33", "7f3a2a", "5c2b22"],
+	"marble2": ["ffefd2", "f6d8b3", "d9b28d", "ad8664"],
+	"rock2": ["dcc1a2", "c4a487", "8a6c55", "4a3327"],
+	"olive2": ["c9ab82", "b8966d", "9c7c5d", "806548"],
+	"bark": ["9a5f48", "86513d", "6c4031", "4e2e24"],
+	"far": ["f2dcc0", "e8cdac", "dcbf9f", "d2b393"],
+	"far1": ["e6c9a9", "d3ae8c", "c29e7f", "a9886d"],
+	"farsil": ["ead0b1", "e3c7a6", "dbbe9c", "d3b594"],      # (things far off seen against the light: little between their faces)
 	"line": ["fff6e6", "fff6e6", "fff6e6", "fff6e6"],
+	"groove": ["e9cfae", "e9cfae", "e9cfae", "e9cfae"],
 	"ring": ["fffaf0", "fffaf0", "fffaf0", "fffaf0"],
 }
-const IV_BG := ["fdebcc", "f1d6b1", "dcbd9c"]      # the mist: above, in the middle, below
+const IV_BG := ["fff1d8", "f8dfbb", "d8ba98"]      # the mist: above, in the middle, below
 const IV_SH := """
 shader_type spatial;
 render_mode ambient_light_disabled, specular_disabled, cull_disabled;
@@ -2030,9 +2038,20 @@ uniform vec3 shade_tint : source_color = vec3(0.86, 0.79, 0.74);
 uniform float uv_flip = 0.0;
 uniform float alb_in_light = 0.0;
 uniform float dbg = 0.0;
+uniform float ao_k = 0.0;
+uniform float dk = 0.0;
+uniform float haze = 0.0;
+uniform float lfog = 0.0;      // (the level's own rock: its depth under the floor it bears is in COLOR.g, a quarter of a metre to one)
+uniform float lf_hi = 0.9;
+uniform float lf_lo = 3.2;
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 vec3 bgc(float s){ vec3 c = mix(bg_top, bg_mid, smoothstep(0.0, 0.55, s)); return mix(c, bg_bot, smoothstep(0.45, 1.0, s)); }
+float h3(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+float vn(vec3 p){ vec3 i = floor(p); vec3 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(mix(h3(i), h3(i + vec3(1, 0, 0)), f.x), mix(h3(i + vec3(0, 1, 0)), h3(i + vec3(1, 1, 0)), f.x), f.y),
+		mix(mix(h3(i + vec3(0, 0, 1)), h3(i + vec3(1, 0, 1)), f.x), mix(h3(i + vec3(0, 1, 1)), h3(i + vec3(1, 1, 1)), f.x), f.y), f.z); }
+float fbm(vec3 p){ return vn(p) * 0.55 + vn(p * 2.1 + 3.1) * 0.3 + vn(p * 4.3 + 7.7) * 0.15; }
 void fragment(){
 	vec3 fn = normalize(cross(dFdx(wp), dFdy(wp)));
 	if (dot(fn, INV_VIEW_MATRIX[2].xyz) < 0.0) fn = -fn;
@@ -2040,21 +2059,30 @@ void fragment(){
 	vec3 c = mix(c_dark, c_mid, smoothstep(-0.45, 0.0, d));
 	c = mix(c, c_lit, smoothstep(0.15, 0.5, d));
 	c = mix(c, c_top, smoothstep(0.62, 0.9, fn.y));
-	if (veins > 0.0) {
-		float v1 = sin(wp.x * 0.83 + wp.z * 0.37 + 2.6 * sin(wp.z * 0.52 + wp.x * 0.21 + wp.y * 0.4));
-		float v2 = sin(wp.z * 1.31 - wp.x * 0.55 + 1.9 * sin(wp.x * 0.77 - wp.y * 0.3));
-		float ln = (1.0 - smoothstep(0.0, 0.05, abs(v1))) * 0.8 + (1.0 - smoothstep(0.0, 0.035, abs(v2))) * 0.45;
-		c *= 1.0 - veins * 0.08 * ln;
+	if (veins > 0.0) {      // (veins as marble has them: thin, wandering, now and then two together; a cloud in the stone)
+		vec3 q = wp * 0.9;
+		float w = fbm(q + vec3(fbm(q * 0.55 + 11.0), 0.0, fbm(q * 0.55 + 5.0)) * 1.7);
+		float px = max(length(dFdx(q)), length(dFdy(q)));
+		float v1 = 1.0 - smoothstep(0.0, 0.03 + px * 0.6, abs(w - 0.5));
+		float v2 = 1.0 - smoothstep(0.0, 0.016 + px * 0.6, abs(fbm(q * 2.3 + 20.0) - 0.47));
+		c = mix(c, c * vec3(0.9, 0.86, 0.83), veins * (0.6 * v1 + 0.3 * v2));
+		c *= 1.0 + veins * (w - 0.5) * 0.05;
 	}
+	if (ao_k > 0.0) { float ao = max(pow(clamp(COLOR.r, 0.0, 1.0), 0.3), 0.22); c *= mix(1.0, ao, ao_k); c = mix(c, c * vec3(0.93, 0.83, 0.78), (1.0 - ao) * ao_k * 0.6); }
+	float ld = COLOR.g * 4.0;
+	if (lfog > 0.5) c *= 1.0 - dk * smoothstep(0.0, 0.9, ld);      // (the rock darker under the floor it bears, before the mist takes it)
+	else c *= 1.0 - dk * smoothstep(fog_ref + fog_hi + 2.4, fog_ref + fog_hi, wp.y);      // (the rock darkens as it goes down, before the mist takes it)
 	if (flat_mode > 0.5) c = c_top;
 	float sy = uv_flip > 0.5 ? 1.0 - SCREEN_UV.y : SCREEN_UV.y;
 	float fk = max(1.0 - smoothstep(fog_ref + fog_lo, fog_ref + fog_hi, wp.y), far_k);
+	if (haze > 0.0) fk = max(fk, haze * 0.22 * smoothstep(44.0, 52.0, -VERTEX.z));      // (VERTEX: from the eye)
+	if (lfog > 0.5) fk = max(fk, smoothstep(lf_hi, lf_lo, ld));
 	ALBEDO = c * (1.0 - fk);
 	EMISSION = bgc(sy) * fk + c_top * emit;
 	if (dbg > 0.5) { ALBEDO = vec3(0.0); EMISSION = dbg > 3.5 ? vec3(fk) : (dbg > 2.5 ? c : (dbg > 1.5 ? vec3(d * 0.5 + 0.5) : fn * 0.5 + 0.5)); }
 }
 void light(){
-	vec3 lw = normalize((INV_VIEW_MATRIX * vec4(LIGHT, 0.0)).xyz);
+	vec3 lw = normalize((INV_VIEW_MATRIX * vec4(LIGHT, 0.0)).xyz);      // (key_dir is this place's sun)
 	if (LIGHT_IS_DIRECTIONAL && dot(lw, normalize(key_dir)) > 0.98) {      // (only the one sun of this place: no other light of the world)
 		vec3 k = mix(shade_tint, vec3(1.0), ATTENUATION);
 		DIFFUSE_LIGHT += alb_in_light > 0.5 ? k * ALBEDO : k;
@@ -2066,10 +2094,16 @@ shader_type spatial;
 render_mode unshaded, cull_disabled, shadows_disabled;
 uniform vec3 bg_top : source_color; uniform vec3 bg_mid : source_color; uniform vec3 bg_bot : source_color;
 uniform float uv_flip = 0.0;
+uniform vec2 sun = vec2(0.42, 0.1);
 vec3 bgc(float s){ vec3 c = mix(bg_top, bg_mid, smoothstep(0.0, 0.55, s)); return mix(c, bg_bot, smoothstep(0.45, 1.0, s)); }
-void fragment(){ float sy = uv_flip > 0.5 ? 1.0 - SCREEN_UV.y : SCREEN_UV.y; ALBEDO = bgc(sy); }
+void fragment(){
+	float sy = uv_flip > 0.5 ? 1.0 - SCREEN_UV.y : SCREEN_UV.y;
+	vec2 d = (SCREEN_UV - sun) * vec2(1.0, 1.8);
+	ALBEDO = bgc(sy) + vec3(0.1, 0.08, 0.05) * exp(-dot(d, d) * 9.0);
+}
 """
 var iv_shader: Shader
+var iv_key := Vector3(-0.56, 0.72, 0.41) if (OS.get_environment("IV_MODE") != "plate" and OS.get_environment("IV_MODE") != "3d") else IV_KEY
 var iv_mats := {}
 var iv_uvf := float(OS.get_environment("IV_UVF")) if OS.get_environment("IV_UVF") != "" else 0.0
 var iv_alb := float(OS.get_environment("IV_ALB")) if OS.get_environment("IV_ALB") != "" else 0.0
@@ -2103,10 +2137,10 @@ func _iv_mat(kind: String, far_k := 0.0, extra := {}) -> ShaderMaterial:
 	var p: Array = IV_PAL[kind]
 	for i in 4: m.set_shader_parameter(["c_top", "c_lit", "c_mid", "c_dark"][i], Color(String(p[i])))
 	for i in 3: m.set_shader_parameter(["bg_top", "bg_mid", "bg_bot"][i], Color(String(IV_BG[i])))
-	m.set_shader_parameter("key_dir", IV_KEY); m.set_shader_parameter("far_k", far_k)
+	m.set_shader_parameter("key_dir", iv_key); m.set_shader_parameter("far_k", far_k)
 	m.set_shader_parameter("uv_flip", iv_uvf); m.set_shader_parameter("alb_in_light", iv_alb)
 	if OS.get_environment("IV_DBG") != "": m.set_shader_parameter("dbg", float(OS.get_environment("IV_DBG")))
-	if kind == "line" or kind == "ring": m.set_shader_parameter("flat_mode", 1.0)
+	if kind == "line" or kind == "ring" or kind == "groove": m.set_shader_parameter("flat_mode", 1.0)
 	if kind == "ring": m.set_shader_parameter("emit", 0.55)
 	for k in extra: m.set_shader_parameter(k, extra[k])
 	iv_mats[key] = m
@@ -2383,7 +2417,15 @@ func _iv_volute(parent: Node3D, p: Vector3, out_dir: Vector3) -> void:
 	_iv_commit(cl, "terra", parent)
 
 func _iv_line(parent: Node3D, a: Vector3, b: Vector3) -> void:
-	var st := _iv_st(); _iv_bar(st, a + Vector3(0, 0.005, 0), b + Vector3(0, 0.005, 0), 0.07, 0.022); _iv_commit(st, "line", parent, 0.0, {}, false)
+	var st := _iv_st(); _iv_bar(st, a + Vector3(0, 0.005, 0), b + Vector3(0, 0.005, 0), 0.055 if ivr_on else 0.07, 0.018); _iv_commit(st, "groove" if ivr_on else "line", parent, 0.0, {}, false)
+
+## a groove up the face of a riser
+func _iv_riser(parent: Node3D, a: Vector3, b: Vector3) -> void:
+	var st := _iv_st()
+	var w := 0.0275
+	var d := Vector3(1, 0, 0)
+	_iv_hexa(st, [a + Vector3(-w, 0, -w), a + Vector3(w, 0, -w), a + Vector3(w, 0, w), a + Vector3(-w, 0, w), b + Vector3(-w, 0, -w), b + Vector3(w, 0, -w), b + Vector3(w, 0, w), b + Vector3(-w, 0, w)])
+	_iv_commit(st, "groove", parent, 0.0, {}, false)
 
 func _iv_node_ring(parent: Node3D, p: Vector3) -> void:
 	var tm := TorusMesh.new(); tm.inner_radius = 0.2; tm.outer_radius = 0.27; tm.rings = 18; tm.ring_segments = 6
@@ -2579,8 +2621,12 @@ func _iv_hide_world() -> void:
 		for hk in dct:
 			if String(hk) == "main": continue
 			for mm in (dct[hk].holder as Node).find_children("*", "MeshInstance3D", true, false): (mm as MeshInstance3D).layers = 0
-	sun_light.look_at_from_position(Vector3.ZERO, -IV_KEY.normalized(), Vector3.UP)
+	sun_light.look_at_from_position(Vector3.ZERO, -iv_key.normalized(), Vector3.UP)
 	sun_light.directional_shadow_max_distance = 60.0
+	for c in get_children():      # (the sea's blue shade at the edges of the screen and its rays of light: not here)
+		if c is CanvasLayer:
+			for t in c.get_children():
+				if t is TextureRect and (t as TextureRect).texture is GradientTexture2D: (t as TextureRect).visible = false
 
 func _iv_begin() -> void:
 	if ivp_on:
@@ -2825,7 +2871,7 @@ uniform sampler2D plate : source_color, filter_linear_mipmap;
 uniform vec2 k = vec2(1.0);
 void fragment(){ vec2 uv = vec2(0.5) + (SCREEN_UV - vec2(0.5)) * k; ALBEDO = texture(plate, uv).rgb; }
 """
-var ivp_on := OS.get_environment("IV_MODE") != "3d"
+var ivp_on := OS.get_environment("IV_MODE") != "3d"      # (the painted level and the 3D one play by the same way)
 var ivp_nodes := {}      # name -> where (world)
 var ivp_edges := []      # [a, b, the points between them on the way (world)]
 var ivp_wp_prev := Vector3.ZERO
@@ -2894,7 +2940,7 @@ func _ivp_block(parent: Node3D, s := 0.72, h := 0.84) -> Node3D:
 ## the volute: a stone scroll lying along the floor, its spiral face to the eye; a red cloth over it, its end lying
 ## along the floor; turned, the whole scroll rolls about its axis
 func _ivp_volute(base: Vector3, r := 0.36, l := 0.7) -> void:
-	iv_wheel = Node3D.new(); iv_wheel.global_position = base + Vector3(0, r, 0); iv_root.add_child(iv_wheel)
+	iv_wheel = Node3D.new(); iv_root.add_child(iv_wheel)
 	iv_wheel.global_position = base + Vector3(0, r, 0)
 	var cm := CylinderMesh.new(); cm.top_radius = r; cm.bottom_radius = r; cm.height = l; cm.radial_segments = 14; cm.rings = 1
 	var ci := MeshInstance3D.new(); ci.mesh = cm; ci.material_override = _ivp_mat("pmarble"); ci.rotation.x = PI * 0.5; iv_wheel.add_child(ci)
@@ -2907,22 +2953,28 @@ func _ivp_volute(base: Vector3, r := 0.36, l := 0.7) -> void:
 			var rr := r * 0.9 * (1.0 - t * 0.85)
 			var q := Vector3(cos(a) * rr, sin(a) * rr, zf * l * 0.5)
 			if not first:
-				var dd := q - prev; var side := Vector3(-dd.y, dd.x, 0).normalized() * 0.024
-				var o := Vector3(0, 0, zf * 0.03)
+				var dd := q - prev; var side := Vector3(-dd.y, dd.x, 0).normalized() * (0.036 if ivr_on else 0.024)
+				var o := Vector3(0, 0, zf * (0.05 if ivr_on else 0.03))
 				_iv_hexa(sp, [prev - side, q - side, q + side, prev + side, prev - side + o, q - side + o, q + side + o, prev + side + o])
 			prev = q; first = false
 	var si := MeshInstance3D.new(); si.mesh = sp.commit(); si.material_override = _ivp_mat("pmarble"); iv_wheel.add_child(si)
 	# the cloth: from the floor behind, over the scroll, down its far side and away along the floor
 	var cl := _iv_st()
 	var c0 := base
+	var E := 0.62      # (where the floor ends, along the cloth's way: there it goes down over the edge)
+	if ivr_on and not ivr_floors.is_empty():
+		var ed := _ivr_edge_dist(base, Vector3(1, 0, 0))
+		if ed > 0.5: E = ed + 0.04
 	var pts := [c0 + Vector3(-0.6, 0.01, -0.05), c0 + Vector3(-0.36, 0.02, -0.05), c0 + Vector3(-0.22, r * 1.65, -0.05), c0 + Vector3(0.0, r * 2.06, -0.05), c0 + Vector3(0.24, r * 1.7, -0.05),
-		c0 + Vector3(0.38, r * 0.9, -0.05), c0 + Vector3(0.44, 0.02, -0.05), c0 + Vector3(0.62, 0.01, -0.05), c0 + Vector3(0.7, -0.5, -0.05), c0 + Vector3(0.74, -1.25, -0.05), c0 + Vector3(0.78, -1.9, -0.05)]
+		c0 + Vector3(0.38, r * 0.9, -0.05), c0 + Vector3(0.44, 0.02, -0.05), c0 + Vector3(E, 0.012, -0.05), c0 + Vector3(E + 0.07, -0.06, -0.05), c0 + Vector3(E + 0.09, -0.5, -0.05), c0 + Vector3(E + 0.12, -1.25, -0.05), c0 + Vector3(E + 0.15, -1.9, -0.05)]
 	var w := Vector3(0, 0, 0.27)
 	for k in pts.size() - 1:
 		var a: Vector3 = pts[k]; var b: Vector3 = pts[k + 1]
 		var ws := w * (1.0 + 0.05 * sin(float(k) * 1.7))
 		_iv_quad(cl, a - ws, b - ws, b + ws, a + ws, Vector3(0, 1, 0) + (a - c0).normalized() * 0.5)
-	var cmi := MeshInstance3D.new(); cmi.mesh = cl.commit(); cmi.material_override = _ivp_mat("pterra"); iv_root.add_child(cmi)
+	var cmi := MeshInstance3D.new(); cmi.mesh = cl.commit(); iv_root.add_child(cmi)
+	var fy := base.y - IV_O.y      # (in the level built in 3D, the cloth hanging over the edge goes into the mist as the rock does)
+	cmi.material_override = _iv_mat("pterra", 0.0, {"fog_hi": fy - 0.7, "fog_lo": fy - 2.6}) if ivr_on else _ivp_mat("pterra")
 	cmi.global_position = Vector3.ZERO; cmi.position = -IV_O
 
 func _ivp_build() -> void:
@@ -2958,13 +3010,22 @@ func _ivp_build() -> void:
 
 func _ivp_begin() -> void:
 	RenderingServer.global_shader_parameter_set("sea_y", -80.0)      # (no sea here: nothing of her goes under its mist)
-	for hm in her_mats:      # she is seen as the picture shows her: no haze of distance on her, her faces flat cut like its marble
-		(hm as ShaderMaterial).set_shader_parameter("mist_k", 0.0); (hm as ShaderMaterial).set_shader_parameter("flat_n", 1.0)
-	_ivp_build()
+	for hm in her_mats:      # she is seen as the picture shows her: no haze of distance on her; smooth white marble in terracotta bands, lit by this place's sun
+		var sm := hm as ShaderMaterial
+		sm.set_shader_parameter("mist_k", 0.0); sm.set_shader_parameter("flat_n", 0.0)
+		if ivr_on:
+			sm.set_shader_parameter("iv_look", 1.0); sm.set_shader_parameter("iv_key", iv_key)
+			sm.set_shader_parameter("iv_skin_lt", Color("f7eadc")); sm.set_shader_parameter("iv_skin_dk", Color("c8ab92"))
+			sm.set_shader_parameter("iv_cloth_lt", Color("b45d3b")); sm.set_shader_parameter("iv_cloth_dk", Color("6a2c1f")); sm.set_shader_parameter("iv_shade", Color(0.86, 0.79, 0.74))
+	if ivr_on:
+		get_viewport().msaa_3d = Viewport.MSAA_4X      # (its edges smooth, as the picture's are)
+		_ivr_build()
+	else: _ivp_build()
 	var s0: Vector3 = ivp_nodes["s"]; var s1: Vector3 = ivp_nodes["n0"]
 	pos = s0; yaw = atan2(s1.x - s0.x, s1.z - s0.z); route.clear()
 	ivp_wp_cur = s0; ivp_wp_prev = s0
-	_ivp_cam()
+	if ivr_on: _ivr_cam()
+	else: _ivp_cam()
 	var cl2 := CanvasLayer.new(); cl2.layer = 5; add_child(cl2)
 	iv_fade = ColorRect.new(); iv_fade.color = Color(1.0, 0.95, 0.86, 0.0); iv_fade.set_anchors_preset(Control.PRESET_FULL_RECT); iv_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl2.add_child(iv_fade)
 
@@ -2982,18 +3043,19 @@ func _ivp_pre(_dt: float) -> void:
 
 func _ivp_post(dt: float) -> void:
 	_ivp_pre(dt)
-	_ivp_cam()
+	if ivr_on: _ivr_cam()
+	else: _ivp_cam()
 	cam_t = pos; cam_focus = pos; cam_focus_on = true      # (the world's own mist and lights keep to her)
 	if not iv_push.is_empty():      # the stone goes before her hands
 		var dv: Vector3 = iv_push.d
 		var pr := clampf((pos - (iv_push.start as Vector3)).dot(dv), 0.0, float(iv_push.len))
 		var bp: Vector3 = (iv_push.m0 as Vector3) + dv * pr
 		iv_block_n.global_position = bp
-		ivp_bshadow.global_position = bp + Vector3(0.42, 0.012, -0.18)
+		if ivp_bshadow != null: ivp_bshadow.global_position = bp + Vector3(0.42, 0.012, -0.18)
 		var face := bp - dv * 0.42 + Vector3(0, 0.66, 0)
 		var sd := Vector3(-dv.z, 0, dv.x) * 0.2
 		tgtL = face + sd; tgtR = face - sd
-	ivp_shadow.global_position = Vector3(pos.x, pos.y + 0.01, pos.z) + Vector3(0.3, 0.0, -0.14)
+	if ivp_shadow != null: ivp_shadow.global_position = Vector3(pos.x, pos.y + 0.01, pos.z) + Vector3(0.3, 0.0, -0.14)
 	if started and not ivp_intro:      # she comes up out of the mist to the first floor
 		ivp_intro = true; _ivp_walk(["n0"])
 
@@ -3041,7 +3103,9 @@ func _ivp_walk(path: Array) -> void:
 	if iv_me == "r": await _iv_win()
 
 func _ivp_tap(sp: Vector2) -> void:
-	if iv_busy or iv_won or busy or not ivp_intro: return
+	if iv_busy or iv_won or busy or not ivp_intro:
+		if OS.get_environment("IV_TRACE") != "": print("IV tap ignored: busy ", iv_busy, " ", busy, " won ", iv_won)
+		return
 	var px := get_viewport().get_visible_rect().size.x / 720.0
 	if not ivp_sunk and _iv_scr(iv_wheel.global_position, sp) < 70.0 * px: iv_moves += 1; await _ivp_turn(); return
 	if not ivp_sunk and _iv_scr(iv_block_n.global_position + Vector3(0, 0.42, 0), sp) < 66.0 * px: iv_moves += 1; await _ivp_try_push(); return
@@ -3051,6 +3115,7 @@ func _ivp_tap(sp: Vector2) -> void:
 		if d2 < bd: bd = d2; best = String(k)
 	if best == "" or best == iv_me: return
 	var path := _ivp_path(iv_me, best)
+	if OS.get_environment("IV_TRACE") != "": print("IV tap ", best, " from ", iv_me, " path ", path)
 	if path.is_empty(): await _her_no(); return
 	iv_moves += 1
 	await _ivp_walk(path)
@@ -3093,7 +3158,7 @@ func _ivp_do_push(q: String) -> void:
 	var up := tw(); up.set_parallel(); up.tween_property(self, "a_wL", 1.0, 0.3); up.tween_property(self, "a_wR", 1.0, 0.3); up.tween_property(self, "a_lean", 0.16, 0.3)
 	while not route.is_empty(): await get_tree().process_frame
 	iv_block_n.global_position = qp
-	ivp_bshadow.global_position = qp + Vector3(0.42, 0.012, -0.18)
+	if ivp_bshadow != null: ivp_bshadow.global_position = qp + Vector3(0.42, 0.012, -0.18)
 	iv_me = iv_block; iv_block = q; iv_push = {}
 	ivp_wp_cur = endp
 	var dn := tw(); dn.set_parallel(); dn.tween_property(self, "a_wL", 0.0, 0.35); dn.tween_property(self, "a_wR", 0.0, 0.35); dn.tween_property(self, "a_lean", 0.0, 0.35)
@@ -3122,7 +3187,7 @@ func _ivp_turn() -> void:
 		print("IV the volute is turned: the stone goes down into its bed")
 		var sk := create_tween().set_parallel()
 		sk.tween_property(iv_block_n, "position:y", iv_block_n.position.y - 0.8, 2.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
-		sk.tween_property(ivp_bshadow.material_override, "albedo_color:a", 0.0, 1.6)
+		if ivp_bshadow != null: sk.tween_property(ivp_bshadow.material_override, "albedo_color:a", 0.0, 1.6)
 		await sk.finished
 		ivp_sunk = true
 	await wait(0.3)
@@ -3144,7 +3209,9 @@ func _play_ivp() -> void:
 	await get_tree().create_timer(2.2).timeout
 	await snap.call("p0_title")
 	tap(Vector2(360, 640)); await wait(1.0)
-	await idle.call(); await wait(0.6); await snap.call("p1_start")
+	await idle.call(); await wait(0.6)
+	if OS.get_environment("IV_CLEAN") != "": await wait(7.0)      # (for the look alone: after the line has gone)
+	await snap.call("p1_start")
 	if OS.get_environment("GH_ONLY") == "start": get_tree().quit(); return
 	await tapw.call(ivp_nodes["n2"]); await snap.call("p2_lower")
 	await tapw.call(iv_block_n.global_position + Vector3(0, 0.42, 0)); await snap.call("p3_pushed")
@@ -3156,6 +3223,283 @@ func _play_ivp() -> void:
 	await wait(1.5); await snap.call("p9_end")
 	print("IV ended: ", ended)
 	get_tree().quit()
+
+
+# ---------------------------------------------------------------- Eidolon GO, ivory: the level in 3D
+## The level built in 3D in the look of the picture (the default; IV_MODE=plate shows the picture itself, IV_MODE=3d the
+## first build): its floors, flights, rocks, columns and arches are made by tools/ivory_level.py in Blender, with the shade
+## of corners and clefts baked into their vertices; here they are coloured as the picture is (cream tops, lit faces to
+## the left, umber in shade), the far cliffs and ruins stand in the mist, and the way, the stone, the volute and the
+## ring are as in the painted level.
+const IVR_W := 8.0      # the width the eye holds, in metres
+const IVR_C := Vector2(0.45, 2.7)      # the middle of the picture, across and up, from the level's origin
+var ivr_on := OS.get_environment("IV_MODE") != "plate" and OS.get_environment("IV_MODE") != "3d"
+
+var ivr_eye := {}      # the eye of the picture the level was traced from: its middle (from the level's origin) and its width
+var ivr_steps := {}      # how many steps each flight has (as counted on the picture), by its foot and head
+var ivr_floors := {}      # the floors of the level: their heights and outlines (x, z), for what must lie on them or hang over their edges
+
+## how far from p, going along d on the floor p is on, its edge is (or -1)
+func _ivr_edge_dist(p: Vector3, d: Vector3) -> float:
+	var best := -1.0
+	for nm in ivr_floors:
+		var fl: Dictionary = ivr_floors[nm]
+		if absf(float(fl.h) - (p.y - IV_O.y)) > 0.08: continue
+		var poly: Array = fl.xz
+		var q := Vector2(p.x - IV_O.x, p.z - IV_O.z); var dd := Vector2(d.x, d.z).normalized()
+		for i in poly.size():
+			var a := Vector2(float(poly[i][0]), float(poly[i][1])); var b := Vector2(float(poly[(i + 1) % poly.size()][0]), float(poly[(i + 1) % poly.size()][1]))
+			var e := b - a; var den := dd.x * e.y - dd.y * e.x
+			if absf(den) < 1e-9: continue
+			var t := ((a.x - q.x) * e.y - (a.y - q.y) * e.x) / den; var u := ((a.x - q.x) * dd.y - (a.y - q.y) * dd.x) / den
+			if t > 0.0 and u >= 0.0 and u <= 1.0 and (best < 0.0 or t < best): best = t
+	return best
+
+func _ivr_fkey(a: Vector3, b: Vector3) -> String: return "%.2f,%.2f,%.2f|%.2f,%.2f,%.2f" % [a.x, a.y, a.z, b.x, b.y, b.z]
+
+func _ivr_cam() -> void:
+	var b := _ivp_basis()
+	var c := IV_O + b.x * IVR_C.x + b.y * IVR_C.y
+	var w := IVR_W
+	if not ivr_eye.is_empty():
+		var ce: Array = ivr_eye.centre
+		c = IV_O + Vector3(float(ce[0]), float(ce[1]), float(ce[2])); w = float(ivr_eye.width)
+	cam.global_transform = Transform3D(b, c + b.z * 40.0)
+	var vp := get_viewport().get_visible_rect().size
+	cam.keep_aspect = Camera3D.KEEP_WIDTH; cam.size = w * maxf(1.0, (vp.x / vp.y) / 0.5625)
+
+func _ivr_mat(kind: String, ao := 1.0, local := false) -> ShaderMaterial: return _iv_mat(kind, 0.0, {"lfog": 1.0 if local else 0.0, "fog_hi": -2.8, "fog_lo": -6.5, "ao_k": ao * ({"marble2": 0.55, "olive2": 0.3, "bark": 0.5, "rock2": 1.0} as Dictionary).get(kind, 1.0), "veins": 0.6 if kind == "marble2" else 0.0, "dk": 0.42 if kind == "rock2" else 0.0, "haze": 1.0})
+
+## the way drawn on the stone: a pale line, and at each node a pale disc in a darker ring
+func _ivr_way() -> void:
+	for e in ivp_edges:
+		var pts := [ivp_nodes[e[0]]]
+		var mids: Array = e[2]
+		if mids.size() == 2:      # a flight: along the floor to its foot, then over each tread and up each riser, then on from its head
+			var f: Vector3 = mids[0]; var h: Vector3 = mids[1]
+			var lo_p := f if f.y < h.y else h; var hi_p := h if f.y < h.y else f
+			var n := int(ivr_steps.get(_ivr_fkey(f, h), 0))
+			if n <= 0: n = maxi(1, int(round(absf(hi_p.y - lo_p.y) / 0.12)))
+			var rz := (hi_p.y - lo_p.y) / float(n)
+			var dd := Vector3(hi_p.x - lo_p.x, 0, hi_p.z - lo_p.z); var run := dd.length() / float(n); dd = dd.normalized()
+			var a0 := (pts[0] as Vector3) if f.y < h.y else (ivp_nodes[e[1]] as Vector3)
+			var a1 := (ivp_nodes[e[1]] as Vector3) if f.y < h.y else (pts[0] as Vector3)
+			_iv_line(iv_root, a0 - IV_O, lo_p - IV_O)
+			for k in n:
+				var foot_k := lo_p + dd * (run * float(k)) + Vector3(0, rz * float(k), 0)
+				var up_k := foot_k + Vector3(0, rz, 0)
+				_iv_riser(iv_root, foot_k - IV_O - dd * 0.012, up_k - IV_O - dd * 0.012)
+				_iv_line(iv_root, up_k - IV_O, up_k + dd * run - IV_O)
+			_iv_line(iv_root, hi_p - IV_O, a1 - IV_O)
+		else: _iv_line(iv_root, (pts[0] as Vector3) - IV_O, (ivp_nodes[e[1]] as Vector3) - IV_O)
+	for k in ivp_nodes:
+		if k == "r" or k == "s": continue
+		var p: Vector3 = (ivp_nodes[k] as Vector3) - IV_O
+		var rm := CylinderMesh.new(); rm.top_radius = 0.215; rm.bottom_radius = 0.215; rm.height = 0.02; rm.radial_segments = 24; rm.rings = 1
+		var ri := _iv_prim(rm, p + Vector3(0, 0.008, 0), "groove", iv_root); ri.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var dm := CylinderMesh.new(); dm.top_radius = 0.16; dm.bottom_radius = 0.165; dm.height = 0.035; dm.radial_segments = 24; dm.rings = 1
+		var di := MeshInstance3D.new(); di.mesh = dm; di.material_override = _ivr_mat("marble2", 0.0); di.position = p + Vector3(0, 0.02, 0); di.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; iv_root.add_child(di)
+
+## far off, as the picture has it, one band behind another, each paler and smaller than the one before: tall crags at
+## the eye's sides; behind them a colonnade on its pillar of rock and lesser crags; far behind, highest, the hill of
+## the colossus and the ridge of its temple; farthest, low hills in the haze. Each stands where the picture shows it, in
+## the picture's own measure (metres across and up from its middle). The eye here sees without perspective, so the far
+## is made as an eye with perspective would see it: smaller the farther, and the rows of columns drawing together as
+## they go away, toward a point on the horizon.
+func _ivr_far() -> void:
+	var b := _ivp_basis()
+	var bx := b.x; var by := b.y; var fwd := -b.z
+	var ref := IV_O + b.x * IVR_C.x + b.y * IVR_C.y
+	if not ivr_eye.is_empty():
+		var ce: Array = ivr_eye.centre
+		ref = IV_O + Vector3(float(ce[0]), float(ce[1]), float(ce[2]))
+	var rng := RandomNumberGenerator.new(); rng.seed = 23
+	var spot := func(sx: float, sy: float, dep: float) -> Vector3: return ref + bx * sx + by * sy + fwd * dep
+	var spot_y := func(sx: float, sy: float, y: float) -> Vector3: return ref + bx * sx + by * sy + fwd * ((y - ref.y - by.y * sy) / fwd.y)      # (that place in the picture, at that height)
+	var fog := func(top: float, w: float, near := false) -> Dictionary: return {"fog_hi": top - (3.2 if near else 0.6 + w * 1.2), "fog_lo": top - (11.0 if near else 4.0 + w * 3.2)}
+	# crags: [across, up (its top), width, depth, haze, palette, a spire?]
+	for f in [
+			[2.25, 5.0, 1.3, 8.0, 0.04, "rock2", false], [3.05, 3.2, 1.4, 7.5, 0.1, "far1", false],
+			[-2.35, 2.2, 1.15, 15.0, 0.42, "far", false], [-2.15, 4.45, 0.8, 18.0, 0.55, "far", true], [-1.65, 3.9, 0.65, 17.0, 0.55, "far", false],
+			[0.7, 4.88, 1.2, 26.0, 0.55, "far", false], [-0.25, 4.5, 1.25, 28.0, 0.6, "far", false],
+			[2.9, 5.8, 1.4, 36.0, 0.72, "far", true]]:
+		var top: Vector3 = spot.call(float(f[0]), float(f[1]), float(f[3]))
+		var st := _iv_st(); _ivr_crag(st, top, float(f[2]), rng, bool(f[6]))
+		_iv_commit(st, String(f[5]), self, float(f[4]), fog.call(top.y, float(f[2]), String(f[5]) == "far1"), false)
+	# the colonnade on its pillar (the middle band), going away to the left: every foot of it on the pillar's top
+	var cy: float = (spot.call(-1.95, 2.3, 15.0) as Vector3).y
+	var cs := _iv_st()
+	var feet: Array = _ivr_colonnade(cs, spot_y, Vector2(-1.95, 2.3), Vector2(-6.2, 3.7), cy, 4, 1.32, 0.34, 3, rng)
+	_ivr_crag_under(cs, feet, 0.32, rng)
+	_iv_commit(cs, "farsil", self, 0.3, fog.call(cy, 1.2), false)
+	# the temple on the far ridge, going away to the left, on its own table of rock
+	var ty: float = (spot.call(0.42, 4.6, 27.0) as Vector3).y
+	var ts := _iv_st()
+	feet = _ivr_colonnade(ts, spot_y, Vector2(0.42, 4.6), Vector2(-4.8, 5.7), ty, 6, 0.84, 0.25, 6, rng)
+	_ivr_crag_under(ts, feet, 0.22, rng)
+	_iv_commit(ts, "farsil", self, 0.42, fog.call(ty, 1.0), false)
+	# the colossus on the crown of the far hill, his feet on it
+	var cl: Vector3 = spot.call(0.56, 4.93, 25.5)
+	var ss := _iv_st(); _ivr_crag_under(ss, [cl], 0.42, rng); _iv_commit(ss, "farsil", self, 0.42, fog.call(cl.y, 1.0), false)
+	var col := prop_model("iv_colossus", self, 1.9)
+	col.position = cl; col.rotation.y = PI * 0.3
+	for m in col.find_children("*", "MeshInstance3D", true, false):
+		(m as MeshInstance3D).material_override = _iv_mat("farsil", 0.3, {"fog_hi": cl.y - 1.0, "fog_lo": cl.y - 6.0}); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+## the rock that bears things far off: a table of rock whose flat top holds every foot given, a little more round them
+func _ivr_crag_under(st: SurfaceTool, feet: Array, margin: float, rng: RandomNumberGenerator) -> void:
+	var c := Vector3.ZERO
+	for f in feet: c += f as Vector3
+	c /= float(feet.size())
+	var r := 0.0
+	for f in feet: r = maxf(r, Vector2((f as Vector3).x - c.x, (f as Vector3).z - c.z).length())
+	_ivr_crag(st, Vector3(c.x, (feet[0] as Vector3).y - 0.01, c.z), (r + margin) * 2.0 / 0.82, rng, false, 1.0, true)
+
+## a crag far off: a spire or a table of rock, its top cut aslant, its sides in a few broad facets, widening into the mist
+func _ivr_crag(st: SurfaceTool, top: Vector3, w: float, rng: RandomNumberGenerator, sharp := false, top_k := 0.62, flat := false) -> void:
+	var n := 6
+	var hs := [0.0, w * 0.45, w * 1.4, w * 3.4, 34.0]
+	var ks := [top_k, maxf(1.0, top_k * 1.08), 1.28 * maxf(1.0, top_k), 1.55 * maxf(1.0, top_k), 2.1 * maxf(1.0, top_k)]
+	var a0 := rng.randf_range(0.0, TAU)
+	var jit := []
+	for k in n: jit.append(Vector2(rng.randf_range(-0.22, 0.22), rng.randf_range(0.82, 1.12)))
+	var tilt := Vector3(rng.randf_range(-1.0, 1.0), 0, rng.randf_range(-1.0, 1.0)).normalized()
+	var rings := []
+	for li in hs.size():
+		var ring := []
+		for k in n:
+			var j: Vector2 = jit[k]
+			var a := a0 + TAU * float(k) / float(n) + j.x + rng.randf_range(-0.07, 0.07) * float(li)
+			var r := w * 0.5 * float(ks[li]) * j.y * rng.randf_range(0.93, 1.07)
+			var y := top.y - float(hs[li])
+			if li > 0 and li < hs.size() - 1: y += rng.randf_range(-0.1, 0.1) * w
+			var p := Vector3(top.x + cos(a) * r, y, top.z + sin(a) * r)
+			if li == 0 and not flat: p.y += (p - top).dot(tilt) * (0.55 if sharp else 0.22)
+			ring.append(p)
+		rings.append(ring)
+	for li in rings.size() - 1:
+		for k in n:
+			var a: Vector3 = rings[li][k]; var c: Vector3 = rings[li][(k + 1) % n]; var d: Vector3 = rings[li + 1][(k + 1) % n]; var e: Vector3 = rings[li + 1][k]
+			var mid := (a + c + d + e) * 0.25
+			_iv_quad(st, a, c, d, e, Vector3(mid.x - top.x, 0, mid.z - top.z))
+	var apex := top + (Vector3(0, w * 0.45, 0) + tilt * w * 0.15 if sharp else Vector3(0, 0.0 if flat else w * 0.04, 0))
+	for k in n: _iv_tri(st, apex, rings[0][k], rings[0][(k + 1) % n], Vector3.UP)
+
+## a row of columns going away, as an eye with perspective sees it: the nearest one's foot at `near` (in the picture),
+## the rest smaller and closer together toward the point `vp` on the horizon; a lintel over the first `lintel` of them
+func _ivr_colonnade(st: SurfaceTool, spot_y: Callable, near: Vector2, vp: Vector2, y0: float, n: int, h: float, gap: float, lintel: int, rng: RandomNumberGenerator) -> Array:
+	var shrink := 1.0 - gap / near.distance_to(vp)
+	var tops := []
+	var sc := 1.0
+	for k in n:
+		var f2: Vector2 = vp + (near - vp) * sc
+		var p: Vector3 = spot_y.call(f2.x, f2.y, y0)
+		var hh := h * sc; var r := h * 0.08 * sc
+		var oct := []
+		for m in 8: oct.append(Vector2(p.x + cos(TAU * float(m) / 8.0) * r, p.z + sin(TAU * float(m) / 8.0) * r))
+		_iv_prism(st, oct, p.y + hh * 0.92, p.y + hh * 0.06, rng, 0.0, false)
+		_iv_box(st, Vector3(p.x - r * 1.55, p.y + hh * 0.92, p.z - r * 1.55), Vector3(p.x + r * 1.55, p.y + hh, p.z + r * 1.55))
+		_iv_box(st, Vector3(p.x - r * 1.45, p.y, p.z - r * 1.45), Vector3(p.x + r * 1.45, p.y + hh * 0.06, p.z + r * 1.45))
+		tops.append([p + Vector3(0, hh, 0), sc, r])
+		sc *= shrink
+	# the lintel: a beam from top to top, as thick and as deep as the columns under it
+	var bz := _ivp_basis().z; var fh := Vector3(bz.x, 0, bz.z).normalized()      # (across the beam: toward the eye)
+	for k in mini(lintel, n) - 1:
+		var a: Vector3 = tops[k][0]; var c: Vector3 = tops[k + 1][0]
+		var ra: float = tops[k][2] * 1.7; var rc: float = tops[k + 1][2] * 1.7
+		var ea := h * 0.13 * float(tops[k][1]); var ec := h * 0.13 * float(tops[k + 1][1])
+		var dd := (c - a); dd.y = 0.0; dd = dd.normalized()
+		a -= dd * ra * (1.0 if k == 0 else 0.0); c += dd * rc * (1.0 if k == mini(lintel, n) - 2 else 0.0)
+		_iv_hexa(st, [a - fh * ra, c - fh * rc, c + fh * rc, a + fh * ra, a - fh * ra + Vector3(0, ea, 0), c - fh * rc + Vector3(0, ec, 0), c + fh * rc + Vector3(0, ec, 0), a + fh * ra + Vector3(0, ea, 0)])
+	var feet := []
+	for t in tops: feet.append((t[0] as Vector3) - Vector3(0, h * float(t[1]), 0))
+	return feet
+
+## the meander stone, cut as by hand (tools/ivory/block.py): its faces not quite flat, its edges eased, chips gone
+func _ivr_block() -> Node3D:
+	if not FileAccess.file_exists("res://goiv/block.glb"):
+		var b0 := _ivp_block(iv_root)
+		for m in b0.find_children("*", "MeshInstance3D", true, false): (m as MeshInstance3D).material_override = _ivr_mat("marble2", 0.0)
+		return b0
+	var st := GLTFState.new(); var doc := GLTFDocument.new()
+	doc.append_from_buffer(FileAccess.get_file_as_bytes("res://goiv/block.glb"), "", st)
+	var n := Node3D.new(); iv_root.add_child(n)
+	n.add_child(doc.generate_scene(st))
+	for m in n.find_children("*", "MeshInstance3D", true, false):
+		(m as MeshInstance3D).material_override = _ivr_mat("marble2"); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	return n
+
+func _ivr_build() -> void:
+	iv_root = Node3D.new(); iv_root.position = IV_O; add_child(iv_root)
+	var bm := ShaderMaterial.new(); var bs := Shader.new(); bs.code = IV_BG_SH; bm.shader = bs
+	for i in 3: bm.set_shader_parameter(["bg_top", "bg_mid", "bg_bot"][i], Color(String(IV_BG[i])))
+	var bq := QuadMesh.new(); bq.size = Vector2(900, 900)
+	var bgi := MeshInstance3D.new(); bgi.mesh = bq; bgi.material_override = bm; bgi.position = Vector3(0, 0, -140.0); bgi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; cam.add_child(bgi)
+	# the level, as Blender made it
+	var st := GLTFState.new(); var doc := GLTFDocument.new()
+	doc.append_from_buffer(FileAccess.get_file_as_bytes("res://goiv/level.glb"), "", st)
+	var lv := doc.generate_scene(st) as Node3D
+	iv_root.add_child(lv)
+	for m in lv.find_children("*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		var nm := String(mi.name).to_lower() + "|" + String(mi.get_parent().name).to_lower()
+		var kind := "rock2" if nm.contains("rock") else ("olive2" if nm.contains("olive") else ("bark" if nm.contains("bark") else "marble2"))
+		mi.material_override = _ivr_mat(kind, 1.0, true); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	# its way
+	var j: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://goiv/level.json"))
+	if j.has("eye"): ivr_eye = j.eye
+	if j.has("floors"): ivr_floors = j.floors
+	var V := func(a: Array) -> Vector3: return IV_O + Vector3(float(a[0]), float(a[1]), float(a[2]))
+	ivp_nodes = {}
+	for k in (j.nodes as Dictionary): ivp_nodes[k] = V.call(j.nodes[k])
+	if j.has("flights"):
+		for fl in (j.flights as Array):
+			ivr_steps[_ivr_fkey(V.call(fl[0]), V.call(fl[1]))] = int(fl[3]) if (fl as Array).size() > 3 else 0
+	ivp_edges = []
+	for e in (j.edges as Array):
+		var mids := []
+		for p in (e[2] as Array): mids.append(V.call(p))
+		ivp_edges.append([String(e[0]), String(e[1]), mids])
+	_ivr_way()
+	iv_me = "s"; iv_block = "b0"
+	iv_block_n = _ivr_block(); iv_block_n.global_position = ivp_nodes["b0"]
+	_ivp_volute(V.call(j.volute))
+	# the fallen face: one of the thousand, on its cheek in the rock, looking up at the eye
+	var hp := Node3D.new(); iv_root.add_child(hp); hp.global_position = V.call(j.head)
+	var hd := prop_model("iv_head", hp, 2.8); hd.position = Vector3(0, -1.4, 0)
+	for m in hd.find_children("*", "MeshInstance3D", true, false):
+		(m as MeshInstance3D).material_override = _ivr_mat("marble2", 0.0); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	var fz := Vector3(0.52, 0.42, 0.74).normalized()      # where the face looks: to the eye, a little up
+	var fy := (Vector3(-0.78, 0.55, -0.1) - fz * Vector3(-0.78, 0.55, -0.1).dot(fz)).normalized()      # where the crown points: to the upper left of the picture
+	var fx := fy.cross(fz)
+	var hax := OS.get_environment("IV_HAXIS") if OS.get_environment("IV_HAXIS") != "" else "-x"      # (the model's own face looks along its -x)
+	match hax:
+		"x": hp.basis = Basis(-fz, fy, fx)
+		"-x": hp.basis = Basis(fz, fy, -fx)
+		"-z": hp.basis = Basis(-fx, fy, -fz)
+		_: hp.basis = Basis(fx, fy, fz)
+	# the ring of light where the way ends
+	iv_ring = Node3D.new(); iv_root.add_child(iv_ring); iv_ring.global_position = ivp_nodes["r"]
+	var tm := TorusMesh.new(); tm.inner_radius = 0.36; tm.outer_radius = 0.46; tm.rings = 28; tm.ring_segments = 6
+	var rm := _iv_prim(tm, Vector3(0, 0.06, 0), "ring", iv_ring); rm.scale = Vector3(1, 0.6, 1); rm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var gq := QuadMesh.new(); gq.size = Vector2(1.7, 1.7)
+	var gm := StandardMaterial3D.new(); gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm.albedo_texture = load("res://goiv/glow.png")
+	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; gm.albedo_color = Color(1.0, 0.96, 0.86, 0.5)
+	iv_glow = MeshInstance3D.new(); iv_glow.mesh = gq; iv_glow.material_override = gm; iv_glow.position = Vector3(0, 0.4, 0); iv_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; iv_ring.add_child(iv_glow)
+	_ivr_far()
+	# before the eye: dark leaves at the top, dark rocks at the foot, the warm shade in the corners
+	var k := get_viewport().get_visible_rect().size.x / 720.0
+	var vh := get_viewport().get_visible_rect().size.y
+	var cl := CanvasLayer.new(); cl.layer = 1; add_child(cl)
+	var vg := Gradient.new(); vg.offsets = PackedFloat32Array([0.0, 0.5, 0.82, 1.0])
+	vg.colors = PackedColorArray([Color(0.3, 0.2, 0.12, 0), Color(0.3, 0.2, 0.12, 0), Color(0.3, 0.2, 0.12, 0.08), Color(0.3, 0.2, 0.12, 0.22)])
+	var vt := GradientTexture2D.new(); vt.gradient = vg; vt.fill = GradientTexture2D.FILL_RADIAL; vt.fill_from = Vector2(0.5, 0.5); vt.fill_to = Vector2(1.15, 0.5); vt.width = 256; vt.height = 256
+	var vr := TextureRect.new(); vr.texture = vt; vr.stretch_mode = TextureRect.STRETCH_SCALE; vr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	vr.set_anchors_preset(Control.PRESET_FULL_RECT); vr.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(vr)
+	iv_leaves = _iv_overlay(cl, "res://goiv/leaves_tl.png", Vector2(-70, -90) * k, Vector2(470, 470) * k)
+	_iv_overlay(cl, "res://goiv/rock_bl.png", Vector2(-80 * k, vh - 360 * k), Vector2(400, 400) * k)
+	_iv_overlay(cl, "res://goiv/rock_br.png", Vector2(720 * k - 330 * k, vh - 330 * k), Vector2(400, 400) * k)
+	_iv_overlay(cl, "res://goiv/rock_r.png", Vector2(720 * k - 150 * k, vh * 0.36), Vector2(170 * k, vh * 0.66))
 
 
 # ---------------------------------------------------------------- the face in the water (a trial)
