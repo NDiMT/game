@@ -1286,8 +1286,9 @@ func _play_geo() -> void:
 ## The game played a step at a time, after the GO games: each level is a square board of stones in the sea. A tap on
 ## a stone next to her takes her one step; then the world takes its step. Statues of her guard the boards, and what a
 ## statue looks at turns to stone: the stone right in front of it. Come at a statue from behind or from the side and
-## she throws a veil over it, and it sinks. Some walk a line, turning at its ends. Drums of columns can be pushed, and
-## one pushed into a hole fills it. A hand mirror, once: a statue that looks at her from afar, along a clear line, sees
+## she throws a veil over it (she stays where she is): veiled, it sees nothing, and she can push it one stone on; pushed
+## off the board it falls into the water, into a hole it fills it. Some walk a line, turning at its ends. Drums of
+## columns are pushed the same way. A hand mirror, once: a statue that looks at her from afar, along a clear line, sees
 ## itself in it and turns to stone.
 ## Maps: rows of characters, one per stone. ' ' sea, '_' a still pool (level 1's middle), '.' stone, 'S' where she
 ## starts, 'G' the gate, 'O' a hole, 'P' a drum, 'M' the mirror; a statue that stands: r l d u (it looks along +i, -i,
@@ -1295,9 +1296,9 @@ func _play_geo() -> void:
 const GO_D := 1.6
 const GO_VIEW := 11.0
 const GO_LEVELS := [
-	{"map": ["G.d..", ".___.", ".___u", ".___.", "..r.S"], "pool": true, "line": "What is looked at,\nstays."},
+	{"map": ["G....", ".___.", ".___u", ".___.", "..r.S"], "pool": true, "line": "What is looked at,\nstays."},
 	{"map": ["G....", "....L", "  O  ", "..P..", "..S.."], "pool": false, "line": "Stone can fill the sea."},
-	{"map": [" .G. ", "  d  ", ".....", ". u .", "M...S"], "pool": false, "line": "Let it see itself."},
+	{"map": [" .G. ", "  d  ", ".....", "..u .", "M...S"], "pool": false, "line": "Let it see itself."},
 ]
 var gs := {}
 var go_root: Node3D
@@ -1341,7 +1342,7 @@ func _go_build(lv: int) -> void:
 			if c == "P": gs.pillars[k] = null
 			if c in ["r", "l", "d", "u", "R", "L", "D", "U"]:
 				var dv := {"r": Vector2i(1, 0), "l": Vector2i(-1, 0), "d": Vector2i(0, 1), "u": Vector2i(0, -1)}[c.to_lower()] as Vector2i
-				gs.guards.append({"at": Vector2i(i, j), "dir": dv, "walks": c == c.to_upper(), "alive": true})
+				gs.guards.append({"at": Vector2i(i, j), "dir": dv, "walks": c == c.to_upper(), "alive": true, "veiled": false})
 	# the stones, and the ways between them
 	for k in gs.cells:
 		var ij: PackedStringArray = String(k).split(","); var i := int(ij[0]); var j := int(ij[1]); var p := _go_w(i, j)
@@ -1481,6 +1482,7 @@ func _go_dots() -> void:
 	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 		var t: Vector2i = me + d; var k := _go_key(t.x, t.y)
 		if not gs.cells.has(k) or gs.cells[k] == "hole": continue
+		if gs.cells[k] == "gate" and false: continue
 		var r := MeshInstance3D.new(); var tm := TorusMesh.new(); tm.inner_radius = 0.2; tm.outer_radius = 0.25; tm.rings = 24; tm.ring_segments = 4; r.mesh = tm
 		r.material_override = mat(Color(1, 1, 1, 0.55)); r.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; r.position = _go_w(t.x, t.y) + Vector3(0, 0.03, 0); r.scale = Vector3(1, 0.2, 1)
 		go_root.add_child(r); go_dots.append(r)
@@ -1493,11 +1495,17 @@ func _go_guard_at(v: Vector2i):
 		if bool(g.alive) and (g.at as Vector2i) == v: return g
 	return null
 
-## can a statue that walks step onto v?
+## a veiled statue standing at v (or null)
+func _go_veiled_at(v: Vector2i):
+	for g in gs.guards:
+		if bool(g.veiled) and (g.at as Vector2i) == v: return g
+	return null
+
+## can a statue that walks (or a thing pushed) come onto v?
 func _go_free_for_guard(v: Vector2i) -> bool:
 	var k := _go_key(v.x, v.y)
 	if not gs.cells.has(k) or gs.cells[k] != "floor": return false
-	if gs.pillars.has(k) or _go_guard_at(v) != null or String(gs.mirror) == k: return false
+	if gs.pillars.has(k) or _go_guard_at(v) != null or _go_veiled_at(v) != null or String(gs.mirror) == k: return false
 	return true
 
 ## is she seen? (the stone right in front of a statue that is still a statue)
@@ -1523,6 +1531,12 @@ func _go_begin() -> void:
 	var vr := TextureRect.new(); vr.texture = vt; vr.stretch_mode = TextureRect.STRETCH_SCALE; vr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	vr.set_anchors_preset(Control.PRESET_FULL_RECT); vr.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(vr)
 	var cl2 := CanvasLayer.new(); cl2.layer = 5; add_child(cl2)
+	var rb := Button.new(); rb.text = "↺"; rb.flat = true; rb.focus_mode = Control.FOCUS_NONE
+	rb.add_theme_font_size_override("font_size", 56); rb.add_theme_color_override("font_color", Color(1, 1, 1, 0.85)); rb.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6)); rb.add_theme_constant_override("outline_size", 8)
+	rb.anchor_left = 1.0; rb.anchor_right = 1.0; rb.offset_left = -110; rb.offset_right = -24; rb.offset_top = 24; rb.offset_bottom = 110
+	rb.pressed.connect(func() -> void:
+		if started and not ended and not bool(gs.busy) and not bool(gs.dead) and not bool(gs.won): _go_again())
+	cl2.add_child(rb)
 	go_fade = ColorRect.new(); go_fade.color = Color(0.03, 0.05, 0.1, 0.0); go_fade.set_anchors_preset(Control.PRESET_FULL_RECT); go_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl2.add_child(go_fade)
 	var rng := RandomNumberGenerator.new(); rng.seed = 11
 	for k in 30:
@@ -1581,30 +1595,42 @@ func _go_act(t: Vector2i) -> void:
 	var k := _go_key(t.x, t.y)
 	if not gs.cells.has(k) or gs.cells[k] == "hole": await _her_no(); gs.busy = false; return
 	go_said["stepped"] = true
-	if g != null:      # come at from behind or the side: a veil over it
+	if g != null:      # come at from behind or the side: a veil over it (she stays where she is)
 		await _go_veil(g)
-	elif gs.pillars.has(k):      # a drum: pushed one stone on
+		await _go_world()
+		gs.busy = false; return
+	var vg = _go_veiled_at(t)
+	if vg != null or gs.pillars.has(k):      # a drum, or a veiled statue: pushed one stone on
 		var to := t + d; var k2 := _go_key(to.x, to.y)
-		var pn: Node3D = gs.pillars[k]
-		if gs.cells.has(k2) and gs.cells[k2] == "hole":
-			gs.pillars.erase(k); gs.cells[k2] = "floor"
+		var pn: Node3D = (vg.veil as Node3D) if vg != null else (gs.pillars[k] as Node3D)
+		var into_hole: bool = gs.cells.has(k2) and gs.cells[k2] == "hole"
+		var off: bool = not gs.cells.has(k2)
+		if into_hole or off or _go_free_for_guard(to):
+			if vg != null: vg.at = to
+			else: gs.pillars.erase(k)
+			if not into_hole and not off and vg == null: gs.pillars[k2] = pn
+			if off and vg != null: vg.veiled = false
 			_go_walk_to(t, true)
-			var tw1 := create_tween(); tw1.tween_property(pn, "position", _go_w(to.x, to.y), 0.55).set_trans(Tween.TRANS_SINE)
-			tw1.tween_property(pn, "position:y", -0.9, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			var tw1 := create_tween(); tw1.tween_property(pn, "position", _go_w(to.x, to.y) if not off else _go_w(t.x, t.y) + Vector3(d.x, 0, d.y) * (GO_D * 0.5 + 0.35), 0.55 if not off else 0.4).set_trans(Tween.TRANS_SINE)
+			if off:      # off the board: it topples into the water
+				tw1.parallel().tween_property(pn, "rotation", Vector3(d.y * 1.3, 0, -d.x * 1.3), 0.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+				tw1.tween_property(pn, "position:y", WATER - 2.2, 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+				tw1.tween_callback(pn.hide)
+				print("GO pushed into the water, off ", t)
+			elif into_hole:
+				gs.cells[k2] = "floor"
+				tw1.tween_property(pn, "position:y", -2.0, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+				if vg != null: vg.veiled = false
 			await tw1.finished
-			blk(_go_w(to.x, to.y) + Vector3(-0.65, WATER - 0.8, -0.65), _go_w(to.x, to.y) + Vector3(0.65, -0.02, 0.65), "stone", go_root).material_override = pal("stone", "flat")
-			for dd in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-				var nb: Vector2i = to + dd
-				if gs.cells.has(_go_key(nb.x, nb.y)) and gs.cells[_go_key(nb.x, nb.y)] != "hole":
-					var q := _go_w(to.x, to.y) + Vector3(dd.x * GO_D * 0.5, 0, dd.y * GO_D * 0.5)
-					var ax := Vector3(0.36 if dd.x == 0 else GO_D * 0.5 - 0.6, 0, 0.36 if dd.y == 0 else GO_D * 0.5 - 0.6)
-					blk(q - Vector3(ax.x, 0.8 - WATER, ax.z), q + Vector3(ax.x, -0.02, ax.z), "stone", go_root).material_override = pal("stone", "flat")
-			print("GO the drum fills the hole at ", to)
-		elif _go_free_for_guard(to):
-			gs.pillars.erase(k); gs.pillars[k2] = pn
-			_go_walk_to(t, true)
-			var tw2 := create_tween(); tw2.tween_property(pn, "position", _go_w(to.x, to.y), 0.6).set_trans(Tween.TRANS_SINE)
-			await tw2.finished
+			if into_hole:
+				blk(_go_w(to.x, to.y) + Vector3(-0.65, WATER - 0.8, -0.65), _go_w(to.x, to.y) + Vector3(0.65, -0.02, 0.65), "stone", go_root).material_override = pal("stone", "flat")
+				for dd in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+					var nb: Vector2i = to + dd
+					if gs.cells.has(_go_key(nb.x, nb.y)) and gs.cells[_go_key(nb.x, nb.y)] != "hole":
+						var q := _go_w(to.x, to.y) + Vector3(dd.x * GO_D * 0.5, 0, dd.y * GO_D * 0.5)
+						var ax := Vector3(0.36 if dd.x == 0 else GO_D * 0.5 - 0.6, 0, 0.36 if dd.y == 0 else GO_D * 0.5 - 0.6)
+						blk(q - Vector3(ax.x, 0.8 - WATER, ax.z), q + Vector3(ax.x, -0.02, ax.z), "stone", go_root).material_override = pal("stone", "flat")
+				print("GO the hole is filled at ", to)
 		else: await _her_no(); gs.busy = false; return
 	await _go_walk_to(t)
 	if String(gs.mirror) == gs.me:      # the mirror: taken up
@@ -1631,7 +1657,7 @@ func _go_line_clear(t: Vector2i, me: Vector2i, g: Dictionary) -> bool:
 	var c := t + step
 	while c != me:
 		var k := _go_key(c.x, c.y)
-		if gs.pillars.has(k) or _go_guard_at(c) != null: return false
+		if gs.pillars.has(k) or _go_guard_at(c) != null or _go_veiled_at(c) != null: return false
 		c += step
 	return true
 
@@ -1640,16 +1666,19 @@ func _go_veil(g: Dictionary) -> void:
 	var up := tw(); up.set_parallel(); up.tween_property(self, "a_wL", 1.0, 0.35); up.tween_property(self, "a_wR", 1.0, 0.35); up.tween_property(self, "a_lean", 0.15, 0.35)
 	tgtL = (g.node as Node3D).position + Vector3(0, 1.9, 0); tgtR = tgtL
 	await up.finished
-	g.alive = false; _go_marks()
+	g.alive = false; g.veiled = true; _go_marks()
 	var at: Vector2i = g.at; var p := _go_w(at.x, at.y)
-	var veil := Node3D.new(); veil.position = p + Vector3(0, 2.6, 0); veil.scale = Vector3(1.0, 0.1, 1.0); go_root.add_child(veil)
-	cyl(Vector3(0, -2.6, 0), 0.5, 0.24, 2.0, pal("linen", "flat"), 14, veil); ball(Vector3(0, -0.45, 0), 0.27, pal("linen", "flat"), veil)
-	var vt := create_tween().set_parallel(); vt.tween_property(veil, "scale", Vector3.ONE, 0.45).set_trans(Tween.TRANS_SINE); vt.tween_property(veil, "position:y", 2.6, 0.45)
+	var veil := Node3D.new(); veil.position = p + Vector3(0, 1.4, 0); veil.scale = Vector3(1.0, 0.1, 1.0); go_root.add_child(veil); g["veil"] = veil
+	cyl(Vector3(0, 0, 0), 0.42, 0.2, 1.75, pal("linen", "flat"), 14, veil); ball(Vector3(0, 1.9, 0), 0.24, pal("linen", "flat"), veil)
+	cyl(Vector3(0, 1.0, 0), 0.31, 0.29, 0.05, pal("rope", "flat"), 14, veil); cyl(Vector3(0, 0.32, 0), 0.4, 0.38, 0.05, pal("rope", "flat"), 14, veil)
+	for f in 5:
+		var a := f * TAU / 5.0 + 0.3
+		var fb := ball(Vector3(cos(a) * 0.4, 0.04, sin(a) * 0.4), 0.14, pal("linen", "flat"), veil); fb.scale = Vector3(1.3, 0.45, 1.0)
+	var vt := create_tween().set_parallel(); vt.tween_property(veil, "scale", Vector3.ONE, 0.45).set_trans(Tween.TRANS_SINE); vt.tween_property(veil, "position:y", 0.0, 0.45).set_trans(Tween.TRANS_SINE)
 	var dn := tw(); dn.set_parallel(); dn.tween_property(self, "a_wL", 0.0, 0.4); dn.tween_property(self, "a_wR", 0.0, 0.4); dn.tween_property(self, "a_lean", 0.0, 0.4)
 	await vt.finished
 	(g.node as Node3D).hide()
-	var sk := create_tween(); sk.tween_property(veil, "position:y", 0.6, 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN); sk.tween_property(veil, "scale", Vector3(1.3, 0.02, 1.3), 0.3)
-	await sk.finished
+	_go_dots()
 	print("GO a statue is veiled at ", at)
 
 func _go_mirror(g: Dictionary) -> void:
@@ -1708,6 +1737,15 @@ func _go_die() -> void:
 	var f2 := create_tween(); f2.tween_property(go_fade, "color:a", 0.0, 0.6)
 	await f2.finished
 
+## (the round arrow) the level begins again
+func _go_again() -> void:
+	gs.busy = true
+	var f := create_tween(); f.tween_property(go_fade, "color:a", 1.0, 0.45)
+	await f.finished
+	_go_build(int(gs.lv)); yaw = PI * 1.25
+	var f2 := create_tween(); f2.tween_property(go_fade, "color:a", 0.0, 0.45)
+	await f2.finished
+
 func _go_win() -> void:
 	gs.won = true; _go_dots()
 	print("GO level ", int(gs.lv) + 1, " done")
@@ -1744,35 +1782,33 @@ func _play_go() -> void:
 	await step.call(3, 4)
 	while bool(gs.dead) or go_fade.color.a > 0.01: await get_tree().process_frame
 	await wait(0.8)
-	# then up the right: the first statue from behind, the second from the side
-	for s in [[4, 3], [4, 2], [4, 1], [4, 0], [3, 0], [2, 0], [1, 0], [0, 0]]: await step.call(s[0], s[1])
+	# then up the right: the statue from behind, a veil; pushed on, and off the board into the water
+	await step.call(4, 3); await step.call(4, 2); await snap.call("q1_veiled")
+	for s2 in [[4, 2], [4, 1], [4, 0]]: await step.call(s2[0], s2[1])
+	for s2 in [[3, 0], [2, 0], [1, 0], [0, 0]]: await step.call(s2[0], s2[1])
 	await snap.call("q1_level1_done")
 	while go_fade.color.a > 0.01 or int(gs.lv) < 1: await get_tree().process_frame
 	await wait(2.5); await snap.call("q2_level2")
-	# level 2: the drum into the hole; across behind the one that walks; from its side, a veil; to the gate
+	# level 2: the drum into the hole; the walker comes by; from its side, a veil; pushed out of the way; to the gate
 	await step.call(2, 3); await step.call(2, 2)
 	var g2: Dictionary = gs.guards[0]
-	while true:      # (steps back and forth on the drum's stone till the walker has gone by)
+	while true:
 		var a2: Vector2i = g2.at
-		if a2.x <= 1 or (a2 == Vector2i(2, 1) and (g2.dir as Vector2i).x < 0): break
+		if a2 == Vector2i(2, 1) and (g2.dir as Vector2i).x < 0: break
 		await step.call(2, 3); await step.call(2, 2)
-	var a3: Vector2i = g2.at
-	if a3 == Vector2i(2, 1): await step.call(2, 1)
-	else:
-		await step.call(2, 1)
-	for s in [[2, 0], [1, 0], [0, 0]]:
-		if bool(gs.won) or int(gs.lv) != 1: break
-		await step.call(s[0], s[1])
+	await step.call(2, 1); await step.call(2, 1)
+	for s2 in [[1, 1], [0, 1], [0, 0]]: await step.call(s2[0], s2[1])
 	await snap.call("q3_level2_done")
 	while go_fade.color.a > 0.01 or int(gs.lv) < 2: await get_tree().process_frame
 	await wait(2.5); await snap.call("q4_level3")
-	# level 3: along the bottom to the mirror; back; the middle statue from behind; the mirror at the one that guards the gate
-	for s in [[3, 4], [2, 4], [1, 4], [0, 4]]: await step.call(s[0], s[1])
+	# level 3: along the bottom to the mirror; up beside the middle statue; a veil from its side, and a push into the sea; the mirror at the one that guards the gate
+	for s2 in [[3, 4], [2, 4], [1, 4], [0, 4]]: await step.call(s2[0], s2[1])
 	await snap.call("q5_mirror")
-	for s in [[1, 4], [2, 4], [2, 3]]: await step.call(s[0], s[1])
+	await step.call(0, 3); await step.call(1, 3)
+	await step.call(2, 3); await step.call(2, 3)
 	await step.call(2, 1)      # (the mirror: a tap on the statue that guards the gate)
 	await snap.call("q6_seen_itself")
-	for s in [[2, 2], [2, 1], [2, 0]]: await step.call(s[0], s[1])
+	for s2 in [[2, 2], [2, 1], [2, 0]]: await step.call(s2[0], s2[1])
 	var n2 := 0
 	while not ended and n2 < 900: await get_tree().process_frame; n2 += 1
 	await wait(2.5)
