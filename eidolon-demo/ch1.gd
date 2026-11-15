@@ -1450,28 +1450,33 @@ func _go_build(lv: int) -> void:
 	_go_water_y(); _mw_rings(true)
 	if go_lv_lbl != null: go_lv_lbl.text = "%d / %d" % [lv + 1, GO_LEVELS.size()]
 
-## what stands about the courts: mirrors under their sheets, each on a pillar of its own out of the sea (the same
-## stone, going down into its picture on the water), two at the ends of the channel, the rest round about, turned to
-## the courts. Laid by where they fall to the eye (sx across the picture, s from far to near), clear of the courts
+## what stands about the courts: two mirrors under their sheets at the ends of the channel, a third far behind, each
+## on a pillar of its own out of the sea; a statue of her, broken, on a rock; rocks. Laid by where they fall to the eye
+## (sx across the picture, s from far to near), clear of the courts
 func _mw_around() -> void:
 	var cx := _go_cx(int(gs.lv)); var bw := float(gs.W) * GO_D * 0.5
 	var zc := ((float(gs.H) - 1.0) * 0.5 - float(gs.c)) * GO_D
 	var reach := (float(gs.W) + float(gs.H)) * GO_D * 0.5      # (from the middle to a corner of the board, in s)
-	var spots := [[-(bw + 1.0), 0.0, true], [bw + 1.0, 0.0, true]]      # x, z (from the middle), at the channel's ends
-	for e in [[-2.7, -reach - 2.2], [2.9, -reach - 3.4], [0.3, -reach - 5.6], [-5.4, -reach * 0.35], [5.6, reach * 0.3], [-3.2, reach + 3.8], [3.4, reach + 4.6]]:
-		var sx: float = float(e[0]) / 0.7071; var sz: float = e[1]
-		spots.append([(sz + sx) * 0.5, (sz - sx) * 0.5 + zc, false])
-	var k := 0
-	for sp in spots:
-		var p := Vector3(cx + float(sp[0]), WATER, float(sp[1]))
-		var top := WATER + (1.15 if bool(sp[2]) else 0.55 + 0.25 * float(k % 3))
-		blk(p + Vector3(-0.5, -1.4, -0.5), Vector3(p.x + 0.5, top - 0.08, p.z + 0.5), "shade").material_override = _mw_fmat("shade")
+	var at := func(sx: float, sz: float) -> Vector3:
+		var ax := sx / 0.7071
+		return Vector3(cx + (sz + ax) * 0.5, WATER, (sz - ax) * 0.5 + zc)
+	var mirrors := [[Vector3(cx - bw - 1.0, WATER, 0.0), PI * 0.5, "tied", 1.15], [Vector3(cx + bw + 1.0, WATER, 0.0), -PI * 0.5, "hem", 1.15], [at.call(2.9, -reach - 3.4), 0.0, "tied", 0.8]]
+	for m in mirrors:
+		var p: Vector3 = m[0]; var top := WATER + float(m[3])
+		blk(p + Vector3(-0.5, -1.4, -0.5), Vector3(p.x + 0.5, top - 0.08, p.z + 0.5), "shade").material_override = _mw_fmat("stone")
 		blk(Vector3(p.x - 0.56, top - 0.12, p.z - 0.56), Vector3(p.x + 0.56, top, p.z + 0.56), "stone").material_override = pal("stone", "flat")
-		var to := Vector3(cx, 0, zc) - p
-		var yw := atan2(to.x, to.z) + (0.35 if k % 2 == 0 else -0.3)
-		if bool(sp[2]): yw = (-PI * 0.5 if float(sp[0]) > 0.0 else PI * 0.5)
-		mirror_stand(Vector3(p.x, top, p.z), yw, self, top, "tied" if k % 2 == 0 else "hem", true)
-		k += 1
+		var yw: float = m[1]
+		if yw == 0.0: yw = atan2(cx - p.x, zc - p.z) + 0.3
+		mirror_stand(Vector3(p.x, top, p.z), yw, self, top, String(m[2]), true)
+	# her statue, broken, on a rock behind the courts to the left, its foot clear of the sea
+	var sp: Vector3 = at.call(-2.9, -reach - 2.6)
+	rock(Vector3(sp.x, 0, sp.z), 1.6)
+	blk(sp + Vector3(-0.62, -0.5, -0.62), sp + Vector3(0.62, 0.34, 0.62), "stone").material_override = pal("shade", "flat")
+	thing("broken_statue", sp + Vector3(0, 0.34, 0), 3.0, "stone:marble", atan2(cx - sp.x, zc - sp.z) + 0.4)
+	# rocks: at the sides, and one before the courts
+	for r in [[-5.5, -reach * 0.3, 1.2], [5.6, reach * 0.35, 1.4], [3.3, reach + 4.2, 1.1], [-3.6, reach + 3.0, 0.8]]:
+		var rp: Vector3 = at.call(float(r[0]), float(r[1]))
+		rock(Vector3(rp.x, 0, rp.z), float(r[2]))
 
 ## the stone of a pillar out of the sea: from just under its top down to the waterline it goes over into the colour of
 ## its own picture on the water, so that the two meet as one
@@ -1479,7 +1484,7 @@ var mw_fmats := {}
 func _mw_fmat(n: String) -> ShaderMaterial:
 	if mw_fmats.has(n): return mw_fmats[n]
 	var m := pal(n, "flat").duplicate() as ShaderMaterial
-	m.set_shader_parameter("fade_y0", MW_TOP - 0.25); m.set_shader_parameter("fade_y1", WATER + 0.02)
+	m.set_shader_parameter("fade_y0", (MW_TOP + WATER) * 0.5); m.set_shader_parameter("fade_y1", WATER + 0.04)
 	mw_fmats[n] = m
 	return m
 
@@ -1487,7 +1492,7 @@ func _mw_fmat(n: String) -> ShaderMaterial:
 func _mw_tile(v: Vector2i) -> void:
 	var p := _mw_p(v); var far := _mw_side(v) < 0
 	var h := GO_D * 0.5
-	blk(p + Vector3(-h, WATER - 1.4 - MW_TOP, -h), p + Vector3(h, -0.1, h), "shade", go_root).material_override = _mw_fmat("eid2" if far else "shade")
+	blk(p + Vector3(-h, WATER - 1.4 - MW_TOP, -h), p + Vector3(h, -0.1, h), "shade", go_root).material_override = _mw_fmat("eid" if far else "stone")
 	blk(p + Vector3(-h + 0.035, -0.14, -h + 0.035), p + Vector3(h - 0.035, 0.0, h - 0.035), "stone", go_root).material_override = pal("eid" if far else "stone", "flat")
 
 ## a column, broken: a plinth and two drums
@@ -1498,11 +1503,12 @@ func _mw_column(v: Vector2i) -> void:
 	cyl(p + Vector3(0, 0.18, 0), 0.36, 0.33, 0.66, m, 16, go_root)
 	var d2 := cyl(p + Vector3(0.03, 0.85, 0.02), 0.33, 0.31, 0.42, m, 16, go_root); d2.rotation = Vector3(0.05, 0.3, -0.04)
 
-func _mw_ring(v: Vector2i) -> MeshInstance3D:
-	var r := MeshInstance3D.new(); var tm := TorusMesh.new(); tm.inner_radius = 0.55; tm.outer_radius = 0.66; tm.rings = 40; tm.ring_segments = 4; r.mesh = tm
-	r.material_override = mat(Color("d9a648")); r.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	r.position = _mw_p(v) + Vector3(0, 0.012, 0); r.scale = Vector3(1, 0.12, 1)
-	go_root.add_child(r)
+func _mw_ring(v: Vector2i) -> Node3D:
+	var r := Node3D.new(); r.position = _mw_p(v) + Vector3(0, 0.006, 0); go_root.add_child(r)
+	var a := 0.64; var w := 0.11      # (half its side, and the width of its band: it shows round a stone set on it)
+	for e in [[Vector3(-a, 0, -a), Vector3(a, 0.012, -a + w)], [Vector3(-a, 0, a - w), Vector3(a, 0.012, a)], [Vector3(-a, 0, -a + w), Vector3(-a + w, 0.012, a - w)], [Vector3(a - w, 0, -a + w), Vector3(a, 0.012, a - w)]]:
+		var b := MeshInstance3D.new(); b.mesh = _box((e[1] as Vector3) - (e[0] as Vector3)); b.position = ((e[0] as Vector3) + (e[1] as Vector3)) * 0.5
+		b.material_override = mat(Color("d9a648")); b.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; r.add_child(b)
 	return r
 
 ## a stone: a block with a band of bronze. Its image over there: the same, in the pale glass of the eidolon
@@ -1519,7 +1525,7 @@ func _mw_stone(v: Vector2i, img: bool) -> Node3D:
 func _mw_slab(v: Vector2i) -> Node3D:
 	var n := Node3D.new(); n.position = _mw_p(v); go_root.add_child(n)
 	var h := GO_D * 0.5 - 0.06
-	blk(Vector3(-h, WATER - 1.4 - MW_TOP, -h), Vector3(h, -0.1, h), "shade", n).material_override = _mw_fmat("eid2")
+	blk(Vector3(-h, WATER - 1.4 - MW_TOP, -h), Vector3(h, -0.1, h), "shade", n).material_override = _mw_fmat("block")
 	blk(Vector3(-h + 0.03, -0.14, -h + 0.03), Vector3(h - 0.03, 0.0, h - 0.03), "stone", n).material_override = pal("block", "flat")
 	blk(Vector3(-h + 0.03, -0.004, -0.035), Vector3(h - 0.03, 0.004, 0.035), "gold", n).material_override = pal("gold", "flat")
 	return n
@@ -1529,7 +1535,7 @@ func _mw_slab(v: Vector2i) -> Node3D:
 func _mw_gate() -> Node3D:
 	var g := Node3D.new(); g.position = _mw_p(gs.gate) + Vector3(0, -6.5, 0); go_root.add_child(g)
 	var h := GO_D * 0.5 - 0.06
-	blk(Vector3(-h, WATER - 1.4 - MW_TOP, -h), Vector3(h, -0.1, h), "shade", g).material_override = _mw_fmat("shade")
+	blk(Vector3(-h, WATER - 1.4 - MW_TOP, -h), Vector3(h, -0.1, h), "shade", g).material_override = _mw_fmat("stone")
 	blk(Vector3(-h + 0.03, -0.14, -h + 0.03), Vector3(h - 0.03, 0.0, h - 0.03), "stone", g).material_override = pal("stone", "flat")
 	var an := Node3D.new(); an.position = Vector3(0, 0, -0.45); g.add_child(an)
 	var st := func(a: Vector3, b: Vector3, m := "stone") -> void: blk(a, b, m, an).material_override = pal(m, "flat")
@@ -1560,7 +1566,7 @@ func _mw_gate() -> Node3D:
 func _mw_rings(instant := false) -> void:
 	for v in gs.nr:
 		var on := _mw_at(v).x >= 0
-		(gs.nr[v] as MeshInstance3D).material_override = mat(Color("fff0b4") if on else Color("d9a648"))
+		for b in (gs.nr[v] as Node3D).get_children(): (b as MeshInstance3D).material_override = mat(Color("fff0b4") if on else Color("d9a648"))
 	var full := _mw_full()
 	if full == bool(gs.open) and not instant: return
 	gs.open = full
@@ -1651,7 +1657,8 @@ func _go_pre(_dt: float) -> void:
 	pos.y = MW_TOP
 
 func _go_post(dt: float) -> void:
-	if H.has("mir"): (H["mir"].holder as Node3D).visible = false      # no pool here: only her dark image in the sea
+	for hk in ["mir", "refl", "ghost"]:      # no pool, no mirror wall here: of her bodies only her own, and its dark image on the sea
+		if H.has(hk): (H[hk].holder as Node3D).visible = false
 	cam_focus = _mw_focus(); cam_focus_on = true
 	if not mw_push.is_empty():      # the stone goes before her hands; its image goes as in a mirror, or stays
 		var dv: Vector3 = mw_push.d
@@ -4420,7 +4427,7 @@ func _process(dt: float) -> void:
 	var inside := false
 	for c in cs_courts:
 		if pos.x > c[0] and pos.x < c[2] and pos.z > c[1] and pos.z < c[3]: inside = true
-	if H.has("mir"): (H["mir"].holder as Node3D).visible = not inside      # in a court whose water lies below the floor, that water's own body mirrors her
+	if H.has("mir") and not go_demo: (H["mir"].holder as Node3D).visible = not inside      # in a court whose water lies below the floor, that water's own body mirrors her (not in the GO trial: there she has only her dark image on the sea)
 	for k in H:      # and such a body shows only in its own water's court: everywhere else it lay under her other image, one body below another
 		if not String(k).begins_with("mir_"): continue
 		var wr = N.get(String(k).substr(4) + "_rect")
