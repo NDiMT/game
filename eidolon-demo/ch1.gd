@@ -1389,7 +1389,7 @@ func _go_build(lv: int) -> void:
 	for d in [Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, -1)]:
 		if gs.cells.has(_go_key(gv.x + d.x, gv.y + d.y)): ent = d; break
 	gs["gate_in"] = ent
-	var an := Node3D.new(); an.position = g; an.rotation.y = atan2(float(ent.x), float(ent.y)) + PI * 0.5; go_root.add_child(an)
+	var an := Node3D.new(); an.position = g; an.rotation.y = atan2(float(ent.x), float(ent.y)); go_root.add_child(an)
 	var st := func(a: Vector3, b: Vector3, m := "stone") -> void: blk(a, b, m, an).material_override = pal(m, "flat")
 	st.call(Vector3(-0.78, 0.0, -0.22), Vector3(0.78, 0.1, 0.22), "shade")
 	for sx in [-1.0, 1.0]:      # the two piers, with a capital and a base
@@ -1517,6 +1517,7 @@ func _go_pre(dt: float) -> void:
 	for k in gs.rafts: (gs.rafts[k] as Node3D).position.y = go_sea.position.y
 
 func _go_post(dt: float) -> void:
+	if H.has("mir"): (H["mir"].holder as Node3D).visible = false      # no pool here: only her dark image in the sea
 	cam_focus = Vector3(_go_cx(int(gs.get("lv", 0))), WATER + 1.0, 0.3); cam_focus_on = true
 	if started:
 		go_t += dt
