@@ -1524,10 +1524,10 @@ func _mw_rail(cells: Dictionary, d: Vector2i, line: int, a0: int, a1: int) -> vo
 	for c2 in [s0, s1]:      # a post where it ends
 		bb((c2 as Vector3) - al * 0.07 - out * 0.07, (c2 as Vector3) + al * 0.07 + out * 0.07 + Vector3(0, 0.43, 0))
 
-## what stands about the courts, strewn about them as if by chance (each court its own way, the same each time): one
-## mirror under its sheet, large, on a pillar of its own; her statue, broken, on a rock; and rocks worn into the shapes
-## of strange statues (props/stat_*: made in Tripo, brought down to a few faces and flat colours), all with their
-## pictures on the water. Nothing is put where it would hide a square, the gate, or the words at the top
+## what lies about the courts, few things, strewn as if by chance and turned anyhow (each court its own way, the same
+## each time): her boat, one mirror under its sheet, large, on a pillar of its own, and one rock worn into the shape of
+## a strange statue (props/stat_*: made in Tripo, brought down to a few faces and flat colours), each with its picture
+## on the water. Nothing is put where it would hide a square, the gate, or the words at the top
 func _mw_around() -> void:
 	var rng := RandomNumberGenerator.new(); rng.seed = 7919 + int(gs.lv) * 31
 	var cells: Array = (gs.floor as Dictionary).keys() + (gs.cols as Dictionary).keys() + (gs.chan as Dictionary).keys()
@@ -1535,12 +1535,9 @@ func _mw_around() -> void:
 	var kinds := []
 	for k in ["stat_hood", "stat_face", "stat_cairn", "stat_hand", "stat_monk", "stat_profile", "stat_balance"]:
 		if FileAccess.file_exists("res://props/%s.glb" % k): kinds.append(k)
-	var items := [["mirror", 4.9, 1.0], ["statue", 3.7, 1.3]]
-	var nr := 7 if int(gs.W) > 5 else 6
-	for k in nr:
-		var hgt := rng.randf_range(1.5, 3.5)
-		items.append(["rock", hgt, 0.32 * hgt + 0.25])
-	var ki := rng.randi_range(0, maxi(kinds.size() - 1, 0))
+	var hgt := rng.randf_range(2.2, 3.3)
+	var items := [["mirror", 4.9, 1.0], ["rock", hgt, 0.32 * hgt + 0.25], ["boat", 1.2, 1.7]]
+	var ki := int(gs.lv) * 3 + rng.randi_range(0, 2)      # (a different one at each court)
 	for it in items:
 		var h: float = it[1]; var r: float = it[2]
 		var p := Vector3.ZERO; var found := false
@@ -1557,10 +1554,8 @@ func _mw_around() -> void:
 				blk(Vector3(p.x - 0.9, top - 0.14, p.z - 0.9), Vector3(p.x + 0.9, top, p.z + 0.9), "stone").material_override = _mw_flat("stone")
 				var my: float = PI * 0.25 + rng.randf_range(0.45, 1.05) * (1.0 if rng.randf() < 0.5 else -1.0)      # turned anyhow, but never edge-on to the eye
 				var ms := mirror_stand(Vector3(p.x, top, p.z), my, self, top, "tied", true); ms.scale = Vector3.ONE * 2.0
-			"statue":
-				rock(Vector3(p.x, 0, p.z), 1.6)
-				blk(p + Vector3(-0.62, -0.5, -0.62), p + Vector3(0.62, 0.34, 0.62), "stone").material_override = pal("shade", "flat")
-				thing("broken_statue", p + Vector3(0, 0.34, 0), 3.0, "stone:marble", yw)
+			"boat":
+				var bt := Node3D.new(); bt.position = p; bt.rotation.y = yw; add_child(bt); build_boat(bt)
 			"rock":
 				if kinds.is_empty(): rock(Vector3(p.x, 0, p.z), h * 0.6); continue
 				var n := Node3D.new(); n.position = p + Vector3(0, -0.25, 0); n.rotation.y = yw; add_child(n)
