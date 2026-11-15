@@ -2019,8 +2019,9 @@ const IV_PAL := {      # top, lit face, face half turned away, face in shade (sa
 	"pmarble": ["fde5c7", "dcbfa0", "b49680", "8e705c"],
 	"pterra": ["c65a3e", "a84a33", "7f3a2a", "5c2b22"],
 	"marble2": ["ffefd2", "f6d8b3", "d9b28d", "ad8664"],
+	"phead": ["fff2dc", "f9e5c9", "e6ccb0", "bfa48c"],      # (the fallen face: as the picture's, near white, its shade a soft grey-brown)
 	"rock2": ["b39678", "a08268", "6e5244", "4c362c"],      # (as the picture's rock: lit faces a mid brown, shaded ones dark)
-	"olive2": ["c9ab82", "b8966d", "9c7c5d", "806548"],
+	"olive2": ["b8986e", "a38564", "8b6f53", "765e45"],      # (the cypress, as the picture's: a khaki olive, darker than the rock's lit faces)
 	"bark": ["9a5f48", "86513d", "6c4031", "4e2e24"],
 	"far": ["f2dcc0", "e8cdac", "dcbf9f", "d2b393"],
 	"far1": ["e6c9a9", "d3ae8c", "c29e7f", "a9886d"],
@@ -2057,9 +2058,9 @@ uniform float dk = 0.0;
 uniform float haze = 0.0;
 uniform float bounce = 0.0;
 uniform float sil = 0.0;      // (far off: a shape in the haze, its faces hardly told apart; no detail, only gradation)
-uniform float lf_len = 3.6;
+uniform float lf_len = 2.3;
 uniform float lfog = 0.0;      // (the level's own rock: its depth under the floor it bears is in COLOR.g, a quarter of a metre to one)
-uniform float lf_hi = 0.5;
+uniform float lf_hi = 0.55;
 uniform float lf_lo = 3.2;
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
@@ -3410,23 +3411,23 @@ func _ivr_far() -> void:
 	# crags: [across, up (its top), width, depth, haze, palette, a spire?]
 	for f in [
 			[2.25, 5.0, 1.3, 8.0, 0.04, "rock2", false], [3.05, 3.2, 1.4, 7.5, 0.1, "far1", false],
-			[-2.35, 2.2, 1.15, 15.0, 0.42, "far", false], [-2.15, 4.45, 0.8, 18.0, 0.55, "far", true], [-1.65, 3.9, 0.65, 17.0, 0.55, "far", false],
-			[0.7, 4.88, 1.2, 26.0, 0.55, "far", false], [-0.25, 4.5, 1.25, 28.0, 0.6, "far", false],
-			[2.9, 5.8, 1.4, 36.0, 0.72, "far", true]]:
+			[-2.35, 2.2, 1.15, 15.0, 0.42, "far", false], [-2.15, 4.3, 0.75, 18.0, 0.55, "far", false], [-1.6, 3.7, 0.6, 17.0, 0.55, "far", false],
+			[0.75, 4.75, 0.8, 26.0, 0.6, "far", false], [-0.3, 4.2, 0.8, 28.0, 0.64, "far", false],
+			[2.9, 5.6, 1.1, 36.0, 0.72, "far", false]]:
 		var top: Vector3 = spot.call(float(f[0]), float(f[1]), float(f[3]))
-		var st := _iv_st(); _ivr_crag(st, top, float(f[2]), rng, bool(f[6]))
+		var st := _iv_st(); _ivr_crag(st, top, float(f[2]), rng, bool(f[6]), 0.62, false, String(f[5]) != "rock2")
 		_iv_commit(st, String(f[5]), self, float(f[4]), fog.call(top.y, float(f[2]), String(f[5]) == "far1"), false)
 	# the colonnade on its pillar (the middle band), going away to the left: every foot of it on the pillar's top
 	var cy: float = (spot.call(-1.95, 2.3, 15.0) as Vector3).y
 	var cs := _iv_st()
-	var feet: Array = _ivr_colonnade(cs, spot_y, Vector2(-1.95, 2.3), Vector2(-6.2, 3.7), cy, 4, 1.32, 0.34, 3, rng)
-	_ivr_crag_under(cs, feet, 0.32, rng)
+	var feet: Array = _ivr_colonnade(cs, spot_y, Vector2(-1.95, 2.3), Vector2(-6.2, 3.7), cy, 5, 1.32, 0.34, 5, rng)
+	_ivr_ridge_under(cs, feet, 0.12, rng)
 	_iv_commit(cs, "farsil", self, 0.3, fog.call(cy, 1.2), false)
 	# the temple on the far ridge, going away to the left, on its own table of rock
 	var ty: float = (spot.call(0.42, 4.6, 27.0) as Vector3).y
 	var ts := _iv_st()
-	feet = _ivr_colonnade(ts, spot_y, Vector2(0.42, 4.6), Vector2(-4.8, 5.7), ty, 6, 0.84, 0.25, 6, rng)
-	_ivr_crag_under(ts, feet, 0.22, rng)
+	feet = _ivr_colonnade(ts, spot_y, Vector2(0.42, 4.6), Vector2(-4.8, 5.7), ty, 7, 0.84, 0.25, 7, rng)
+	_ivr_ridge_under(ts, feet, 0.1, rng)
 	_iv_commit(ts, "farsil", self, 0.42, fog.call(ty, 1.0), false)
 	# the colossus on the crown of the far hill, his feet on it
 	var cl: Vector3 = spot.call(0.56, 4.93, 25.5)
@@ -3435,6 +3436,21 @@ func _ivr_far() -> void:
 	col.position = cl; col.rotation.y = PI * 0.3
 	for m in col.find_children("*", "MeshInstance3D", true, false):
 		(m as MeshInstance3D).material_override = _iv_mat("farsil", 0.12, {"sil": 1.0, "fog_hi": cl.y - 1.0, "fog_lo": cl.y - 6.0}); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+## the rock that bears a row of things far off: a ridge of rock towers, one under each foot, their tops flat at the
+## feet, and the ridge going on past the row's ends a step lower each time (as the picture's: no table, a ridge)
+func _ivr_ridge_under(st: SurfaceTool, feet: Array, margin: float, rng: RandomNumberGenerator) -> void:
+	for i in feet.size():
+		var f: Vector3 = feet[i]
+		var nb: Vector3 = feet[mini(i + 1, feet.size() - 1)] if i < feet.size() - 1 else feet[maxi(i - 1, 0)]
+		var sp := Vector2(nb.x - f.x, nb.z - f.z).length()
+		_ivr_crag(st, Vector3(f.x, f.y - 0.01, f.z), (sp * 0.75 + margin) * 2.0 / 0.84, rng, false, 0.62, true, true)
+	if feet.size() > 1:
+		var a: Vector3 = feet[0]; var b: Vector3 = feet[1]
+		var dd := a - b; dd.y = 0.0
+		for k in 2:
+			var p := a + dd * float(k + 1) * 1.1 - Vector3(0, (0.35 + 0.4 * float(k)) * dd.length() * 1.6, 0)
+			_ivr_crag(st, p, (dd.length() * 0.9 + margin) * 2.0 / 0.84, rng, false, 0.62, false, true)
 
 ## the rock that bears things far off: a table of rock whose flat top holds every foot given, a little more round them
 func _ivr_crag_under(st: SurfaceTool, feet: Array, margin: float, rng: RandomNumberGenerator) -> void:
@@ -3446,10 +3462,14 @@ func _ivr_crag_under(st: SurfaceTool, feet: Array, margin: float, rng: RandomNum
 	_ivr_crag(st, Vector3(c.x, (feet[0] as Vector3).y - 0.01, c.z), (r + margin) * 2.0 / 0.82, rng, false, 1.0, true)
 
 ## a crag far off: a spire or a table of rock, its top cut aslant, its sides in a few broad facets, widening into the mist
-func _ivr_crag(st: SurfaceTool, top: Vector3, w: float, rng: RandomNumberGenerator, sharp := false, top_k := 0.62, flat := false) -> void:
-	var n := 6
+func _ivr_crag(st: SurfaceTool, top: Vector3, w: float, rng: RandomNumberGenerator, sharp := false, top_k := 0.62, flat := false, tower := false) -> void:
+	var n := 7 if tower else 6
 	var hs := [0.0, w * 0.45, w * 1.4, w * 3.4, 34.0]
 	var ks := [top_k, maxf(1.0, top_k * 1.08), 1.28 * maxf(1.0, top_k), 1.55 * maxf(1.0, top_k), 2.1 * maxf(1.0, top_k)]
+	if tower:      # (as the picture's far rock: upright walls, a step out partway down, a top broken flat)
+		var s1 := rng.randf_range(0.6, 1.1)
+		hs = [0.0, w * 0.07, w * s1, w * (s1 + 0.08), w * (s1 + 1.5), 34.0]
+		ks = [0.84, 1.0, 1.04, rng.randf_range(1.18, 1.34), 1.4, 1.75]
 	var a0 := rng.randf_range(0.0, TAU)
 	var jit := []
 	for k in n: jit.append(Vector2(rng.randf_range(-0.22, 0.22), rng.randf_range(0.82, 1.12)))
@@ -3464,7 +3484,7 @@ func _ivr_crag(st: SurfaceTool, top: Vector3, w: float, rng: RandomNumberGenerat
 			var y := top.y - float(hs[li])
 			if li > 0 and li < hs.size() - 1: y += rng.randf_range(-0.1, 0.1) * w
 			var p := Vector3(top.x + cos(a) * r, y, top.z + sin(a) * r)
-			if li == 0 and not flat: p.y += (p - top).dot(tilt) * (0.55 if sharp else 0.22)
+			if li == 0 and not flat: p.y += (p - top).dot(tilt) * (0.55 if sharp else (0.12 if tower else 0.22))
 			ring.append(p)
 		rings.append(ring)
 	for li in rings.size() - 1:
@@ -3484,7 +3504,7 @@ func _ivr_colonnade(st: SurfaceTool, spot_y: Callable, near: Vector2, vp: Vector
 	for k in n:
 		var f2: Vector2 = vp + (near - vp) * sc
 		var p: Vector3 = spot_y.call(f2.x, f2.y, y0)
-		var hh := h * sc; var r := h * 0.08 * sc
+		var hh := h * sc; var r := h * 0.06 * sc
 		var oct := []
 		for m in 8: oct.append(Vector2(p.x + cos(TAU * float(m) / 8.0) * r, p.z + sin(TAU * float(m) / 8.0) * r))
 		_iv_prism(st, oct, p.y + hh * 0.92, p.y + hh * 0.06, rng, 0.0, false)
@@ -3497,7 +3517,7 @@ func _ivr_colonnade(st: SurfaceTool, spot_y: Callable, near: Vector2, vp: Vector
 	for k in mini(lintel, n) - 1:
 		var a: Vector3 = tops[k][0]; var c: Vector3 = tops[k + 1][0]
 		var ra: float = tops[k][2] * 1.7; var rc: float = tops[k + 1][2] * 1.7
-		var ea := h * 0.13 * float(tops[k][1]); var ec := h * 0.13 * float(tops[k + 1][1])
+		var ea := h * 0.1 * float(tops[k][1]); var ec := h * 0.1 * float(tops[k + 1][1])
 		var dd := (c - a); dd.y = 0.0; dd = dd.normalized()
 		a -= dd * ra * (1.0 if k == 0 else 0.0); c += dd * rc * (1.0 if k == mini(lintel, n) - 2 else 0.0)
 		_iv_hexa(st, [a - fh * ra, c - fh * rc, c + fh * rc, a + fh * ra, a - fh * ra + Vector3(0, ea, 0), c - fh * rc + Vector3(0, ec, 0), c + fh * rc + Vector3(0, ec, 0), a + fh * ra + Vector3(0, ea, 0)])
@@ -3562,12 +3582,12 @@ func _ivr_build() -> void:
 	_ivp_volute(ivp_nodes[ivg_vol] if ivg_on else V.call(j.volute))
 	if ivg_on: _ivg_build()
 	if j.has("relief"):
-		var rs := _ivr_block(); rs.global_position = V.call(j.relief) + Vector3(0, -0.2, 0); rs.scale = Vector3.ONE * 0.42; rs.rotation = Vector3(0.12, 0.6, -0.08)
+		var rs := _ivr_block(); rs.global_position = V.call(j.relief); rs.scale = Vector3.ONE * 0.42; rs.rotation = Vector3(0.12, 0.6, -0.08)
 	# the fallen face: one of the thousand, on its cheek in the rock, looking up at the eye
 	var hp := Node3D.new(); iv_root.add_child(hp); hp.global_position = V.call(j.head)
 	var hd := prop_model("iv_head", hp, 2.8); hd.position = Vector3(0, -1.4, 0)
 	for m in hd.find_children("*", "MeshInstance3D", true, false):
-		(m as MeshInstance3D).material_override = _ivr_mat("marble2", 0.0); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		(m as MeshInstance3D).material_override = _ivr_mat("phead", 0.0); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	var fz := Vector3(0.52, 0.42, 0.74).normalized()      # where the face looks: to the eye, a little up
 	var fy := (Vector3(-0.78, 0.55, -0.1) - fz * Vector3(-0.78, 0.55, -0.1).dot(fz)).normalized()      # where the crown points: to the upper left of the picture
 	var fx := fy.cross(fz)

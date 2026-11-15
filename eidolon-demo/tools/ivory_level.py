@@ -188,22 +188,31 @@ def loft(bm, rings, cap0=True, cap1=True):
     return vs
 
 
-def slab(name, outline, h, thick=0.36, keep=()):
-    """a floor of marble: a thick slab on the broken outline, level on top, here and there a chip off its top edge
-    (but not where a flight meets it: keep, the points where flights come to it)"""
-    nr = normals(outline)
-    inner, top, bot = [], [], []
+def slab(name, outline, h, thick=0.46, keep=()):
+    """a floor of marble: a thick slab on the broken outline, level on top, its top edge eased (a chamfer that catches
+    the light, as the picture's), here and there a chip off it and a piece gone from its under edge; square and sharp
+    where a flight meets it (keep, the points where flights come to it)"""
+    nr = normals(outline); n = len(outline)
+    hang = [0.0] * n      # (pieces of the slab hanging lower under its edge, as the picture's thick broken slabs)
+    for _ in range(max(1, n // 5)):
+        i0, w = rnd.randrange(n), rnd.randint(1, 3); dh = rnd.uniform(0.08, 0.22)
+        for j in range(-w, w + 1): hang[(i0 + j) % n] = max(hang[(i0 + j) % n], dh * (0.5 + 0.5 * math.cos(math.pi * j / (w + 1))))
+    inner, top, rim, bot, und = [], [], [], [], []
     for i, (x, z) in enumerate(outline):
         nx, nz = nr[i]
-        inner.append((x - nx * 0.1, h, z - nz * 0.1))
         near_flight = any(math.hypot(x - k[0], z - k[1]) < 0.9 for k in keep)
+        e = 0.004 if near_flight else rnd.uniform(0.025, 0.04)
+        inner.append((x - nx * 0.14, h, z - nz * 0.14))
         if rnd.random() < 0.2 and not near_flight:      # a chip: the edge a little lower and further in
             dy, dn = -rnd.uniform(0.02, 0.05), -rnd.uniform(0.01, 0.035)
         else: dy, dn = 0.0, 0.0
-        top.append((x + nx * dn, h + dy, z + nz * dn))
+        top.append((x + nx * (dn - e), h + dy, z + nz * (dn - e)))
+        rim.append((x + nx * dn, h + dy - e, z + nz * dn))
         b = rnd.uniform(0.0, 0.05)
-        bot.append((x - nx * b, h - thick + rnd.uniform(-0.03, 0.03), z - nz * b))
-    bm = bmesh.new(); loft(bm, [inner, top, bot], cap0=True, cap1=True)
+        yb = h - thick + rnd.uniform(-0.03, 0.03) - hang[i] + (rnd.uniform(0.04, 0.09) if (rnd.random() < 0.12 and not near_flight) else 0.0)
+        bot.append((x - nx * b, yb, z - nz * b))
+        und.append((x - nx * (b + 0.07), yb - 0.035, z - nz * (b + 0.07)))
+    bm = bmesh.new(); loft(bm, [inner, top, rim, bot, und], cap0=True, cap1=True)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
     return finish(bm, name + '_slab')
 
@@ -294,6 +303,153 @@ def set_depth(ob, top_at):
         at.data[v.index].value = max(0.0, top_at(v.co.x, -v.co.y) - v.co.z)
 
 
+def hull(pts):
+    """the convex hull of points in the plan (monotone chain), counter-clockwise"""
+    pts = sorted(set((round(p[0], 4), round(p[1], 4)) for p in pts))
+    if len(pts) < 3: return pts
+    cr = lambda o, a, b: (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+    lo, hi = [], []
+    for p in pts:
+        while len(lo) >= 2 and cr(lo[-2], lo[-1], p) <= 0: lo.pop()
+        lo.append(p)
+    for p in reversed(pts):
+        while len(hi) >= 2 and cr(hi[-2], hi[-1], p) <= 0: hi.pop()
+        hi.append(p)
+    return lo[:-1] + hi[:-1]
+
+
+def edge_n(a, b):
+    """the outward normal of an edge of a counter-clockwise outline"""
+    dx, dz = b[0] - a[0], b[1] - a[1]; l = math.hypot(dx, dz) or 1.0
+    return (dz / l, -dx / l)
+
+
+def block(name, foot, y_top, y_bot, lean=(0.0, 0.0), ease=0.05, cut=None):
+    """one block of the rock, as the picture's: a prism on its footprint, its top a flat break leaning a little one
+    way, maybe a corner of its top cut off aslant (cut: the outward way of that corner), every edge eased in two
+    facets, so it reads soft and low, never sharp"""
+    bm = bmesh.new(); n = len(foot)
+    cx = sum(p[0] for p in foot) / n; cz = sum(p[1] for p in foot) / n
+    top = [bm.verts.new(G(x, y_top + (x - cx) * lean[0] + (z - cz) * lean[1], z)) for (x, z) in foot]
+    bot = [bm.verts.new(G(x, y_bot, z)) for (x, z) in foot]
+    bm.faces.new(top); bm.faces.new(list(reversed(bot)))
+    for i in range(n):
+        j = (i + 1) % n; bm.faces.new([bot[i], bot[j], top[j], top[i]])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    if cut is not None:      # (the top's corner furthest that way, cut off by a plane leaning out and up)
+        nrm = Vector((cut[0], -cut[1], 0.0)).normalized() + Vector((0, 0, rnd.uniform(0.6, 1.3)))
+        nrm.normalize()
+        far = max(v.co.dot(nrm) for v in bm.verts)
+        co = nrm * (far - rnd.uniform(0.07, 0.2))
+        bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=co, plane_no=nrm, clear_outer=True)
+        bmesh.ops.holes_fill(bm, edges=bm.edges[:], sides=0)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    if ease > 0.0:
+        try:
+            bmesh.ops.bevel(bm, geom=[e for e in bm.edges if len(e.link_faces) == 2 and e.calc_face_angle(0) > 0.3],
+                            offset=ease, segments=2, affect='EDGES', profile=0.5, clamp_overlap=True)
+        except Exception: pass
+    return finish(bm, name, fine=2.5)
+
+
+def offset(P, d):
+    """an outline moved out by d (in, if d is less than nothing), its corners mitred"""
+    n = len(P); out = []
+    for i in range(n):
+        n1 = edge_n(P[i - 1], P[i]); n2 = edge_n(P[i], P[(i + 1) % n])
+        mx, mz = n1[0] + n2[0], n1[1] + n2[1]; ml = math.hypot(mx, mz) or 1.0; mx /= ml; mz /= ml
+        k = d / max(0.35, mx * n1[0] + mz * n1[1])
+        out.append((P[i][0] + mx * k, P[i][1] + mz * k))
+    return out
+
+
+def frame_block(name, c, th, u0, u1, v0, v1, rings, ease=0.05, chamf=(0.0, 0.0), lean=(0.0, 0.0), cut=None):
+    """a block of the rock in its own frame: about c in the plan, turned so that v runs out along th and u along its
+    face; at its top (u0..u1) x (v0..v1), its two outer corners cut off by chamf; rings: [(y, wider along, further
+    out)] from its top down, so its face leans in or out as it goes down and breaks at each ring (never one straight
+    pillar); its top a flat break leaning by lean (along, out); every edge eased in two facets (soft, as the picture's)"""
+    vx, vz = math.cos(th), math.sin(th); ux, uz = -vz, vx
+    P = lambda a, b: (c[0] + ux * a + vx * b, c[1] + uz * a + vz * b)
+    rs = []
+    for k, (y, g, o) in enumerate(rings):
+        a0, a1, b1 = u0 - g, u1 + g, v1 + o
+        ab = [(a0, v0), (a1, v0), (a1, b1 - chamf[1]), (a1 - chamf[1], b1), (a0 + chamf[0], b1), (a0, b1 - chamf[0])]
+        ring = []
+        for (a, b) in ab:
+            x, z = P(a, b)
+            ring.append((x, y + ((a * lean[0] + (b - b1) * lean[1]) if k == 0 else 0.0), z))
+        rs.append(ring)
+    bm = bmesh.new(); loft(bm, rs, cap0=True, cap1=True)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    if cut is not None:      # (a corner of its top cut off by a plane leaning out and up)
+        nrm = Vector((cut[0], -cut[1], 0.0)).normalized() + Vector((0, 0, rnd.uniform(0.7, 1.4)))
+        nrm.normalize()
+        far = max(v.co.dot(nrm) for v in bm.verts)
+        co = nrm * (far - rnd.uniform(0.07, 0.18))
+        bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=co, plane_no=nrm, clear_outer=True)
+        bmesh.ops.holes_fill(bm, edges=bm.edges[:], sides=0)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    if ease > 0.0:
+        try:
+            bmesh.ops.bevel(bm, geom=[e for e in bm.edges if len(e.link_faces) == 2 and e.calc_face_angle(0) > 0.3],
+                            offset=ease, segments=2, affect='EDGES', profile=0.5, clamp_overlap=True)
+        except Exception: pass
+    return finish(bm, name, fine=2.5)
+
+
+def blocks(name, poly, top_y, keep=()):
+    """the rock under a floor, as the picture shows it: a few broad blocks along each edge, each turned its own way a
+    little (so each takes the light its own way), some set back right under the slab (a dark recess under it), some
+    standing out a step lower (their tops catch the light: ledges); a block about each corner standing out of it; a
+    core of rock behind them all. keep: (point, radius) where nothing may stand out (a flight's end, the cloth)"""
+    P = ccw(poly); n = len(P)
+    near = lambda q, extra: any(math.hypot(q[0] - k[0], q[1] - k[1]) < r + extra for (k, r) in keep)
+    obs = []
+    def one(nm_, c, th, hl, led, din, back=(-0.18, -0.06)):
+        if led:
+            out = rnd.uniform(0.12, 0.32); yt = top_y + 0.05 - rnd.uniform(0.3, 0.85)
+            lean = (rnd.uniform(-0.08, 0.08), -rnd.uniform(0.04, 0.16))
+        else:
+            out = rnd.uniform(*back); yt = top_y + 0.05; lean = (0.0, 0.0)
+        y1 = yt - rnd.uniform(0.5, 1.1); y2 = y1 - 0.12
+        st = rnd.uniform(0.05, 0.2)      # (a step out partway down: the face breaks across, never one straight pillar)
+        o0 = -rnd.uniform(0.06, 0.2) if led else 0.0      # (a ledge's face leans back above its step: it takes more light)
+        rings = [(yt, 0.0, o0), (y1, rnd.uniform(0.0, 0.06), rnd.uniform(-0.05, 0.06)), (y2, rnd.uniform(0.04, 0.1), st), (yt - 16.0, rnd.uniform(0.1, 0.3), st + rnd.uniform(0.3, 0.8))]
+        ch = (rnd.uniform(0.0, 0.16), rnd.uniform(0.0, 0.16))
+        cut = (math.cos(th) + rnd.uniform(-0.6, 0.6) * -math.sin(th), math.sin(th) + rnd.uniform(-0.6, 0.6) * math.cos(th)) if (led and rnd.random() < 0.5) else None
+        obs.append(frame_block(nm_, c, th, -hl, hl, -din, out, rings, rnd.uniform(0.035, 0.065), ch, lean, cut))
+    for i in range(n):
+        a = P[i]; b = P[(i + 1) % n]
+        L = math.hypot(b[0] - a[0], b[1] - a[1])
+        if L < 0.05: continue
+        e = ((b[0] - a[0]) / L, (b[1] - a[1]) / L); nm = edge_n(a, b); th = math.atan2(nm[1], nm[0])
+        t = 0.0
+        while t < L - 0.2:
+            l = rnd.uniform(1.1, 2.0)
+            if L - (t + l) < 0.6: l = L - t
+            mid = (a[0] + e[0] * (t + l * 0.5), a[1] + e[1] * (t + l * 0.5))
+            nr_ = near(mid, l * 0.5)
+            led = (not nr_) and rnd.random() < 0.42
+            if led: one('%s_blk%d_%d' % (name, i, int(t * 10)), mid, th + rnd.uniform(-0.38, 0.38), l * 0.5 + 0.06, True, rnd.uniform(0.5, 0.9))
+            else:      # (set back under the slab, its top hidden in it: it must not come out through the slab's side)
+                hl = l * 0.5 - 0.1; out = rnd.uniform(-0.18, -0.06)
+                dm = math.asin(max(0.0, min(1.0, (-out - 0.03) / max(hl, 0.1))))
+                one('%s_blk%d_%d' % (name, i, int(t * 10)), mid, th + rnd.uniform(-dm, dm), hl, False, rnd.uniform(0.5, 0.9), back=(out, out))
+            t += l
+    for i in range(n):      # about each corner that stands out
+        n1 = edge_n(P[i - 1], P[i]); n2 = edge_n(P[i], P[(i + 1) % n])
+        if n1[0] * n2[1] - n1[1] * n2[0] < 0.2: continue
+        mx, mz = n1[0] + n2[0], n1[1] + n2[1]; ml = math.hypot(mx, mz) or 1.0
+        th = math.atan2(mz / ml, mx / ml) + rnd.uniform(-0.25, 0.25)
+        if near(P[i], 0.4) or rnd.random() < 0.25: continue      # (a corner block is always a ledge, below the slab)
+        one('%s_cor%d' % (name, i), P[i], th, rnd.uniform(0.4, 0.65), True, rnd.uniform(0.6, 0.9))
+    core = offset(P, -0.35)
+    obs.append(block('%s_core' % name, core, top_y + 0.05, top_y - 16.0, ease=0.0))
+    top_at = lambda x, z: top_y
+    for ob in obs: set_depth(ob, top_at)
+    return obs
+
+
 def square_to_flights(pts, h):
     """where a flight meets this floor, the floor's edge runs straight across the flight's breadth, square to it, at
     the flight's end: nothing of the floor over its steps, no gap beside its top step"""
@@ -326,14 +482,32 @@ def simplify(pts, eps=0.06):
     return ring1[:-1] + ring2[:-1]
 
 
+def ray_exit(poly, p, d):
+    """where a ray from p (inside the outline) along d leaves it"""
+    best = None
+    for i in range(len(poly)):
+        (x0, z0), (x1, z1) = poly[i], poly[(i + 1) % len(poly)]
+        ex, ez = x1 - x0, z1 - z0; den = d[0] * ez - d[1] * ex
+        if abs(den) < 1e-9: continue
+        t = ((x0 - p[0]) * ez - (z0 - p[1]) * ex) / den; u = ((x0 - p[0]) * d[1] - (z0 - p[1]) * d[0]) / den
+        if t > 0 and 0 <= u <= 1 and (best is None or t < best): best = t
+    return None if best is None else (p[0] + d[0] * best, p[1] + d[1] * best)
+
+
 def floor(name, x0, x1, z0, z1, h, ch, poly=None):
-    """a floor of the way: its marble slab on the rock, the rock in blocks under its edge"""
+    """a floor of the way: its marble slab on the rock, the rock in broad blocks under its edge"""
     poly = poly or rect(x0, x1, z0, z1, ch)
     out = square_to_flights(broken(grow(poly, 0.05)), h)
     poly = simplify(square_to_flights(densify(ccw(poly), 0.3), h))
-    keep = [(fl[i][0], fl[i][2]) for fl in (PLAN or {}).get('flights', []) for i in (0, 1) if abs(fl[i][1] - h) < 0.05]
+    fls = (PLAN or {}).get('flights', [])
+    keep = [(fl[i][0], fl[i][2]) for fl in fls for i in (0, 1) if abs(fl[i][1] - h) < 0.05]
+    kp = [((fl[i][0], fl[i][2]), fl[2] * 0.5 + 0.3) for fl in fls for i in (0, 1) if abs(fl[i][1] - h) < 0.05]
+    vol = (PLAN or {}).get('volute')
+    if vol and abs(vol[1] - h) < 0.05 and inside(poly, (vol[0], vol[2])):      # (where the cloth goes over the edge)
+        q = ray_exit(poly, (vol[0], vol[2]), (1.0, 0.0))
+        if q: kp.append((q, 0.55))
     m = [slab(name, out, h, keep=keep)]
-    r = [mass(name, poly, lambda x, z: h - 0.33)]
+    r = blocks(name, poly, h - 0.43, keep=kp)
     return m, r
 
 
@@ -370,14 +544,58 @@ def on_floor(x, y, z, r):
     return x, z
 
 
+def boulder(name, c, r, top, n=6, ease=0.06, tilt=(0.05, 0.16)):
+    """a boulder of the rock, as the picture's: a prism of a few broad faces about c, its top a flat break leaning one
+    way, its face stepping out partway down and wider far down (in the mist), every edge eased in two facets"""
+    a0 = rnd.uniform(0.0, 2.0 * math.pi)
+    base = []
+    for k in range(n):
+        aa = a0 + 2.0 * math.pi * k / n + rnd.uniform(-0.22, 0.22); rr = r * rnd.uniform(0.82, 1.1)
+        base.append((math.cos(aa) * rr, math.sin(aa) * rr))
+    ta = rnd.uniform(0.0, 2.0 * math.pi); tl = rnd.uniform(*tilt)
+    y1 = top - rnd.uniform(0.5, 1.1); st = rnd.uniform(0.05, 0.25)
+    rings = [(top, -rnd.uniform(0.1, 0.28)), (y1, rnd.uniform(0.0, 0.05)), (y1 - 0.12, st), (top - 16.0, st + rnd.uniform(0.4, 0.9))]
+    rs = []
+    for k, (y, g) in enumerate(rings):
+        ring = []
+        for (bx, bz) in base:
+            l = math.hypot(bx, bz) or 1.0
+            x = c[0] + bx * (1.0 + g / l); z = c[1] + bz * (1.0 + g / l)
+            ring.append((x, y + ((bx * math.cos(ta) + bz * math.sin(ta)) * tl if k == 0 else 0.0), z))
+        rs.append(ring)
+    bm = bmesh.new(); loft(bm, rs, cap0=True, cap1=True)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    for _ in range(rnd.choice((1, 2))):      # (a side cut off by an upright plane: faces that are not all turned alike)
+        aa = rnd.uniform(0.0, 2.0 * math.pi)
+        nrm = Vector((math.cos(aa), -math.sin(aa), rnd.uniform(-0.15, 0.25))); nrm.normalize()
+        far = max(v.co.dot(nrm) for v in bm.verts if v.co.z > top - 3.0)
+        bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=nrm * (far - rnd.uniform(0.1, 0.3)), plane_no=nrm, clear_outer=True)
+        bmesh.ops.holes_fill(bm, edges=bm.edges[:], sides=0)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    if rnd.random() < 0.6:      # (a corner of its top cut off aslant)
+        aa = rnd.uniform(0.0, 2.0 * math.pi)
+        nrm = Vector((math.cos(aa), -math.sin(aa), 0.0)) + Vector((0, 0, rnd.uniform(0.7, 1.4))); nrm.normalize()
+        far = max(v.co.dot(nrm) for v in bm.verts)
+        bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=nrm * (far - rnd.uniform(0.08, 0.22)), plane_no=nrm, clear_outer=True)
+        bmesh.ops.holes_fill(bm, edges=bm.edges[:], sides=0)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    try:
+        bmesh.ops.bevel(bm, geom=[e for e in bm.edges if len(e.link_faces) == 2 and e.calc_face_angle(0) > 0.3],
+                        offset=ease, segments=2, affect='EDGES', profile=0.5, clamp_overlap=True)
+    except Exception: pass
+    return finish(bm, name, fine=2.5)
+
+
 def ledge(name, c, rad, top):
-    """rock without marble, that binds the floors into one mountain: a body of rock, its top rounded over in facets"""
-    ring = []
-    for k in range(9):
-        aa = 2.0 * math.pi * k / 9.0 + rnd.uniform(-0.18, 0.18)
-        rr = rad * rnd.uniform(0.82, 1.05)
-        ring.append((c[0] + math.cos(aa) * rr, c[2] + math.sin(aa) * rr))
-    return [mass(name, ring, lambda x, z: top - 0.04, inset=0.0, dome=True)]
+    """rock without marble, that binds the floors into one mountain: a few soft boulders, the greatest in the middle
+    with its top at top, the others about it and lower"""
+    obs = [boulder(name + '_b0', (c[0], c[2]), rad * 0.78, top)]
+    for k in range(rnd.choice((2, 3))):
+        aa = rnd.uniform(0.0, 2.0 * math.pi); d = rad * rnd.uniform(0.45, 0.8)
+        obs.append(boulder('%s_b%d' % (name, k + 1), (c[0] + math.cos(aa) * d, c[2] + math.sin(aa) * d), rad * rnd.uniform(0.38, 0.55),
+                           top - rnd.uniform(0.15, 0.7), n=rnd.choice((5, 6))))
+    for ob in obs: set_depth(ob, lambda x, z: top)
+    return obs
 
 
 def flight(foot, head, w, n=None, step=0.12):
@@ -480,26 +698,38 @@ def arch(cx, y, cz, W=1.9, Hh=2.6, r=0.52, D=0.5, along_x=True):
 
 
 def cypress(x, y, z, h=2.6):
-    """a cypress as the picture has it: a flame cut as if in stone, in a few broad faces, to a point; a short trunk"""
+    """a cypress as the picture has it: flames cut as if in stone, four of them one over another, each wide below and
+    breaking above into a crown of points that stand up into the one over it; the last one a point; a short trunk"""
     bark = []
     bm = bmesh.new()
     hexa(bm, [(x - 0.06, y - 0.1, z - 0.05), (x + 0.06, y - 0.1, z - 0.05), (x + 0.06, y - 0.1, z + 0.06), (x - 0.06, y - 0.1, z + 0.06),
               (x - 0.045, y + 0.42, z - 0.035), (x + 0.045, y + 0.42, z - 0.035), (x + 0.045, y + 0.42, z + 0.045), (x - 0.045, y + 0.42, z + 0.045)])
     bark.append(finish(bm, 'bark'))
-    R = 0.29
-    prof = [(0.0, 0.42), (0.1, 0.86), (0.28, 1.0), (0.5, 0.86), (0.7, 0.58), (0.86, 0.3)]      # (up the flame, how wide)
-    y0 = y + 0.3; n = 7
-    rings = []
-    for j, (t, k) in enumerate(prof):
-        a0 = j * 0.45
-        rings.append([(x + math.cos(a0 + 2 * math.pi * i / n) * R * k * rnd.uniform(0.9, 1.08), y0 + h * t + rnd.uniform(-0.03, 0.03), z + math.sin(a0 + 2 * math.pi * i / n) * R * k * rnd.uniform(0.9, 1.08)) for i in range(n)])
-    bm = bmesh.new(); vs = loft(bm, rings, cap0=True, cap1=False)
-    tip = bm.verts.new(G(x + rnd.uniform(-0.02, 0.02), y0 + h * 1.02, z + rnd.uniform(-0.02, 0.02)))
-    for i in range(n):
-        try: bm.faces.new([vs[-1][i], vs[-1][(i + 1) % n], tip])
-        except ValueError: pass
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
-    leaves = [finish(bm, 'leaves', fine=3.0)]
+    y0 = y + 0.3
+    tiers = [(0.0, 0.42, 0.36), (0.2, 0.42, 0.3), (0.4, 0.4, 0.23), (0.6, 0.4, 0.15)]      # (where each starts, how tall, how wide: of the whole)
+    leaves = []
+    for k, (t0, th, r) in enumerate(tiers):
+        yb = y0 + h * t0; tt = h * th; n = 5; a0 = rnd.uniform(0.0, 2.0 * math.pi)
+        r *= h / 2.6
+        P = lambda ang, rr, yy: (x + math.cos(ang) * rr, yy, z + math.sin(ang) * rr)
+        bm = bmesh.new()
+        A = [bm.verts.new(G(*P(a0 + 2 * math.pi * i / n, r * 0.5, yb))) for i in range(n)]
+        B = [bm.verts.new(G(*P(a0 + 2 * math.pi * i / n + rnd.uniform(-0.1, 0.1), r * rnd.uniform(0.92, 1.06), yb + tt * 0.32))) for i in range(n)]
+        last = k == len(tiers) - 1
+        T = [bm.verts.new(G(*P(a0 + 2 * math.pi * i / n + rnd.uniform(-0.12, 0.12), r * (0.3 if last else 0.42), yb + tt * rnd.uniform(0.82, 1.0) * (0.75 if last else 1.0)))) for i in range(n)]
+        V = [bm.verts.new(G(*P(a0 + 2 * math.pi * (i + 0.5) / n, r * 0.6, yb + tt * 0.55))) for i in range(n)]
+        C = bm.verts.new(G(x, yb + tt * (1.25 if last else 0.6), z))
+        def f(*vs):
+            try: bm.faces.new(vs)
+            except ValueError: pass
+        f(*reversed(A))
+        for i in range(n):
+            j = (i + 1) % n
+            f(A[i], A[j], B[j], B[i])
+            f(B[i], V[i], T[i]); f(B[i], B[j], V[i]); f(B[j], T[j], V[i])
+            f(T[i], V[i], C); f(V[i], T[j], C)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+        leaves.append(finish(bm, 'leaves%d' % k, fine=3.0))
     return leaves, bark
 
 
@@ -537,6 +767,7 @@ else:
     lv, bk = cypress(x_, cp[1], z_, ch_); olive += lv; barks += bk
     U = Vector((0.7071, 0.0, -0.7071)); W = Vector((0.7071, 0.0, 0.7071)); Y = Vector((0.0, 1.0, 0.0))
     PLAN['relief'] = list(Vector(PLAN['relief']) + W * 0.32)      # (a small carved stone set in the face of the rock: the game puts it there)
+    RELIEF_W = W
 
 
 def join(obs, name):
@@ -549,6 +780,14 @@ def join(obs, name):
 
 
 M = join(marble, 'marble'); R = join(rock, 'rock'); O = join(olive, 'olive'); B = join(barks, 'bark')
+if PLAN is not None and PLAN.get('relief'):      # (the small carved stone: on the face of the rock toward the eye, half sunk in it)
+    rp = Vector(PLAN['relief']); Wd = RELIEF_W
+    for lift in (0.0, 0.25, -0.25, 0.5):
+        o = rp + Wd * 2.0 + Vector((0.0, lift, 0.0))
+        hit, loc, nrm_, idx = R.ray_cast(G(o.x, o.y, o.z), G(-Wd.x, -Wd.y, -Wd.z))
+        if hit:
+            PLAN['relief'] = [loc.x, loc.z - 0.17, -loc.y]; PLAN['relief'] = list(Vector(PLAN['relief']) + Wd * 0.05)
+            print('RELIEF on the rock at', [round(v, 2) for v in PLAN['relief']]); break
 print('TRIS', sum(len(o.data.polygons) for o in (M, R, O, B)))
 
 # ------------------------------------------------------------------ the shade of corners and clefts, into the vertices
