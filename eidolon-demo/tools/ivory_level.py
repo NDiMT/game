@@ -231,7 +231,7 @@ def mass(name, poly, top_at, inset=0.06, rough=1.0, dome=False):
     jit = [0.0, 0.13, 0.2, 0.26, 0.4]
     if dome: base = [0.0, 0.03, 0.1, 0.35, 1.6]; jit = [0.0, 0.06, 0.18, 0.26, 0.4]      # (a ledge: no lip over its own face)
     ymin = min(top_at(x, z) for (x, z) in pts)
-    clefts = rnd.sample(range(n), min(n, 2 if n > 6 else 1)); cleft_d = {i: rnd.uniform(0.25, 0.4) for i in clefts}
+    clefts = rnd.sample(range(n), min(n, max(1, n // 3))); cleft_d = {i: rnd.uniform(0.28, 0.48) for i in clefts}
     s0 = rnd.randrange(n); shelf = [(s0 + j) % n for j in range(min(n, 2))]
     rings = []
     for k in range(5):
@@ -240,8 +240,8 @@ def mass(name, poly, top_at, inset=0.06, rough=1.0, dome=False):
             for i in range(n):
                 if rnd.random() < 0.2: r[i] -= rnd.uniform(0.1, 0.22) * rough      # (a piece of the rock gone)
             for i in shelf: r[i] += 0.16 * rough      # (a shelf, catching the light)
-        if 2 <= k <= 3:
-            for i in clefts: r[i] -= cleft_d[i] * rough      # (a cleft down the face, below its top edge)
+        if 1 <= k <= 3:
+            for i in clefts: r[i] -= cleft_d[i] * rough * (0.55 if k == 1 else 1.0)      # (a cleft down the face, from just under the slab)
         if k > 2: r = [0.25 * r[i - 1] + 0.5 * r[i] + 0.25 * r[(i + 1) % n] for i in range(n)]
         ring = []
         for i, (x, z) in enumerate(pts):
@@ -270,8 +270,20 @@ def mass(name, poly, top_at, inset=0.06, rough=1.0, dome=False):
             try: bmesh.ops.bevel(bm, geom=pick, offset=rnd.uniform(0.04, 0.12), segments=1, affect='EDGES', clamp_overlap=True)
             except Exception: pass
     ob = finish(bm, name + '_rock', fine=0.9)
+    soften(ob)
     set_depth(ob, top_at)
     return ob
+
+
+def soften(ob, levels=2, ratio=0.065):
+    """the rock made soft and low, as the picture's: its form rounded (subdivided), then let down again into broad
+    facets (collapsed), so it reads as a weathered boulder cut in few planes, not a box"""
+    bpy.ops.object.select_all(action='DESELECT'); ob.select_set(True); bpy.context.view_layer.objects.active = ob
+    m1 = ob.modifiers.new('sub', 'SUBSURF'); m1.levels = levels; m1.render_levels = levels
+    bpy.ops.object.modifier_apply(modifier='sub')
+    m2 = ob.modifiers.new('dec', 'DECIMATE'); m2.decimate_type = 'COLLAPSE'; m2.ratio = ratio
+    bpy.ops.object.modifier_apply(modifier='dec')
+    bm = bmesh.new(); bm.from_mesh(ob.data); bmesh.ops.triangulate(bm, faces=bm.faces[:]); bm.to_mesh(ob.data); bm.free()
 
 
 def set_depth(ob, top_at):
@@ -524,11 +536,7 @@ else:
     x_, z_ = on_floor(cp[0], cp[1], cp[2], 0.32)
     lv, bk = cypress(x_, cp[1], z_, ch_); olive += lv; barks += bk
     U = Vector((0.7071, 0.0, -0.7071)); W = Vector((0.7071, 0.0, 0.7071)); Y = Vector((0.0, 1.0, 0.0))
-    rp = Vector(PLAN['relief']) + W * 0.32      # a carved tablet set upright in the face of the rock, turned to the eye
-    cs = [rp + U * su * 0.24 + Y * sy * 0.27 + W * sw * 0.09 for sy in (-1, 1) for (su, sw) in ((-1, -1), (1, -1), (1, 1), (-1, 1))]
-    bm = bmesh.new(); hexa(bm, [tuple(c) for c in cs]); bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
-    bmesh.ops.bevel(bm, geom=bm.edges[:], offset=0.025, segments=1, affect='EDGES', clamp_overlap=True)
-    marble.append(finish(bm, 'relief'))
+    PLAN['relief'] = list(Vector(PLAN['relief']) + W * 0.32)      # (a small carved stone set in the face of the rock: the game puts it there)
 
 
 def join(obs, name):
@@ -573,7 +581,7 @@ for extra in (dict(export_vertex_color='ACTIVE'), dict(export_colors=True), {}):
 
 # ------------------------------------------------------------------ the way, for the game
 if PLAN is not None:
-    way = {k: PLAN[k] for k in ('heights', 'nodes', 'edges', 'volute', 'head', 'ring', 'eye', 'flights', 'floors')}
+    way = {k: PLAN[k] for k in ('heights', 'nodes', 'edges', 'volute', 'head', 'ring', 'eye', 'flights', 'floors', 'relief')}
     with open(OUTJ, 'w') as f: json.dump(way, f, indent=1)
     print('DONE'); sys.exit(0)
 way = {

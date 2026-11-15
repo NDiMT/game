@@ -2019,12 +2019,12 @@ const IV_PAL := {      # top, lit face, face half turned away, face in shade (sa
 	"pmarble": ["fde5c7", "dcbfa0", "b49680", "8e705c"],
 	"pterra": ["c65a3e", "a84a33", "7f3a2a", "5c2b22"],
 	"marble2": ["ffefd2", "f6d8b3", "d9b28d", "ad8664"],
-	"rock2": ["d2b091", "bb987a", "8c6a55", "57392d"],
+	"rock2": ["b39678", "a08268", "6e5244", "4c362c"],      # (as the picture's rock: lit faces a mid brown, shaded ones dark)
 	"olive2": ["c9ab82", "b8966d", "9c7c5d", "806548"],
 	"bark": ["9a5f48", "86513d", "6c4031", "4e2e24"],
 	"far": ["f2dcc0", "e8cdac", "dcbf9f", "d2b393"],
 	"far1": ["e6c9a9", "d3ae8c", "c29e7f", "a9886d"],
-	"farsil": ["ead0b1", "e3c7a6", "dbbe9c", "d3b594"],      # (things far off seen against the light: little between their faces)
+	"farsil": ["e2c4a2", "d8b998", "cfae8d", "c5a483"],      # (things far off seen against the light: little between their faces)
 	"line": ["fff6e6", "fff6e6", "fff6e6", "fff6e6"],
 	"groove": ["e9cfae", "e9cfae", "e9cfae", "e9cfae"],
 	"ring": ["fffaf0", "fffaf0", "fffaf0", "fffaf0"],
@@ -2057,9 +2057,9 @@ uniform float dk = 0.0;
 uniform float haze = 0.0;
 uniform float bounce = 0.0;
 uniform float sil = 0.0;      // (far off: a shape in the haze, its faces hardly told apart; no detail, only gradation)
-uniform float lf_len = 3.3;
+uniform float lf_len = 3.6;
 uniform float lfog = 0.0;      // (the level's own rock: its depth under the floor it bears is in COLOR.g, a quarter of a metre to one)
-uniform float lf_hi = 0.3;
+uniform float lf_hi = 0.5;
 uniform float lf_lo = 3.2;
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
@@ -2073,9 +2073,9 @@ void fragment(){
 	vec3 fn = normalize(cross(dFdx(wp), dFdy(wp)));
 	if (dot(fn, INV_VIEW_MATRIX[2].xyz) < 0.0) fn = -fn;
 	float d = dot(fn, normalize(key_dir));
-	vec3 c = mix(c_dark, c_mid, smoothstep(-0.6, 0.08, d));      // (the light goes over the faces softly, as the picture's)
-	c = mix(c, c_lit, smoothstep(0.02, 0.62, d));
-	c = mix(c, c_top, smoothstep(0.55, 0.95, fn.y));
+	vec3 c = mix(c_dark, c_mid, smoothstep(-0.34, -0.14, d));      // (the light simple and sharp, as the picture's: each face one tone)
+	c = mix(c, c_lit, smoothstep(0.16, 0.34, d));
+	c = mix(c, c_top, smoothstep(0.7, 0.84, fn.y));
 	c *= 1.0 + bounce * vec3(0.16, 0.07, -0.02) * smoothstep(0.15, -0.55, d);      // (warm light thrown back from the mist into the shade)
 	if (sil > 0.5) c = c_mid * mix(0.95, 1.03, smoothstep(-0.3, 0.7, d));
 	if (veins > 0.0) {      // (veins as marble has them: thin, wandering, now and then two together; a cloud in the stone)
@@ -2097,11 +2097,12 @@ void fragment(){
 	if (haze > 0.0) fk = max(fk, haze * 0.22 * smoothstep(44.0, 52.0, -VERTEX.z));      // (VERTEX: from the eye)
 	if (lfog > 0.5) {      // (into the mist softly, as mist does: a long fading, its edge in wisps)
 		float wisp = fbm(wp * 0.3 + vec3(0.0, wp.y * 0.2, 0.0)) - 0.5;
-		float lt = clamp((ld + wisp * 0.35 - lf_hi) / lf_len, 0.0, 1.0);
+		float lt = clamp((ld + wisp * 0.25 - lf_hi) / lf_len, 0.0, 1.0);
 		fk = max(fk, lt * lt * (3.0 - 2.0 * lt));
 	}
 	ALBEDO = c * (1.0 - fk);
-	EMISSION = bgc(sy) * fk + c_top * emit;
+	vec3 mist = bgc(sy);
+	EMISSION = mist * fk + c_top * emit;
 	if (dbg > 0.5) { ALBEDO = vec3(0.0); EMISSION = dbg > 3.5 ? vec3(fk) : (dbg > 2.5 ? c : (dbg > 1.5 ? vec3(d * 0.5 + 0.5) : fn * 0.5 + 0.5)); }
 }
 void light(){
@@ -2646,7 +2647,7 @@ func _iv_hide_world() -> void:
 			for mm in (dct[hk].holder as Node).find_children("*", "MeshInstance3D", true, false): (mm as MeshInstance3D).layers = 0
 	sun_light.look_at_from_position(Vector3.ZERO, -iv_key.normalized(), Vector3.UP)
 	sun_light.directional_shadow_max_distance = 60.0
-	sun_light.shadow_blur = 2.6      # (shadows soft at their edges, the light diffused, as the picture's)
+	sun_light.shadow_blur = 1.0
 	for c in get_children():      # (the sea's blue shade at the edges of the screen and its rays of light: not here)
 		if c is CanvasLayer:
 			for t in c.get_children():
@@ -2997,6 +2998,14 @@ func _ivp_volute(base: Vector3, r := 0.36, l := 0.7) -> void:
 		var ws := w * (1.0 + 0.05 * sin(float(k) * 1.7))
 		_iv_quad(cl, a - ws, b - ws, b + ws, a + ws, Vector3(0, 1, 0) + (a - c0).normalized() * 0.5)
 	var cmi := MeshInstance3D.new(); cmi.mesh = cl.commit(); iv_root.add_child(cmi)
+	if ivr_on:
+		var bs := _iv_st()
+		for yb in [-1.42, -1.56]:
+			var y0: float = c0.y + float(yb)
+			var xx: float = c0.x + E + 0.15 * ((y0 - c0.y) / -1.9) + 0.006
+			_iv_quad(bs, Vector3(xx, y0, c0.z - 0.05 - 0.27), Vector3(xx, y0, c0.z - 0.05 + 0.27), Vector3(xx, y0 + 0.055, c0.z - 0.05 + 0.27), Vector3(xx, y0 + 0.055, c0.z - 0.05 - 0.27), Vector3(1, 0, 0))
+		var bmi := MeshInstance3D.new(); bmi.mesh = bs.commit(); iv_root.add_child(bmi); bmi.global_position = Vector3.ZERO; bmi.position = -IV_O
+		bmi.material_override = _iv_mat("marble2", 0.0, {"fog_hi": base.y - IV_O.y - 0.7, "fog_lo": base.y - IV_O.y - 2.6})
 	var fy := base.y - IV_O.y      # (in the level built in 3D, the cloth hanging over the edge goes into the mist as the rock does)
 	cmi.material_override = _iv_mat("pterra", 0.0, {"fog_hi": fy - 0.7, "fog_lo": fy - 2.6}) if ivr_on else _ivp_mat("pterra")
 	cmi.global_position = Vector3.ZERO; cmi.position = -IV_O
@@ -3349,7 +3358,7 @@ func _ivr_cam() -> void:
 	var vp := get_viewport().get_visible_rect().size
 	cam.keep_aspect = Camera3D.KEEP_WIDTH; cam.size = w * maxf(1.0, (vp.x / vp.y) / 0.5625)
 
-func _ivr_mat(kind: String, ao := 1.0, local := false) -> ShaderMaterial: return _iv_mat(kind, 0.0, {"lfog": 1.0 if local else 0.0, "fog_hi": -2.8, "fog_lo": -6.5, "ao_k": ao * ({"marble2": 0.55, "olive2": 0.3, "bark": 0.5, "rock2": 1.0} as Dictionary).get(kind, 1.0), "veins": 0.6 if kind == "marble2" else 0.0, "dk": 0.42 if kind == "rock2" else 0.0, "bounce": 1.0 if kind == "rock2" else 0.4, "haze": 1.0})
+func _ivr_mat(kind: String, ao := 1.0, local := false) -> ShaderMaterial: return _iv_mat(kind, 0.0, {"lfog": 1.0 if local else 0.0, "fog_hi": -3.6, "fog_lo": -7.5, "ao_k": ao * ({"marble2": 0.4, "olive2": 0.2, "bark": 0.3, "rock2": 0.0} as Dictionary).get(kind, 1.0), "veins": 0.6 if kind == "marble2" else 0.0, "dk": 0.0, "bounce": 0.0, "haze": 1.0})
 
 ## the way drawn on the stone: a pale line, and at each node a pale disc in a darker ring
 func _ivr_way() -> void:
@@ -3425,7 +3434,7 @@ func _ivr_far() -> void:
 	var col := prop_model("iv_colossus", self, 1.9)
 	col.position = cl; col.rotation.y = PI * 0.3
 	for m in col.find_children("*", "MeshInstance3D", true, false):
-		(m as MeshInstance3D).material_override = _iv_mat("farsil", 0.3, {"sil": 1.0, "fog_hi": cl.y - 1.0, "fog_lo": cl.y - 6.0}); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		(m as MeshInstance3D).material_override = _iv_mat("farsil", 0.12, {"sil": 1.0, "fog_hi": cl.y - 1.0, "fog_lo": cl.y - 6.0}); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 ## the rock that bears things far off: a table of rock whose flat top holds every foot given, a little more round them
 func _ivr_crag_under(st: SurfaceTool, feet: Array, margin: float, rng: RandomNumberGenerator) -> void:
@@ -3552,6 +3561,8 @@ func _ivr_build() -> void:
 	iv_block_n = _ivr_block(); iv_block_n.global_position = ivp_nodes[iv_block]
 	_ivp_volute(ivp_nodes[ivg_vol] if ivg_on else V.call(j.volute))
 	if ivg_on: _ivg_build()
+	if j.has("relief"):
+		var rs := _ivr_block(); rs.global_position = V.call(j.relief) + Vector3(0, -0.2, 0); rs.scale = Vector3.ONE * 0.42; rs.rotation = Vector3(0.12, 0.6, -0.08)
 	# the fallen face: one of the thousand, on its cheek in the rock, looking up at the eye
 	var hp := Node3D.new(); iv_root.add_child(hp); hp.global_position = V.call(j.head)
 	var hd := prop_model("iv_head", hp, 2.8); hd.position = Vector3(0, -1.4, 0)
@@ -3568,8 +3579,11 @@ func _ivr_build() -> void:
 		_: hp.basis = Basis(fx, fy, fz)
 	# the ring of light where the way ends
 	iv_ring = Node3D.new(); iv_root.add_child(iv_ring); iv_ring.global_position = ivp_nodes[ivg_exit if ivg_on else "r"]
-	var tm := TorusMesh.new(); tm.inner_radius = 0.36; tm.outer_radius = 0.46; tm.rings = 28; tm.ring_segments = 6
-	var rm := _iv_prim(tm, Vector3(0, 0.06, 0), "ring", iv_ring); rm.scale = Vector3(1, 0.6, 1); rm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var tm := TorusMesh.new(); tm.inner_radius = 0.3 if ivr_on else 0.36; tm.outer_radius = 0.46; tm.rings = 32; tm.ring_segments = 8
+	var rm := _iv_prim(tm, Vector3(0, 0.06, 0), "ring", iv_ring); rm.scale = Vector3(1, 0.62, 1); rm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if ivr_on:
+		var hm := CylinderMesh.new(); hm.top_radius = 0.31; hm.bottom_radius = 0.31; hm.height = 0.02; hm.radial_segments = 28; hm.rings = 1
+		var hi := MeshInstance3D.new(); hi.mesh = hm; hi.material_override = _iv_mat("rock2", 0.0, {"fog_hi": -9.0, "fog_lo": -14.0}); hi.position = Vector3(0, 0.012, 0); iv_ring.add_child(hi)
 	var gq := QuadMesh.new(); gq.size = Vector2(1.7, 1.7)
 	var gm := StandardMaterial3D.new(); gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm.albedo_texture = load("res://goiv/glow.png")
 	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; gm.albedo_color = Color(1.0, 0.96, 0.86, 0.5)
@@ -3579,9 +3593,9 @@ func _ivr_build() -> void:
 	var k := get_viewport().get_visible_rect().size.x / 720.0
 	var vh := get_viewport().get_visible_rect().size.y
 	var cl := CanvasLayer.new(); cl.layer = 1; add_child(cl)
-	var mg := Gradient.new(); mg.offsets = PackedFloat32Array([0.0, 0.52, 0.8, 1.0])
+	var mg := Gradient.new(); mg.offsets = PackedFloat32Array([0.0, 0.58, 0.84, 1.0])
 	var mc := Color("ddbf9d")
-	mg.colors = PackedColorArray([Color(mc, 0.0), Color(mc, 0.0), Color(mc, 0.24), Color(mc, 0.52)])
+	mg.colors = PackedColorArray([Color(mc, 0.0), Color(mc, 0.0), Color(mc, 0.0), Color(mc, 0.0)])
 	var mt := GradientTexture2D.new(); mt.gradient = mg; mt.fill_from = Vector2(0.5, 0.0); mt.fill_to = Vector2(0.5, 1.0); mt.width = 4; mt.height = 256
 	var mr := TextureRect.new(); mr.texture = mt; mr.stretch_mode = TextureRect.STRETCH_SCALE; mr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	mr.set_anchors_preset(Control.PRESET_FULL_RECT); mr.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(mr)
@@ -3592,6 +3606,7 @@ func _ivr_build() -> void:
 	vr.set_anchors_preset(Control.PRESET_FULL_RECT); vr.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(vr)
 	iv_leaves = _iv_overlay(cl, "res://goiv/leaves_tl.png", Vector2(-70, -90) * k, Vector2(470, 470) * k)
 	_iv_overlay(cl, "res://goiv/rock_bl.png", Vector2(-80 * k, vh - 360 * k), Vector2(400, 400) * k)
+	var lr := _iv_overlay(cl, "res://goiv/leaves_tl.png", Vector2(720 * k + 60 * k, -150 * k), Vector2(440, 440) * k); lr.flip_h = true; lr.position.x -= 440 * k; lr.rotation = 0.18
 	_iv_overlay(cl, "res://goiv/rock_br.png", Vector2(720 * k - 330 * k, vh - 330 * k), Vector2(400, 400) * k)
 	_iv_overlay(cl, "res://goiv/rock_r.png", Vector2(720 * k - 150 * k, vh * 0.36), Vector2(170 * k, vh * 0.66))
 
