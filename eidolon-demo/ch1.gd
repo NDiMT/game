@@ -1534,18 +1534,20 @@ func _mw_around() -> void:
 	var at := func(sx: float, sz: float) -> Vector3:
 		var ax := sx / 0.7071
 		return Vector3(cx + (sz + ax) * 0.5, WATER, (sz - ax) * 0.5 + zc)
-	for m in [[Vector3(cx - bw - 1.2, WATER, 0.0), PI * 0.5, "tied"], [Vector3(cx + bw + 1.2, WATER, 0.0), -PI * 0.5, "hem"]]:
+	var rng := RandomNumberGenerator.new(); rng.seed = 7919 + int(gs.lv) * 31      # (each court its own way of turning them)
+	for m in [[at.call(-0.5 * reach, -0.98 * reach), 0.0, "tied"], [at.call(0.62 * reach, -0.92 * reach), 0.0, "hem"]]:      # (away behind the courts, to left and right, with open water between: so tall, before them they would hide squares)
 		var p: Vector3 = m[0]; var top := WATER + 0.95
-		blk(p + Vector3(-0.62, -0.3, -0.62), Vector3(p.x + 0.62, top - 0.1, p.z + 0.62), "stone").material_override = _mw_flat("stone")
-		blk(Vector3(p.x - 0.7, top - 0.14, p.z - 0.7), Vector3(p.x + 0.7, top, p.z + 0.7), "stone").material_override = _mw_flat("stone")
-		var ms := mirror_stand(Vector3(p.x, top, p.z), float(m[1]), self, top, String(m[2]), true); ms.scale = Vector3.ONE * 1.45
+		blk(p + Vector3(-0.8, -0.3, -0.8), Vector3(p.x + 0.8, top - 0.1, p.z + 0.8), "stone").material_override = _mw_flat("stone")
+		blk(Vector3(p.x - 0.9, top - 0.14, p.z - 0.9), Vector3(p.x + 0.9, top, p.z + 0.9), "stone").material_override = _mw_flat("stone")
+		var yw: float = PI * 0.25 + rng.randf_range(0.45, 1.05) * (1.0 if rng.randf() < 0.5 else -1.0)      # turned anyhow, but never edge-on to the eye
+		var ms := mirror_stand(Vector3(p.x, top, p.z), yw, self, top, String(m[2]), true); ms.scale = Vector3.ONE * 2.0
 	# her statue, broken, on a rock behind the courts to the left, its foot clear of the sea
-	var sp: Vector3 = at.call(-2.9, -reach - 2.6)
+	var sp: Vector3 = at.call(-1.4, -reach - 3.0)
 	rock(Vector3(sp.x, 0, sp.z), 1.6)
 	blk(sp + Vector3(-0.62, -0.5, -0.62), sp + Vector3(0.62, 0.34, 0.62), "stone").material_override = pal("shade", "flat")
 	thing("broken_statue", sp + Vector3(0, 0.34, 0), 3.0, "stone:marble", atan2(cx - sp.x, zc - sp.z) + 0.4)
 	# rocks, and on some of them green: a bush, a young cypress, an olive
-	for r in [[3.0, -reach - 3.2, 1.5, "olive"], [-5.5, -reach * 0.3, 1.2, ""], [5.6, reach * 0.35, 1.5, "bush"], [3.3, reach + 4.2, 1.3, "cypress"], [-3.6, reach + 3.0, 1.0, "bush"]]:
+	for r in [[2.2, -reach - 4.4, 1.5, "olive"], [-6.2, -reach * 0.55, 1.2, ""], [6.3, reach * 0.57, 1.5, "bush"], [3.3, reach + 5.0, 1.3, "cypress"], [-3.6, reach + 4.0, 1.0, "bush"]]:
 		var rp: Vector3 = at.call(float(r[0]), float(r[1])); var rs: float = r[2]
 		rock(Vector3(rp.x, 0, rp.z), rs)
 		var gp := Vector3(rp.x + 0.05 * rs, WATER + 0.42 * rs, rp.z - 0.05 * rs)
