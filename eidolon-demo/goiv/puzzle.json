@@ -1,0 +1,544 @@
+{
+ "nodes": {
+  "a0": [
+   1.2,
+   -1.25,
+   4.9
+  ],
+  "a1": [
+   0.22,
+   -1.25,
+   4.9
+  ],
+  "a2": [
+   0.22,
+   -1.25,
+   3.95
+  ],
+  "b0": [
+   0.17,
+   0.0,
+   1.55
+  ],
+  "b1": [
+   0.92,
+   0.0,
+   1.55
+  ],
+  "b2": [
+   0.17,
+   0.0,
+   0.6
+  ],
+  "b3": [
+   0.92,
+   0.0,
+   0.6
+  ],
+  "b4": [
+   -0.55,
+   0.0,
+   0.6
+  ],
+  "b5": [
+   1.6743,
+   0.0,
+   0.5759
+  ],
+  "c0": [
+   0.0,
+   0.7,
+   -1.7
+  ],
+  "c1": [
+   0.75,
+   0.7,
+   -1.7
+  ],
+  "c2": [
+   1.5,
+   0.7,
+   -1.7
+  ],
+  "c3": [
+   0.0,
+   0.7,
+   -2.45
+  ],
+  "d0": [
+   -2.35,
+   1.48,
+   -1.75
+  ],
+  "d1": [
+   -3.1,
+   1.48,
+   -1.75
+  ],
+  "d2": [
+   -3.02,
+   1.48,
+   -2.45
+  ],
+  "ring": [
+   -3.1221,
+   2.13,
+   -4.9757
+  ]
+ },
+ "edges": [
+  [
+   "a0",
+   "a1",
+   []
+  ],
+  [
+   "a1",
+   "a2",
+   []
+  ],
+  [
+   "a2",
+   "b0",
+   [
+    [
+     0.1728,
+     -1.25,
+     3.1976
+    ],
+    [
+     0.1728,
+     0.0,
+     1.9577
+    ]
+   ]
+  ],
+  [
+   "b0",
+   "b1",
+   []
+  ],
+  [
+   "b0",
+   "b2",
+   []
+  ],
+  [
+   "b1",
+   "b3",
+   []
+  ],
+  [
+   "b4",
+   "b2",
+   []
+  ],
+  [
+   "b2",
+   "b3",
+   []
+  ],
+  [
+   "b3",
+   "b5",
+   []
+  ],
+  [
+   "b2",
+   "c0",
+   [
+    [
+     -0.0325,
+     0.0,
+     -0.7143
+    ],
+    [
+     -0.0325,
+     0.7,
+     -1.4742
+    ]
+   ]
+  ],
+  [
+   "c0",
+   "c1",
+   []
+  ],
+  [
+   "c1",
+   "c2",
+   []
+  ],
+  [
+   "c0",
+   "c3",
+   []
+  ],
+  [
+   "c0",
+   "d0",
+   [
+    [
+     -0.216,
+     0.7,
+     -1.826
+    ],
+    [
+     -1.7917,
+     1.48,
+     -1.826
+    ]
+   ]
+  ],
+  [
+   "d0",
+   "d1",
+   []
+  ],
+  [
+   "d1",
+   "d2",
+   []
+  ],
+  [
+   "d2",
+   "ring",
+   [
+    [
+     -3.0225,
+     1.48,
+     -3.0177
+    ],
+    [
+     -3.0225,
+     2.13,
+     -4.1896
+    ]
+   ]
+  ]
+ ],
+ "start": "a0",
+ "exit": "ring",
+ "block": "b2",
+ "volute": {
+  "node": "b5",
+  "toggles": {
+   "watchers": {
+    "c1": [
+     "c2",
+     "c0"
+    ],
+    "d1": [
+     "d0",
+     "d2"
+    ]
+   }
+  }
+ },
+ "watchers": [
+  {
+   "node": "a1",
+   "facing": "a2"
+  },
+  {
+   "node": "c1",
+   "facing": "c2"
+  },
+  {
+   "node": "d1",
+   "facing": "d0"
+  }
+ ],
+ "wanderers": [
+  {
+   "route": [
+    "c3",
+    "c0",
+    "b2",
+    "b0"
+   ]
+  }
+ ],
+ "mechanisms": {
+  "volute_turns_watchers": {
+   "what": "the faces on turntables turn together with the volute: [facing in state 0, facing in state 1]",
+   "watchers": {
+    "c1": [
+     "c2",
+     "c0"
+    ],
+    "d1": [
+     "d0",
+     "d2"
+    ]
+   },
+   "initial_state": 0
+  },
+  "watchers_strike_wanderer": true,
+  "block_holds_wanderer": {
+   "block": "b2",
+   "what": "while the stone stands in the foot of S2 the statue turns back at the head of S2 (c0) and paces c3-c0 on the landing"
+  },
+  "wanderer_shattered_from": "behind only"
+ },
+ "rules": {
+  "turn": "one swipe = one action of Ione; if it took a turn, the wanderer then takes one step",
+  "swipe": "the edge from her node whose on-screen direction (neighbour minus node, camera basis) is nearest the swipe, within 45 deg; none: nothing happens",
+  "volute": "swiping toward the volute from a neighbour turns it: its state flips 0<->1, every watcher in volute.toggles takes its facing for the new state; Ione stays; a turn passes; then a watcher looking at Ione strikes her, a watcher looking at the wanderer shatters it",
+  "push": "swiping toward the block along a flat edge pushes it to the next node straight on (flat edge, cos >= 0.90 in x,z), if that node is empty (no block, watcher, wanderer, volute); Ione takes the block's node; else nothing happens (no turn)",
+  "watcher": "steps onto a watcher's node: if it looks at her node she is struck, else it shatters and she takes its node",
+  "wanderer_attack": "steps onto the wanderer's node: from directly behind it (cos <= -0.90 between its facing and the way to her) it shatters; from its front she is caught; from the side nothing happens (no turn)",
+  "after_move": "a watcher looking at her node strikes her (restart); on the exit the level ends (the wanderer does not step)",
+  "wanderer_step": "it faces the next node of its route; if that node holds the block, a watcher or the volute it turns round in place (at a route end it stays); else it moves there (on Ione: caught), turns round at once if that was a route end, and is shattered if a watcher looks at that node",
+  "death": "struck or caught: the level restarts",
+  "push_cos": 0.9,
+  "behind_cos": -0.9,
+  "screen_basis": {
+   "right": [
+    0.70711,
+    0,
+    -0.70711
+   ],
+   "up": [
+    -0.40558,
+    0.81915,
+    -0.40558
+   ]
+  }
+ },
+ "where": {
+  "a0": "T0",
+  "a1": "T0",
+  "a2": "T0",
+  "b0": "T1",
+  "b1": "T1",
+  "b2": "T1",
+  "b3": "T1",
+  "b4": "T1",
+  "b5": "T1",
+  "c0": "L",
+  "c1": "L",
+  "c2": "L",
+  "c3": "L",
+  "d0": "T2",
+  "d1": "T2",
+  "d2": "T2",
+  "ring": "T3"
+ },
+ "intro": [
+  [
+   3.2891,
+   -2.3,
+   5.3584
+  ],
+  [
+   2.0632,
+   -1.25,
+   5.3584
+  ]
+ ],
+ "solution": [
+  "a1",
+  "a2",
+  "b0",
+  "b1",
+  "b3",
+  "b5",
+  "b5",
+  "b2",
+  "c0",
+  "c1",
+  "c0",
+  "b2",
+  "b3",
+  "b5",
+  "b2",
+  "c0",
+  "d0",
+  "d1",
+  "d2",
+  "ring"
+ ],
+ "solution_trace": [
+  {
+   "ione": "a1",
+   "block": "b2",
+   "volute": 0,
+   "watchers": [
+    "c1>c2",
+    "d1>d0"
+   ],
+   "wanderer": "c0>b2"
+  },
+  {
+   "ione": "a2",
+   "block": "b2",
+   "volute": 0,
+   "watchers": [
+    "c1>c2",
+    "d1>d0"
+   ],
+   "wanderer": "c0>c3"
+  },
+  {
+   "ione": "b0",
+   "block": "b2",
+   "volute": 0,
+   "watchers": [
+    "c1>c2",
+    "d1>d0"
+   ],
+   "wanderer": "c3>c0"
+  },
+  {
+   "ione": "b1",
+   "block": "b2",
+   "volute": 0,
+   "watchers": [
+    "c1>c2",
+    "d1>d0"
+   ],
+   "wanderer": "c0>b2"
+  },
+  {
+   "ione": "b3",
+   "block": "b2",
+   "volute": 0,
+   "watchers": [
+    "c1>c2",
+    "d1>d0"
+   ],
+   "wanderer": "c0>c3"
+  },
+  {
+   "ione": "b3",
+   "block": "b2",
+   "volute": 1,
+   "watchers": [
+    "c1>c0",
+    "d1>d2"
+   ],
+   "wanderer": "shattered"
+  },
+  {
+   "ione": "b3",
+   "block": "b2",
+   "volute": 0,
+   "watchers": [
+    "c1>c2",
+    "d1>d0"
+   ],
+   "wanderer": "shattered"
+  },
+  {
+   "ione": "b2",
+   "block": "b4",
+   "volute": 0,
+   "watchers": [
+    "c1>c2",
+    "d1>d0"
+   ],
+   "wanderer": "shattered"
+  },
+  {
+   "ione": "c0",
+   "block": "b4",
+   "volute": 0,
+   "watchers": [
+    "c1>c2",
+    "d1>d0"
+   ],
+   "wanderer": "shattered"
+  },
+  {
+   "ione": "c1",
+   "block": "b4",
+   "volute": 0,
+   "watchers": [
+    "d1>d0"
+   ],
+   "wanderer": "shattered"
+  },
+  {
+   "ione": "c0",
+   "block": "b4",
+   "volute": 0,
+   "watchers": [
+    "d1>d0"
+   ],
+   "wanderer": "shattered"
+  },
+  {
+   "ione": "b2",
+   "block": "b4",
+   "volute": 0,
+   "watchers": [
+    "d1>d0"
+   ],
+   "wanderer": "shattered"
+  },
+  {
+   "ione": "b3",
+   "block": "b4",
+   "volute": 0,
+   "watchers": [
+    "d1>d0"
+   ],
+   "wanderer": "shattered"
+  },
+  {
+   "ione": "b3",
+   "block": "b4",
+   "volute": 1,
+   "watchers": [
+    "d1>d2"
+   ],
+   "wanderer": "shattered"
+  },
+  {
+   "ione": "b2",
+   "block": "b4",
+   "volute": 1,
+   "watchers": [
+    "d1>d2"
+   ],
+   "wanderer": "shattered"
+  },
+  {
+   "ione": "c0",
+   "block": "b4",
+   "volute": 1,
+   "watchers": [
+    "d1>d2"
+   ],
+   "wanderer": "shattered"
+  },
+  {
+   "ione": "d0",
+   "block": "b4",
+   "volute": 1,
+   "watchers": [
+    "d1>d2"
+   ],
+   "wanderer": "shattered"
+  },
+  {
+   "ione": "d1",
+   "block": "b4",
+   "volute": 1,
+   "watchers": [],
+   "wanderer": "shattered"
+  },
+  {
+   "ione": "d2",
+   "block": "b4",
+   "volute": 1,
+   "watchers": [],
+   "wanderer": "shattered"
+  }
+ ],
+ "lines": [
+  "He set a thousand faces to watch for her.",
+  "Not one of them would know her."
+ ]
+}

@@ -653,8 +653,22 @@ func say(s: String) -> void:
 	if flip_demo and s.begins_with("tap the water"): s = "tap the sign  ·  the world turns over"
 	super.say(s)
 
-## while the picture is turned over, a finger on the screen means the place it would have meant the right way up
+## while the picture is turned over, a finger on the screen means the place it would have meant the right way up.
+## In the ivory level (Eidolon GO) a finger drawn across the screen is a swipe: one step that way (as in Lara Croft GO);
+## a touch that does not travel is still a tap.
+var ivg_sw0 := Vector2.ZERO
+var ivg_sw_id := -1
 func _unhandled_input(ev: InputEvent) -> void:
+	if go_iv and ivr_on and started and not ended:
+		if ev is InputEventScreenTouch:
+			if ev.pressed: ivg_sw0 = ev.position; ivg_sw_id = ev.index; return
+			if ev.index == ivg_sw_id:
+				ivg_sw_id = -1
+				var dv: Vector2 = (ev.position as Vector2) - ivg_sw0
+				if dv.length() > 26.0 * get_viewport().get_visible_rect().size.x / 720.0: _ivg_swipe(dv)
+				else: tap(ivg_sw0)
+			return
+		if ev is InputEventScreenDrag: return
 	if ev is InputEventScreenTouch and ev.pressed and flip_icon != null and flip_icon_wid != "" and flip_icon_a > 0.6 and (ev.position as Vector2).distance_to(flip_icon.position) < 50.0 * get_viewport().get_visible_rect().size.x / 720.0:
 		_flip_icon_press(); return
 	if flip_on and flip_turn and (ev is InputEventScreenTouch or ev is InputEventScreenDrag):
@@ -2707,9 +2721,9 @@ func _iv_post(dt: float) -> void:
 	if not iv_won: iv_glow.scale = Vector3.ONE * (0.92 + 0.12 * pl)
 	if iv_leaves != null: iv_leaves.pivot_offset = Vector2.ZERO; iv_leaves.rotation = deg_to_rad(1.3 * sin(iv_t * 0.9) + 0.6 * sin(iv_t * 2.3))
 	if started and ivp_on:
-		if not iv_said.has("line") and iv_t > 1.6: iv_said["line"] = true; _go_write("He carved her a thousand faces.\nNone of them was hers.", 4.5)
+		if not iv_said.has("line") and iv_t > 1.6: iv_said["line"] = true; _go_write(_ivg_line(), 4.5)
 	elif started:
-		if not iv_said.has("line") and iv_t > 1.2: iv_said["line"] = true; _go_write("He carved her a thousand faces.\nNone of them was hers.", 4.5)
+		if not iv_said.has("line") and iv_t > 1.2: iv_said["line"] = true; _go_write(_ivg_line(), 4.5)
 		if not iv_said.has("hint") and iv_t > 8.0 and iv_moves == 0: iv_said["hint"] = true; say("tap the way to walk")
 
 func _iv_scr(p: Vector3, sp: Vector2) -> float: return cam.unproject_position(p).distance_to(sp)
@@ -3002,7 +3016,7 @@ func _ivp_build() -> void:
 	var nw: Vector3 = ivp_nodes["n"]
 	_ivp_volute(nw + Vector3(0.38, 0.0, -0.66))
 	ivp_shadow = _ivp_flat_shadow(iv_root, Vector2(0.95, 0.62), 0.6)
-	iv_ring = Node3D.new(); iv_root.add_child(iv_ring); iv_ring.global_position = ivp_nodes["r"]
+	iv_ring = Node3D.new(); iv_root.add_child(iv_ring); iv_ring.global_position = ivp_nodes[ivg_exit if ivg_on else "r"]
 	var gq := QuadMesh.new(); gq.size = Vector2(1.3, 1.3)
 	var gm := StandardMaterial3D.new(); gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm.albedo_texture = load("res://goiv/glow.png")
 	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; gm.albedo_color = Color(1.0, 0.96, 0.86, 0.3)
@@ -3015,13 +3029,14 @@ func _ivp_begin() -> void:
 		sm.set_shader_parameter("mist_k", 0.0); sm.set_shader_parameter("flat_n", 0.0)
 		if ivr_on:
 			sm.set_shader_parameter("iv_look", 1.0); sm.set_shader_parameter("iv_key", iv_key)
-			sm.set_shader_parameter("iv_skin_lt", Color("f7eadc")); sm.set_shader_parameter("iv_skin_dk", Color("c8ab92"))
+			sm.set_shader_parameter("iv_skin_lt", Color("f7eadc")); sm.set_shader_parameter("iv_skin_dk", Color("bc9f87"))
+			if OS.get_environment("IV_HDBG") != "": sm.set_shader_parameter("iv_skin_lt", Color(1, 0, 0)); sm.set_shader_parameter("iv_skin_dk", Color(0, 0, 1))
 			sm.set_shader_parameter("iv_cloth_lt", Color("b45d3b")); sm.set_shader_parameter("iv_cloth_dk", Color("6a2c1f")); sm.set_shader_parameter("iv_shade", Color(0.86, 0.79, 0.74))
 	if ivr_on:
 		get_viewport().msaa_3d = Viewport.MSAA_4X      # (its edges smooth, as the picture's are)
 		_ivr_build()
 	else: _ivp_build()
-	var s0: Vector3 = ivp_nodes["s"]; var s1: Vector3 = ivp_nodes["n0"]
+	var s0: Vector3 = ivp_nodes["s"]; var s1: Vector3 = ivp_nodes[String(ivg.start) if ivg_on else "n0"]
 	pos = s0; yaw = atan2(s1.x - s0.x, s1.z - s0.z); route.clear()
 	ivp_wp_cur = s0; ivp_wp_prev = s0
 	if ivr_on: _ivr_cam()
@@ -3057,7 +3072,7 @@ func _ivp_post(dt: float) -> void:
 		tgtL = face + sd; tgtR = face - sd
 	if ivp_shadow != null: ivp_shadow.global_position = Vector3(pos.x, pos.y + 0.01, pos.z) + Vector3(0.3, 0.0, -0.14)
 	if started and not ivp_intro:      # she comes up out of the mist to the first floor
-		ivp_intro = true; _ivp_walk(["n0"])
+		ivp_intro = true; _ivp_walk([String(ivg.start) if ivg_on else "n0"])
 
 func _ivp_nbrs(k: String) -> Array:
 	var out := []
@@ -3100,11 +3115,23 @@ func _ivp_walk(path: Array) -> void:
 	iv_me = last
 	while not route.is_empty(): await get_tree().process_frame
 	iv_busy = false
-	if iv_me == "r": await _iv_win()
+	if (not ivg_on and iv_me == "r") or (ivg_on and iv_me == ivg_exit): await _iv_win()
 
 func _ivp_tap(sp: Vector2) -> void:
 	if iv_busy or iv_won or busy or not ivp_intro:
 		if OS.get_environment("IV_TRACE") != "": print("IV tap ignored: busy ", iv_busy, " ", busy, " won ", iv_won)
+		return
+	if ivg_on:      # a tap on a node beside her (or on the stone, or the volute, beside her) is a step that way
+		var pxg := get_viewport().get_visible_rect().size.x / 720.0
+		var bestg := ""; var bdg := 80.0 * pxg
+		for n in _ivp_nbrs(iv_me):
+			if n == "s": continue
+			var at: Vector3 = ivp_nodes[n]
+			if n == iv_block: at = iv_block_n.global_position + Vector3(0, 0.42, 0)
+			elif n == ivg_vol: at = iv_wheel.global_position
+			var dg := _iv_scr(at, sp)
+			if dg < bdg: bdg = dg; bestg = String(n)
+		if bestg != "": await _ivg_turn(bestg)
 		return
 	var px := get_viewport().get_visible_rect().size.x / 720.0
 	if not ivp_sunk and _iv_scr(iv_wheel.global_position, sp) < 70.0 * px: iv_moves += 1; await _ivp_turn(); return
@@ -3119,6 +3146,32 @@ func _ivp_tap(sp: Vector2) -> void:
 	if path.is_empty(): await _her_no(); return
 	iv_moves += 1
 	await _ivp_walk(path)
+
+## a swipe: one step, to the neighbour whose way lies, on the screen, nearest the swipe's direction (within 50 degrees)
+func _ivg_swipe(dv: Vector2) -> void:
+	if iv_busy or iv_won or busy or not ivp_intro: return
+	var n := _ivg_dir_nbr(iv_me, dv)
+	if OS.get_environment("IV_TRACE") != "": print("IV swipe ", dv, " from ", iv_me, " -> ", n)
+	if n == "": await _her_no(); return
+	await _ivg_step(n)
+
+func _ivg_dir_nbr(k: String, dv: Vector2) -> String:
+	var sp0 := cam.unproject_position(ivp_nodes[k])
+	var best := ""; var bc := cos(deg_to_rad(50.0))
+	for n in _ivp_nbrs(k):
+		if n == "s": continue
+		var sd := cam.unproject_position(ivp_nodes[n]) - sp0
+		if sd.length() < 1.0: continue
+		var c := sd.normalized().dot(dv.normalized())
+		if c > bc: bc = c; best = String(n)
+	return best
+
+## one step of hers to a neighbouring node (the rules of the level's trial decide what else happens)
+func _ivg_step(n: String) -> void:
+	if ivg_on: await _ivg_turn(n); return
+	if n == iv_block and not ivp_sunk: await _ivp_try_push(); return
+	iv_moves += 1
+	await _ivp_walk([n])
 
 ## from which neighbour can the stone be pushed on, straight along the way, to a free node beyond?
 func _ivp_try_push() -> void:
@@ -3213,6 +3266,21 @@ func _play_ivp() -> void:
 	if OS.get_environment("IV_CLEAN") != "": await wait(7.0)      # (for the look alone: after the line has gone)
 	await snap.call("p1_start")
 	if OS.get_environment("GH_ONLY") == "start": get_tree().quit(); return
+	if ivg_on:      # the trial played by swipes, as a player would: each a stroke from her toward the next node
+		var sol: Array = ivg.solution
+		for i in sol.size():
+			var tgt := String(sol[i])
+			var at: Vector3 = ivp_nodes[tgt]
+			var dv := cam.unproject_position(at) - cam.unproject_position(ivp_nodes[iv_me])
+			_ivg_swipe(dv); await get_tree().process_frame
+			await idle.call(); await wait(0.3)
+			print("IV step %d %s: she is at %s, stone %s, volute %d, statue %s" % [i + 1, tgt, iv_me, iv_block, ivg_v, _ivg_w_node()])
+			if not iv_won: await snap.call("s%02d_%s" % [i + 1, tgt])
+		var n3 := 0
+		while not ended and n3 < 900: await get_tree().process_frame; n3 += 1
+		await wait(1.5); await snap.call("p9_end")
+		print("IV ended: ", ended, " in ", iv_moves, " moves")
+		get_tree().quit(); return
 	await tapw.call(ivp_nodes["n2"]); await snap.call("p2_lower")
 	await tapw.call(iv_block_n.global_position + Vector3(0, 0.42, 0)); await snap.call("p3_pushed")
 	await tapw.call(iv_wheel.global_position); await snap.call("p4_sunk")
@@ -3264,6 +3332,9 @@ func _ivr_cam() -> void:
 	if not ivr_eye.is_empty():
 		var ce: Array = ivr_eye.centre
 		c = IV_O + Vector3(float(ce[0]), float(ce[1]), float(ce[2])); w = float(ivr_eye.width)
+	if OS.get_environment("IV_ZOOM") != "":      # (for judging her: the eye close on her)
+		c = pos + Vector3(0, 0.75, 0); w = float(OS.get_environment("IV_ZOOM"))
+		if OS.get_environment("IV_FACE") != "": yaw = atan2(b.z.x, b.z.z)
 	cam.global_transform = Transform3D(b, c + b.z * 40.0)
 	var vp := get_viewport().get_visible_rect().size
 	cam.keep_aspect = Camera3D.KEEP_WIDTH; cam.size = w * maxf(1.0, (vp.x / vp.y) / 0.5625)
@@ -3293,7 +3364,7 @@ func _ivr_way() -> void:
 			_iv_line(iv_root, hi_p - IV_O, a1 - IV_O)
 		else: _iv_line(iv_root, (pts[0] as Vector3) - IV_O, (ivp_nodes[e[1]] as Vector3) - IV_O)
 	for k in ivp_nodes:
-		if k == "r" or k == "s": continue
+		if k == "r" or k == "s" or (ivg_on and (k == ivg_exit or k == ivg_vol)): continue
 		var p: Vector3 = (ivp_nodes[k] as Vector3) - IV_O
 		var rm := CylinderMesh.new(); rm.top_radius = 0.215; rm.bottom_radius = 0.215; rm.height = 0.02; rm.radial_segments = 24; rm.rings = 1
 		var ri := _iv_prim(rm, p + Vector3(0, 0.008, 0), "groove", iv_root); ri.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -3450,20 +3521,27 @@ func _ivr_build() -> void:
 	if j.has("eye"): ivr_eye = j.eye
 	if j.has("floors"): ivr_floors = j.floors
 	var V := func(a: Array) -> Vector3: return IV_O + Vector3(float(a[0]), float(a[1]), float(a[2]))
+	ivg_on = _ivg_load()      # the trial played as Lara Croft GO is (goiv/puzzle.json); else the first trial's way
+	var src: Dictionary = ivg if ivg_on else j
 	ivp_nodes = {}
-	for k in (j.nodes as Dictionary): ivp_nodes[k] = V.call(j.nodes[k])
+	for k in (src.nodes as Dictionary): ivp_nodes[k] = V.call(src.nodes[k])
 	if j.has("flights"):
 		for fl in (j.flights as Array):
 			ivr_steps[_ivr_fkey(V.call(fl[0]), V.call(fl[1]))] = int(fl[3]) if (fl as Array).size() > 3 else 0
 	ivp_edges = []
-	for e in (j.edges as Array):
+	for e in (src.edges as Array):
 		var mids := []
 		for p in (e[2] as Array): mids.append(V.call(p))
 		ivp_edges.append([String(e[0]), String(e[1]), mids])
+	if ivg_on:      # she comes up the first stair out of the mist to where the trial starts
+		var it: Array = ivg.intro
+		ivp_nodes["s"] = V.call(it[0]); ivp_edges.append(["s", String(ivg.start), [V.call(it[0]), V.call(it[1])]])
+		ivg_vol = String(ivg.volute.node); ivg_exit = String(ivg.exit)
 	_ivr_way()
-	iv_me = "s"; iv_block = "b0"
-	iv_block_n = _ivr_block(); iv_block_n.global_position = ivp_nodes["b0"]
-	_ivp_volute(V.call(j.volute))
+	iv_me = "s"; iv_block = String(ivg.block) if ivg_on else "b0"
+	iv_block_n = _ivr_block(); iv_block_n.global_position = ivp_nodes[iv_block]
+	_ivp_volute(ivp_nodes[ivg_vol] if ivg_on else V.call(j.volute))
+	if ivg_on: _ivg_build()
 	# the fallen face: one of the thousand, on its cheek in the rock, looking up at the eye
 	var hp := Node3D.new(); iv_root.add_child(hp); hp.global_position = V.call(j.head)
 	var hd := prop_model("iv_head", hp, 2.8); hd.position = Vector3(0, -1.4, 0)
@@ -3479,7 +3557,7 @@ func _ivr_build() -> void:
 		"-z": hp.basis = Basis(-fx, fy, -fz)
 		_: hp.basis = Basis(fx, fy, fz)
 	# the ring of light where the way ends
-	iv_ring = Node3D.new(); iv_root.add_child(iv_ring); iv_ring.global_position = ivp_nodes["r"]
+	iv_ring = Node3D.new(); iv_root.add_child(iv_ring); iv_ring.global_position = ivp_nodes[ivg_exit if ivg_on else "r"]
 	var tm := TorusMesh.new(); tm.inner_radius = 0.36; tm.outer_radius = 0.46; tm.rings = 28; tm.ring_segments = 6
 	var rm := _iv_prim(tm, Vector3(0, 0.06, 0), "ring", iv_ring); rm.scale = Vector3(1, 0.6, 1); rm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var gq := QuadMesh.new(); gq.size = Vector2(1.7, 1.7)
@@ -3501,6 +3579,287 @@ func _ivr_build() -> void:
 	_iv_overlay(cl, "res://goiv/rock_br.png", Vector2(720 * k - 330 * k, vh - 330 * k), Vector2(400, 400) * k)
 	_iv_overlay(cl, "res://goiv/rock_r.png", Vector2(720 * k - 150 * k, vh * 0.36), Vector2(170 * k, vh * 0.66))
 
+
+# ---------------------------------------------------------------- Eidolon GO, ivory: the trial played as Lara Croft GO is
+## tools/ivory/puzzle_design.py makes goiv/puzzle.json and proves it (the shortest way 20 swipes, no trap). Each swipe
+## is one step of hers along the way; after it the walking statue takes one step. Faces of stone each watch one node:
+## to end a step there is to be struck; to step onto a face from anywhere but before it breaks it. The faces strike
+## the statue too. The stone is pushed one node straight on along a level way; the volute, turned from beside it,
+## turns two of the faces on their stands. Struck or caught, the trial begins again. (The rules are the solver's own:
+## keep the two the same.)
+const IVG_PUSH_COS := 0.9
+const IVG_BEHIND_COS := -0.9
+var ivg_on := false
+var ivg := {}
+var ivg_v := 0      # the volute: 0 or 1
+var ivg_faces := []      # {node, look: [watched in 0, watched in 1], alive, n: the face, gaze: [line, ring]}
+var ivg_route := []
+var ivg_wi := -1      # the statue: its place on its route (-1: broken), and which way along it it goes
+var ivg_wd := 1
+var ivg_w: Node3D
+var ivg_vol := ""
+var ivg_exit := ""
+
+func _ivg_load() -> bool:
+	if OS.get_environment("IV_OLD") != "" or not FileAccess.file_exists("res://goiv/puzzle.json"): return false
+	var d = JSON.parse_string(FileAccess.get_file_as_string("res://goiv/puzzle.json"))
+	if d == null or not (d as Dictionary).has("nodes"): return false
+	ivg = d
+	return true
+
+func _ivg_line() -> String:
+	if ivg_on and ivg.has("lines"): return "\n".join(PackedStringArray(ivg.lines))
+	return "He carved her a thousand faces.\nNone of them was hers."
+
+func _ivg_build() -> void:
+	var tog: Dictionary = (ivg.volute.toggles.watchers as Dictionary) if (ivg.volute as Dictionary).has("toggles") else {}
+	var gm := StandardMaterial3D.new(); gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	gm.albedo_color = Color(0.72, 0.3, 0.2, 0.55); gm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	for w in (ivg.watchers as Array):
+		var nd := String(w.node)
+		var lk: Array = tog.get(nd, [String(w.facing), String(w.facing)])
+		var f := {"node": nd, "look": [String(lk[0]), String(lk[1])], "alive": true}
+		# the face: a head of hers in stone on a low stand, turned to the node it watches
+		var st := Node3D.new(); iv_root.add_child(st); st.global_position = ivp_nodes[nd]
+		var bx := BoxMesh.new(); bx.size = Vector3(0.44, 0.16, 0.44)
+		var pl := MeshInstance3D.new(); pl.mesh = bx; pl.material_override = _ivr_mat("marble2", 0.0); pl.position = Vector3(0, 0.08, 0); st.add_child(pl)
+		var hn := Node3D.new(); st.add_child(hn); hn.position = Vector3(0, 0.16, 0)
+		var hd := prop_model("iv_head", hn, 0.62)
+		for m in hd.find_children("*", "MeshInstance3D", true, false):
+			(m as MeshInstance3D).material_override = _ivr_mat("marble2", 0.0); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		f.n = st; f.head = hn
+		# its gaze: a faint red line along the floor to the node it watches, and a ring on that node
+		var lm := BoxMesh.new(); lm.size = Vector3(1.0, 0.004, 0.05)
+		var ln := MeshInstance3D.new(); ln.mesh = lm; ln.material_override = gm; ln.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; iv_root.add_child(ln)
+		var tm := TorusMesh.new(); tm.inner_radius = 0.2; tm.outer_radius = 0.25; tm.rings = 24; tm.ring_segments = 4
+		var rg := MeshInstance3D.new(); rg.mesh = tm; rg.material_override = gm; rg.scale = Vector3(1, 0.2, 1); rg.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; iv_root.add_child(rg)
+		f.gaze = [ln, rg]
+		ivg_faces.append(f)
+		_ivg_face_aim(f, 0.0)
+	var wr: Array = ivg.get("wanderers", [])
+	if not wr.is_empty():
+		for k in (wr[0].route as Array): ivg_route.append(String(k))
+		ivg_wi = 0; ivg_wd = 1
+		ivg_w = Node3D.new(); iv_root.add_child(ivg_w)
+		var sh := Node3D.new(); ivg_w.add_child(sh); sh.name = "body"
+		var sm := prop_model("iv_colossus", sh, 1.3)
+		for m in sm.find_children("*", "MeshInstance3D", true, false):
+			(m as MeshInstance3D).material_override = _ivr_mat("marble2", 0.0); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		ivg_w.global_position = ivp_nodes[ivg_route[0]]
+		_ivg_w_aim(0.0)
+
+## which way a face looks just now, and what it watches
+func _ivg_watched(f: Dictionary) -> String: return String(f.look[ivg_v])
+func _ivg_looked_at(n: String) -> bool:
+	for f in ivg_faces:
+		if f.alive and _ivg_watched(f) == n: return true
+	return false
+func _ivg_face_on(n: String) -> int:
+	for i in ivg_faces.size():
+		if ivg_faces[i].alive and ivg_faces[i].node == n: return i
+	return -1
+func _ivg_dir(a: String, b: String) -> Vector2:
+	var pa: Vector3 = ivp_nodes[a]; var pb: Vector3 = ivp_nodes[b]
+	return Vector2(pb.x - pa.x, pb.z - pa.z).normalized()
+func _ivg_flat(a: String, b: String) -> bool:
+	var e := _ivp_edge(a, b)
+	return not e.is_empty() and (e[2] as Array).is_empty()
+func _ivg_cont(a: String, k: String) -> String:      # the node straight on from k, coming from a, along level ways
+	if not _ivg_flat(a, k): return ""
+	var d := _ivg_dir(a, k)
+	for c in _ivp_nbrs(k):
+		if c != a and c != "s" and _ivg_flat(k, c) and d.dot(_ivg_dir(k, c)) >= IVG_PUSH_COS: return String(c)
+	return ""
+func _ivg_w_node() -> String: return String(ivg_route[ivg_wi]) if ivg_wi >= 0 else ""
+func _ivg_w_front() -> String:
+	var j := ivg_wi + ivg_wd
+	return String(ivg_route[j]) if j >= 0 and j < ivg_route.size() else ""
+func _ivg_w_behind(me: String) -> bool:
+	var w := _ivg_w_node(); var f := _ivg_w_front()
+	var fd := _ivg_dir(w, f) if f != "" else _ivg_dir(ivg_route[ivg_wi - ivg_wd], w)
+	return fd.dot(_ivg_dir(w, me)) <= IVG_BEHIND_COS
+
+func _ivg_face_aim(f: Dictionary, t := 0.6) -> void:
+	var at: Vector3 = ivp_nodes[f.node]; var lk: Vector3 = ivp_nodes[_ivg_watched(f)]
+	var d := Vector3(lk.x - at.x, 0, lk.z - at.z).normalized()
+	var b := Basis(d, Vector3.UP, d.cross(Vector3.UP))
+	var hn: Node3D = f.head
+	var ln: MeshInstance3D = f.gaze[0]; var rg: MeshInstance3D = f.gaze[1]
+	var L := Vector2(lk.x - at.x, lk.z - at.z).length() - 0.3
+	var mid := at + d * (0.15 + L * 0.5) + Vector3(0, 0.03, 0)
+	if t <= 0.0:
+		hn.basis = b; ln.global_position = mid; ln.basis = Basis(d * L, Vector3.UP, d.cross(Vector3.UP)); rg.global_position = lk + Vector3(0, 0.04, 0)
+		return
+	var q0 := hn.quaternion; var q1 := b.get_rotation_quaternion()
+	var tw0 := create_tween().set_parallel()
+	tw0.tween_method(func(k: float) -> void: hn.quaternion = q0.slerp(q1, k), 0.0, 1.0, t).set_trans(Tween.TRANS_SINE)
+	tw0.tween_property(ln, "global_position", mid, t); tw0.tween_property(ln, "basis", Basis(d * L, Vector3.UP, d.cross(Vector3.UP)), t)
+	tw0.tween_property(rg, "global_position", lk + Vector3(0, 0.04, 0), t)
+
+func _ivg_w_aim(t := 0.4) -> void:
+	if ivg_wi < 0 or ivg_w == null: return
+	var w := _ivg_w_node(); var f := _ivg_w_front()
+	var d2 := _ivg_dir(w, f) if f != "" else _ivg_dir(ivg_route[ivg_wi - ivg_wd], w)
+	var yw := atan2(d2.x, d2.y) + (float(OS.get_environment("IV_WYAW")) if OS.get_environment("IV_WYAW") != "" else 0.0)
+	var body := ivg_w.get_node("body") as Node3D
+	if t <= 0.0: body.rotation.y = yw; return
+	var cur := body.rotation.y; var dy := wrapf(yw - cur, -PI, PI)
+	create_tween().tween_property(body, "rotation:y", cur + dy, t).set_trans(Tween.TRANS_SINE)
+
+## one turn: she acts along the way to nb; then the statue takes its step
+func _ivg_turn(nb: String) -> void:
+	if iv_busy or iv_won: return
+	var me := iv_me
+	var wn := _ivg_w_node()
+	if OS.get_environment("IV_TRACE") != "": print("IV turn ", me, " -> ", nb, "  block ", iv_block, " volute ", ivg_v, " statue ", wn)
+	if nb == ivg_vol:      # she turns the volute: the faces on their stands turn with it
+		iv_moves += 1
+		await _ivg_turn_volute()
+		if _ivg_looked_at(me): await _ivg_fail("struck", me); return
+		if wn != "" and _ivg_looked_at(wn): await _ivg_w_break()
+	else:
+		if nb == iv_block:      # the stone goes on before her, one node straight on
+			var c := _ivg_cont(me, nb)
+			if c == "" or c == ivg_vol or _ivg_face_on(c) >= 0 or c == wn: await _her_no(); return
+			iv_moves += 1
+			await _ivg_push(nb, c)
+		else:
+			var fi := _ivg_face_on(nb)
+			if fi >= 0:      # onto a face: from before it she is struck; from anywhere else it falls
+				if _ivg_watched(ivg_faces[fi]) == me: await _ivg_fail("struck", me, fi); return
+				iv_moves += 1
+				_ivg_face_break(fi)
+				await _ivp_walk([nb])
+			elif nb == wn:      # onto the statue: from behind it breaks; from before it, it takes her; from the side, no
+				if _ivg_w_front() == me: await _ivg_fail("caught", me); return
+				if not _ivg_w_behind(me): await _her_no(); return
+				iv_moves += 1
+				await _ivg_w_break()
+				await _ivp_walk([nb])
+			else:
+				iv_moves += 1
+				await _ivp_walk([nb])
+		if iv_won: return
+		if _ivg_looked_at(iv_me): await _ivg_fail("struck", iv_me); return
+	await _ivg_w_step()
+
+## the statue's step along its route, or its turning back where the way is held
+func _ivg_w_step() -> void:
+	if ivg_wi < 0: return
+	var j := ivg_wi + ivg_wd
+	var nx: String = ivg_route[j] if j >= 0 and j < ivg_route.size() else ""
+	if nx == "" or nx == iv_block or _ivg_face_on(nx) >= 0 or nx == ivg_vol:
+		if ivg_wi - ivg_wd >= 0 and ivg_wi - ivg_wd < ivg_route.size():
+			ivg_wd = -ivg_wd; _ivg_w_aim(0.45); await wait(0.45)
+		return
+	var fr := _ivg_w_node()
+	ivg_wi = j
+	iv_busy = true
+	var e := _ivp_edge(fr, nx); var pts: Array = (e[2] as Array).duplicate() if not e.is_empty() else []
+	if not e.is_empty() and e[0] != fr: pts.reverse()
+	pts.append(ivp_nodes[nx])
+	_ivg_w_aim(0.25)
+	for p in pts:
+		var q: Vector3 = p
+		var dd := ivg_w.global_position.distance_to(q)
+		var mv := create_tween(); mv.tween_property(ivg_w, "global_position", q, maxf(0.15, dd / 1.15)); await mv.finished
+	iv_busy = false
+	if nx == iv_me: await _ivg_fail("caught", iv_me); return
+	if ivg_wi == 0 or ivg_wi == ivg_route.size() - 1: ivg_wd = -ivg_wd
+	_ivg_w_aim(0.45)
+	if _ivg_looked_at(nx): await _ivg_w_break()
+
+func _ivg_push(nb: String, c: String) -> void:
+	iv_busy = true
+	var kp: Vector3 = ivp_nodes[nb]; var qp: Vector3 = ivp_nodes[c]
+	var dv := Vector3(qp.x - kp.x, 0, qp.z - kp.z).normalized()
+	iv_push = {"d": dv, "start": pos, "m0": kp, "len": Vector2(qp.x - kp.x, qp.z - kp.z).length()}
+	print("IV push ", nb, " -> ", c)
+	route.clear(); speed_cap = 1.0; face_to = null
+	route.append({"p": kp})
+	var up := tw(); up.set_parallel(); up.tween_property(self, "a_wL", 1.0, 0.3); up.tween_property(self, "a_wR", 1.0, 0.3); up.tween_property(self, "a_lean", 0.16, 0.3)
+	while not route.is_empty(): await get_tree().process_frame
+	iv_push = {}
+	var sl := create_tween(); sl.tween_property(iv_block_n, "global_position", qp, 0.18); await sl.finished
+	iv_me = nb; iv_block = c; ivp_wp_cur = kp
+	var dn := tw(); dn.set_parallel(); dn.tween_property(self, "a_wL", 0.0, 0.35); dn.tween_property(self, "a_wR", 0.0, 0.35); dn.tween_property(self, "a_lean", 0.0, 0.35)
+	await dn.finished
+	iv_busy = false
+
+func _ivg_turn_volute() -> void:
+	iv_busy = true
+	var wp: Vector3 = iv_wheel.global_position
+	face_to = wp
+	var n := 0
+	while face_to != null and n < 90: await get_tree().process_frame; n += 1
+	var to_her := Vector3(pos.x - wp.x, 0, pos.z - wp.z).normalized()
+	var fr := wp + to_her * 0.36
+	tgtL = fr + Vector3(0, 0.2, 0) + to_her.cross(Vector3.UP) * 0.12; tgtR = fr + Vector3(0, -0.05, 0) - to_her.cross(Vector3.UP) * 0.12
+	var up := tw(); up.set_parallel(); up.tween_property(self, "a_wL", 1.0, 0.3); up.tween_property(self, "a_wR", 1.0, 0.3); up.tween_property(self, "a_lean", 0.18, 0.3)
+	await up.finished
+	ivg_v ^= 1
+	print("IV the volute turns: ", ivg_v)
+	var sp := create_tween(); sp.tween_property(iv_wheel, "rotation:z", iv_wheel.rotation.z - PI, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	for f in ivg_faces:
+		if f.alive: _ivg_face_aim(f, 1.0)
+	await sp.finished
+	var dn := tw(); dn.set_parallel(); dn.tween_property(self, "a_wL", 0.0, 0.35); dn.tween_property(self, "a_wR", 0.0, 0.35); dn.tween_property(self, "a_lean", 0.0, 0.35)
+	await dn.finished
+	iv_busy = false
+
+## a face broken: it falls from its stand and is gone
+func _ivg_face_break(i: int) -> void:
+	var f: Dictionary = ivg_faces[i]
+	f.alive = false
+	print("IV a face breaks at ", f.node)
+	var st: Node3D = f.n
+	for g in (f.gaze as Array): (g as Node3D).visible = false
+	var hn: Node3D = f.head
+	var k := create_tween().set_parallel()
+	k.tween_property(hn, "rotation:z", hn.rotation.z + 1.4, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	k.tween_property(st, "scale", Vector3(0.01, 0.01, 0.01), 0.5).set_delay(0.25).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	k.tween_callback(func() -> void: st.visible = false).set_delay(0.76)
+
+## the statue broken
+func _ivg_w_break() -> void:
+	if ivg_wi < 0: return
+	ivg_wi = -1
+	print("IV the statue breaks")
+	var body := ivg_w.get_node("body") as Node3D
+	var k := create_tween().set_parallel()
+	k.tween_property(body, "rotation:x", 0.5, 0.35).set_trans(Tween.TRANS_QUAD)
+	k.tween_property(ivg_w, "scale", Vector3(0.01, 0.01, 0.01), 0.55).set_delay(0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await k.finished
+	ivg_w.visible = false
+
+## struck or caught: the light goes, and the trial begins again
+func _ivg_fail(why: String, at: String, fi := -1) -> void:
+	iv_busy = true
+	print("IV ", why, " at ", at)
+	if fi >= 0:      # the face strikes: it leans at her
+		var hn: Node3D = ivg_faces[fi].head
+		var p0 := hn.position
+		var lk: Vector3 = ivp_nodes[_ivg_watched(ivg_faces[fi])] - (ivp_nodes[ivg_faces[fi].node] as Vector3)
+		var lu := create_tween(); lu.tween_property(hn, "position", p0 + Vector3(lk.x, 0, lk.z).normalized() * 0.25, 0.15); lu.tween_property(hn, "position", p0, 0.3)
+	var f := create_tween(); f.tween_property(iv_fade, "color:a", 1.0, 0.8).set_delay(0.3); await f.finished
+	_ivg_reset()
+	await wait(0.4)
+	var g := create_tween(); g.tween_property(iv_fade, "color:a", 0.0, 0.8); await g.finished
+	iv_busy = false
+
+func _ivg_reset() -> void:
+	route.clear(); iv_push = {}
+	iv_me = String(ivg.start); pos = ivp_nodes[iv_me]; ivp_wp_cur = pos; ivp_wp_prev = pos
+	iv_block = String(ivg.block); iv_block_n.global_position = ivp_nodes[iv_block]
+	ivg_v = 0; iv_wheel.rotation.z = 0.0
+	for f in ivg_faces:
+		f.alive = true; (f.n as Node3D).visible = true; (f.n as Node3D).scale = Vector3.ONE; (f.head as Node3D).rotation = Vector3.ZERO
+		for g in (f.gaze as Array): (g as Node3D).visible = true
+		_ivg_face_aim(f, 0.0)
+	if not ivg_route.is_empty():
+		ivg_wi = 0; ivg_wd = 1; ivg_w.visible = true; ivg_w.scale = Vector3.ONE; (ivg_w.get_node("body") as Node3D).rotation = Vector3.ZERO
+		ivg_w.global_position = ivp_nodes[ivg_route[0]]; _ivg_w_aim(0.0)
+	iv_moves = 0
 
 # ---------------------------------------------------------------- the face in the water (a trial)
 ## Three courts by themselves in the sea, one after another. In each a medallion of square stones stands on two posts
