@@ -939,7 +939,7 @@ func _gh_statue(p: Vector3, yaw: float, veiled: bool) -> void:
 
 func _gh_build() -> void:
 	gh_pic = Node3D.new(); add_child(gh_pic); gh_hang = Node3D.new(); add_child(gh_hang); gh_inv = Node3D.new(); add_child(gh_inv); gh_inv.visible = false
-	var yD := WATER + 0.5
+	var yD := 0.0      # (the decks stand where the game's floors stand, a man's height over the sea)
 	var slab := func(r: Array) -> void:
 		blk(Vector3(r[0], WATER - 0.8, r[1]), Vector3(r[2], yD, r[3]), "stone").material_override = pal("stone", "flat")
 		blk(Vector3(r[0] - 0.05, yD - 0.26, r[1] - 0.05), Vector3(r[2] + 0.05, yD - 0.1, r[3] + 0.05), "shade").material_override = pal("shade", "flat")
@@ -992,7 +992,7 @@ func _gh_build() -> void:
 	var hit := Vector3(mp.x, eye2.y - 0.35, mp.z)
 	_gh_beam(eye2, hit); _gh_beam(hit, Vector3(106.4, yD + 0.05, 0.0))
 	_gh_around()
-	stele("gh_st0", Vector3(113.2, yD, 3.2), 0.0, ["What is looked at,\nstays."])
+	stele("gh_st0", Vector3(113.2, 0.0, 3.2), 0.0, ["What is looked at,\nstays."])
 	# the look of it: a hard vignette, and small lights adrift over the water
 	var cl := CanvasLayer.new(); cl.layer = 0; add_child(cl)
 	var vg := Gradient.new(); vg.offsets = PackedFloat32Array([0.0, 0.36, 0.72, 1.0])
@@ -1039,7 +1039,7 @@ func _gh_flame_on(n: Node3D, p: Vector3, k: float) -> void:
 
 ## (she stands at the near corner)
 func _gh_begin() -> void:
-	_wake_now(); pos = Vector3(114.5, WATER + 0.5, 4.5); yaw = PI * 0.25; cam_t = GH_MID_PT      # (at the edge of the deck: her picture lies on the sea before her)
+	_wake_now(); pos = Vector3(114.5, 0.0, 4.5); yaw = PI * 0.25; cam_t = GH_MID_PT      # (at the edge of the deck: her picture lies on the sea before her)
 	cam_focus = GH_MID_PT; cam_focus_on = true
 	for ql in quote_lbls:
 		if (ql as Label).get_theme_constant("outline_size") == 0: (ql as Label).add_theme_color_override("font_color", Color(0.97, 0.98, 1.0, 1.0))
@@ -1051,21 +1051,9 @@ func _gh_write(text: String, hold := 5.5) -> void:
 	quote_glow.modulate.a = 1.0
 
 func _gh_pre(_dt: float) -> void:
-	pos.y = WATER + 0.5
+	pos.y = 0.0
 
 func _gh_post(dt: float) -> void:
-	for k in H:      # (only she, and her picture in the sea: no other body of hers)
-		if String(k) != "main": (H[k].holder as Node3D).visible = false
-	if not gh_said.has("her_refl") and H.has("main"):      # her picture in the sea, as clear as the stone's
-		gh_said["her_refl"] = true
-		for mm in (H["main"].holder as Node).find_children("*", "MeshInstance3D", true, false):
-			var mi := mm as MeshInstance3D
-			var ms := [mi.material_override]
-			if mi.mesh != null:
-				for si in mi.mesh.get_surface_count(): ms.append(mi.get_surface_override_material(si))
-			for m in ms:
-				if m is ShaderMaterial and (m as ShaderMaterial).next_pass is ShaderMaterial:
-					((m as ShaderMaterial).next_pass as ShaderMaterial).set_shader_parameter("fade_a", 1.0)
 	cam_focus = GH_MID_PT; cam_focus_on = true
 	if started:
 		gh_t += dt
