@@ -128,7 +128,7 @@ func _init() -> void:
 	if match_demo: title_sub = "the still water  ·  a trial\ntap to begin"
 	if figure_demo: title_sub = "the face in the water  ·  a trial\ntap to begin"
 	if geo_demo: title_sub = "what is looked at, stays\ntap to begin"
-	if go_demo: title_sub = "step by step  ·  a trial\ntap to begin"; sea_c = Color("2b6880"); mist_c = Color("7f8fb4"); bg_c = Color("1c4a5e"); shadow_c = Vector3(0.5, 0.52, 0.8)
+	if go_demo: title_sub = "two worlds  ·  a trial\ntap to begin"; sea_c = Color("2b6880"); mist_c = Color("7f8fb4"); bg_c = Color("1c4a5e"); shadow_c = Vector3(0.5, 0.52, 0.8)
 	if geo_demo: sea_c = Color("2b6880"); mist_c = Color("7f8fb4"); bg_c = Color("1c4a5e"); shadow_c = Vector3(0.5, 0.52, 0.8)      # (this trial: the same sea toward evening)
 
 func _hollows() -> Array:
@@ -1282,114 +1282,255 @@ func _play_geo() -> void:
 	print("GH ended: ", ended); await snap.call("p9_end")
 	get_tree().quit()
 
-# ---------------------------------------------------------------- Eidolon GO: the tide (a trial)
-## The game played a step at a time, after the GO games. Each level is a board of stones in the sea, of three heights.
-## A tap on a stone next to her takes her one step; a tap on her own stone, and she waits a step. With every step the
-## sea moves: it stands for two steps at each level, low, middle, high, middle, and round again. At high tide the
-## lowest stones go under, and she with them if she stands on one. She steps up or down one height at a time. Rafts
-## are moored in the gaps: a raft stands one height above the sea, and rises and falls with it, and her with it.
-## Maps: rows of characters, one per stone. ' ' sea, '1' '2' '3' stones of that height, 'R' a raft, 'a' 'b' 'c' where
-## she starts (on a stone of height 1, 2, 3), 'x' 'y' 'z' the gate (on 1, 2, 3).
-## Measures: a stone of height h has its top at WATER + 0.2 + 0.45 h; the sea at level l stands at WATER + 0.45 l (so a
-## stone is under when l > h); a raft's top is 0.65 over the sea.
+# ---------------------------------------------------------------- Eidolon GO: two worlds, one push (a trial)
+## A court in the sea, seen from the front, cut across by a channel of still water. Beyond the water lies its eidolon:
+## the same court, mirrored, in dark stone, and not quite the same. Every stone she pushes has its image over there, and
+## the image moves as in a mirror (towards the water when the stone goes towards it, along with it when it goes along
+## it), if its own way is free; if not, it stays where it is, and the two come apart. A stone and its image that come
+## into the water at one place at one moment become one: a slab, on which she can cross; over there she pushes the
+## images, and the stones follow them. Gold rings lie on both sides: when a stone stands on every ring of the court and
+## an image on every ring of its eidolon, the gate rises out of the middle of the water, and she walks into its light.
+## Maps, rows from the far side to the near: ' ' sea, '.' floor, '#' a column, '*' a ring, '@' she, 'A'.. stones,
+## 'a'.. their images, '~' the channel, '=' a slab in it. "sol": the steps of a way through (x, z, w: a walk, p: a push).
 const GO_D := 1.6
-const GO_VIEW := 11.0
-const GO_TIDE := [0, 0, 1, 1, 2, 2, 1, 1]
+const GO_VIEW := 12.0
+const MW_TOP := WATER + 0.65      # the floor of both courts
+const MW_NONE := Vector2i(-99, -99)
+const MW_REACH := 0.42      # how far into her square she stands to set her hands on a stone
+const MW_PITCH := 45.0
+const MW_YAW := 0.0
 const GO_LEVELS := [
-	{"map": ["  z  ", "  R  ", "  1  ", "  1  ", "  b  "], "line": "The sea lifts\nwhat floats.", "sol": [[2, 3], [2, 2], [2, 1], [2, 0]]},
-	{"map": ["z    ", "RRR  ", "  1  ", "  1  ", "  R3c"], "line": "Go down with the sea,\ncome up with it.", "sol": [[4, 4], [4, 4], [4, 4], [4, 4], [3, 4], [2, 4], [2, 3], [2, 2], [2, 1], [1, 1], [0, 1], [0, 0]]},
-	{"map": ["z3   ", " R1  ", "  R  ", "  R1R", "    b"], "line": "Two rafts,\none tide.", "sol": [[4, 4], [4, 3], [3, 3], [2, 3], [2, 3], [2, 3], [2, 3], [2, 2], [2, 1], [1, 1], [1, 0], [0, 0]]},
-	{"map": ["y     ", "1     ", "1     ", "1111W ", "   R12", "     c"], "line": "The wheel holds the sea.", "sol": [[5, 4], [4, 4], [4, 3], [3, 4], [3, 3], [2, 3], [1, 3], [0, 3], [0, 2], [0, 1], [0, 0]]},
-	{"map": ["y111  ", "   11 ", "    1 ", "   WR ", "    R3", "   21c"], "line": "Hold it where\nit serves you.", "sol": [[5, 5], [5, 5], [5, 4], [4, 4], [4, 3], [3, 3], [4, 2], [4, 1], [3, 1], [3, 0], [2, 0], [1, 0], [0, 0]]},
+	{"map": [".....", ".a...", "...*.", "~~~~~", "...*.", ".A...", ".@..."], "line": "What you move\nmoves in the water.",
+		"sol": [[1, 5, "p"], [0, 5, "w"], [0, 4, "w"], [1, 4, "p"], [2, 4, "p"], [2, 3, "g"]]},
+	{"map": [".....", ".a.#.", "..*..", "~~~~~", "...*.", ".A...", ".@..."], "line": "Over there, a wall\nholds only the image.",
+		"sol": [[0, 6, "w"], [0, 5, "w"], [1, 5, "p"], [2, 5, "p"], [2, 6, "w"], [3, 6, "w"], [3, 5, "p"], [2, 5, "w"], [2, 4, "w"], [2, 3, "g"]]},
+	{"map": [".....", ".a.b.", ".*#.*", "~~~~~", ".*.*.", ".A.B.", "..@.."], "line": "Two stones,\ntwo images.",
+		"sol": [[3, 6, "w"], [3, 5, "p"], [4, 5, "w"], [4, 4, "w"], [3, 4, "p"], [2, 4, "p"], [2, 5, "w"], [2, 6, "w"], [1, 6, "w"], [0, 6, "w"], [0, 5, "w"], [0, 4, "w"], [1, 4, "p"], [2, 4, "p"], [2, 5, "w"], [2, 6, "w"], [1, 6, "w"], [1, 5, "p"], [2, 5, "w"], [2, 4, "w"], [2, 3, "g"]]},
+	{"map": [".....", "..a.*", ".b...", "~~~~~", ".B.#.", "..A*.", "..@.."], "line": "A thing and its image\nbecome one.",
+		"sol": [[2, 5, "p"], [1, 5, "w"], [1, 4, "p"], [1, 3, "w"], [1, 2, "w"], [2, 2, "p"], [2, 1, "w"], [3, 1, "w"], [4, 1, "w"], [4, 2, "w"], [3, 2, "p"], [3, 1, "w"], [2, 1, "w"], [1, 1, "w"], [1, 2, "w"], [1, 3, "w"], [1, 4, "p"], [0, 4, "w"], [0, 5, "w"], [1, 5, "p"], [2, 5, "p"], [2, 4, "w"], [2, 3, "g"]]},
+	{"map": [" ..... ", "*.a.b.*", ".....c.", "~~~~~~~", ".....C.", "#.A.B.#", " *.@.* "], "line": "Over there,\nthe stones follow.",
+		"sol": [[4, 6, "w"], [5, 6, "w"], [5, 5, "w"], [5, 4, "p"], [5, 3, "w"], [5, 2, "w"], [4, 2, "w"], [3, 2, "w"], [3, 1, "w"], [2, 1, "p"], [1, 1, "p"], [2, 1, "w"], [3, 1, "w"], [4, 1, "p"], [5, 1, "p"], [5, 2, "w"], [5, 3, "w"], [5, 4, "w"], [5, 5, "p"], [4, 5, "w"], [3, 5, "w"], [2, 5, "w"], [2, 4, "w"], [1, 4, "w"], [1, 5, "p"], [2, 5, "w"], [3, 5, "w"], [3, 4, "w"], [3, 3, "g"]]},
+	{"map": [" .*.*. ", ".a...b.", "...c...", "~~~~~~~", "..C.#..", ".A...B.", " .*@*. "], "line": "Both worlds\nat once.",
+		"sol": [[2, 6, "w"], [1, 6, "w"], [1, 5, "p"], [1, 4, "p"], [1, 3, "w"], [1, 2, "w"], [2, 2, "w"], [2, 1, "w"], [3, 1, "w"], [4, 1, "w"], [4, 2, "w"], [5, 2, "w"], [6, 2, "w"], [6, 1, "w"], [5, 1, "p"], [4, 1, "p"], [4, 2, "w"], [3, 2, "p"], [2, 2, "p"], [2, 1, "w"], [1, 1, "w"], [0, 1, "w"], [0, 2, "w"], [1, 2, "p"], [1, 3, "w"], [1, 4, "p"], [0, 4, "w"], [0, 5, "w"], [1, 5, "p"], [1, 4, "w"], [1, 3, "w"], [1, 2, "w"], [2, 2, "w"], [2, 1, "p"], [3, 1, "p"], [3, 2, "w"], [4, 2, "w"], [4, 1, "p"], [3, 1, "w"], [3, 2, "w"], [3, 3, "g"]]},
 ]
 var gs := {}
 var go_root: Node3D
 var go_fade: ColorRect
-var go_dots: Array = []
 var go_t := 0.0
 var go_said := {}
 var go_flies := []
 var go_sea: Node3D
-var go_tide_lbl: Label
+var go_lv_lbl: Label
+var mw_push := {}      # the push under way: the stone she pushes follows her hands, its image follows it
 
 func _go_cx(lv: int) -> float: return 110.0 + 40.0 * lv
-func _go_xz(lv: int, i: int, j: int) -> Vector3:
-	var rows: Array = GO_LEVELS[lv].map
-	return Vector3(_go_cx(lv) + (i - (String(rows[0]).length() - 1) * 0.5) * GO_D, 0, (j - (rows.size() - 1) * 0.5) * GO_D)
-func _go_key(i: int, j: int) -> String: return "%d,%d" % [i, j]
-func _go_ij(k) -> Vector2i:
-	var s := String(k).split(","); return Vector2i(int(s[0]), int(s[1]))
-func _go_level() -> int: return int(GO_TIDE[int(gs.phase) % GO_TIDE.size()])
-func _go_sea_y(l: float) -> float: return WATER + 0.45 * l
-func _go_top(h: int) -> float: return WATER + 0.2 + 0.45 * h
+func _mw_p(v: Vector2i) -> Vector3:
+	return Vector3(_go_cx(int(gs.lv)) + (v.x - (int(gs.W) - 1) * 0.5) * GO_D, MW_TOP, (v.y - int(gs.c)) * GO_D)
+func _mw_side(v: Vector2i) -> int:
+	return 0 if v.y == int(gs.c) else (1 if v.y > int(gs.c) else -1)
+## what stands on a square: (pair, 0 a stone / 1 an image), or (-1, -1)
+func _mw_at(v: Vector2i) -> Vector2i:
+	for k in (gs.sb as Array).size():
+		if gs.sb[k] == v: return Vector2i(k, 0)
+		if gs.si[k] == v: return Vector2i(k, 1)
+	return Vector2i(-1, -1)
+func _mw_free(v: Vector2i, sd: int) -> bool:
+	return (gs.floor as Dictionary).has(v) and _mw_side(v) == sd and _mw_at(v).x < 0
+func _mw_full() -> bool:
+	for r in gs.rings:
+		if _mw_at(r).x < 0: return false
+	return true
+func _mw_walkable(v: Vector2i) -> bool:
+	if v == gs.gate: return bool(gs.open)
+	if (gs.chan as Dictionary).has(v): return (gs.slabs as Dictionary).has(v)
+	return (gs.floor as Dictionary).has(v) and _mw_at(v).x < 0
+func _mw_view() -> float: return maxf(9.6, float(gs.get("W", 5)) * GO_D + 1.9)
+func _mw_focus() -> Vector3:
+	return Vector3(_go_cx(int(gs.get("lv", 0))), MW_TOP, ((float(gs.get("H", 7)) - 1.0) * 0.5 - float(gs.get("c", 3))) * GO_D - 0.2)
 
-## the height a stone stands at now (a raft: one above the sea)
-func _go_h(v: Vector2i, l := -1) -> int:
-	var c = gs.cells.get(_go_key(v.x, v.y), null)
-	if c == null: return -9
-	if String(c) == "W": return 9
-	return (l if l >= 0 else _go_level()) + 1 if String(c) == "R" else int(c)
+## what a step of hers that way does: {} (nothing: it cannot be), a walk, a push, or a stone and its image made one
+func _mw_try(d: Vector2i) -> Dictionary:
+	var me: Vector2i = gs.me
+	var q := me + d
+	if q == gs.gate: return {"kind": "walk"} if bool(gs.open) else {}
+	if (gs.chan as Dictionary).has(q): return {"kind": "walk"} if (gs.slabs as Dictionary).has(q) else {}
+	if not (gs.floor as Dictionary).has(q): return {}
+	var o := _mw_at(q)
+	if o.x < 0: return {"kind": "walk"}
+	var k := o.x; var which := o.y
+	var tw: Vector2i = gs.si[k] if which == 0 else gs.sb[k]
+	var q2 := q + d; var md := Vector2i(d.x, -d.y)
+	var t2 := tw + md
+	if (gs.chan as Dictionary).has(q2):
+		if (gs.slabs as Dictionary).has(q2) or q2 == gs.gate or tw == MW_NONE or t2 != q2: return {}
+		return {"kind": "merge", "k": k, "which": which, "q": q, "q2": q2, "tw": tw, "t2": t2, "d": d}
+	if not _mw_free(q2, _mw_side(q)): return {}
+	var nt := tw
+	if tw != MW_NONE and _mw_free(t2, _mw_side(tw)): nt = t2
+	return {"kind": "push", "k": k, "which": which, "q": q, "q2": q2, "tw": tw, "t2": nt, "d": d, "slip": tw != MW_NONE and nt == tw}
 
-func _go_under(v: Vector2i, l: int) -> bool:
-	var c = gs.cells.get(_go_key(v.x, v.y), null)
-	return c != null and String(c) != "R" and String(c) != "W" and l > int(c)
+## her way to a square, over free floor and slabs (not through the gate: she goes into it only at the end of a way)
+func _mw_path(a: Vector2i, b: Vector2i) -> Array:
+	if not _mw_walkable(b): return []
+	var prev := {a: a}
+	var q := [a]
+	while not q.is_empty():
+		var v: Vector2i = q.pop_front()
+		if v == b: break
+		if v == gs.gate: continue
+		for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+			var n: Vector2i = v + d
+			if prev.has(n) or not _mw_walkable(n): continue
+			prev[n] = v; q.append(n)
+	if not prev.has(b): return []
+	var path := []
+	var v2 := b
+	while v2 != a: path.push_front(v2); v2 = prev[v2]
+	return path
 
-## where she stands on a stone, now
-func _go_w(i: int, j: int) -> Vector3:
-	var p := _go_xz(int(gs.lv), i, j)
-	var c = gs.cells.get(_go_key(i, j), null)
-	var y := 0.0
-	if c != null: y = (go_sea.position.y + 0.65) if String(c) == "R" else _go_top(2 if String(c) == "W" else int(c))
-	return Vector3(p.x, y, p.z)
+func _mw_palettes() -> void:
+	pals["eid"] = ["4d6c87", "3b5770", "304a62"]; pals["eid2"] = ["2e455b", "253a4e", "1e3143"]
+	pals["eidst"] = ["8eb1c9", "7096b1", "5c819d"]; pals["eidband"] = ["dcf0f7", "b8d9e7", "93bbd0"]
+	pals["block"] = ["efdfc0", "dcc49e", "a8969d"]
+	pal("eid", "flat").set_shader_parameter("marble", 0.55); pal("eidst", "flat").set_shader_parameter("marble", 0.35)
 
 func _go_build(lv: int) -> void:
 	if go_root != null: go_root.queue_free()
 	go_root = Node3D.new(); add_child(go_root)
-	for d in go_dots: (d as Node).queue_free()
-	go_dots = []
+	mw_push = {}
 	var L: Dictionary = GO_LEVELS[lv]
 	var rows: Array = L.map
-	gs = {"lv": lv, "cells": {}, "rafts": {}, "me": "", "gate": "", "phase": 0, "hold": false, "busy": false, "dead": false, "won": false}
-	go_sea.position.y = _go_sea_y(0); _go_water_y()
-	for j in rows.size():
-		var row: String = rows[j]
-		for i in row.length():
-			var c := row[i]
-			if c == " ": continue
-			var k := _go_key(i, j)
-			if c in ["a", "b", "c"]: gs.me = k; c = "123"["abc".find(c)]
-			if c in ["x", "y", "z"]: gs.gate = k; c = "123"["xyz".find(c)]
-			gs.cells[k] = c
+	var H := rows.size(); var W := 0
+	for r in rows: W = maxi(W, String(r).length())
+	var c := -1
+	for z in H:
+		var s := String(rows[z]).strip_edges()
+		if s != "" and s.replace("~", "").replace("=", "") == "": c = z; break
+	gs = {"lv": lv, "W": W, "H": H, "c": c, "gate": Vector2i(W / 2, c), "floor": {}, "cols": {}, "rings": {}, "chan": {}, "slabs": {},
+		"sb": [], "si": [], "me": Vector2i.ZERO, "open": false, "busy": false, "won": false, "hist": [], "nb": [], "ni": [], "ns": {}, "nr": {}, "pushes": 0}
+	var bodies := {}; var images := {}
+	for z in H:
+		var row: String = rows[z]
+		for x in row.length():
+			var ch := row[x]; var v := Vector2i(x, z)
+			if z == c:
+				if ch == "~" or ch == "=": gs.chan[v] = true
+				if ch == "=": gs.slabs[v] = true
+				continue
+			if ch == " ": continue
+			if ch == "#": gs.cols[v] = true; continue
+			gs.floor[v] = true
+			if ch == "*": gs.rings[v] = true
+			elif ch == "@": gs.me = v
+			elif ch >= "A" and ch <= "Z": bodies[ch] = v
+			elif ch >= "a" and ch <= "z": images[ch.to_upper()] = v
+	var keys: Array = bodies.keys()
+	for kk in images.keys():
+		if not keys.has(kk): keys.append(kk)
+	keys.sort()
+	for kk in keys:
+		gs.sb.append(bodies.get(kk, MW_NONE)); gs.si.append(images.get(kk, MW_NONE))
 	var before := {}
 	for ch in get_children(): before[ch] = true
-	# the stones: pillars up out of the sea, each to its height
-	for k in gs.cells:
-		var v := _go_ij(k)
-		var p := _go_xz(lv, v.x, v.y)
-		if String(gs.cells[k]) == "R":      # a raft: a pontoon of planks on a float, moored to four posts
-			var rn := Node3D.new(); rn.position = Vector3(p.x, go_sea.position.y, p.z); go_root.add_child(rn); gs.rafts[k] = rn
-			blk(Vector3(-0.6, -0.15, -0.6), Vector3(0.6, 0.45, 0.6), "wood", rn).material_override = pal("trunk", "flat")
-			for m in 6: blk(Vector3(-0.62 + m * 0.207, 0.45, -0.62), Vector3(-0.44 + m * 0.207, 0.65, 0.62), "wood", rn).material_override = pal("wood", "flat")
-			for e in [Vector3(-0.72, 0, -0.72), Vector3(0.72, 0, -0.72), Vector3(-0.72, 0, 0.72), Vector3(0.72, 0, 0.72)]:
-				cyl(p + e + Vector3(0, WATER - 0.6, 0), 0.06, 0.06, 2.9, pal("trunk", "flat"), 8, go_root); cyl(p + e + Vector3(0, WATER + 2.3, 0), 0.075, 0.05, 0.06, pal("gold", "flat"), 8, go_root)
-			continue
-		var wh: bool = String(gs.cells[k]) == "W"
-		var h := 2 if wh else int(gs.cells[k]); var top := _go_top(h)
-		if wh:      # the wheel that holds the sea: a capstan on a stone of the middle height
-			var w := winch(p + Vector3(0, top, 0), -PI * 0.75, go_root, false); N["go_wheel"] = w.wheel
-		blk(p + Vector3(-0.65, WATER - 1.2, -0.65), p + Vector3(0.65, top, 0.65), "stone", go_root).material_override = pal("stone", "flat")
-		blk(p + Vector3(-0.7, top - 0.26, -0.7), p + Vector3(0.7, top - 0.1, 0.7), "shade", go_root).material_override = pal("shade", "flat")
-		cyl(p + Vector3(0, top, 0), 0.2, 0.2, 0.012, mat(Color(pals["stone"][0]).darkened(0.1)), 20, go_root)
-		for m in h:      # (its height, cut in bronze bands on its side, one for each)
-			blk(p + Vector3(-0.66, top - 0.36 - m * 0.12, 0.62), p + Vector3(0.66, top - 0.33 - m * 0.12, 0.66), "gold", go_root).material_override = pal("gold", "flat")
-			blk(p + Vector3(0.62, top - 0.36 - m * 0.12, -0.66), p + Vector3(0.66, top - 0.33 - m * 0.12, 0.66), "gold", go_root).material_override = pal("gold", "flat")
-	# the gate: an arch of the same stone under a pediment, its opening only light, across her way in
-	var gv := _go_ij(gs.gate); var g := _go_w(gv.x, gv.y)
-	var ent := Vector2i(1, 0)
-	for d in [Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, -1)]:
-		if gs.cells.has(_go_key(gv.x + d.x, gv.y + d.y)): ent = d; break
-	gs["gate_in"] = ent
-	var an := Node3D.new(); an.position = g; an.rotation.y = atan2(float(ent.x), float(ent.y)); go_root.add_child(an)
+	for v in (gs.floor as Dictionary).keys() + (gs.cols as Dictionary).keys(): _mw_tile(v)
+	for v in gs.cols: _mw_column(v)
+	for v in gs.rings: gs.nr[v] = _mw_ring(v)
+	for k in (gs.sb as Array).size():
+		gs.nb.append(_mw_stone(gs.sb[k], false)); gs.ni.append(_mw_stone(gs.si[k], true))
+		(gs.nb[k] as Node3D).visible = gs.sb[k] != MW_NONE; (gs.ni[k] as Node3D).visible = gs.si[k] != MW_NONE
+	for v in gs.slabs: gs.ns[v] = _mw_slab(v)
+	gs["gate_n"] = _mw_gate()
+	_mw_around()
+	var deco := Node3D.new(); go_root.add_child(deco)
+	for ch in get_children():
+		if before.has(ch) or not (ch is Node3D) or ch == go_root: continue
+		(ch as Node3D).reparent(deco, true)
+	pos = _mw_p(gs.me); route.clear(); face_to = null; yaw = PI * 0.92
+	lights[6] = Vector4.ZERO
+	_go_water_y(); _mw_rings(true)
+	if go_lv_lbl != null: go_lv_lbl.text = "%d / %d" % [lv + 1, GO_LEVELS.size()]
+
+## what lies about the courts, in the sea, laid for an eye that looks from the front: far behind, her head, sunk to the
+## lips; at the two ends of the water, two bronze mirrors on their plinths, turned to it; at the sides columns and
+## rocks; before the court (low, so as to hide nothing of it) the boat at its mooring, lamps and jars afloat, reeds
+func _mw_around() -> void:
+	var cx := _go_cx(int(gs.lv)); var bw := float(gs.W) * GO_D * 0.5
+	var zf := -float(gs.c) * GO_D - GO_D * 0.5; var zn := (float(gs.H) - 1.0 - float(gs.c)) * GO_D + GO_D * 0.5
+	var hp := Vector3(cx - bw * 0.78, WATER, zf - 4.6)      # (her head stands on its own ledge of rock, above the sea: under it only its dark image)
+	rock(Vector3(hp.x, 0, hp.z), 1.9)
+	blk(hp + Vector3(-1.1, -0.8, -1.0), hp + Vector3(1.1, 0.42, 1.0), "stone").material_override = pal("shade", "flat")
+	var hd := sculpt_head(hp + Vector3(0, 0.42, 0), 2.7, 0.2, Vector3(-0.1, 0, 0.04), 2)
+	if hd == null: thing("broken_statue", hp, 3.0, "stone:marble", 0.4)
+	else:      # (no picture of it on the sea: so tall a thing lay there as a black stain under it)
+		for mm in hd.find_children("*", "MeshInstance3D", true, false):
+			var mi := mm as MeshInstance3D
+			if mi.material_override is ShaderMaterial:
+				var m2 := (mi.material_override as ShaderMaterial).duplicate() as ShaderMaterial; m2.next_pass = null; mi.material_override = m2
+	for sx in [-1.0, 1.0]:
+		var mp := Vector3(cx + sx * (bw + 0.5), WATER, 0.0)
+		blk(mp + Vector3(-0.42, -0.6, -0.42), mp + Vector3(0.42, 0.16, 0.42), "stone").material_override = pal("stone", "flat")
+		blk(mp + Vector3(-0.48, 0.16, -0.48), mp + Vector3(0.48, 0.22, 0.48), "shade").material_override = pal("shade", "flat")
+		mirror_stand(mp + Vector3(0, 0.22, 0), -sx * PI * 0.5 + sx * 0.35, self, WATER, "bare", true)
+		column(Vector3(cx + sx * (bw + 1.9), WATER - 0.5, zf + 0.6), 2.4 if sx > 0 else 1.3, 0.17, true)
+		rock(Vector3(cx + sx * (bw + 2.6), 0, zf - 2.2), 1.3)
+		_gh_float_lamp(Vector3(cx + sx * (bw + 0.9), WATER, zn + 1.5 + (0.6 if sx > 0 else 0.0)))
+	thing("broken_statue", Vector3(cx + bw + 2.2, WATER - 0.8, zf - 3.4), 3.0, "stone:marble", 2.6)
+	var bt := Node3D.new(); bt.position = Vector3(cx + bw * 0.55, WATER, zn + 2.9); bt.rotation.y = PI * 0.08; add_child(bt); build_boat(bt)
+	cyl(Vector3(cx + bw * 0.55 - 1.4, WATER - 0.4, zn + 2.3), 0.07, 0.07, 1.25, pal("trunk", "flat"), 8); cyl(Vector3(cx + bw * 0.55 - 1.4, WATER + 0.85, zn + 2.3), 0.085, 0.06, 0.07, pal("gold", "flat"), 8)
+	for a in [[-0.7, 2.4, 0.6], [-2.6, 4.2, 1.9], [1.4, 4.9, 2.6]]:
+		var am := thing("amphora", Vector3(cx + float(a[0]), WATER - 0.16, zn + float(a[1])), 0.5, "terra:terra,band:wood", a[2]); am.rotation = Vector3(1.2, a[2], 0.3)
+	for p in [Vector3(cx - bw - 1.2, WATER, zn + 1.0), Vector3(cx + bw + 1.6, WATER, zn + 0.4), Vector3(cx - bw - 0.6, WATER, zf - 1.0)]:
+		thing("reeds", p, 0.0, "leaf:leaf~,trunk:wood~,pad:leaf2,flower:rose", p.x * 0.9 + p.z * 1.7, 0.95)
+
+## a square of the floor: a pillar out of the sea, paved; over there in the dark stone of the eidolon
+func _mw_tile(v: Vector2i) -> void:
+	var p := _mw_p(v); var far := _mw_side(v) < 0
+	var h := GO_D * 0.5
+	blk(p + Vector3(-h, WATER - 1.4 - MW_TOP, -h), p + Vector3(h, -0.1, h), "shade", go_root).material_override = pal("eid2" if far else "shade", "flat")
+	blk(p + Vector3(-h + 0.035, -0.14, -h + 0.035), p + Vector3(h - 0.035, 0.0, h - 0.035), "stone", go_root).material_override = pal("eid" if far else "stone", "flat")
+
+## a column, broken: a plinth and two drums
+func _mw_column(v: Vector2i) -> void:
+	var p := _mw_p(v); var far := _mw_side(v) < 0
+	var m := pal("eid" if far else "stone", "flat"); var m2 := pal("eid2" if far else "shade", "flat")
+	blk(p + Vector3(-0.5, 0.0, -0.5), p + Vector3(0.5, 0.18, 0.5), "shade", go_root).material_override = m2
+	cyl(p + Vector3(0, 0.18, 0), 0.36, 0.33, 0.66, m, 16, go_root)
+	var d2 := cyl(p + Vector3(0.03, 0.85, 0.02), 0.33, 0.31, 0.42, m, 16, go_root); d2.rotation = Vector3(0.05, 0.3, -0.04)
+
+func _mw_ring(v: Vector2i) -> MeshInstance3D:
+	var r := MeshInstance3D.new(); var tm := TorusMesh.new(); tm.inner_radius = 0.55; tm.outer_radius = 0.66; tm.rings = 40; tm.ring_segments = 4; r.mesh = tm
+	r.material_override = mat(Color("d9a648")); r.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	r.position = _mw_p(v) + Vector3(0, 0.012, 0); r.scale = Vector3(1, 0.12, 1)
+	go_root.add_child(r)
+	return r
+
+## a stone: a block with a band of bronze. Its image over there: the same, in the pale glass of the eidolon
+func _mw_stone(v: Vector2i, img: bool) -> Node3D:
+	var n := Node3D.new(); go_root.add_child(n)
+	n.position = _mw_p(v) if v != MW_NONE else Vector3.ZERO
+	var body := "eidst" if img else "block"
+	blk(Vector3(-0.5, 0.0, -0.5), Vector3(0.5, 0.94, 0.5), "stone", n).material_override = pal(body, "flat")
+	blk(Vector3(-0.52, 0.32, -0.52), Vector3(0.52, 0.43, 0.52), "gold", n).material_override = pal("eidband" if img else "gold", "flat")
+	blk(Vector3(-0.44, 0.94, -0.44), Vector3(0.44, 0.985, 0.44), "shade", n).material_override = pal(body, "flat")
+	return n
+
+## a slab in the water, where a stone and its image became one: a seam of gold across it
+func _mw_slab(v: Vector2i) -> Node3D:
+	var n := Node3D.new(); n.position = _mw_p(v); go_root.add_child(n)
+	var h := GO_D * 0.5 - 0.06
+	blk(Vector3(-h, WATER - 1.4 - MW_TOP, -h), Vector3(h, -0.1, h), "shade", n).material_override = pal("eid2", "flat")
+	blk(Vector3(-h + 0.03, -0.14, -h + 0.03), Vector3(h - 0.03, 0.0, h - 0.03), "stone", n).material_override = pal("block", "flat")
+	blk(Vector3(-h + 0.03, -0.004, -0.035), Vector3(h - 0.03, 0.004, 0.035), "gold", n).material_override = pal("gold", "flat")
+	return n
+
+## the gate: an arch of the same stone under a pediment, its opening only light, on a footing in the middle of the
+## water. It waits under the sea until every ring is filled
+func _mw_gate() -> Node3D:
+	var g := Node3D.new(); g.position = _mw_p(gs.gate) + Vector3(0, -6.5, 0); go_root.add_child(g)
+	var h := GO_D * 0.5 - 0.06
+	blk(Vector3(-h, WATER - 1.4 - MW_TOP, -h), Vector3(h, -0.1, h), "shade", g).material_override = pal("shade", "flat")
+	blk(Vector3(-h + 0.03, -0.14, -h + 0.03), Vector3(h - 0.03, 0.0, h - 0.03), "stone", g).material_override = pal("stone", "flat")
+	var an := Node3D.new(); an.position = Vector3(0, 0, -0.45); g.add_child(an)
 	var st := func(a: Vector3, b: Vector3, m := "stone") -> void: blk(a, b, m, an).material_override = pal(m, "flat")
 	st.call(Vector3(-0.78, 0.0, -0.22), Vector3(0.78, 0.1, 0.22), "shade")
 	for sx in [-1.0, 1.0]:      # the two piers, with a capital and a base
@@ -1412,23 +1553,31 @@ func _go_build(lv: int) -> void:
 	for mi in [l1, l2]: (mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var glow := SphereMesh.new(); glow.radius = 1.0; glow.height = 2.0; glow.radial_segments = 14; glow.rings = 7
 	prim(glow, Vector3(0, 1.1, 0), mat(Color(1.0, 0.82, 0.45, 0.1), true), an).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	lights[6] = Vector4(g.x, g.y + 1.1, g.z, 0.95)
-	# a gauge of the tide by the board: a post with a bronze ring at each level
-	var gp := _go_xz(lv, String(rows[0]).length(), rows.size() - 2)
-	cyl(gp + Vector3(0, WATER - 0.8, 0), 0.12, 0.12, 2.9, pal("stone", "flat"), 10, go_root)
-	for l in 3: cyl(gp + Vector3(0, _go_sea_y(l) - 0.02, 0), 0.16, 0.16, 0.04, pal("gold", "flat"), 14, go_root)
-	# what lies about the board, in the sea: the same things as about the square
-	_gh_around()
-	var deco := Node3D.new(); go_root.add_child(deco)
-	for ch in get_children():
-		if before.has(ch) or not (ch is Node3D) or ch == go_root: continue
-		(ch as Node3D).reparent(deco, true)
-	deco.position.x += _go_cx(lv) - 110.0
-	var me := _go_ij(gs.me)
-	pos = _go_w(me.x, me.y); route.clear(); face_to = null
-	_go_dots(); _go_tide_ui()
+	return g
 
-## the sea's own picture of things lies on the sea where it stands now
+## the rings: lit where something stands on them. All filled: the gate rises (and goes down again if one is left)
+func _mw_rings(instant := false) -> void:
+	for v in gs.nr:
+		var on := _mw_at(v).x >= 0
+		(gs.nr[v] as MeshInstance3D).material_override = mat(Color("fff0b4") if on else Color("d9a648"))
+	var full := _mw_full()
+	if full == bool(gs.open) and not instant: return
+	gs.open = full
+	var g: Node3D = gs.gate_n
+	var to := MW_TOP if full else MW_TOP - 6.5
+	var gp := _mw_p(gs.gate)
+	if instant:
+		g.position.y = to; lights[6] = Vector4(gp.x, MW_TOP + 1.1, gp.z - 0.45, 0.95) if full else Vector4.ZERO
+		return
+	if full:
+		print("GO the rings are filled: the gate rises")
+		if not go_said.has("gate"): go_said["gate"] = true; say("the gate rises")
+		lights[6] = Vector4(gp.x, MW_TOP + 1.1, gp.z - 0.45, 0.95)
+	else:
+		lights[6] = Vector4.ZERO
+	var t := create_tween(); t.tween_property(g, "position:y", to, 1.8 if full else 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## the sea's own picture of things lies on the sea where it stands
 func _go_water_y() -> void:
 	var y := go_sea.position.y
 	RenderingServer.global_shader_parameter_set("sea_y", y)
@@ -1444,33 +1593,12 @@ func _go_water_y() -> void:
 					var rp := (m as ShaderMaterial).next_pass as ShaderMaterial
 					rp.set_shader_parameter("water_y", y); rp.set_shader_parameter("use_tex", 0.0); rp.set_shader_parameter("fade_a", 1.0)
 
-## the rings: where she can step (white), where the sea will take her next step (red), and her own stone (to wait)
-func _go_dots() -> void:
-	for d in go_dots: (d as Node).queue_free()
-	go_dots = []
-	if bool(gs.dead) or bool(gs.won): return
-	var me := _go_ij(gs.me)
-	var l := _go_level(); var nl := l if bool(gs.hold) else int(GO_TIDE[(int(gs.phase) + 1) % GO_TIDE.size()])
-	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1), Vector2i(0, 0)]:
-		var t: Vector2i = me + d
-		if not gs.cells.has(_go_key(t.x, t.y)) or _go_under(t, l) or absi(_go_h(t) - _go_h(me)) > 1: continue
-		var bad := _go_under(t, nl)
-		var r := MeshInstance3D.new(); var tm := TorusMesh.new(); tm.inner_radius = 0.2 if d != Vector2i.ZERO else 0.3; tm.outer_radius = tm.inner_radius + 0.05; tm.rings = 24; tm.ring_segments = 4; r.mesh = tm
-		r.material_override = mat(Color(1.0, 0.35, 0.3, 0.75) if bad else Color(1, 1, 1, 0.55 if d != Vector2i.ZERO else 0.3)); r.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		r.position = _go_w(t.x, t.y) + Vector3(0, 0.03, 0); r.scale = Vector3(1, 0.2, 1)
-		go_root.add_child(r); go_dots.append(r)
-
-## (top left) the sea: where it stands, and which way it goes next
-func _go_tide_ui() -> void:
-	if go_tide_lbl == null: return
-	var l := _go_level(); var nl := int(GO_TIDE[(int(gs.phase) + 1) % GO_TIDE.size()])
-	go_tide_lbl.text = ["low", "mid", "high"][l] + ("   held" if bool(gs.hold) else ("   ▲" if nl > l else ("   ▼" if nl < l else "   ·")))
-
 func _go_begin() -> void:
 	_wake_now()
-	for ch in get_children():      # the sea: it moves with the tide here
+	for ch in get_children():
 		if ch is MeshInstance3D and (ch as MeshInstance3D).material_override == sea_mat: go_sea = ch
-	if go_sea == null: go_sea = Node3D.new(); add_child(go_sea)
+	if go_sea == null: go_sea = Node3D.new(); go_sea.position.y = WATER; add_child(go_sea)
+	_mw_palettes()
 	for ql in quote_lbls:
 		var l := ql as Label
 		var o := l.get_theme_constant("outline_size")
@@ -1486,184 +1614,239 @@ func _go_begin() -> void:
 	vr.set_anchors_preset(Control.PRESET_FULL_RECT); vr.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(vr)
 	var cl2 := CanvasLayer.new(); cl2.layer = 5; add_child(cl2)
 	go_fade = ColorRect.new(); go_fade.color = Color(0.03, 0.05, 0.1, 0.0); go_fade.set_anchors_preset(Control.PRESET_FULL_RECT); go_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl2.add_child(go_fade)
-	var rb := Button.new(); rb.text = "↺"; rb.flat = true; rb.focus_mode = Control.FOCUS_NONE
-	rb.add_theme_font_size_override("font_size", 56); rb.add_theme_color_override("font_color", Color(1, 1, 1, 0.85)); rb.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6)); rb.add_theme_constant_override("outline_size", 8)
-	rb.anchor_left = 1.0; rb.anchor_right = 1.0; rb.offset_left = -110; rb.offset_right = -24; rb.offset_top = 24; rb.offset_bottom = 110
-	rb.pressed.connect(func() -> void:
-		if started and not ended and not bool(gs.busy) and not bool(gs.dead) and not bool(gs.won): _go_again())
-	cl2.add_child(rb)
-	go_tide_lbl = Label.new(); go_tide_lbl.position = Vector2(30, 40); go_tide_lbl.add_theme_font_size_override("font_size", 34)
-	go_tide_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.9)); go_tide_lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6)); go_tide_lbl.add_theme_constant_override("outline_size", 8)
-	if hint.get_theme_font("font") != null: go_tide_lbl.add_theme_font_override("font", hint.get_theme_font("font"))
-	cl2.add_child(go_tide_lbl)
+	var mk := func(t: String, x0: float) -> Button:
+		var b := Button.new(); b.text = t; b.flat = true; b.focus_mode = Control.FOCUS_NONE
+		b.add_theme_font_size_override("font_size", 54); b.add_theme_color_override("font_color", Color(1, 1, 1, 0.85)); b.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6)); b.add_theme_constant_override("outline_size", 8)
+		b.anchor_left = 1.0; b.anchor_right = 1.0; b.offset_left = x0; b.offset_right = x0 + 86; b.offset_top = 24; b.offset_bottom = 110
+		cl2.add_child(b)
+		return b
+	(mk.call("↺", -110.0) as Button).pressed.connect(func() -> void:
+		if started and not ended and not busy and not bool(gs.busy) and not bool(gs.won): _go_again())
+	(mk.call("↶", -206.0) as Button).pressed.connect(func() -> void:
+		if started and not ended: _mw_undo())
+	go_lv_lbl = Label.new(); go_lv_lbl.position = Vector2(30, 40); go_lv_lbl.add_theme_font_size_override("font_size", 34)
+	go_lv_lbl.add_theme_color_override("font_color", Color(1, 1, 1, 0.9)); go_lv_lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6)); go_lv_lbl.add_theme_constant_override("outline_size", 8)
+	if hint.get_theme_font("font") != null: go_lv_lbl.add_theme_font_override("font", hint.get_theme_font("font"))
+	cl2.add_child(go_lv_lbl)
 	var rng := RandomNumberGenerator.new(); rng.seed = 11
 	for k in 30:
 		var sm := SphereMesh.new(); sm.radius = 0.035; sm.height = 0.07; sm.radial_segments = 6; sm.rings = 3
 		var fm := prim(sm, Vector3.ZERO, mat(Color(1.0, 0.86, 0.5, 0.85), true)); fm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		go_flies.append({"n": fm, "c": Vector3(rng.randf_range(-7.0, 7.0), WATER + rng.randf_range(1.0, 3.6), rng.randf_range(-7.0, 7.0)), "ph": rng.randf_range(0.0, TAU), "r": rng.randf_range(0.5, 1.6), "sp": rng.randf_range(0.15, 0.4)})
-	_go_build(0)
-	yaw = PI * 1.25; cam_t = Vector3(_go_cx(0), WATER + 1.0, 0.3); cam_focus = cam_t; cam_focus_on = true
+		go_flies.append({"n": fm, "c": Vector3(rng.randf_range(-7.0, 7.0), WATER + rng.randf_range(1.0, 3.6), rng.randf_range(-6.0, 6.0)), "ph": rng.randf_range(0.0, TAU), "r": rng.randf_range(0.5, 1.6), "sp": rng.randf_range(0.15, 0.4)})
+	cam.rotation_degrees.y = MW_YAW; cam_pitch = MW_PITCH
+	_go_build(clampi(int(OS.get_environment("GO_LV0")) - 1, 0, GO_LEVELS.size() - 1) if OS.get_environment("GO_LV0") != "" else 0)
+	cam_t = _mw_focus(); cam_focus = cam_t; cam_focus_on = true
 
 func _go_write(text: String, hold := 4.5) -> void:
 	for ql in quote_lbls: (ql as Label).text = text
 	var qt := create_tween(); qt.tween_property(quote_box, "modulate:a", 1.0, 0.5); qt.tween_interval(hold); qt.tween_property(quote_box, "modulate:a", 0.0, 0.7)
 	quote_glow.modulate.a = 1.0
 
-## she stands at the height of what she stands on (a raft rides the sea, and she with it)
-func _go_pre(dt: float) -> void:
+func _go_pre(_dt: float) -> void:
 	if gs.is_empty(): return
-	var me := _go_ij(gs.me)
-	var y := _go_w(me.x, me.y).y
-	if route.is_empty(): pos.y = lerpf(pos.y, y, 1.0 - exp(-14.0 * dt))
-	for k in gs.rafts: (gs.rafts[k] as Node3D).position.y = go_sea.position.y
+	pos.y = MW_TOP
 
 func _go_post(dt: float) -> void:
 	if H.has("mir"): (H["mir"].holder as Node3D).visible = false      # no pool here: only her dark image in the sea
-	cam_focus = Vector3(_go_cx(int(gs.get("lv", 0))), WATER + 1.0, 0.3); cam_focus_on = true
+	cam_focus = _mw_focus(); cam_focus_on = true
+	if not mw_push.is_empty():      # the stone goes before her hands; its image goes as in a mirror, or stays
+		var dv: Vector3 = mw_push.d
+		var pr := maxf(float(mw_push.prog), clampf((pos - (mw_push.start as Vector3)).dot(dv), 0.0, GO_D))
+		mw_push.prog = pr
+		(mw_push.mover as Node3D).position = (mw_push.m0 as Vector3) + dv * pr
+		if bool(mw_push.has_tw):
+			var tn: Node3D = mw_push.twin
+			if bool(mw_push.slip): tn.position = (mw_push.t0 as Vector3) + (mw_push.md as Vector3) * (0.16 * sin(PI * pr / GO_D))
+			else: tn.position = (mw_push.t0 as Vector3) + (mw_push.md as Vector3) * pr
+		var face := (mw_push.mover as Node3D).position - dv * 0.52 + Vector3(0, 0.74, 0)
+		var sd := Vector3(-dv.z, 0, dv.x) * 0.2
+		tgtL = face + sd; tgtR = face - sd
 	if started:
 		go_t += dt
 		var lk := "line%d" % int(gs.lv)
 		if not go_said.has(lk) and go_t > 1.0: go_said[lk] = true; _go_write(String(GO_LEVELS[int(gs.lv)].line))
-		if not go_said.has("hint") and go_t > 6.0 and not go_said.has("stepped"): go_said["hint"] = true; say("tap a stone next to her · tap her own to wait")
+		if not go_said.has("hint") and go_t > 6.5 and int(gs.pushes) == 0: go_said["hint"] = true; say("tap a stone beside her to push it")
 	for f in go_flies:
 		var t := go_t * float(f.sp) + float(f.ph)
 		(f.n as Node3D).position = Vector3(_go_cx(int(gs.get("lv", 0))), 0, 0) + (f.c as Vector3) + Vector3(cos(t) * float(f.r), sin(t * 1.7) * 0.35, sin(t * 0.8) * float(f.r))
 		(f.n as Node3D).scale = Vector3.ONE * (0.55 + 0.45 * sin(t * 3.1 + float(f.ph)))
 
+## a tap: on a square next to her (a step, or a push), or further off (she walks there, round what stands in the way)
 func _go_tap(sp: Vector2) -> void:
-	if busy or bool(gs.busy) or bool(gs.dead) or bool(gs.won): return
+	if busy or bool(gs.busy) or bool(gs.won): return
 	var px := get_viewport().get_visible_rect().size.x / 720.0
-	var best := ""; var bd := 64.0 * px
-	for k in gs.cells:
-		var v := _go_ij(k)
-		var d2 := cam.unproject_position(_go_w(v.x, v.y)).distance_to(sp)
-		if d2 < bd: bd = d2; best = k
-	if best == "": return
-	_go_act(_go_ij(best))
+	var best := MW_NONE; var bd := 70.0 * px
+	for v in (gs.floor as Dictionary).keys() + (gs.chan as Dictionary).keys():
+		var d2 := cam.unproject_position(_mw_p(v)).distance_to(sp)
+		if d2 < bd: bd = d2; best = v
+	if best == MW_NONE or best == gs.me: return
+	var me: Vector2i = gs.me
+	var d := best - me
+	if absi(d.x) + absi(d.y) == 1:
+		var r := _mw_try(d)
+		if r.is_empty(): await _her_no(); return
+		if String(r.kind) == "walk": await _mw_walk([best])
+		else: await _mw_do_push(r)
+		return
+	var path := _mw_path(me, best)
+	if path.is_empty(): await _her_no(); return
+	await _mw_walk(path)
 
-## a step (or a wait), and then the sea's step
-func _go_act(t: Vector2i) -> void:
+func _mw_walk(path: Array) -> void:
 	gs.busy = true
-	var me := _go_ij(gs.me)
-	var d := t - me
-	if absi(d.x) + absi(d.y) == 1 and String(gs.cells.get(_go_key(t.x, t.y), "")) == "W":      # the wheel: the sea held, or let go
-		go_said["stepped"] = true
-		face_to = _go_w(t.x, t.y)
-		var up := tw(); up.set_parallel(); up.tween_property(self, "a_wL", 1.0, 0.3); up.tween_property(self, "a_wR", 1.0, 0.3); up.tween_property(self, "a_lean", 0.12, 0.3)
-		tgtL = _go_w(t.x, t.y) + Vector3(0, 0.75, 0); tgtR = tgtL
-		await up.finished
-		var wh: Node3D = N["go_wheel"]
-		var wt := create_tween(); wt.tween_property(wh, "rotation:x", wh.rotation.x + PI * 2.0, 0.9).set_trans(Tween.TRANS_SINE)
-		var was := bool(gs.hold)
-		await wt.finished
-		var dn := tw(); dn.set_parallel(); dn.tween_property(self, "a_wL", 0.0, 0.35); dn.tween_property(self, "a_wR", 0.0, 0.35); dn.tween_property(self, "a_lean", 0.0, 0.35)
-		if not was: await _go_tide()      # (this turn of hers still moves the sea; from now it is held)
-		gs.hold = not was
-		print("GO the wheel: the sea is ", "held" if bool(gs.hold) else "let go", " at ", ["low", "mid", "high"][_go_level()])
-		say("the sea is held" if bool(gs.hold) else "the sea goes on")
-		_go_dots(); _go_tide_ui()
-		gs.busy = false; return
-	if absi(d.x) + absi(d.y) > 1 or _go_under(t, _go_level()) or absi(_go_h(t) - _go_h(me)) > 1: await _her_no(); gs.busy = false; return
-	go_said["stepped"] = true
-	if d != Vector2i.ZERO:
-		gs.me = _go_key(t.x, t.y)
-		route.clear(); speed_cap = PLAY_WALK; face_to = null
-		var to := _go_w(t.x, t.y)
-		route.append({"p": to})
-		var yt := create_tween(); yt.tween_property(self, "pos:y", to.y, 0.5).set_trans(Tween.TRANS_SINE)
-		while not route.is_empty(): await get_tree().process_frame
+	route.clear(); speed_cap = PLAY_WALK; face_to = null
+	for v in path: route.append({"p": _mw_p(v)})
+	gs.me = path[-1]
+	while not route.is_empty(): await get_tree().process_frame
+	gs.busy = false
+	if gs.me == gs.gate: await _go_win()
+
+func _mw_snap() -> Dictionary:
+	return {"me": gs.me, "sb": (gs.sb as Array).duplicate(), "si": (gs.si as Array).duplicate(), "slabs": (gs.slabs as Dictionary).duplicate()}
+
+## a push: she sets her hands on the stone (or on the image, over there) and walks it one square on
+func _mw_do_push(r: Dictionary) -> void:
+	gs.busy = true; gs.pushes = int(gs.pushes) + 1
+	(gs.hist as Array).append(_mw_snap())
+	var d: Vector2i = r.d
+	var dv := Vector3(d.x, 0, d.y)
+	var k: int = r.k; var which: int = r.which
+	var merge := String(r.kind) == "merge"
+	var twc: Vector2i = r.tw
+	var start := _mw_p(gs.me) + dv * MW_REACH
+	mw_push = {"d": dv, "md": Vector3(d.x, 0, -d.y), "start": start, "mover": gs.nb[k] if which == 0 else gs.ni[k], "twin": gs.ni[k] if which == 0 else gs.nb[k],
+		"m0": _mw_p(r.q), "t0": _mw_p(twc) if twc != MW_NONE else Vector3.ZERO, "has_tw": twc != MW_NONE, "slip": bool(r.get("slip", false)), "prog": 0.0}
+	gs.me = r.q
+	if merge:
+		gs.sb[k] = MW_NONE; gs.si[k] = MW_NONE
+	elif which == 0:
+		gs.sb[k] = r.q2; gs.si[k] = r.t2
 	else:
-		await wait(0.35)
-	await _go_tide()
+		gs.si[k] = r.q2; gs.sb[k] = r.t2
+	print("GO push ", r.q, " -> ", r.q2, (" (made one with its image)" if merge else (" (its image held)" if bool(r.get("slip", false)) else "")))
+	route.clear(); speed_cap = 1.6; face_to = null
+	if _flat(pos, start) > 0.06: route.append({"p": start})
+	route.append({"p": _mw_p(r.q) + dv * MW_REACH})
+	var up := tw(); up.set_parallel(); up.tween_property(self, "a_wL", 1.0, 0.3); up.tween_property(self, "a_wR", 1.0, 0.3); up.tween_property(self, "a_lean", 0.14, 0.3)
+	while not route.is_empty(): await get_tree().process_frame
+	mw_push.prog = GO_D
+	(mw_push.mover as Node3D).position = _mw_p(r.q2)
+	if twc != MW_NONE: (mw_push.twin as Node3D).position = _mw_p(r.t2)
+	mw_push = {}
+	var dn := tw(); dn.set_parallel(); dn.tween_property(self, "a_wL", 0.0, 0.35); dn.tween_property(self, "a_wR", 0.0, 0.35); dn.tween_property(self, "a_lean", 0.0, 0.35)
+	if merge: await _mw_merge_fx(k, r.q2)
+	_mw_rings()
 	gs.busy = false
 
-## the sea's step: up, down, or it stands
-func _go_tide() -> void:
-	var l0 := _go_level()
-	if not bool(gs.hold): gs.phase = int(gs.phase) + 1
-	var l1 := _go_level()
-	_go_dots(); _go_tide_ui()
-	if l1 != l0:
-		var tt := create_tween(); tt.tween_property(go_sea, "position:y", _go_sea_y(l1), 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		tt.parallel().tween_method(func(_v: float) -> void: _go_water_y(), 0.0, 1.0, 1.0)
-		if not go_said.has("tide"): go_said["tide"] = true; say("the sea rises" if l1 > l0 else "the sea falls")
-		await tt.finished
-		_go_dots()
-	var me := _go_ij(gs.me)
-	if _go_under(me, l1): await _go_die(); return
-	if String(gs.me) == String(gs.gate): await _go_win()
+## a stone and its image meet in the water: they go down into it together, and a slab comes up where they met
+func _mw_merge_fx(k: int, at: Vector2i) -> void:
+	var p := _mw_p(at)
+	var a: Node3D = gs.nb[k]; var b: Node3D = gs.ni[k]
+	if not go_said.has("merge"): go_said["merge"] = true; say("a thing and its image, made one")
+	var fm := StandardMaterial3D.new(); fm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; fm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; fm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	fm.albedo_color = Color(1.0, 0.9, 0.62, 0.0)
+	var sm := SphereMesh.new(); sm.radius = 1.0; sm.height = 2.0; sm.radial_segments = 16; sm.rings = 8
+	var fl := prim(sm, p + Vector3(0, 0.5, 0), fm, go_root); fl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var sl := _mw_slab(at); sl.position.y = MW_TOP - 2.4
+	gs.ns[at] = sl
+	var t := create_tween(); t.set_parallel()
+	t.tween_property(fm, "albedo_color:a", 0.55, 0.35); t.tween_property(fm, "albedo_color:a", 0.0, 0.9).set_delay(0.35)
+	t.tween_property(a, "position:y", MW_TOP - 1.7, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	t.tween_property(b, "position:y", MW_TOP - 1.7, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	t.tween_property(sl, "position:y", MW_TOP, 1.2).set_delay(0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	await t.finished
+	a.visible = false; b.visible = false; fl.queue_free()
+	gs.slabs[at] = true
 
-func _go_die() -> void:
-	gs.dead = true; _go_dots()
-	print("GO the sea took her, at ", gs.me)
-	say("the sea took her")
-	var sk := create_tween(); sk.tween_property(self, "pos:y", pos.y - 1.2, 1.0).set_trans(Tween.TRANS_SINE)
-	await wait(1.1)
-	var f := create_tween(); f.tween_property(go_fade, "color:a", 1.0, 0.6)
+## one push taken back (with what she did since): all is put as it stood before it
+func _mw_undo() -> void:
+	if (gs.hist as Array).is_empty() or busy or bool(gs.busy) or bool(gs.won): return
+	gs.busy = true
+	var f := create_tween(); f.tween_property(go_fade, "color:a", 0.5, 0.16)
 	await f.finished
-	_go_build(int(gs.lv)); yaw = PI * 1.25
-	var f2 := create_tween(); f2.tween_property(go_fade, "color:a", 0.0, 0.6)
+	var s: Dictionary = (gs.hist as Array).pop_back()
+	gs.me = s.me; gs.sb = s.sb; gs.si = s.si; gs.slabs = s.slabs
+	for k in (gs.sb as Array).size():
+		var a: Node3D = gs.nb[k]; var b: Node3D = gs.ni[k]
+		a.visible = gs.sb[k] != MW_NONE; b.visible = gs.si[k] != MW_NONE
+		if a.visible: a.position = _mw_p(gs.sb[k])
+		if b.visible: b.position = _mw_p(gs.si[k])
+	for v in (gs.ns as Dictionary).keys():
+		if not (gs.slabs as Dictionary).has(v): (gs.ns[v] as Node).queue_free(); gs.ns.erase(v)
+	for v in gs.slabs:
+		if not (gs.ns as Dictionary).has(v): gs.ns[v] = _mw_slab(v)
+	route.clear(); pos = _mw_p(gs.me); a_wL = 0.0; a_wR = 0.0; a_lean = 0.0
+	_mw_rings(true)
+	print("GO undo: back to ", gs.me)
+	var f2 := create_tween(); f2.tween_property(go_fade, "color:a", 0.0, 0.25)
 	await f2.finished
+	gs.busy = false
 
 func _go_again() -> void:
 	gs.busy = true
 	var f := create_tween(); f.tween_property(go_fade, "color:a", 1.0, 0.45)
 	await f.finished
-	_go_build(int(gs.lv)); yaw = PI * 1.25
+	_go_build(int(gs.lv))
 	var f2 := create_tween(); f2.tween_property(go_fade, "color:a", 0.0, 0.45)
 	await f2.finished
 
 func _go_win() -> void:
-	gs.won = true; _go_dots()
-	print("GO level ", int(gs.lv) + 1, " done")
-	var gi: Vector2i = gs.get("gate_in", Vector2i(1, 0))      # on through the arch, into its light
-	route.clear(); speed_cap = 1.0; route.append({"p": pos - Vector3(gi.x, 0, gi.y) * 0.9})
-	var f0 := create_tween(); f0.tween_interval(0.6); f0.tween_property(go_fade, "color", Color(1.0, 0.93, 0.75, 0.0), 0.01)
-	await wait(1.2)
+	gs.won = true
+	print("GO level ", int(gs.lv) + 1, " done, in ", int(gs.pushes), " pushes")
+	route.clear(); speed_cap = 1.2; route.append({"p": _mw_p(gs.gate) + Vector3(0, 0, -0.95)})      # on through the arch, into its light
+	var f0 := create_tween(); f0.tween_interval(0.5); f0.tween_property(go_fade, "color", Color(1.0, 0.93, 0.75, 0.0), 0.01)
+	await wait(1.1)
 	if int(gs.lv) + 1 >= GO_LEVELS.size():
 		print("GO all levels done"); _end(); return
 	var f := create_tween(); f.tween_property(go_fade, "color:a", 1.0, 0.7)
 	await f.finished
 	go_fade.color = Color(0.03, 0.05, 0.1, 1.0)
-	_go_build(int(gs.lv) + 1); yaw = PI * 1.25
-	cam_t = Vector3(_go_cx(int(gs.lv)), WATER + 1.0, 0.3); go_t = 0.0
+	_go_build(int(gs.lv) + 1)
+	cam_t = _mw_focus(); go_t = 0.0
+	create_tween().tween_property(cam, "size", _mw_view(), 0.6)
 	var f2 := create_tween(); f2.tween_property(go_fade, "color:a", 0.0, 0.7)
 	await f2.finished
 
-## (the trial played through, with one fall in level 1 to show the rule: FLIP=go ... -- godemo)
+## (the trial played through by its own solutions: FLIP=go ... -- godemo)
 func _play_go() -> void:
 	var dir := OS.get_environment("SHOT_DIR")
 	var snap := func(n: String) -> void:
 		if dir != "": await RenderingServer.frame_post_draw; get_viewport().get_texture().get_image().save_png("%s/%s.png" % [dir, n])
 	var idle := func() -> void:
 		var still := 0
-		while still < 10:
+		while still < 8:
 			await get_tree().process_frame
 			still = still + 1 if (not busy and not bool(gs.busy) and route.is_empty()) else 0
 	var step := func(i: int, j: int) -> void:
-		_go_tap(cam.unproject_position(_go_w(i, j)))
+		_go_tap(cam.unproject_position(_mw_p(Vector2i(i, j))))
 		await get_tree().process_frame
 		await idle.call()
-		await wait(0.2)
+		await wait(0.06)
 	var next := func(lv: int) -> void:
 		while go_fade.color.a > 0.01 or int(gs.lv) < lv: await get_tree().process_frame
-		await wait(2.4)
+		await wait(1.7)
 	await get_tree().create_timer(1.0).timeout
 	tap(Vector2(360, 640)); await wait(4.5); await snap.call("t0_level1")
 	print("GO begins at ", gs.me)
+	var only := OS.get_environment("GO_LV")
+	var n0 := 0
 	if OS.get_environment("GH_ONLY") == "start": get_tree().quit(); return
-	if OS.get_environment("GH_ONLY") == "high":      # (a look at the board under the high sea)
-		go_sea.position.y = _go_sea_y(2); _go_water_y(); await wait(1.0); await snap.call("high"); get_tree().quit(); return
-	for lv in GO_LEVELS.size():
-		if lv > 0: await next.call(lv); await snap.call("t%d_level%d" % [lv * 2, lv + 1])
-		if lv == 0:      # (a fall first: out on the low stones, waiting there, till the sea comes up over them)
-			for s2 in [[2, 3], [2, 2], [2, 2], [2, 2]]: await step.call(s2[0], s2[1])
-			while bool(gs.dead) or go_fade.color.a > 0.01: await get_tree().process_frame
-			await wait(0.8)
-		var n := 0
-		for s2 in GO_LEVELS[lv].sol:
-			await step.call(s2[0], s2[1]); n += 1
-			if n == 5: await snap.call("t%d_level%d_mid" % [lv * 2 + 1, lv + 1])
+	for lv in range(int(gs.lv), GO_LEVELS.size()):
+		if n0 > 0: await next.call(lv); await snap.call("t%d_level%d" % [lv * 2, lv + 1])
+		n0 += 1
+		if only != "" and int(only) != lv + 1:      # (a run of one level: the others are skipped through)
+			_go_win(); continue
+		var sol: Array = GO_LEVELS[lv].sol
+		var i := 0; var n := 0
+		while i < sol.size():
+			if String(sol[i][2]) == "w":
+				while i + 1 < sol.size() and String(sol[i + 1][2]) == "w": i += 1
+			var was_open := bool(gs.open)
+			await step.call(int(sol[i][0]), int(sol[i][1])); i += 1; n += 1
+			if n == 4: await snap.call("t%d_level%d_mid" % [lv * 2 + 1, lv + 1])
+			if bool(gs.open) and not was_open: await wait(1.9); await snap.call("t%d_level%d_gate" % [lv * 2 + 1, lv + 1])
+			if OS.get_environment("SHOT_EVERY") != "": await snap.call("s%d_%02d" % [lv + 1, n])
+		if not bool(gs.won): print("GO level ", lv + 1, " NOT done: the way did not lead through")
 	var n2 := 0
 	while not ended and n2 < 900: await get_tree().process_frame; n2 += 1
 	await wait(2.5)
@@ -3609,7 +3792,7 @@ func tap(sp: Vector2) -> void:
 	if go_demo and not started:      # (the trial played a step at a time: the eye draws back to hold the board)
 		started = true
 		var tg2 := create_tween(); tg2.tween_property(title_box, "modulate:a", 0.0, 0.7); tg2.tween_callback(title_box.hide)
-		create_tween().tween_property(cam, "size", GO_VIEW, 2.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		create_tween().tween_property(cam, "size", _mw_view(), 2.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		return
 	if go_demo and started and not ended and woke:
 		_go_tap(sp); return
