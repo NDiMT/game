@@ -2019,7 +2019,7 @@ const IV_PAL := {      # top, lit face, face half turned away, face in shade (sa
 	"pmarble": ["fde5c7", "dcbfa0", "b49680", "8e705c"],
 	"pterra": ["c65a3e", "a84a33", "7f3a2a", "5c2b22"],
 	"marble2": ["ffefd2", "f6d8b3", "d9b28d", "ad8664"],
-	"rock2": ["dcc1a2", "c4a487", "8a6c55", "4a3327"],
+	"rock2": ["d2b091", "bb987a", "8c6a55", "57392d"],
 	"olive2": ["c9ab82", "b8966d", "9c7c5d", "806548"],
 	"bark": ["9a5f48", "86513d", "6c4031", "4e2e24"],
 	"far": ["f2dcc0", "e8cdac", "dcbf9f", "d2b393"],
@@ -2055,8 +2055,11 @@ uniform float dbg = 0.0;
 uniform float ao_k = 0.0;
 uniform float dk = 0.0;
 uniform float haze = 0.0;
+uniform float bounce = 0.0;
+uniform float sil = 0.0;      // (far off: a shape in the haze, its faces hardly told apart; no detail, only gradation)
+uniform float lf_len = 1.55;
 uniform float lfog = 0.0;      // (the level's own rock: its depth under the floor it bears is in COLOR.g, a quarter of a metre to one)
-uniform float lf_hi = 0.9;
+uniform float lf_hi = 0.75;
 uniform float lf_lo = 3.2;
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
@@ -2070,9 +2073,11 @@ void fragment(){
 	vec3 fn = normalize(cross(dFdx(wp), dFdy(wp)));
 	if (dot(fn, INV_VIEW_MATRIX[2].xyz) < 0.0) fn = -fn;
 	float d = dot(fn, normalize(key_dir));
-	vec3 c = mix(c_dark, c_mid, smoothstep(-0.45, 0.0, d));
-	c = mix(c, c_lit, smoothstep(0.15, 0.5, d));
-	c = mix(c, c_top, smoothstep(0.62, 0.9, fn.y));
+	vec3 c = mix(c_dark, c_mid, smoothstep(-0.6, 0.08, d));      // (the light goes over the faces softly, as the picture's)
+	c = mix(c, c_lit, smoothstep(0.02, 0.62, d));
+	c = mix(c, c_top, smoothstep(0.55, 0.95, fn.y));
+	c *= 1.0 + bounce * vec3(0.16, 0.07, -0.02) * smoothstep(0.15, -0.55, d);      // (warm light thrown back from the mist into the shade)
+	if (sil > 0.5) c = c_mid * mix(0.95, 1.03, smoothstep(-0.3, 0.7, d));
 	if (veins > 0.0) {      // (veins as marble has them: thin, wandering, now and then two together; a cloud in the stone)
 		vec3 q = wp * 0.9;
 		float w = fbm(q + vec3(fbm(q * 0.55 + 11.0), 0.0, fbm(q * 0.55 + 5.0)) * 1.7);
@@ -2090,7 +2095,10 @@ void fragment(){
 	float sy = uv_flip > 0.5 ? 1.0 - SCREEN_UV.y : SCREEN_UV.y;
 	float fk = max(1.0 - smoothstep(fog_ref + fog_lo, fog_ref + fog_hi, wp.y), far_k);
 	if (haze > 0.0) fk = max(fk, haze * 0.22 * smoothstep(44.0, 52.0, -VERTEX.z));      // (VERTEX: from the eye)
-	if (lfog > 0.5) fk = max(fk, smoothstep(lf_hi, lf_lo, ld));
+	if (lfog > 0.5) {      // (into the mist softly, as mist does: a long fading, its edge in wisps)
+		float wisp = fbm(wp * 0.42 + vec3(0.0, wp.y * 0.25, 0.0)) - 0.5;
+		fk = max(fk, 1.0 - exp(-max(ld + wisp * 0.7 - lf_hi, 0.0) / lf_len));
+	}
 	ALBEDO = c * (1.0 - fk);
 	EMISSION = bgc(sy) * fk + c_top * emit;
 	if (dbg > 0.5) { ALBEDO = vec3(0.0); EMISSION = dbg > 3.5 ? vec3(fk) : (dbg > 2.5 ? c : (dbg > 1.5 ? vec3(d * 0.5 + 0.5) : fn * 0.5 + 0.5)); }
@@ -2637,6 +2645,7 @@ func _iv_hide_world() -> void:
 			for mm in (dct[hk].holder as Node).find_children("*", "MeshInstance3D", true, false): (mm as MeshInstance3D).layers = 0
 	sun_light.look_at_from_position(Vector3.ZERO, -iv_key.normalized(), Vector3.UP)
 	sun_light.directional_shadow_max_distance = 60.0
+	sun_light.shadow_blur = 2.6      # (shadows soft at their edges, the light diffused, as the picture's)
 	for c in get_children():      # (the sea's blue shade at the edges of the screen and its rays of light: not here)
 		if c is CanvasLayer:
 			for t in c.get_children():
@@ -3339,7 +3348,7 @@ func _ivr_cam() -> void:
 	var vp := get_viewport().get_visible_rect().size
 	cam.keep_aspect = Camera3D.KEEP_WIDTH; cam.size = w * maxf(1.0, (vp.x / vp.y) / 0.5625)
 
-func _ivr_mat(kind: String, ao := 1.0, local := false) -> ShaderMaterial: return _iv_mat(kind, 0.0, {"lfog": 1.0 if local else 0.0, "fog_hi": -2.8, "fog_lo": -6.5, "ao_k": ao * ({"marble2": 0.55, "olive2": 0.3, "bark": 0.5, "rock2": 1.0} as Dictionary).get(kind, 1.0), "veins": 0.6 if kind == "marble2" else 0.0, "dk": 0.42 if kind == "rock2" else 0.0, "haze": 1.0})
+func _ivr_mat(kind: String, ao := 1.0, local := false) -> ShaderMaterial: return _iv_mat(kind, 0.0, {"lfog": 1.0 if local else 0.0, "fog_hi": -2.8, "fog_lo": -6.5, "ao_k": ao * ({"marble2": 0.55, "olive2": 0.3, "bark": 0.5, "rock2": 1.0} as Dictionary).get(kind, 1.0), "veins": 0.6 if kind == "marble2" else 0.0, "dk": 0.42 if kind == "rock2" else 0.0, "bounce": 1.0 if kind == "rock2" else 0.4, "haze": 1.0})
 
 ## the way drawn on the stone: a pale line, and at each node a pale disc in a darker ring
 func _ivr_way() -> void:
@@ -3387,7 +3396,7 @@ func _ivr_far() -> void:
 	var rng := RandomNumberGenerator.new(); rng.seed = 23
 	var spot := func(sx: float, sy: float, dep: float) -> Vector3: return ref + bx * sx + by * sy + fwd * dep
 	var spot_y := func(sx: float, sy: float, y: float) -> Vector3: return ref + bx * sx + by * sy + fwd * ((y - ref.y - by.y * sy) / fwd.y)      # (that place in the picture, at that height)
-	var fog := func(top: float, w: float, near := false) -> Dictionary: return {"fog_hi": top - (3.2 if near else 0.6 + w * 1.2), "fog_lo": top - (11.0 if near else 4.0 + w * 3.2)}
+	var fog := func(top: float, w: float, near := false) -> Dictionary: return {"sil": 1.0, "fog_hi": top - (2.2 if near else 0.4 + w * 0.9), "fog_lo": top - (9.0 if near else 3.2 + w * 2.8)}
 	# crags: [across, up (its top), width, depth, haze, palette, a spire?]
 	for f in [
 			[2.25, 5.0, 1.3, 8.0, 0.04, "rock2", false], [3.05, 3.2, 1.4, 7.5, 0.1, "far1", false],
@@ -3415,7 +3424,7 @@ func _ivr_far() -> void:
 	var col := prop_model("iv_colossus", self, 1.9)
 	col.position = cl; col.rotation.y = PI * 0.3
 	for m in col.find_children("*", "MeshInstance3D", true, false):
-		(m as MeshInstance3D).material_override = _iv_mat("farsil", 0.3, {"fog_hi": cl.y - 1.0, "fog_lo": cl.y - 6.0}); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		(m as MeshInstance3D).material_override = _iv_mat("farsil", 0.3, {"sil": 1.0, "fog_hi": cl.y - 1.0, "fog_lo": cl.y - 6.0}); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 ## the rock that bears things far off: a table of rock whose flat top holds every foot given, a little more round them
 func _ivr_crag_under(st: SurfaceTool, feet: Array, margin: float, rng: RandomNumberGenerator) -> void:

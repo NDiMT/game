@@ -9,6 +9,33 @@ written as JSON for tools/ivory_level.py (the build in Blender) and for the game
 usage: python3 -I trace.py <concept.png> <plan.json> [debug.png]
 """
 import sys, json, math
+
+# ------------------------------------------------------------------ the level laid square (world metres: x across, z, heights)
+# The floors and flights traced by hand on the picture came out on a slant (a floor's edge across the foot of a stair
+# looks crooked). As the picture's own are, they are laid here on the plan's axes: each floor a rectangle or an L, each
+# flight from one floor's edge straight to the next one's, across its whole breadth. The picture still gives where
+# each stands and how high; its rough edges come back in the build (broken outlines, chips).
+DESIGN = {
+    'floors': {
+        'T0': {'h': -1.25, 'xz': [[-0.5, 3.2], [0.85, 3.2], [0.85, 4.35], [2.05, 4.35], [2.05, 5.55], [-0.5, 5.55]]},
+        'T1': {'h': 0.0, 'xz': [[-1.2, -0.71], [2.45, -0.71], [2.45, 1.96], [-1.2, 1.96]]},
+        'L': {'h': 0.7, 'xz': [[-0.4, -3.2], [2.2, -3.2], [2.2, -1.47], [-0.4, -1.47]]},
+        'T2': {'h': 1.48, 'xz': [[-4.25, -3.15], [-1.85, -3.15], [-1.85, -1.2], [-4.25, -1.2]]},
+        'T3': {'h': 2.13, 'xz': [[-4.3, -6.2], [-2.0, -6.2], [-2.0, -4.32], [-4.3, -4.32]]},
+    },
+    'flights': [      # foot, head, breadth, steps
+        [[3.3, -2.3, 4.95], [2.05, -1.25, 4.95], 1.1, 9],
+        [[0.175, -1.25, 3.2], [0.175, 0.0, 1.96], 1.2, 10],
+        [[0.175, 0.0, -0.71], [0.175, 0.7, -1.47], 1.05, 6],
+        [[-0.4, 0.7, -1.97], [-1.85, 1.48, -1.97], 1.0, 9],
+        [[-3.1, 1.48, -3.15], [-3.1, 2.13, -4.32], 1.0, 8],
+    ],
+    'columns': [[[-3.95, 2.13, -4.85], 0.95], [[-3.8, 1.48, -1.6], 0.9], [[-2.3, 1.48, -2.75], 0.85]],
+    'arches': [[[-3.1, 2.13, -5.85], 'x'], [[1.45, 0.7, -2.95], 'x']],
+    'cypress': [[-3.9, 1.48, -2.75], 2.5],
+    'volute': [1.675, 0.0, 0.55],
+    'ring': [-3.1, 2.13, -4.95],
+}
 import numpy as np
 from PIL import Image, ImageDraw
 from scipy import ndimage as nd
@@ -124,6 +151,7 @@ def main():
                   ['i1', 'l', [P(1050, 1622, 0.0), P(1160, 1440, 0.7)]], ['l', 't2', [P(1185, 1395, 0.7), P(955, 1132, 1.48)]],
                   ['t2', 'r', [P(950, 930, 1.48), P(1120, 722, 2.13)]]],
     }
+    if DESIGN: plan.update(DESIGN)      # (the level laid square on the plan's axes, as the picture's is: see DESIGN)
     sq = square_flights(plan['flights'])      # (every flight square to the axes; the way's edges up them follow)
     moved = {tuple(o[0]): n[0] for o, n in zip(plan['flights'], sq)}
     for e in plan['edges']:

@@ -52,25 +52,25 @@ F_S0, F_S1, F_S2, F_S2b, F_S3 = (FLIGHTS[(None, 'T0')], FLIGHTS[('T0', 'T1')], F
 VOL = T['volute']; RING = T['ring']
 NODE_DEF = {
     # T0, the lowest terrace: she comes up the first flight (S0) out of the mist to a0
-    'a0': ('T0', 1.2, 4.9),        # start
-    'a1': ('T0', 0.22, 4.9),       # the bend; a face here looks up toward the stair (teaches: break a face from its side)
-    'a2': ('T0', 0.22, 3.95),      # foot of S1
+    'a0': ('T0', 1.2, 4.95),       # start
+    'a1': ('T0', 0.175, 4.95),       # the bend; a face here looks up toward the stair (teaches: break a face from its side)
+    'a2': ('T0', 0.175, 3.95),     # foot of S1
     # T1, the great terrace
-    'b0': ('T1', 0.17, 1.55),      # head of S1
-    'b1': ('T1', 0.92, 1.55),
-    'b2': ('T1', 0.17, 0.6),       # foot of S2: the meander stone stands here
-    'b3': ('T1', 0.92, 0.6),       # the middle; the volute is turned from here, the stone pushed from here
-    'b4': ('T1', -0.55, 0.6),      # the west nook, where the stone goes
+    'b0': ('T1', 0.175, 1.5),      # head of S1
+    'b1': ('T1', 0.925, 1.5),
+    'b2': ('T1', 0.175, 0.55),     # foot of S2: the meander stone stands here
+    'b3': ('T1', 0.925, 0.55),       # the middle; the volute is turned from here, the stone pushed from here
+    'b4': ('T1', -0.575, 0.55),    # the west nook, where the stone goes
     'b5': ('T1', VOL[0], VOL[2]),  # the volute (not walkable)
     # L, the landing
-    'c0': ('L', 0.0, -1.7),        # head of S2, foot of S2'
-    'c1': ('L', 0.75, -1.7),       # the landing face (on a turntable)
-    'c2': ('L', 1.5, -1.7),
-    'c3': ('L', 0.0, -2.45),       # before the arch; the statue turns here
+    'c0': ('L', 0.175, -1.97),     # head of S2, foot of S2'
+    'c1': ('L', 0.925, -1.97),       # the landing face (on a turntable)
+    'c2': ('L', 1.675, -1.97),
+    'c3': ('L', 0.175, -2.72),       # before the arch; the statue turns here
     # T2, the upper terrace
-    'd0': ('T2', -2.35, -1.75),    # head of S2'
-    'd1': ('T2', -3.1, -1.75),     # the upper face (on a turntable)
-    'd2': ('T2', -3.02, -2.45),    # foot of S3
+    'd0': ('T2', -2.35, -1.97),    # head of S2'
+    'd1': ('T2', -3.1, -1.97),     # the upper face (on a turntable)
+    'd2': ('T2', -3.1, -2.67),     # foot of S3
     # T3, the top
     'ring': ('T3', RING[0], RING[2]),
 }
