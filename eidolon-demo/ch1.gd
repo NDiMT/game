@@ -1297,8 +1297,8 @@ const GO_VIEW := 12.0
 const MW_TOP := WATER + 0.65      # the floor of both courts
 const MW_NONE := Vector2i(-99, -99)
 const MW_REACH := 0.42      # how far into her square she stands to set her hands on a stone
-const MW_PITCH := 45.0
-const MW_YAW := 0.0
+const MW_PITCH := 35.264
+const MW_YAW := 45.0
 const GO_LEVELS := [
 	{"map": [".....", ".a...", "...*.", "~~~~~", "...*.", ".A...", ".@..."], "line": "What you move\nmoves in the water.",
 		"sol": [[1, 5, "p"], [0, 5, "w"], [0, 4, "w"], [1, 4, "p"], [2, 4, "p"], [2, 3, "g"]]},
@@ -1344,7 +1344,7 @@ func _mw_walkable(v: Vector2i) -> bool:
 	if v == gs.gate: return bool(gs.open)
 	if (gs.chan as Dictionary).has(v): return (gs.slabs as Dictionary).has(v)
 	return (gs.floor as Dictionary).has(v) and _mw_at(v).x < 0
-func _mw_view() -> float: return maxf(9.6, float(gs.get("W", 5)) * GO_D + 1.9)
+func _mw_view() -> float: return (float(gs.get("W", 5)) + float(gs.get("H", 7))) * GO_D * 0.7071 + 0.9      # (the board is a diamond to the eye: so wide)
 func _mw_focus() -> Vector3:
 	return Vector3(_go_cx(int(gs.get("lv", 0))), MW_TOP, ((float(gs.get("H", 7)) - 1.0) * 0.5 - float(gs.get("c", 3))) * GO_D - 0.2)
 
@@ -1459,7 +1459,7 @@ func _mw_around() -> void:
 	var hp := Vector3(cx - bw * 0.78, WATER, zf - 4.6)      # (her head stands on its own ledge of rock, above the sea: under it only its dark image)
 	rock(Vector3(hp.x, 0, hp.z), 1.9)
 	blk(hp + Vector3(-1.1, -0.8, -1.0), hp + Vector3(1.1, 0.42, 1.0), "stone").material_override = pal("shade", "flat")
-	var hd := sculpt_head(hp + Vector3(0, 0.42, 0), 2.7, 0.2, Vector3(-0.1, 0, 0.04), 2)
+	var hd := sculpt_head(hp + Vector3(0, 0.42, 0), 2.7, 0.98, Vector3(-0.1, 0, 0.04), 2)
 	if hd == null: thing("broken_statue", hp, 3.0, "stone:marble", 0.4)
 	else:      # (no picture of it on the sea: so tall a thing lay there as a black stain under it)
 		for mm in hd.find_children("*", "MeshInstance3D", true, false):
@@ -1567,8 +1567,9 @@ func _mw_rings(instant := false) -> void:
 	var to := MW_TOP if full else MW_TOP - 6.5
 	var gp := _mw_p(gs.gate)
 	if instant:
-		g.position.y = to; lights[6] = Vector4(gp.x, MW_TOP + 1.1, gp.z - 0.45, 0.95) if full else Vector4.ZERO
+		g.position.y = to; g.visible = full; lights[6] = Vector4(gp.x, MW_TOP + 1.1, gp.z - 0.45, 0.95) if full else Vector4.ZERO
 		return
+	g.visible = true      # (down there it is hidden: the sea is clear enough to show a pale ghost of it)
 	if full:
 		print("GO the rings are filled: the gate rises")
 		if not go_said.has("gate"): go_said["gate"] = true; say("the gate rises")
@@ -1576,6 +1577,7 @@ func _mw_rings(instant := false) -> void:
 	else:
 		lights[6] = Vector4.ZERO
 	var t := create_tween(); t.tween_property(g, "position:y", to, 1.8 if full else 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	if not full: t.tween_callback(func() -> void: if not bool(gs.open): g.visible = false)
 
 ## the sea's own picture of things lies on the sea where it stands
 func _go_water_y() -> void:
