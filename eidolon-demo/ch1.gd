@@ -899,6 +899,14 @@ func _gh_flame(p: Vector3, k: float) -> void:
 	var halo := SphereMesh.new(); halo.radius = 0.5 * k; halo.height = 1.0 * k; halo.radial_segments = 14; halo.rings = 7
 	prim(halo, p + Vector3(0, 0.16 * k, 0), mat(Color(1.0, 0.72, 0.34, 0.14), true)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
+## the joints of a paving, drawn flat on its top (so that the sea does not show them as lines floating on the water)
+func _gh_tiles(r: Array, y: float, step := 0.65) -> void:
+	var m := mat(Color(pals["stone"][0]).darkened(0.13))
+	var x: float = r[0] + step
+	while x < r[2] - 0.15: blk(Vector3(x - 0.008, y, r[1] + 0.03), Vector3(x + 0.008, y + 0.004, r[3] - 0.03), "shade").material_override = m; x += step
+	var z: float = r[1] + step
+	while z < r[3] - 0.15: blk(Vector3(r[0] + 0.03, y, z - 0.008), Vector3(r[2] - 0.03, y + 0.004, z + 0.008), "shade").material_override = m; z += step
+
 ## a look: a faint beam of light from a to b
 func _gh_beam(a: Vector3, b: Vector3) -> void:
 	var d := b - a
@@ -939,7 +947,7 @@ func _gh_build() -> void:
 	for r in [[105.75, 2.95, 107.8, 4.25], [109.2, 2.95, 114.25, 4.25], [112.95, -4.25, 114.25, 4.25], [105.75, -4.25, 110.8, -2.95], [112.2, -4.25, 114.25, -2.95], [105.75, -4.25, 107.05, -1.0], [105.75, 1.0, 107.05, 4.25],
 			[112.6, 2.6, 115.0, 5.0], [104.6, 2.3, 107.7, 5.4], [112.3, -5.4, 115.4, -2.3], [104.8, -5.2, 108.0, -2.0], [109.3, 4.25, 110.7, 5.6], [114.25, -0.7, 115.6, 0.7], [109.3, -5.6, 110.7, -4.25]]:
 		slab.call(r)
-	for r in [[105.75, 2.95, 107.8, 4.25], [109.2, 2.95, 112.95, 4.25], [112.95, -2.95, 114.25, 2.95], [107.05, -4.25, 110.8, -2.95], [112.2, -4.25, 112.95, -2.95], [105.75, -2.0, 107.05, -1.0], [105.75, 1.0, 107.05, 2.95]]: tiles(r[0], r[1], r[2], r[3], 0.65)
+	for r in [[105.75, 2.95, 107.8, 4.25], [109.2, 2.95, 112.95, 4.25], [112.95, -2.95, 114.25, 2.95], [107.05, -4.25, 110.8, -2.95], [112.2, -4.25, 112.95, -2.95], [105.75, -2.0, 107.05, -1.0], [105.75, 1.0, 107.05, 2.95]]: _gh_tiles(r, yD)
 	cyl(Vector3(113.6, yD - 0.012, 3.6), 0.5, 0.5, 0.025, pal("gold", "flat"), 24); cyl(Vector3(113.6, yD - 0.004, 3.6), 0.36, 0.36, 0.02, pal("stone", "flat"), 24)
 	# the gate at the far corner: two steps, eight columns in a ring, a dome, and light within
 	var gx := 106.4; var gz := -3.6
@@ -1031,7 +1039,7 @@ func _gh_flame_on(n: Node3D, p: Vector3, k: float) -> void:
 
 ## (she stands at the near corner)
 func _gh_begin() -> void:
-	_wake_now(); pos = Vector3(113.6, WATER + 0.5, 3.6); yaw = PI * 1.25; cam_t = GH_MID_PT
+	_wake_now(); pos = Vector3(114.5, WATER + 0.5, 4.5); yaw = PI * 0.25; cam_t = GH_MID_PT      # (at the edge of the deck: her picture lies on the sea before her)
 	cam_focus = GH_MID_PT; cam_focus_on = true
 	for ql in quote_lbls:
 		if (ql as Label).get_theme_constant("outline_size") == 0: (ql as Label).add_theme_color_override("font_color", Color(0.97, 0.98, 1.0, 1.0))
@@ -1047,7 +1055,17 @@ func _gh_pre(_dt: float) -> void:
 
 func _gh_post(dt: float) -> void:
 	for k in H:      # (only she, and her picture in the sea: no other body of hers)
-		if String(k) != "main" and String(k) != "refl": (H[k].holder as Node3D).visible = false
+		if String(k) != "main": (H[k].holder as Node3D).visible = false
+	if not gh_said.has("her_refl") and H.has("main"):      # her picture in the sea, as clear as the stone's
+		gh_said["her_refl"] = true
+		for mm in (H["main"].holder as Node).find_children("*", "MeshInstance3D", true, false):
+			var mi := mm as MeshInstance3D
+			var ms := [mi.material_override]
+			if mi.mesh != null:
+				for si in mi.mesh.get_surface_count(): ms.append(mi.get_surface_override_material(si))
+			for m in ms:
+				if m is ShaderMaterial and (m as ShaderMaterial).next_pass is ShaderMaterial:
+					((m as ShaderMaterial).next_pass as ShaderMaterial).set_shader_parameter("fade_a", 1.0)
 	cam_focus = GH_MID_PT; cam_focus_on = true
 	if started:
 		gh_t += dt
