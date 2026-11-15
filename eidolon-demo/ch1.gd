@@ -1387,12 +1387,10 @@ func _go_build(lv: int) -> void:
 		if gs.cells[k] != "gate": continue
 		var gv := _go_ij(k); var g := _go_w(gv.x, gv.y)
 		blk(g + Vector3(-1.0, WATER - 0.8, -1.0), g + Vector3(1.0, 0.0, 1.0), "stone", go_root).material_override = pal("stone", "flat")
-		var gn := Node3D.new(); gn.position = g; gn.rotation.y = -PI * 0.25; go_root.add_child(gn)      # the gate: a round temple of marble with a dome of terracotta, made in Tripo (props/gate); its door faces her board
-		var gm := prop_model("gate", gn, 3.3, 0.0, false, false, "marble:stone,terra:terra,gold:gold,glow:lamp")
-		for mm in gm.find_children("*", "MeshInstance3D", true, false):
-			var mi := mm as MeshInstance3D
-			for si in mi.mesh.get_surface_count():
-				if String(mi.mesh.surface_get_name(si)).begins_with("glow") or (mi.get_surface_override_material(si) == pal("lamp", "flat")): mi.set_surface_override_material(si, under_mat(Color("ffe2a0")))
+		var gn := Node3D.new(); gn.position = g; gn.rotation.y = float(OS.get_environment("GATE_YAW")) if OS.get_environment("GATE_YAW") != "" else -PI * 0.25; go_root.add_child(gn)      # the gate: a small gateway of worn marble with a pediment and double doors, made in Tripo (props/gateway, its own colours); its door faces her board
+		prop_model("gateway", gn, 2.5, 0.0, false, false, "")
+		var glow := SphereMesh.new(); glow.radius = 0.55; glow.height = 1.1; glow.radial_segments = 14; glow.rings = 7
+		prim(glow, Vector3(0, 0.9, 0.25), mat(Color(1.0, 0.82, 0.5, 0.16), true), gn).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		for e in [Vector3(1.25, 0, -0.55), Vector3(-0.55, 0, 1.25)]: _gh_brazier(g + e)      # (a fire on either hand of the door, not before it)
 		lights[6] = Vector4(g.x + 0.5, 1.2, g.z + 0.5, 0.85); lights[4] = Vector4(g.x + 1.25, 1.0, g.z - 0.55, 0.7); lights[5] = Vector4(g.x - 0.55, 1.0, g.z + 1.25, 0.7)
 	# what lies about the board, in the sea: the same things as about the square
