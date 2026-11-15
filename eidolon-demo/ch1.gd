@@ -1323,7 +1323,7 @@ var go_sea: Node3D
 var go_lv_lbl: Label
 var mw_push := {}      # the push under way: the stone she pushes follows her hands, its image follows it
 
-func _go_cx(lv: int) -> float: return 110.0 + 40.0 * lv
+func _go_cx(lv: int) -> float: return 190.0 + 40.0 * lv      # (clear of the square of the other trial, whose waters change the sea about it)
 func _mw_p(v: Vector2i) -> Vector3:
 	return Vector3(_go_cx(int(gs.lv)) + (v.x - (int(gs.W) - 1) * 0.5) * GO_D, MW_TOP, (v.y - int(gs.c)) * GO_D)
 func _mw_side(v: Vector2i) -> int:
@@ -1397,7 +1397,7 @@ func _mw_palettes() -> void:
 func _go_build(lv: int) -> void:
 	if go_root != null: go_root.queue_free()
 	go_root = Node3D.new(); add_child(go_root)
-	mw_push = {}; mw_fmats = {}
+	mw_push = {}
 	var L: Dictionary = GO_LEVELS[lv]
 	var rows: Array = L.map
 	var H := rows.size(); var W := 0
@@ -1463,11 +1463,11 @@ func _mw_around() -> void:
 	var mirrors := [[Vector3(cx - bw - 1.0, WATER, 0.0), PI * 0.5, "tied", 1.15], [Vector3(cx + bw + 1.0, WATER, 0.0), -PI * 0.5, "hem", 1.15], [at.call(2.9, -reach - 3.4), 0.0, "tied", 0.8]]
 	for m in mirrors:
 		var p: Vector3 = m[0]; var top := WATER + float(m[3])
-		blk(p + Vector3(-0.5, -1.4, -0.5), Vector3(p.x + 0.5, top - 0.08, p.z + 0.5), "shade").material_override = _mw_fmat("stone")
-		blk(Vector3(p.x - 0.56, top - 0.12, p.z - 0.56), Vector3(p.x + 0.56, top, p.z + 0.56), "stone").material_override = pal("stone", "flat")
+		blk(p + Vector3(-0.5, -0.06, -0.5), Vector3(p.x + 0.5, top - 0.08, p.z + 0.5), "shade").material_override = _mw_fmat("stone", top)
+		blk(Vector3(p.x - 0.56, top - 0.12, p.z - 0.56), Vector3(p.x + 0.56, top, p.z + 0.56), "stone").material_override = _mw_flat("stone")
 		var yw: float = m[1]
 		if yw == 0.0: yw = atan2(cx - p.x, zc - p.z) + 0.3
-		mirror_stand(Vector3(p.x, top, p.z), yw, self, top, String(m[2]), true)
+		_mw_noreflect(mirror_stand(Vector3(p.x, top, p.z), yw, self, top, String(m[2]), true))
 	# her statue, broken, on a rock behind the courts to the left, its foot clear of the sea
 	var sp: Vector3 = at.call(-2.9, -reach - 2.6)
 	rock(Vector3(sp.x, 0, sp.z), 1.6)
@@ -1478,27 +1478,55 @@ func _mw_around() -> void:
 		var rp: Vector3 = at.call(float(r[0]), float(r[1]))
 		rock(Vector3(rp.x, 0, rp.z), float(r[2]))
 
-## the stone of a pillar out of the sea: from just under its top down to the waterline it goes over into the colour of
-## its own picture on the water, so that the two meet as one
+## the stone of the courts: one clean colour to each face, as in the Monument Valley games (no veins), and no picture
+## of it on the water. (Its materials are entered with the others, so that the frame's light and mist reach them.)
+const MW_SEA_COL := Vector3(0.1, 0.262, 0.336)      # the sea as the eye sees it about the courts
 var mw_fmats := {}
-func _mw_fmat(n: String) -> ShaderMaterial:
-	if mw_fmats.has(n): return mw_fmats[n]
+func _mw_flat(n: String) -> ShaderMaterial:
+	if mw_fmats.has("c|" + n): return mw_fmats["c|" + n]
 	var m := pal(n, "flat").duplicate() as ShaderMaterial
-	m.set_shader_parameter("fade_y0", (MW_TOP + WATER) * 0.5); m.set_shader_parameter("fade_y1", WATER + 0.04)
-	mw_fmats[n] = m
+	m.set_shader_parameter("marble", 0.0); m.set_shader_parameter("tone_var", 0.0); m.next_pass = null
+	mw_fmats["c|" + n] = m; pmats["mw|c|" + n] = m
 	return m
+## a pillar out of the sea: the stone of its slab down to its middle, and then it melts away into the sea
+func _mw_fmat(n: String, top := MW_TOP) -> ShaderMaterial:
+	var key := "f|%s|%.2f" % [n, top]
+	if mw_fmats.has(key): return mw_fmats[key]
+	var m := _mw_flat(n).duplicate() as ShaderMaterial
+	m.set_shader_parameter("fade_y0", (top + WATER) * 0.5); m.set_shader_parameter("fade_y1", WATER - 0.02); m.set_shader_parameter("fade_col", MW_SEA_COL)
+	mw_fmats[key] = m; pmats["mw|" + key] = m
+	return m
+## no picture on the water of a thing that stands on a pillar (the pillar has none: its picture alone would float)
+func _mw_noreflect(n: Node) -> void:
+	for mm in n.find_children("*", "MeshInstance3D", true, false):
+		var mi := mm as MeshInstance3D
+		if mi.material_override is ShaderMaterial and (mi.material_override as ShaderMaterial).next_pass != null:
+			var key := "n|%d" % mi.material_override.get_instance_id()
+			if not mw_fmats.has(key):
+				var m2 := (mi.material_override as ShaderMaterial).duplicate() as ShaderMaterial; m2.next_pass = null
+				mw_fmats[key] = m2; pmats["mw|" + key] = m2
+			mi.material_override = mw_fmats[key]
+		if mi.mesh != null:
+			for si in mi.mesh.get_surface_count():
+				var sm := mi.get_surface_override_material(si)
+				if sm is ShaderMaterial and (sm as ShaderMaterial).next_pass != null:
+					var key2 := "n|%d" % sm.get_instance_id()
+					if not mw_fmats.has(key2):
+						var m3 := (sm as ShaderMaterial).duplicate() as ShaderMaterial; m3.next_pass = null
+						mw_fmats[key2] = m3; pmats["mw|" + key2] = m3
+					mi.set_surface_override_material(si, mw_fmats[key2])
 
 ## a square of the floor: a pillar out of the sea, paved; over there in the dark stone of the eidolon
 func _mw_tile(v: Vector2i) -> void:
 	var p := _mw_p(v); var far := _mw_side(v) < 0
 	var h := GO_D * 0.5
-	blk(p + Vector3(-h, WATER - 1.4 - MW_TOP, -h), p + Vector3(h, -0.1, h), "shade", go_root).material_override = _mw_fmat("eid" if far else "stone")
-	blk(p + Vector3(-h + 0.035, -0.14, -h + 0.035), p + Vector3(h - 0.035, 0.0, h - 0.035), "stone", go_root).material_override = pal("eid" if far else "stone", "flat")
+	blk(p + Vector3(-h, WATER - 0.06 - MW_TOP, -h), p + Vector3(h, -0.1, h), "shade", go_root).material_override = _mw_fmat("eid" if far else "stone")
+	blk(p + Vector3(-h + 0.035, -0.14, -h + 0.035), p + Vector3(h - 0.035, 0.0, h - 0.035), "stone", go_root).material_override = _mw_flat("eid" if far else "stone")
 
 ## a column, broken: a plinth and two drums
 func _mw_column(v: Vector2i) -> void:
 	var p := _mw_p(v); var far := _mw_side(v) < 0
-	var m := pal("eid" if far else "stone", "flat"); var m2 := pal("eid2" if far else "shade", "flat")
+	var m := _mw_flat("eid" if far else "stone"); var m2 := _mw_flat("eid2" if far else "shade")
 	blk(p + Vector3(-0.5, 0.0, -0.5), p + Vector3(0.5, 0.18, 0.5), "shade", go_root).material_override = m2
 	cyl(p + Vector3(0, 0.18, 0), 0.36, 0.33, 0.66, m, 16, go_root)
 	var d2 := cyl(p + Vector3(0.03, 0.85, 0.02), 0.33, 0.31, 0.42, m, 16, go_root); d2.rotation = Vector3(0.05, 0.3, -0.04)
@@ -1516,18 +1544,18 @@ func _mw_stone(v: Vector2i, img: bool) -> Node3D:
 	var n := Node3D.new(); go_root.add_child(n)
 	n.position = _mw_p(v) if v != MW_NONE else Vector3.ZERO
 	var body := "eidst" if img else "block"
-	blk(Vector3(-0.5, 0.0, -0.5), Vector3(0.5, 0.94, 0.5), "stone", n).material_override = pal(body, "flat")
-	blk(Vector3(-0.52, 0.32, -0.52), Vector3(0.52, 0.43, 0.52), "gold", n).material_override = pal("eidband" if img else "gold", "flat")
-	blk(Vector3(-0.44, 0.94, -0.44), Vector3(0.44, 0.985, 0.44), "shade", n).material_override = pal(body, "flat")
+	blk(Vector3(-0.5, 0.0, -0.5), Vector3(0.5, 0.94, 0.5), "stone", n).material_override = _mw_flat(body)
+	blk(Vector3(-0.52, 0.32, -0.52), Vector3(0.52, 0.43, 0.52), "gold", n).material_override = _mw_flat("eidband" if img else "gold")
+	blk(Vector3(-0.44, 0.94, -0.44), Vector3(0.44, 0.985, 0.44), "shade", n).material_override = _mw_flat(body)
 	return n
 
 ## a slab in the water, where a stone and its image became one: a seam of gold across it
 func _mw_slab(v: Vector2i) -> Node3D:
 	var n := Node3D.new(); n.position = _mw_p(v); go_root.add_child(n)
 	var h := GO_D * 0.5 - 0.06
-	blk(Vector3(-h, WATER - 1.4 - MW_TOP, -h), Vector3(h, -0.1, h), "shade", n).material_override = _mw_fmat("block")
-	blk(Vector3(-h + 0.03, -0.14, -h + 0.03), Vector3(h - 0.03, 0.0, h - 0.03), "stone", n).material_override = pal("block", "flat")
-	blk(Vector3(-h + 0.03, -0.004, -0.035), Vector3(h - 0.03, 0.004, 0.035), "gold", n).material_override = pal("gold", "flat")
+	blk(Vector3(-h, WATER - 0.06 - MW_TOP, -h), Vector3(h, -0.1, h), "shade", n).material_override = _mw_fmat("block")
+	blk(Vector3(-h + 0.03, -0.14, -h + 0.03), Vector3(h - 0.03, 0.0, h - 0.03), "stone", n).material_override = _mw_flat("block")
+	blk(Vector3(-h + 0.03, -0.004, -0.035), Vector3(h - 0.03, 0.004, 0.035), "gold", n).material_override = _mw_flat("gold")
 	return n
 
 ## the gate: an arch of the same stone under a pediment, its opening only light, on a footing in the middle of the
@@ -1535,8 +1563,8 @@ func _mw_slab(v: Vector2i) -> Node3D:
 func _mw_gate() -> Node3D:
 	var g := Node3D.new(); g.position = _mw_p(gs.gate) + Vector3(0, -6.5, 0); go_root.add_child(g)
 	var h := GO_D * 0.5 - 0.06
-	blk(Vector3(-h, WATER - 1.4 - MW_TOP, -h), Vector3(h, -0.1, h), "shade", g).material_override = _mw_fmat("stone")
-	blk(Vector3(-h + 0.03, -0.14, -h + 0.03), Vector3(h - 0.03, 0.0, h - 0.03), "stone", g).material_override = pal("stone", "flat")
+	blk(Vector3(-h, WATER - 0.06 - MW_TOP, -h), Vector3(h, -0.1, h), "shade", g).material_override = _mw_fmat("stone")
+	blk(Vector3(-h + 0.03, -0.14, -h + 0.03), Vector3(h - 0.03, 0.0, h - 0.03), "stone", g).material_override = _mw_flat("stone")
 	var an := Node3D.new(); an.position = Vector3(0, 0, -0.45); g.add_child(an)
 	var st := func(a: Vector3, b: Vector3, m := "stone") -> void: blk(a, b, m, an).material_override = pal(m, "flat")
 	st.call(Vector3(-0.78, 0.0, -0.22), Vector3(0.78, 0.1, 0.22), "shade")
@@ -1560,6 +1588,7 @@ func _mw_gate() -> Node3D:
 	for mi in [l1, l2]: (mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var glow := SphereMesh.new(); glow.radius = 1.0; glow.height = 2.0; glow.radial_segments = 14; glow.rings = 7
 	prim(glow, Vector3(0, 1.1, 0), mat(Color(1.0, 0.82, 0.45, 0.1), true), an).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_mw_noreflect(g)
 	return g
 
 ## the rings: lit where something stands on them. All filled: the gate rises (and goes down again if one is left)
@@ -1591,16 +1620,15 @@ func _go_water_y() -> void:
 	var y := go_sea.position.y
 	RenderingServer.global_shader_parameter_set("sea_y", y)
 	if refl_mat != null: refl_mat.set_shader_parameter("water_y", y)
-	if H.has("main"):
-		for mm in (H["main"].holder as Node).find_children("*", "MeshInstance3D", true, false):
+	for dct in [H, SHP]:
+		if not dct.has("main"): continue
+		for mm in (dct["main"].holder as Node).find_children("*", "MeshInstance3D", true, false):
 			var mi := mm as MeshInstance3D
 			var ms := [mi.material_override]
 			if mi.mesh != null:
 				for si in mi.mesh.get_surface_count(): ms.append(mi.get_surface_override_material(si))
-			for m in ms:
-				if m is ShaderMaterial and (m as ShaderMaterial).next_pass is ShaderMaterial:
-					var rp := (m as ShaderMaterial).next_pass as ShaderMaterial
-					rp.set_shader_parameter("water_y", y); rp.set_shader_parameter("use_tex", 0.0); rp.set_shader_parameter("fade_a", 1.0)
+			for m in ms:      # (as in the Monument Valley games, nothing on the courts has a picture on the sea: neither has she)
+				if m is ShaderMaterial and (m as ShaderMaterial).next_pass is ShaderMaterial: (m as ShaderMaterial).next_pass = null
 
 func _go_begin() -> void:
 	_wake_now()
@@ -1644,6 +1672,12 @@ func _go_begin() -> void:
 		var fm := prim(sm, Vector3.ZERO, mat(Color(1.0, 0.86, 0.5, 0.85), true)); fm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		go_flies.append({"n": fm, "c": Vector3(rng.randf_range(-7.0, 7.0), WATER + rng.randf_range(1.0, 3.6), rng.randf_range(-6.0, 6.0)), "ph": rng.randf_range(0.0, TAU), "r": rng.randf_range(0.5, 1.6), "sp": rng.randf_range(0.15, 0.4)})
 	cam.rotation_degrees.y = MW_YAW; cam_pitch = MW_PITCH
+	# her other bodies (in the sea, in the old pools, in the mirror wall): taken out of every picture for good. (Hiding
+	# them is not enough: the old wings show the one in the sea again each frame, after the trial has hidden it)
+	for dct in [H, SHP]:
+		for hk in dct:
+			if String(hk) == "main": continue
+			for mm in (dct[hk].holder as Node).find_children("*", "MeshInstance3D", true, false): (mm as MeshInstance3D).layers = 0
 	_go_build(clampi(int(OS.get_environment("GO_LV0")) - 1, 0, GO_LEVELS.size() - 1) if OS.get_environment("GO_LV0") != "" else 0)
 	cam_t = _mw_focus(); cam_focus = cam_t; cam_focus_on = true
 
@@ -1657,8 +1691,9 @@ func _go_pre(_dt: float) -> void:
 	pos.y = MW_TOP
 
 func _go_post(dt: float) -> void:
-	for hk in ["mir", "refl", "ghost"]:      # no pool, no mirror wall here: of her bodies only her own, and its dark image on the sea
-		if H.has(hk): (H[hk].holder as Node3D).visible = false
+	for dct in [H, SHP]:      # no pool, no mirror wall, no picture on the sea here: of her bodies only her own
+		for hk in dct:
+			if String(hk) != "main": (dct[hk].holder as Node3D).visible = false
 	cam_focus = _mw_focus(); cam_focus_on = true
 	if not mw_push.is_empty():      # the stone goes before her hands; its image goes as in a mirror, or stays
 		var dv: Vector3 = mw_push.d
