@@ -1461,6 +1461,7 @@ func _mw_edges() -> void:
 	var h := GO_D * 0.5
 	for far in [false, true]:
 		var wins := []
+		var runs := {}      # the straight runs of edge: (which way it looks out, its line) -> the squares along it
 		for v in cells:
 			if (_mw_side(v) < 0) != far: continue
 			var p := _mw_p(v)
@@ -1471,20 +1472,20 @@ func _mw_edges() -> void:
 				var fc := p + out * h
 				bb(fc - al * h + Vector3(0, -0.25, 0), fc + al * h + out * 0.05 + Vector3(0, -0.15, 0))      # the moulding
 				bb(fc - al * h + Vector3(0, -0.3, 0), fc + al * h + out * 0.025 + Vector3(0, -0.25, 0))
-				var ww := 0.26; var wy0 := -1.02; var wy1 := -0.5
-				bb(fc - al * (ww + 0.07) + Vector3(0, wy0 - 0.07, 0), fc + al * (ww + 0.07) + out * 0.02 + Vector3(0, wy1, 0))      # the window's frame
+				var ww := 0.26; var wy0 := -1.4; var wy1 := -0.88      # (the window low in the pillar's face)
+				bb(fc - al * (ww + 0.07) + Vector3(0, wy0 - 0.07, 0), fc + al * (ww + 0.07) + out * 0.02 + Vector3(0, wy1, 0))      # its frame
 				wins.append([fc, out, al, ww, wy0, wy1])
-				var e := fc - out * 0.13
-				bb(e - al * (h - 0.02) - out * 0.07, e + al * (h - 0.02) + out * 0.07 + Vector3(0, 0.05, 0))      # the plinth
-				bb(e - al * (h - 0.02) - out * 0.08 + Vector3(0, 0.33, 0), e + al * (h - 0.02) + out * 0.08 + Vector3(0, 0.39, 0))      # the rail
-				for k in 7:      # the balusters: a foot, a belly, a neck
-					var c := e + al * (-h + 0.2 + (2.0 * h - 0.4) * k / 6.0)
-					bb(c - al * 0.03 - out * 0.03 + Vector3(0, 0.05, 0), c + al * 0.03 + out * 0.03 + Vector3(0, 0.1, 0))
-					bb(c - al * 0.045 - out * 0.045 + Vector3(0, 0.1, 0), c + al * 0.045 + out * 0.045 + Vector3(0, 0.22, 0))
-					bb(c - al * 0.026 - out * 0.026 + Vector3(0, 0.22, 0), c + al * 0.026 + out * 0.026 + Vector3(0, 0.33, 0))
-				for sx in [-1.0, 1.0]:      # a post at each end
-					var c2: Vector3 = e + al * float(sx) * (h - 0.07)
-					bb(c2 - al * 0.065 - out * 0.065, c2 + al * 0.065 + out * 0.065 + Vector3(0, 0.42, 0))
+				var line: int = v.x if d.x != 0 else v.y
+				var key: String = "%d,%d,%d" % [d.x, d.y, line]
+				if not runs.has(key): runs[key] = {"d": d, "line": line, "a": []}
+				(runs[key].a as Array).append(v.y if d.x != 0 else v.x)
+		for key in runs:      # one balustrade along each run, unbroken: a post only where it ends
+			var r: Dictionary = runs[key]
+			var a: Array = r.a; a.sort()
+			var st := 0
+			for i in range(1, a.size() + 1):
+				if i == a.size() or int(a[i]) != int(a[i - 1]) + 1:
+					_mw_rail(cells, r.d, int(r.line), int(a[st]), int(a[i - 1])); st = i
 		bb_end("eid" if far else "stone", go_root)
 		for w in wins:      # the windows: dark, under a round head
 			var fc: Vector3 = w[0]; var out: Vector3 = w[1]; var al: Vector3 = w[2]; var ww: float = w[3]
@@ -1492,13 +1493,36 @@ func _mw_edges() -> void:
 		bb_end("eidniche" if far else "niche", go_root)
 		for w in wins:
 			var fc: Vector3 = w[0]; var out: Vector3 = w[1]; var ww: float = w[3]
-			var fr := cyl(fc + out * 0.01 + Vector3(0, float(w[5]), 0), ww + 0.07, ww + 0.07, 0.02, pal("eid" if far else "stone", "flat"), 20, go_root)
-			var dk := cyl(fc + out * 0.022 + Vector3(0, float(w[5]), 0), ww, ww, 0.02, pal("eidniche" if far else "niche", "flat"), 20, go_root)
+			var fr := cyl(fc, ww + 0.07, ww + 0.07, 0.02, pal("eid" if far else "stone", "flat"), 20, go_root)
+			var dk := cyl(fc, ww, ww, 0.02, pal("eidniche" if far else "niche", "flat"), 20, go_root)
 			for c3 in [fr, dk]:      # (a disc turned to face out of the wall; only its upper half shows over the window)
 				var ci := c3 as MeshInstance3D
 				ci.position = fc + out * (0.01 if c3 == fr else 0.022) + Vector3(0, float(w[5]), 0)
 				if absf(out.x) > 0.5: ci.rotation.z = PI * 0.5
 				else: ci.rotation.x = PI * 0.5
+
+## a balustrade along a straight run of edge: the squares a0..a1 of the line (a column for an edge that looks out
+## along x, a row for one that looks out along z). At an outer corner it stops where the next run's line comes, at an
+## inner one it goes on to meet it: so the runs join, and the rail goes round the court unbroken
+func _mw_rail(cells: Dictionary, d: Vector2i, line: int, a0: int, a1: int) -> void:
+	var h := GO_D * 0.5
+	var ag := Vector2i(0, 1) if d.x != 0 else Vector2i(1, 0)      # along the run, in squares
+	var c0 := Vector2i(line, a0) if d.x != 0 else Vector2i(a0, line); var c1 := Vector2i(line, a1) if d.x != 0 else Vector2i(a1, line)
+	var out := Vector3(d.x, 0, d.y); var al := Vector3(ag.x, 0, ag.y)
+	var ins := 0.13      # how far in from the edge the rail stands
+	var s0 := _mw_p(c0) + out * (h - ins) - al * h; var s1 := _mw_p(c1) + out * (h - ins) + al * h
+	s0 += al * (-ins if cells.has(c0 - ag) else ins); s1 += al * (ins if cells.has(c1 + ag) else -ins)
+	var ln := (s1 - s0).dot(al)
+	bb(s0 - out * 0.07, s1 + out * 0.07 + Vector3(0, 0.05, 0))      # the plinth
+	bb(s0 - out * 0.08 + Vector3(0, 0.33, 0), s1 + out * 0.08 + Vector3(0, 0.39, 0))      # the rail
+	var n := maxi(1, int(round((ln - 0.3) / 0.23)))
+	for k in n + 1:      # the balusters: a foot, a belly, a neck
+		var c := s0 + al * (0.15 + (ln - 0.3) * k / n)
+		bb(c - al * 0.03 - out * 0.03 + Vector3(0, 0.05, 0), c + al * 0.03 + out * 0.03 + Vector3(0, 0.1, 0))
+		bb(c - al * 0.045 - out * 0.045 + Vector3(0, 0.1, 0), c + al * 0.045 + out * 0.045 + Vector3(0, 0.22, 0))
+		bb(c - al * 0.026 - out * 0.026 + Vector3(0, 0.22, 0), c + al * 0.026 + out * 0.026 + Vector3(0, 0.33, 0))
+	for c2 in [s0, s1]:      # a post where it ends
+		bb((c2 as Vector3) - al * 0.07 - out * 0.07, (c2 as Vector3) + al * 0.07 + out * 0.07 + Vector3(0, 0.43, 0))
 
 ## what stands about the courts: two mirrors under their sheets, large, each on a pillar of its own at an end of the
 ## channel, turned to it; her statue, broken, on a rock; rocks, some with green on them. Laid by where they fall to
