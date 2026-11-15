@@ -23,17 +23,24 @@ Everything is in `eidolon-demo/`. The first level, ivory (`goiv/`), is the worke
 
 `python3.11 -I tools/ivory_level.py -- <out.glb> <out.json> <seed> <ao samples> <plan.json>`, then `godot --headless --path . --import`.
 
-- **Slabs**: about 0.36 m thick. The outline is broken: 0.3 m steps, jitter of a few cm, smoothed once.
-  - Chip the top edge here and there, but not near a flight's end.
-  - Where a flight meets a floor, the edge runs square across it (`square_to_flights`).
-- **Flights**: one solid each, with a stringer under the line of nosings and eased nosings.
+- **Slabs**: about 0.46 m thick, cut as a mason cuts them (the user: "corners as if carved, cut off").
+  - Every corner that stands out is cut off aslant, each cut its own size (0.14–0.3 m), not quite square to the corner.
+  - The top edge is a broad chamfer (0.09–0.17 m) whose breadth wanders along the edge; it dies away before a flight.
+  - The outline runs in a few flat lengths (0.5–0.95 m), each turned a little its own way, so each face takes the light differently.
+  - Pieces hang lower under the edge here and there; chips take the edge only, never the top, which is dead level.
+  - Fill the top with `bmesh.ops.triangle_fill`, never an inner ring (it folds at notches) or `EAR_CLIP` (it bridges an L's notch when the face runs the other way). The builder reports any cap triangle outside its outline: it must report none.
+  - Where a flight meets a floor, the edge runs square across it (`square_to_flights`), with no chamfer and no chip.
+- **Flights**: one solid each, with a stringer under the line of nosings and eased nosings. Stairs stay square: no cut corners.
   - The last tread sits a few mm under the floor and runs on under it. Coplanar faces z-fight into grey hatching.
   - The rock under a flight is flush with its sides: the stair continues the rock.
-- **Rock** (`mass`):
-  - Broad planes of cut stone, a little in under the slab, then out and in going down, wider far down. Simplify dense outlines (Douglas-Peucker) or the rock striates.
-  - A cleft or two starting below the top edge, and a shelf.
-  - Upright corners eased by bevels of 0.04–0.12 m: the "missing chips".
-  - Never organ-pipe columns, random lumps, domes or mushrooms. Ledge tops are flat breaks that lean one way, with an eased rim.
+- **Rock under a floor** (`blocks`): soft low-poly, as the picture's.
+  - A few broad blocks along each edge (1.1–2 m), each turned its own way (up to ±20°), so each takes the light its own way.
+  - Some are set back under the slab (a dark recess beneath it); some stand out a step lower with a lit top (ledges), their faces leaning back above the step.
+  - Every block steps out partway down: never one straight pillar. Rows of upright prisms read as organ pipes, which the user hates.
+  - Every edge is eased in two facets (bevel, 2 segments): soft, not sharp. Outer corners are cut off.
+  - A core of rock behind them all.
+- **Ledges** are clusters of soft boulders: a few broad faces, a top leaning one way, a side or a corner cut off, the top smaller than the body.
+- **Small things set in the rock** (the relief stone) are placed by a ray cast onto the face the eye sees, half sunk in it.
 - **Props**:
   - Cut by hand, never perfect: a block's faces a little uneven, its edges eased unevenly, chips, ornament **cut in**.
   - Trees are simple carved-stone shapes in the level's colours.
@@ -44,24 +51,19 @@ Everything is in `eidolon-demo/`. The first level, ivory (`goiv/`), is the worke
 - **Palettes are sampled from the picture**, each as 4 tones: top, lit, mid, dark.
   - Measure hue and saturation, not only value.
   - Rock is **brown**, not grey: about h 20–28°, s 0.3–0.4.
-- **Light is soft and diffuse.**
-  - A face-normal ramp with wide smoothsteps.
-  - Warm light thrown back into the shade (`bounce`).
-  - Soft shadow edges (`shadow_blur` about 2.6).
-  - Only the level's one sun lights it: filter the other lights in `light()`.
-  - MSAA 4x.
-- **The bottom dissolves into mist.** The user has said it a hundred times.
-  - Every rock fades a little way under **its own** floor, by depth: `1 - exp(-(depth + wisp - start) / length)`, with start about 0.75 and length about 1.55 m.
-  - The fog edge is broken by fbm wisps so it never cuts straight.
-  - The global height fog reaches only the far bottom.
-  - Fog colour is the sky gradient at that height on the screen; the bottom is a warm beige.
-  - Hide any sea-world vignettes and rays.
+- **Light is simple and sharp**: one tone per face, crisp edges between faces (the user: "the light in the original is much simpler and sharper").
+  - A face-normal ramp with narrow smoothsteps; only the level's one sun (filter the other lights in `light()`); MSAA 4x.
+  - No AO, no darkening, no veil and no mist noise on rock: each of these made a "double fade".
+- **The bottom dissolves into mist, in one smooth fade.** The user has said it a hundred times.
+  - Every rock fades under **its own** floor, by its depth under the slab (vertex colour G): smoothstep from about 0.8 m down over about 2.3 m, its edge broken by fbm wisps. Measure the fade on the picture (a column of pixels down a dark face) and match it.
+  - Fog colour is the sky gradient at that height on the screen. Hide sea-world vignettes, rays and any screen vignette: the picture's sky and mist are clear to the edges.
+  - Keep the sun's glow on the sky warm; a bright glow clips to green-yellow.
+- **Palettes are sampled per thing from the picture** (the fallen face near white with grey-brown shade, the cypress a khaki olive, the far rock warm once the haze is over it), and checked with `vstats.py`.
 - **The far off is shapes and gradation, not detail.**
-  - Flat silhouettes (`sil`), each band paler with distance.
-  - Each fades into the mist from its top down.
-  - Forced perspective, because the eye is orthographic: smaller and higher with distance, and rows converging to a vanishing point.
-  - Leave open mist between groups.
-  - Far things stand on table crags built under their feet.
+  - Place each far thing where the picture has it: a pixel of the picture at a depth, `P(X, Y, depth)`.
+  - Flat silhouettes (`sil`), no shadows on them, each band paler with distance, each fading into the mist from its top down.
+  - Far rock as towers (upright walls, a step partway, a broken top) or broad soft hills deep in the haze; a row of columns on one sloped ridge, never a table or a row of pillars.
+  - Leave open mist between groups: the picture has more air than things.
 - **The heroine (Ione)**:
   - The hero shader's level branch: smooth normals, two ramps (skin and cloth) in the picture's colours, the level's sun only.
   - No grain, no extra lights, or her white burns out.
@@ -74,12 +76,15 @@ Everything is in `eidolon-demo/`. The first level, ivory (`goiv/`), is the worke
   - Every rule must be readable on screen.
 - **Vocabulary** (combine, invent, keep each rule one sentence):
   - **watcher**: strikes whoever ends a step on the node it watches; breaks when stepped on from the side.
+  - **gazer**: looks along a line until a stone or another face stands in the way; whoever ends a step in its look is struck; walked into from beside or behind, it breaks, and its plinth stays.
   - **wanderer**: paces a route one step per turn; caught from the front, broken from behind; watchers strike it too.
-  - **stone**: pushed one node straight on along level ways; blocks wanderers.
+  - **stone**: pushed one node straight on along level ways, never onto a plinth or the ring; blocks wanderers and stops a gazer's look (behind it is shade, so it can be pushed ahead as a shield).
   - **lever**: turned from beside it, it turns watchers, raises a stair, and so on.
   - **exit ring**.
-- **Write the solver first**, a Python breadth-first search over the full state (`tools/ivory/puzzle_design.py` → `<level>/puzzle.json`).
-  - Aim for a solution of 14–30 swipes, unique at its length, with no trap states and a forced order.
+- **Write the solver first**, a Python breadth-first search over the full state (`tools/ivory/puzzle_design.py` → `<level>/puzzle.json`; for a level of its own, `tools/go/first_trial.py`: a generator, boards laid by hand in `HAND`, and `--hand` to prove them).
+  - Good first trials are laid by hand around one clear idea and proven by the search; random boards are mostly unsolvable or too short.
+  - Draw it before building it: `tools/go/draw_trial.py <design> <out.png> <step>:<caption> ...` shows the board and key moments of its solution side by side.
+  - Aim for a solution of 14–30 swipes (a first level about 15), unique at its length, with no dead ends (states from which the ring cannot be reached; list them and remove their cause, e.g. a face's plinth stays when it breaks and the stone is never pushed onto it) and a forced order.
   - Give it 2–4 insights, each provable: the solution must get longer without that element.
   - Check node margins and clearances, and that the edges leaving a node differ on screen by 50° or more.
   - Write the solution and its state trace into the JSON.
@@ -92,8 +97,8 @@ Everything is in `eidolon-demo/`. The first level, ivory (`goiv/`), is the worke
 
 ## 5. Review loop (before showing anything)
 
-- Render a clean frame: `tools/ivory/render.sh <dir>`.
-- Compare large side-by-sides of top and bottom with the concept (`pair.py`). Also run `overlay.py`, and `vstats.py` (value classes; the concept's are about 25/28/17/16/14).
+- Render a clean frame: `tools/ivory/render.sh <dir>` (`RES=1080x1920 TMO=1700` for a large one; `IV_DBG=4` shows how much mist each pixel has).
+- Compare large side-by-sides of top and bottom with the concept (`pair.py`), and the same region of both enlarged (`zoom.py <concept> <render> <out> x0 y0 x1 y1`). Also run `overlay.py`, and `vstats.py` (value classes; the concept's are about 25/28/17/16/14).
 - Zoom on every junction: stairs to floors, the feet of columns and arches, rock corners, the mist line, the far shapes, the heroine.
 - Hunt for these faults and fix each one:
   - crooked or slanted edges;
