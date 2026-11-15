@@ -188,7 +188,7 @@ def loft(bm, rings, cap0=True, cap1=True):
     return vs
 
 
-def slab(name, outline, h, thick=0.46, keep=()):
+def slab(name, outline, h, thick=0.6, keep=()):
     """a floor of marble: a thick slab on the broken outline, level on top, its top edge eased (a chamfer that catches
     the light, as the picture's), here and there a chip off it and a piece gone from its under edge; square and sharp
     where a flight meets it (keep, the points where flights come to it)"""
@@ -242,7 +242,7 @@ def resample(poly, seg=(0.8, 1.4)):
     return out
 
 
-def mass(name, poly, top_at, inset=0.06, rough=1.0, dome=False):
+def mass(name, poly, top_at, inset=0.06, rough=1.0, dome=False, soft=True):
     """a body of rock under a floor, a flight or a ledge, as cut stone breaks: a few broad planes, a little in under the
     edge above, then out and in again going down, wider far down where the mist has it; a cleft down a face, a shelf;
     its upright corners eased off, each by its own breadth (the picture's broken corners). A ledge (dome) has a top of
@@ -292,7 +292,7 @@ def mass(name, poly, top_at, inset=0.06, rough=1.0, dome=False):
             try: bmesh.ops.bevel(bm, geom=pick, offset=rnd.uniform(0.04, 0.12), segments=1, affect='EDGES', clamp_overlap=True)
             except Exception: pass
     ob = finish(bm, name + '_rock', fine=0.9)
-    soften(ob)
+    if soft: soften(ob)
     set_depth(ob, top_at)
     return ob
 
@@ -410,16 +410,22 @@ def frame_block(name, c, th, u0, u1, v0, v1, rings, ease=0.05, chamf=(0.0, 0.0),
     return finish(bm, name, fine=2.5)
 
 
-def blocks(name, poly, top_y, keep=()):
+def blocks(name, poly, top_y, keep=(), h=None):
     """the rock under a floor, as the picture shows it: a few broad blocks along each edge, each turned its own way a
     little (so each takes the light its own way), some set back right under the slab (a dark recess under it), some
-    standing out a step lower (their tops catch the light: ledges); a block about each corner standing out of it; a
+    standing out a step lower (their tops catch the light: ledges), some up beside the slab nearly to its top, so the
+    marble is a chunk set into the brown rock (as the picture's); a block about each corner standing out of it; a
     core of rock behind them all. keep: (point, radius) where nothing may stand out (a flight's end, the cloth)"""
     P = ccw(poly); n = len(P)
     near = lambda q, extra: any(math.hypot(q[0] - k[0], q[1] - k[1]) < r + extra for (k, r) in keep)
     obs = []
     def one(nm_, c, th, hl, led, din, back=(-0.18, -0.06)):
-        if led:
+        if led == 'bind':      # (beside the floor, a step out, its top a little under the floor's: the marble set into the rock)
+            out = rnd.uniform(0.08, 0.28); yt = h - rnd.uniform(0.15, 0.38)
+            lean = (rnd.uniform(-0.05, 0.05), -rnd.uniform(0.02, 0.08)); led = True
+        elif led == 'flush':      # (right under the slab, its face in the slab's own plane: white above, brown below, no recess)
+            out = rnd.uniform(-0.02, 0.04); yt = h - 0.56; lean = (0.0, 0.0); led = False
+        elif led:
             out = rnd.uniform(0.12, 0.32); yt = top_y + 0.05 - rnd.uniform(0.3, 0.85)
             lean = (rnd.uniform(-0.08, 0.08), -rnd.uniform(0.04, 0.16))
         else:
@@ -436,14 +442,25 @@ def blocks(name, poly, top_y, keep=()):
         L = math.hypot(b[0] - a[0], b[1] - a[1])
         if L < 0.05: continue
         e = ((b[0] - a[0]) / L, (b[1] - a[1]) / L); nm = edge_n(a, b); th = math.atan2(nm[1], nm[0])
+        zones = []      # (where along this edge nothing may stand out: about a flight's end, where the cloth hangs)
+        for (k, r) in keep:
+            tk = (k[0] - a[0]) * e[0] + (k[1] - a[1]) * e[1]; dk_ = abs((k[0] - a[0]) * nm[0] + (k[1] - a[1]) * nm[1])
+            if dk_ < r: hw = math.sqrt(r * r - dk_ * dk_); zones.append((tk - hw, tk + hw))
         t = 0.0
         while t < L - 0.2:
             l = rnd.uniform(1.1, 2.0)
+            for (z0, z1) in zones:      # (a length stops where a zone begins or ends: it is never thrown away whole)
+                for zb in (z0, z1):
+                    if t + 0.35 < zb < t + l: l = zb - t
             if L - (t + l) < 0.6: l = L - t
             mid = (a[0] + e[0] * (t + l * 0.5), a[1] + e[1] * (t + l * 0.5))
-            nr_ = near(mid, l * 0.5)
-            led = (not nr_) and rnd.random() < 0.42
-            if led: one('%s_blk%d_%d' % (name, i, int(t * 10)), mid, th + rnd.uniform(-0.38, 0.38), l * 0.5 + 0.06, True, rnd.uniform(0.5, 0.9))
+            tm = t + l * 0.5
+            nr_ = any(z0 - 0.05 < tm < z1 + 0.05 or (t < z1 and t + l > z0) for (z0, z1) in zones)
+            r_ = rnd.random(); seen = nm[0] + nm[1] > 0.3      # (a side the eye sees: there the rock binds the marble more often)
+            if h is not None and (nr_ or r_ < (0.45 if seen else 0.5)):      # (flush under the slab; where nothing may stand out, always)
+                one('%s_fl%d_%d' % (name, i, int(t * 10)), mid, th + rnd.uniform(-0.04, 0.04), l * 0.5 - 0.02, 'flush', rnd.uniform(0.5, 0.9))
+            elif not nr_ and h is not None and r_ < (0.75 if seen else 0.65): one('%s_bnd%d_%d' % (name, i, int(t * 10)), mid, th + rnd.uniform(-0.15, 0.15), l * 0.5 + 0.04, 'bind', rnd.uniform(0.5, 0.9))
+            elif not nr_: one('%s_blk%d_%d' % (name, i, int(t * 10)), mid, th + rnd.uniform(-0.38, 0.38), l * 0.5 + 0.06, True, rnd.uniform(0.5, 0.9))
             else:      # (set back under the slab, its top hidden in it: it must not come out through the slab's side)
                 hl = l * 0.5 - 0.1; out = rnd.uniform(-0.18, -0.06)
                 dm = math.asin(max(0.0, min(1.0, (-out - 0.03) / max(hl, 0.1))))
@@ -554,7 +571,7 @@ def floor(name, x0, x1, z0, z1, h, ch, poly=None):
         q = ray_exit(poly, (vol[0], vol[2]), (1.0, 0.0))
         if q: kp.append((q, 0.55))
     m = [slab(name, out, h, keep=keep)]
-    r = blocks(name, poly, h - 0.43, keep=kp)
+    r = blocks(name, poly, h - 0.57, keep=kp, h=h)
     return m, r
 
 
@@ -653,7 +670,7 @@ def flight(foot, head, w, n=None, step=0.12):
     d = Vector((hx - fx, 0.0, hz - fz)); L = d.length; d.normalize()
     s = Vector((-d.z, 0.0, d.x))
     n = int(n or max(1, round((hy - fy) / step))); rise = (hy - fy) / n; run = L / n
-    D = 0.24      # the stringer: how deep under the line of the nosings (and under the upper floor, past the head)
+    D = 0.42      # the stringer: how deep under the line of the nosings (and under the upper floor, past the head): a chunk of marble
     under = lambda t: min(fy + rise * (1.0 + t / run), hy) - D
     end = L + 0.34
     prof = [(-0.2, min(under(-0.2), fy - 0.25)), (-0.2, fy - 0.004), (0.0, fy - 0.004)]
@@ -682,7 +699,20 @@ def flight(foot, head, w, n=None, step=0.12):
     tt = lambda x, z: under((Vector((x, 0.0, z)) - base).dot(d)) + 0.02
     foot_ = [base + d * -0.1 + s * (sd * w * 0.5) for sd in (-1.0, 1.0)]
     head_ = [base + d * end + s * (sd * w * 0.5) for sd in (1.0, -1.0)]
-    r = [mass('flight', [(q.x, q.z) for q in foot_ + head_], tt, inset=0.0, rough=0.6)]
+    r = [mass('flight', [(q.x, q.z) for q in foot_ + head_], tt, inset=0.0, rough=0.6, soft=False)]
+    for sd in (-1.0, 1.0):      # (rock up beside it, under its side, a block a stretch, stepping up with it: the stair set into the rock)
+        th = math.atan2(s.z * sd, s.x * sd); t = rnd.uniform(-0.05, 0.25)
+        while t < L - 0.35:
+            l = min(rnd.uniform(0.55, 0.85), L - 0.2 - t)
+            if l < 0.3: break
+            c = base + d * (t + l * 0.5) + s * (sd * w * 0.5)
+            yt = under(t) + 0.02 - rnd.uniform(0.0, 0.1)
+            if rnd.random() < 0.6:      # (a chunk, as broad as it is long: never a plank)
+                rings = [(yt, 0.0, 0.0), (yt - rnd.uniform(0.35, 0.7), rnd.uniform(0.0, 0.05), rnd.uniform(0.04, 0.16)), (yt - 16.0, 0.2, rnd.uniform(0.5, 1.0))]
+                r.append(frame_block('flank', (c.x, c.z), th + rnd.uniform(-0.12, 0.12), -l * 0.5, l * 0.5, -w * 0.45, rnd.uniform(0.12, 0.34), rings,
+                                     rnd.uniform(0.035, 0.06), (rnd.uniform(0.05, 0.15), rnd.uniform(0.05, 0.15)), (0.0, -rnd.uniform(0.02, 0.08))))
+            t += l + rnd.uniform(0.0, 0.08)
+    for ob in r[1:]: set_depth(ob, tt)
     return m, r
 
 

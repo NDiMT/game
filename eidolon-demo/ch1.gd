@@ -2061,6 +2061,7 @@ uniform float sil = 0.0;      // (far off: a shape in the haze, its faces hardly
 uniform float lf_len = 2.3;
 uniform float lfog = 0.0;      // (the level's own rock: its depth under the floor it bears is in COLOR.g, a quarter of a metre to one)
 uniform float lf_hi = 0.8;
+uniform float shadow_k = 1.0;      // (how much cast shadow falls on it: none on the rock, whose faces are each one clean tone)
 uniform float lf_lo = 3.2;
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
@@ -2097,8 +2098,7 @@ void fragment(){
 	float fk = max(1.0 - smoothstep(fog_ref + fog_lo, fog_ref + fog_hi, wp.y), far_k);
 	if (haze > 0.0) fk = max(fk, haze * 0.22 * smoothstep(44.0, 52.0, -VERTEX.z));      // (VERTEX: from the eye)
 	if (lfog > 0.5) {      // (into the mist softly, as mist does: a long fading, its edge in wisps)
-		float wisp = fbm(wp * 0.3 + vec3(0.0, wp.y * 0.2, 0.0)) - 0.5;
-		float lt = clamp((ld + wisp * 0.25 - lf_hi) / lf_len, 0.0, 1.0);
+		float lt = clamp((ld - lf_hi) / lf_len, 0.0, 1.0);      // (one clean fade down each face: no wisps, they smudged the rock)
 		fk = max(fk, lt * lt * (3.0 - 2.0 * lt));
 	}
 	ALBEDO = c * (1.0 - fk);
@@ -2109,7 +2109,7 @@ void fragment(){
 void light(){
 	vec3 lw = normalize((INV_VIEW_MATRIX * vec4(LIGHT, 0.0)).xyz);      // (key_dir is this place's sun)
 	if (LIGHT_IS_DIRECTIONAL && dot(lw, normalize(key_dir)) > 0.98) {      // (only the one sun of this place: no other light of the world)
-		vec3 k = mix(shade_tint, vec3(1.0), sil > 0.5 ? 1.0 : ATTENUATION);      // (far off: no shadow on it, a shape in the haze)
+		vec3 k = mix(shade_tint, vec3(1.0), sil > 0.5 ? 1.0 : mix(1.0, ATTENUATION, shadow_k));      // (far off, or rock: no shadow on it)
 		DIFFUSE_LIGHT += alb_in_light > 0.5 ? k * ALBEDO : k;
 	}
 }
@@ -3377,7 +3377,7 @@ func _ivr_cam() -> void:
 	var vp := get_viewport().get_visible_rect().size
 	cam.keep_aspect = Camera3D.KEEP_WIDTH; cam.size = w * maxf(1.0, (vp.x / vp.y) / 0.5625)
 
-func _ivr_mat(kind: String, ao := 1.0, local := false) -> ShaderMaterial: return _iv_mat(kind, 0.0, {"lfog": 1.0 if local else 0.0, "fog_hi": -3.6, "fog_lo": -7.5, "ao_k": ao * ({"marble2": 0.4, "olive2": 0.2, "bark": 0.3, "rock2": 0.0} as Dictionary).get(kind, 1.0), "veins": 0.6 if kind == "marble2" else 0.0, "dk": 0.0, "bounce": 0.0, "haze": 1.0})
+func _ivr_mat(kind: String, ao := 1.0, local := false) -> ShaderMaterial: return _iv_mat(kind, 0.0, {"lfog": 1.0 if local else 0.0, "fog_hi": -3.6, "fog_lo": -7.5, "ao_k": ao * ({"marble2": 0.4, "olive2": 0.2, "bark": 0.3, "rock2": 0.0} as Dictionary).get(kind, 1.0), "veins": 0.6 if kind == "marble2" else 0.0, "dk": 0.0, "bounce": 0.0, "haze": 1.0, "shadow_k": 0.0 if kind == "rock2" else 1.0})
 
 ## the way drawn on the stone: a pale line, and at each node a pale disc in a darker ring
 func _ivr_way() -> void:
