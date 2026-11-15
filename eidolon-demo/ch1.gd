@@ -127,7 +127,7 @@ func _init() -> void:
 	if flip_demo: title_sub = "the turning water  ·  a trial\ntap to begin"; end_sub = "end of the trial\ntap to begin again"
 	if match_demo: title_sub = "the still water  ·  a trial\ntap to begin"
 	if figure_demo: title_sub = "the face in the water  ·  a trial\ntap to begin"
-	if geo_demo: title_sub = "what is looked at, stays  ·  an idea\ntap to begin"
+	if geo_demo: title_sub = "what is looked at, stays\ntap to begin"
 	if geo_demo: sea_c = Color("2b6880"); mist_c = Color("7f8fb4"); bg_c = Color("1c4a5e"); shadow_c = Vector3(0.5, 0.52, 0.8)      # (this trial: the same sea toward evening)
 
 func _hollows() -> Array:
@@ -484,7 +484,7 @@ func _flip_icon_press() -> void:
 	else: _flip(Vector2.ZERO, [WL.find(flip_icon_wid)])
 
 ## (the trial, with the eye's own turn) the pane over the picture stays: it gives the world its look, and the turned picture its other look
-func _flip_pane_always() -> bool: return flip_fx == "" and (flip_demo or flip_test)
+func _flip_pane_always() -> bool: return flip_fx == "" and (flip_demo or flip_test) and not geo_demo      # (not in the trial of the look: its waters are the game's own, as they were)
 
 ## The turn itself, as a thing the eye does: it comes down until it looks along the waterline (the world stands above the
 ## line and what the water shows of it hangs below, she above and her shadow under her feet), and goes on under it.
@@ -658,13 +658,15 @@ func _unhandled_input(ev: InputEvent) -> void:
 		ev = ev.duplicate(); ev.position.y = get_viewport().get_visible_rect().size.y - ev.position.y
 	super._unhandled_input(ev)
 
-# ---------------------------------------------------------------- what is looked at, stays (a picture of an idea)
-## Not a level yet: one scene, to see whether the idea reads. The monument is alive: its bridges, rings and slabs drift
-## slowly, rocked by the sea. What a statue of her looks at stands still. The statues are veiled; she carries the
-## veils. Here: a statue on the right looks at the turning deck in the middle, and its bridge stands still across the
-## water; a statue on the near side looks into a bronze mirror, and the mirror sends the look along the far-left road,
-## where it holds a slab in the gap. A third statue is veiled, and the slab it would hold drifts askew in the water.
-## (A thing held by a look has a thin line of gold light on it; the looks themselves are faint beams.)
+# ---------------------------------------------------------------- what is looked at, stays (a trial)
+## The monument is alive: its deck turns and its slabs drift, rocked by the sea. What a statue of her looks at stands
+## still, and can be walked on; what nothing looks at cannot. The statues are veiled; a tap on one sends her to it,
+## and she takes its veil off, or puts it back. Inside the square lies a still pool, as in the game's courts.
+## The riddle: the gate stands at the far corner. The road to it is broken by a gap whose slab drifts out to sea and
+## back; the turning deck in the pool carries a bridge across from the right-hand road to that gap. The statue on the
+## right looks at the deck. The statue on the near side looks away from the gap, into a bronze mirror on the left
+## corner, and the mirror turns its look up the far-left road onto the slab. So: unveil the near statue while the slab
+## is in its gap; unveil the right one while the bridge lies across; cross.
 const GD_G := 9.3
 const GCX := 110.0
 const GH_VIEW := 15.0
@@ -678,6 +680,8 @@ var gh_clear := {}
 var gh_t := 0.0
 var gh_flies := []
 var gh_said := {}
+var gh_st := {}      # the statues: id -> {statue, veil, fold, beams, stand, looks, tied, head}
+var gh := {"deck": 30.0, "deck_held": false, "slab_t": 0.0, "slab_held": false, "slab_out": 1.2, "busy": false}
 
 func _gh_clear_code(code: String) -> String:      # (a thing of the picture is not paled by the water's haze: the sea's face tints it)
 	return code.replace("col = mix(col, fog_col, smoothstep(-1.35, -4.6, wp.y) * 0.9);", "").replace("col *= mix(0.9, 1.0, clamp(smoothstep(-1.6, -0.1, wp.y) + wt, 0.0, 1.0));", "")
@@ -921,10 +925,7 @@ func _gh_pool() -> void:
 	pit.position = Vector3((x0 + x1) * 0.5, -0.19 - 1.2, (z0 + z1) * 0.5)
 	var pmat := ShaderMaterial.new(); pmat.shader = shaders["pit"]; pmat.set_shader_parameter("y0", -0.2); pmat.set_shader_parameter("y1", -2.4)
 	pit.material_override = pmat; pit.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(pit)
-	# its glass, round the deck and the bridge that stand in it (over them it would lay the water's picture on the stone)
-	for r in [[x0, z0, x1, -1.62], [x0, 1.62, x1, z1], [x0, -1.62, 108.5, -0.6], [108.5, -1.62, 109.0, -1.2], [111.5, -1.62, x1, -0.6], [111.0, -1.62, 111.5, -1.2],
-			[x0, 0.6, 108.5, 1.62], [108.5, 1.2, 109.0, 1.62], [111.5, 0.6, x1, 1.62], [111.0, 1.2, 111.5, 1.62]]:
-		glass(r[0], r[1], r[2], r[3])
+	glass(x0, z0, x1, z1)      # (the deck that turns in it stands over it: the glass does not show over the deck)
 	for r in [[106.95, -1.0, 107.05, 1.0], [107.8, 2.95, 109.2, 3.05], [110.8, -3.05, 112.2, -2.95]]:
 		blk(Vector3(r[0], WATER - 0.8, r[1]), Vector3(r[2], 0.03, r[3]), "stone").material_override = pal("stone", "flat")
 	# the mirrored copy: the same things, turned over about the water, drawn from both sides and not mirrored again in
@@ -955,35 +956,48 @@ func _gh_twin_mat(m: ShaderMaterial, conv: Dictionary) -> ShaderMaterial:
 	conv[m] = c
 	return c
 
-## a look: a faint beam of light from a to b
-func _gh_beam(a: Vector3, b: Vector3) -> void:
+## a look: a faint beam of light from a to b (hidden till the statue looks)
+func _gh_beam(a: Vector3, b: Vector3) -> Node3D:
+	var n := Node3D.new(); add_child(n)
 	var d := b - a
 	for k in [[0.035, Color(1.0, 0.93, 0.72, 0.55)], [0.11, Color(1.0, 0.85, 0.55, 0.12)], [0.24, Color(1.0, 0.8, 0.5, 0.05)]]:
 		var c := CylinderMesh.new(); c.top_radius = k[0]; c.bottom_radius = k[0]; c.height = d.length(); c.radial_segments = 10; c.rings = 1
-		var mi := MeshInstance3D.new(); mi.mesh = c; mi.material_override = mat(k[1], true); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(mi)
-		mi.position = (a + b) * 0.5
-		mi.basis = Basis(Quaternion(Vector3.UP, d.normalized()))
+		var mi := MeshInstance3D.new(); mi.mesh = c; mi.material_override = mat(k[1], true); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; n.add_child(mi)
+		mi.position = (a + b) * 0.5; mi.basis = Basis(Quaternion(Vector3.UP, d.normalized()))
 	var sm := SphereMesh.new(); sm.radius = 0.16; sm.height = 0.32; sm.radial_segments = 12; sm.rings = 6
-	prim(sm, b, mat(Color(1.0, 0.88, 0.6, 0.35), true)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	prim(sm, b, mat(Color(1.0, 0.88, 0.6, 0.35), true), n).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	n.visible = false
+	return n
 
-## a line of gold light round a box held by a look
-func _gh_held(a: Vector3, b: Vector3) -> void:
+## a line of gold light round a box held by a look (local to its parent)
+func _gh_held(a: Vector3, b: Vector3, parent: Node3D) -> Node3D:
+	var n := Node3D.new(); parent.add_child(n)
 	for e in [[a.x - 0.03, a.z - 0.03, b.x + 0.03, a.z + 0.03], [a.x - 0.03, b.z - 0.03, b.x + 0.03, b.z + 0.03], [a.x - 0.03, a.z, a.x + 0.03, b.z], [b.x - 0.03, a.z, b.x + 0.03, b.z]]:
-		blk(Vector3(e[0], b.y - 0.01, e[1]), Vector3(e[2], b.y + 0.025, e[3]), "lamp").material_override = mat(Color("ffd890"))
+		blk(Vector3(e[0], b.y - 0.01, e[1]), Vector3(e[2], b.y + 0.025, e[3]), "lamp", n).material_override = mat(Color("ffd890"))
+	n.visible = false
+	return n
 
-## a statue of her, twice her height, on a plinth; veiled, or looking
-func _gh_statue(p: Vector3, yaw: float, veiled: bool) -> void:
-	var y := p.y
-	blk(Vector3(p.x - 0.55, y, p.z - 0.55), Vector3(p.x + 0.55, y + 0.8, p.z + 0.55), "stone").material_override = pal("stone", "flat")
-	blk(Vector3(p.x - 0.62, y + 0.68, p.z - 0.62), Vector3(p.x + 0.62, y + 0.8, p.z + 0.62), "shade").material_override = pal("shade", "flat")
-	blk(Vector3(p.x - 0.62, y, p.z - 0.62), Vector3(p.x + 0.62, y + 0.12, p.z + 0.62), "shade").material_override = pal("shade", "flat")
-	var top := Vector3(p.x, y + 0.8, p.z)
-	if not veiled: her_statue(top, yaw, "calm", 1.6); return
-	cyl(top, 0.56, 0.26, 2.15, pal("linen", "flat"), 14); ball(top + Vector3(0, 2.32, 0), 0.3, pal("linen", "flat"))
-	cyl(top + Vector3(0, 1.25, 0), 0.4, 0.38, 0.06, pal("rope", "flat"), 14); cyl(top + Vector3(0, 0.4, 0), 0.53, 0.51, 0.06, pal("rope", "flat"), 14)
-	for k in 5:      # its hem, lying in folds on the plinth
+## the plinth of a statue (it stands still, and the pool shows it)
+func _gh_plinth(p: Vector3) -> void:
+	blk(Vector3(p.x - 0.55, 0, p.z - 0.55), Vector3(p.x + 0.55, 0.8, p.z + 0.55), "stone").material_override = pal("stone", "flat")
+	blk(Vector3(p.x - 0.62, 0.68, p.z - 0.62), Vector3(p.x + 0.62, 0.8, p.z + 0.62), "shade").material_override = pal("shade", "flat")
+	blk(Vector3(p.x - 0.62, 0, p.z - 0.62), Vector3(p.x + 0.62, 0.12, p.z + 0.62), "shade").material_override = pal("shade", "flat")
+
+## a statue of her on its plinth, and its veil: {statue, veil, folded, beam, stand, looks, tied}
+func _gh_statue(id: String, p: Vector3, yaw: float, stand: Vector3, eye_to: Array, tied := false) -> void:
+	var top := Vector3(p.x, 0.8, p.z)
+	var st := her_statue(top, yaw, "calm", 1.6)
+	var veil := Node3D.new(); veil.position = top; add_child(veil)
+	cyl(Vector3.ZERO, 0.56, 0.26, 2.15, pal("linen", "flat"), 14, veil); ball(Vector3(0, 2.32, 0), 0.3, pal("linen", "flat"), veil)
+	cyl(Vector3(0, 1.25, 0), 0.4, 0.38, 0.06, pal("rope", "flat"), 14, veil); cyl(Vector3(0, 0.4, 0), 0.53, 0.51, 0.06, pal("rope", "flat"), 14, veil)
+	for k in 5:
 		var a := k * TAU / 5.0 + 0.3
-		var f := ball(top + Vector3(cos(a) * 0.5, 0.04, sin(a) * 0.5), 0.17, pal("linen", "flat")); f.scale = Vector3(1.3, 0.45, 1.0)
+		var f := ball(Vector3(cos(a) * 0.5, 0.04, sin(a) * 0.5), 0.17, pal("linen", "flat"), veil); f.scale = Vector3(1.3, 0.45, 1.0)
+	var fold := ball(top + Vector3(0.38, 0.05, 0.38), 0.22, pal("linen", "flat")); fold.scale = Vector3(1.4, 0.35, 1.1); fold.visible = false
+	var beams := []
+	for i in range(eye_to.size() - 1): beams.append(_gh_beam(eye_to[i], eye_to[i + 1]))
+	st.visible = false
+	gh_st[id] = {"statue": st, "veil": veil, "fold": fold, "beams": beams, "stand": stand, "looks": false, "tied": tied, "head": top + Vector3(0, 2.4, 0)}
 
 func _gh_build() -> void:
 	gh_pic = Node3D.new(); add_child(gh_pic); gh_hang = Node3D.new(); add_child(gh_hang); gh_inv = Node3D.new(); add_child(gh_inv); gh_inv.visible = false
@@ -994,12 +1008,16 @@ func _gh_build() -> void:
 	var slab := func(r: Array) -> void:
 		blk(Vector3(r[0], WATER - 0.8, r[1]), Vector3(r[2], yD, r[3]), "stone").material_override = pal("stone", "flat")
 		blk(Vector3(r[0] - 0.05, yD - 0.26, r[1] - 0.05), Vector3(r[2] + 0.05, yD - 0.1, r[3] + 0.05), "shade").material_override = pal("shade", "flat")
-	# the square: four roads, each with a gap in the middle of it, and the corners
-	for r in [[105.75, 2.95, 107.8, 4.25], [109.2, 2.95, 114.25, 4.25], [112.95, -4.25, 114.25, 4.25], [105.75, -4.25, 110.8, -2.95], [112.2, -4.25, 114.25, -2.95], [105.75, -4.25, 107.05, -1.0], [105.75, 1.0, 107.05, 4.25],
-			[112.6, 2.6, 115.0, 5.0], [104.6, 2.3, 107.7, 5.4], [112.3, -5.4, 115.4, -2.3], [104.8, -5.2, 108.0, -2.0], [109.3, 4.25, 110.7, 5.6], [114.25, -0.7, 115.6, 0.7], [109.3, -5.6, 110.7, -4.25]]:
+	# the square: four roads (the far-left one broken by a gap, the far-right one by another), the corners, the statues' footings
+	for r in [[105.75, 2.95, 114.25, 4.25], [112.95, -4.25, 114.25, 4.25], [105.75, -4.25, 110.8, -2.95], [112.2, -4.25, 114.25, -2.95], [105.75, -4.25, 107.05, -1.0], [105.75, 1.0, 107.05, 4.25],
+			[112.6, 2.6, 115.0, 5.0], [104.6, 2.3, 107.7, 5.4], [112.3, -5.4, 115.4, -2.3], [104.8, -5.2, 108.0, -2.0], [109.3, 4.25, 110.7, 5.6], [114.25, -0.7, 115.6, 0.7], [110.8, -5.6, 112.2, -4.25]]:
 		slab.call(r)
-	for r in [[105.75, 2.95, 107.8, 4.25], [109.2, 2.95, 112.95, 4.25], [112.95, -2.95, 114.25, 2.95], [107.05, -4.25, 110.8, -2.95], [112.2, -4.25, 112.95, -2.95], [105.75, -2.0, 107.05, -1.0], [105.75, 1.0, 107.05, 2.95]]: _gh_tiles(r, yD)
+	for r in [[105.75, 2.95, 112.95, 4.25], [112.95, -2.95, 114.25, 2.95], [107.05, -4.25, 110.8, -2.95], [112.2, -4.25, 112.95, -2.95], [105.75, -2.0, 107.05, -1.0], [105.75, 1.0, 107.05, 2.95]]: _gh_tiles(r, yD)
 	cyl(Vector3(113.6, yD - 0.012, 3.6), 0.5, 0.5, 0.025, pal("gold", "flat"), 24); cyl(Vector3(113.6, yD - 0.004, 3.6), 0.36, 0.36, 0.02, pal("stone", "flat"), 24)
+	# balustrades along the pool's near and far edges (the bridge lands only on the left and on the right)
+	for z in [2.98, -2.98]:
+		for i in 25: blk(Vector3(107.2 + i * 0.235 - 0.03, 0, z - 0.03), Vector3(107.2 + i * 0.235 + 0.03, 0.42, z + 0.03), "stone").material_override = pal("stone", "flat")
+		blk(Vector3(107.12, 0.42, z - 0.06), Vector3(112.88, 0.5, z + 0.06), "stone").material_override = pal("stone", "flat")
 	# the gate at the far corner: two steps, eight columns in a ring, a dome, and light within
 	var gx := 106.4; var gz := -3.6
 	blk(Vector3(gx - 1.5, yD, gz - 1.5), Vector3(gx + 1.5, yD + 0.22, gz + 1.5), "stone").material_override = pal("stone", "flat")
@@ -1008,42 +1026,40 @@ func _gh_build() -> void:
 	cyl(Vector3(gx, yD + 2.94, gz), 1.18, 1.18, 0.22, pal("shade", "flat"), 28)
 	var dm := SphereMesh.new(); dm.radius = 1.12; dm.height = 1.12 * 0.85; dm.is_hemisphere = true; dm.radial_segments = 24; dm.rings = 8
 	prim(dm, Vector3(gx, yD + 3.16, gz), pal("terra", "flat"))
-	for b in [[gx - 0.03, gz - 0.4, gx + 0.03, gz + 0.4], [gx - 0.4, gz - 0.03, gx + 0.4, gz + 0.03]]: blk(Vector3(b[0], yD + 0.44, b[1]), Vector3(b[2], yD + 2.34, b[3]), "lamp").material_override = under_mat(Color("ffe2a0"))
+	for b2 in [[gx - 0.03, gz - 0.4, gx + 0.03, gz + 0.4], [gx - 0.4, gz - 0.03, gx + 0.4, gz + 0.03]]: blk(Vector3(b2[0], yD + 0.44, b2[1]), Vector3(b2[2], yD + 2.34, b2[3]), "lamp").material_override = under_mat(Color("ffe2a0"))
 	for sw in [false, true]:
 		var b1 := _gsw([107.65, -4.85, 107.65, -4.85], sw); _gh_brazier(Vector3(b1[0], yD, b1[1]))
 	lights[4] = Vector4(107.65, yD + 0.9, -4.85, 0.75); lights[5] = Vector4(105.15, yD + 0.9, -2.35, 0.75); lights[6] = Vector4(gx, yD + 1.4, gz, 0.85)
-	# the turning deck in the middle, and its bridge: held by the look from the right, across the water from road to road
-	cyl(Vector3(110, -0.9, 0), 0.5, 0.5, 0.6, pal("shade", "flat"), 16)
-	cyl(Vector3(110, yD - 0.3, 0), 1.55, 1.55, 0.34, pal("stone", "flat"), 36); cyl(Vector3(110, yD - 0.34, 0), 1.6, 1.6, 0.08, pal("shade", "flat"), 36)
-	cyl(Vector3(110, yD + 0.035, 0), 0.32, 0.32, 0.02, pal("gold", "flat"), 20)
-	blk(Vector3(107.05, yD - 0.16, -0.6), Vector3(112.95, yD + 0.04, 0.6), "stone").material_override = pal("stone", "flat")
-	blk(Vector3(107.1, yD - 0.3, -0.45), Vector3(112.9, yD - 0.16, 0.45), "shade").material_override = pal("shade", "flat")
-	_gh_held(Vector3(107.05, yD + 0.04, -0.6), Vector3(112.95, yD + 0.04, 0.6))
-	var halo := CylinderMesh.new(); halo.top_radius = 1.75; halo.bottom_radius = 1.75; halo.height = 0.01; halo.radial_segments = 36
-	prim(halo, Vector3(110, yD + 0.02, 0), mat(Color(1.0, 0.8, 0.45, 0.12), true)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	lights[2] = Vector4(110.0, yD + 0.2, 0.0, 0.6)
-	# the slab in the far-left road's gap, held by the look that the mirror sends
-	blk(Vector3(105.8, yD - 0.18, -0.95), Vector3(107.0, yD + 0.004, 0.95), "stone").material_override = pal("stone", "flat")
-	_gh_held(Vector3(105.8, yD, -0.95), Vector3(107.0, yD, 0.95)); lights[3] = Vector4(106.4, yD + 0.2, 0.0, 0.55)
-	# the slabs nothing looks at: askew in the water
-	for d in [[108.5, 4.9, 0.5, Vector3(0.06, 0.35, -0.08), WATER + 0.12], [111.5, -2.0, -0.45, Vector3(-0.05, 0.6, 0.07), 0.07]]:
-		var n := Node3D.new(); n.position = Vector3(d[0], d[4], d[1]); n.rotation = d[3]; add_child(n)
-		blk(Vector3(-0.7, -0.3, -0.62), Vector3(0.7, 0.05, 0.62), "stone", n).material_override = pal("stone", "flat")
-		blk(Vector3(-0.7, -0.02, -0.62), Vector3(0.7, 0.05, 0.62), "stone", n).material_override = pal("stone", "flat")
-		for i in 2: blk(Vector3(-0.7 + 0.7 * i + 0.34, 0.05, -0.62), Vector3(-0.7 + 0.7 * i + 0.36, 0.055, 0.62), "shade", n).material_override = pal("shade", "flat")
-	# the statues: right (looking at the deck), near side (looking into the mirror), far side (veiled)
-	_gh_statue(Vector3(114.95, yD, 0.0), -PI * 0.5, false)
-	_gh_statue(Vector3(110.0, yD, 4.95), -PI * 0.5, false)
-	_gh_statue(Vector3(110.0, yD, -4.95), 0.0, true)
-	var veil := ball(Vector3(110.6, yD + 0.85, 5.45), 0.24, pal("linen", "flat")); veil.scale = Vector3(1.4, 0.35, 1.1)      # the veil that was on it
-	var eye1 := Vector3(114.75, yD + 3.05, 0.0); var eye2 := Vector3(109.8, yD + 3.05, 4.95)
-	var mp := Vector3(105.25, yD, 4.95)      # the bronze mirror on the left corner, turned to send the look up the far-left road
-	var mr := mirror_stand(mp, PI * 0.25, self, yD, "bare"); mr.scale = Vector3.ONE * 1.35
-	_gh_beam(eye1, Vector3(110.6, yD + 0.05, 0.0))
-	var hit := Vector3(mp.x, eye2.y - 0.35, mp.z)
-	_gh_beam(eye2, hit); _gh_beam(hit, Vector3(106.4, yD + 0.05, 0.0))
+	cyl(Vector3(110, -0.9, 0), 0.5, 0.5, 0.6, pal("shade", "flat"), 16)      # (the deck's pillar, in the pool)
+	for sp in [Vector3(114.95, 0, 0.0), Vector3(110.0, 0, 4.95), Vector3(111.5, 0, -4.95)]: _gh_plinth(sp)
+	var mr := mirror_stand(Vector3(105.25, yD, 4.95), PI * 0.25, self, yD, "bare"); mr.scale = Vector3.ONE * 1.35      # the bronze mirror on the left corner
 	_gh_around()
 	_gh_pool()
+	# --- what moves, what looks (not mirrored in the pool: they move)
+	var dk := Node3D.new(); dk.position = Vector3(110, 0, 0); add_child(dk); N["ghdeck"] = dk
+	cyl(Vector3(0, -0.3, 0), 1.55, 1.55, 0.34, pal("stone", "flat"), 36, dk); cyl(Vector3(0, -0.34, 0), 1.6, 1.6, 0.08, pal("shade", "flat"), 36, dk)
+	cyl(Vector3(0, 0.035, 0), 0.32, 0.32, 0.02, pal("gold", "flat"), 20, dk)
+	blk(Vector3(-2.95, -0.16, -0.6), Vector3(2.95, 0.04, 0.6), "stone", dk).material_override = pal("stone", "flat")
+	blk(Vector3(-2.9, -0.3, -0.45), Vector3(2.9, -0.16, 0.45), "shade", dk).material_override = pal("shade", "flat")
+	for e in [-2.95, 2.95]: blk(Vector3(e - 0.04, -0.17, -0.62), Vector3(e + 0.04, 0.05, 0.62), "gold", dk).material_override = pal("gold", "flat")
+	N["ghdeck_held"] = _gh_held(Vector3(-2.95, 0.04, -0.6), Vector3(2.95, 0.04, 0.6), dk)
+	var sl := Node3D.new(); sl.position = Vector3(106.4, 0, 0); add_child(sl); N["ghslab"] = sl
+	blk(Vector3(-0.62, -0.2, -0.95), Vector3(0.62, 0.03, 0.95), "stone", sl).material_override = pal("stone", "flat")
+	blk(Vector3(-0.56, -0.34, -0.85), Vector3(0.56, -0.2, 0.85), "shade", sl).material_override = pal("shade", "flat")
+	for i in 2: blk(Vector3(-0.62, 0.03, -0.32 + 0.64 * i - 0.008), Vector3(0.62, 0.034, -0.32 + 0.64 * i + 0.008), "shade", sl).material_override = mat(Color(pals["stone"][0]).darkened(0.13))
+	N["ghslab_held"] = _gh_held(Vector3(-0.62, 0.03, -0.95), Vector3(0.62, 0.03, 0.95), sl)
+	var sf := Node3D.new(); sf.position = Vector3(111.5, 0, -3.6); add_child(sf); N["ghslab2"] = sf      # the far-right gap's slab: its statue's veil is tied fast
+	blk(Vector3(-0.7, -0.2, -0.62), Vector3(0.7, 0.03, 0.62), "stone", sf).material_override = pal("stone", "flat")
+	blk(Vector3(-0.62, -0.34, -0.55), Vector3(0.62, -0.2, 0.55), "shade", sf).material_override = pal("shade", "flat")
+	_gh_statue("R", Vector3(114.95, 0, 0.0), -PI * 0.5, Vector3(113.85, 0, 0.0), [Vector3(114.75, 3.05, 0.0), Vector3(110.6, 0.08, 0.0)])
+	_gh_statue("N", Vector3(110.0, 0, 4.95), -PI * 0.5, Vector3(110.0, 0, 3.85), [Vector3(109.8, 3.05, 4.95), Vector3(105.25, 2.7, 4.95), Vector3(106.4, 0.06, 0.0)])
+	_gh_statue("F", Vector3(111.5, 0, -4.95), 0.0, Vector3(111.5, 0, -4.4), [Vector3(111.5, 3.05, -4.75), Vector3(111.5, 0.06, -3.6)], true)
+	# the floors
+	rects["GHnl"] = R(105.75, 2.95, 114.25, 4.25); rects["GHr"] = R(112.95, -4.25, 114.25, 4.25)
+	rects["GHfr1"] = R(105.75, -4.25, 110.8, -2.95); rects["GHfr2"] = R(112.2, -4.25, 114.25, -2.95)
+	rects["GHfl1"] = R(105.75, 1.0, 107.05, 4.25); rects["GHfl2"] = R(105.75, -4.25, 107.05, -1.0)
+	rects["GHcn"] = R(112.6, 2.6, 115.0, 5.0); rects["GHcl"] = R(104.6, 2.3, 107.7, 5.4); rects["GHcr"] = R(112.3, -5.4, 115.4, -2.3); rects["GHcg"] = R(104.8, -5.2, 108.0, -2.0)
+	rects["GHgap"] = R(105.75, -1.0, 107.05, 1.0, false); rects["GHbridge"] = R(107.0, -0.5, 113.0, 0.5, false)
 	stele("gh_st0", Vector3(113.2, 0.0, 3.2), 0.0, ["What is looked at,\nstays."])
 	# the look of it: a hard vignette, and small lights adrift over the water
 	var cl := CanvasLayer.new(); cl.layer = 0; add_child(cl)
@@ -1089,13 +1105,18 @@ func _gh_flame_on(n: Node3D, p: Vector3, k: float) -> void:
 	cyl(p, 0.12 * k, 0.0, 0.36 * k, mat(Color("ffb648")), 8, n).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	cyl(p, 0.065 * k, 0.0, 0.24 * k, mat(Color("fff0b8")), 8, n).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
-## (she stands at the near corner)
+## (she sets out from the near corner)
 func _gh_begin() -> void:
-	_wake_now(); pos = Vector3(106.8, 0.0, -1.7); yaw = PI * 0.25; cam_t = GH_MID_PT      # (at the edge of the deck: her picture lies on the sea before her)
+	_wake_now(); pos = Vector3(113.6, 0.0, 3.6); yaw = PI * 1.25; cam_t = GH_MID_PT
 	cam_focus = GH_MID_PT; cam_focus_on = true
+	# every written thing: white, with a dark shade behind it
 	for ql in quote_lbls:
-		if (ql as Label).get_theme_constant("outline_size") == 0: (ql as Label).add_theme_color_override("font_color", Color(0.97, 0.98, 1.0, 1.0))
-	hint.add_theme_color_override("font_color", Color(0.97, 0.98, 1.0, 1.0))
+		var l := ql as Label
+		var o := l.get_theme_constant("outline_size")
+		if o == 0: l.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+		elif l.material != null: l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0))
+		else: l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.16))
+	hint.add_theme_color_override("font_color", Color(1, 1, 1, 1)); hint.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.72)); hint.add_theme_constant_override("outline_size", 10)
 
 func _gh_write(text: String, hold := 5.5) -> void:
 	for ql in quote_lbls: (ql as Label).text = text
@@ -1105,25 +1126,158 @@ func _gh_write(text: String, hold := 5.5) -> void:
 func _gh_pre(_dt: float) -> void:
 	pos.y = 0.0
 
+## how far the slab is out of its gap now (0: in it)
+func _gh_slab_off() -> float:
+	return float(gh.slab_out) if bool(gh.slab_held) else 1.7 * (0.5 - 0.5 * cos(float(gh.slab_t) * TAU / 9.0))
+
 func _gh_post(dt: float) -> void:
 	cam_focus = GH_MID_PT; cam_focus_on = true
 	if started:
 		gh_t += dt
 		if not gh_said.has("rule") and gh_t > 1.2: gh_said["rule"] = true; _gh_write("What is looked at,\nstays.")
+		if not gh_said.has("hint") and gh_t > 9.0 and not gh_said.has("tapped"): gh_said["hint"] = true; say("tap a statue")
+	# the deck turns, and the slabs drift, while nothing looks at them
+	if not bool(gh.deck_held): gh.deck = fmod(float(gh.deck) + 18.0 * dt, 360.0)
+	(N["ghdeck"] as Node3D).rotation.y = deg_to_rad(float(gh.deck))
+	if not bool(gh.slab_held): gh.slab_t = float(gh.slab_t) + dt
+	var off := _gh_slab_off()
+	(N["ghslab"] as Node3D).position = Vector3(106.4 - off, sin(gh_t * 0.9) * 0.03 * minf(off, 1.0), 0.0)
+	(N["ghslab"] as Node3D).rotation = Vector3(0.0, sin(gh_t * 0.4) * 0.12 * minf(off, 1.0), sin(gh_t * 0.7) * 0.05 * minf(off, 1.0))
+	var o2 := 0.9 + 0.5 * sin(gh_t * 0.55)
+	(N["ghslab2"] as Node3D).position = Vector3(111.5 + o2 * 0.4, sin(gh_t * 0.8) * 0.03, -3.6 - o2 * 1.4); (N["ghslab2"] as Node3D).rotation = Vector3(0.05 * sin(gh_t * 0.6), 0.3 + 0.15 * sin(gh_t * 0.3), 0.04)
 	for f in gh_flies:
 		var t := gh_t * float(f.sp) + float(f.ph)
 		(f.n as Node3D).position = (f.c as Vector3) + Vector3(cos(t) * float(f.r), sin(t * 1.7) * 0.35, sin(t * 0.8) * float(f.r))
 		(f.n as Node3D).scale = Vector3.ONE * (0.55 + 0.45 * sin(t * 3.1 + float(f.ph)))
+	if not ended and not flags.get("gh_end", false) and Vector3(pos.x, 0, pos.z).distance_to(Vector3(106.6, 0, -3.4)) < 0.7: _gh_end()
 
-func _gh_tap(_sp: Vector2) -> void:
-	pass
+func _gh_end() -> void:
+	flags["gh_end"] = true
+	print("GH through the gate")
+	route.clear(); route.append({"p": Vector3(106.4, 0, -3.6)})
+	await wait(1.4)
+	_end()
 
-## (FLIP=geo ... -- geodemo: the picture is taken, and that is all)
+## a statue looks (its veil comes off), or stops looking (it goes back on): what it looks at stands still, or is let go
+func _gh_toggle(id: String) -> void:
+	var s: Dictionary = gh_st[id]
+	if bool(s.tied): say("its veil is tied fast"); await _her_no(); return
+	gh.busy = true; gh_said["tapped"] = true
+	face_to = s.head
+	var lean := tw(); lean.tween_property(self, "a_lean", 0.12, 0.3)
+	await lean.finished
+	s.looks = not bool(s.looks)
+	var v: Node3D = s.veil
+	if bool(s.looks):
+		var vt := create_tween(); vt.tween_property(v, "scale", Vector3(1.0, 0.02, 1.0), 0.45).set_trans(Tween.TRANS_SINE); vt.tween_callback(v.hide)
+		(s.statue as Node3D).show(); (s.fold as Node3D).show()
+	else:
+		v.show(); var vt2 := create_tween(); vt2.tween_property(v, "scale", Vector3.ONE, 0.45).set_trans(Tween.TRANS_SINE)
+		(s.fold as Node3D).hide()
+		await vt2.finished
+		(s.statue as Node3D).hide()
+	for b in s.beams: (b as Node3D).visible = bool(s.looks)
+	if id == "R": _gh_hold_deck(bool(s.looks))
+	elif id == "N": _gh_hold_slab(bool(s.looks))
+	var back := tw(); back.tween_property(self, "a_lean", 0.0, 0.4)
+	await back.finished
+	print("GH statue ", id, " looks: ", s.looks, " | deck ", snappedf(float(gh.deck), 0.1), " held ", gh.deck_held, " | slab out ", snappedf(_gh_slab_off(), 0.01), " held ", gh.slab_held, " | bridge ", rects["GHbridge"].on, " gap ", rects["GHgap"].on)
+	gh.busy = false
+
+func _gh_hold_deck(on: bool) -> void:
+	gh.deck_held = on
+	(N["ghdeck_held"] as Node3D).visible = on
+	lights[2] = Vector4(110.0, 0.2, 0.0, 0.6 if on else 0.0)
+	rects["GHbridge"].on = false
+	if not on: return
+	var a := float(gh.deck); var a2 := roundf(a / 90.0) * 90.0
+	if absf(a - a2) < 25.0:      # (near enough: it settles there)
+		var stw := create_tween(); stw.tween_property(self, "gh:deck", a2, 0.4)
+		stw.tween_callback(func() -> void: gh.deck = fmod(a2 + 360.0, 360.0))
+		await stw.finished
+		if int(roundf(a2 / 90.0)) % 2 == 0: rects["GHbridge"].on = true      # the bridge lies across, from the right-hand road to the gap
+
+func _gh_hold_slab(on: bool) -> void:
+	var off := _gh_slab_off()
+	gh.slab_held = on; gh.slab_out = off
+	(N["ghslab_held"] as Node3D).visible = on
+	lights[3] = Vector4(106.4, 0.2, 0.0, 0.55 if on else 0.0)
+	rects["GHgap"].on = false
+	if not on:      # (let go: it drifts on from where it was)
+		gh.slab_t = acos(clampf(1.0 - 2.0 * off / 1.7, -1.0, 1.0)) * 9.0 / TAU
+		return
+	if off < 0.4:
+		var stw := create_tween(); stw.tween_property(self, "gh:slab_out", 0.0, 0.35)
+		await stw.finished
+		rects["GHgap"].on = true
+
+## a tap: a statue (she goes to it, and takes its veil off or puts it back), the gate, or a place to walk to
+func _gh_tap(sp: Vector2) -> void:
+	if busy or bool(gh.busy): return
+	var px := get_viewport().get_visible_rect().size.x / 720.0
+	for id in gh_st:
+		var s: Dictionary = gh_st[id]
+		var hp := s.head as Vector3
+		if cam.unproject_position(hp - Vector3(0, 1.0, 0)).distance_to(sp) < 70.0 * px or cam.unproject_position(hp).distance_to(sp) < 60.0 * px:
+			var stand: Vector3 = s.stand
+			if _flat(pos, stand) < 0.45: _gh_toggle(id); return
+			var pts := find_path(Vector3(pos.x, 0, pos.z), stand)
+			if pts.is_empty(): if bool(s.tied): say("its veil is tied fast"); await _her_no(); return
+			if pts.is_empty(): await _her_no(); return
+			gh.busy = true
+			route.clear(); speed_cap = PLAY_WALK; face_to = null
+			for q in pts: route.append({"p": Vector3(q.x, 0, q.z)})
+			while not route.is_empty(): await get_tree().process_frame
+			gh.busy = false
+			_gh_toggle(id); return
+	var to = null
+	if cam.unproject_position(Vector3(106.4, 1.6, -3.6)).distance_to(sp) < 70.0 * px: to = Vector3(106.6, 0, -3.4)
+	else:
+		var o := cam.project_ray_origin(sp); var dr := cam.project_ray_normal(sp)
+		var a: Vector3 = o + dr * (-o.y / dr.y)
+		var n := rect_of(Vector3(a.x, 0, a.z))
+		if n.begins_with("GH"): to = Vector3(clampf(a.x, rects[n].x0 + 0.05, rects[n].x1 - 0.05), 0, clampf(a.z, rects[n].z0 + 0.05, rects[n].z1 - 0.05))
+	if to == null: return
+	var pts2 := find_path(Vector3(pos.x, 0, pos.z), to)
+	if pts2.is_empty(): print("GH no way to ", to); await _her_no(); return
+	tapring.position = Vector3(to.x, 0.04, to.z); tap_p = 0.0
+	route.clear(); speed_cap = PLAY_WALK; face_to = null
+	for q in pts2: route.append({"p": Vector3(q.x, 0, q.z)})
+
+## (the trial, played through as a player would: FLIP=geo ... -- geodemo)
 func _play_geo() -> void:
 	var dir := OS.get_environment("SHOT_DIR")
+	var snap := func(n: String) -> void:
+		if dir != "": await RenderingServer.frame_post_draw; get_viewport().get_texture().get_image().save_png("%s/%s.png" % [dir, n])
+	var idle := func() -> void:
+		var still := 0
+		while still < 12:
+			await get_tree().process_frame
+			still = still + 1 if (not busy and not bool(gh.busy) and route.is_empty()) else 0
+	var at := func(p: Vector3) -> Vector2: return cam.unproject_position(p)
 	await get_tree().create_timer(1.0).timeout
-	tap(Vector2(360, 640)); await wait(5.0)
-	if dir != "": await RenderingServer.frame_post_draw; get_viewport().get_texture().get_image().save_png("%s/idea.png" % dir)
+	tap(Vector2(360, 640)); await wait(5.5); await snap.call("p0_start")
+	print("GH begins at ", pos)
+	if OS.get_environment("GH_ONLY") == "start": get_tree().quit(); return
+	# she cannot cross yet: the bridge does not lie across, and the slab is out at sea
+	tap(at.call(Vector3(106.4, 0, -1.6))); await idle.call(); await wait(0.8)
+	# 1: to the near statue; when the slab comes into its gap, its veil off: it looks into the mirror, and the slab stays
+	tap(at.call(Vector3(110.0, 0, 3.85))); await idle.call()
+	while _gh_slab_off() > 0.12: await get_tree().process_frame
+	tap(at.call((gh_st["N"].head as Vector3) - Vector3(0, 1.0, 0))); await idle.call(); await wait(0.6); await snap.call("p1_slab_held")
+	# 2: to the right-hand statue; when the bridge comes round, its veil off: the deck stays
+	tap(at.call(Vector3(113.85, 0, 0.0))); await idle.call()
+	while true:
+		var m := fmod(float(gh.deck), 180.0)
+		if m > 172.0 or m < 4.0: break
+		await get_tree().process_frame
+	tap(at.call((gh_st["R"].head as Vector3) - Vector3(0, 1.0, 0))); await idle.call(); await wait(0.6); await snap.call("p2_bridge_held")
+	# 3: over the bridge, onto the slab, and through the gate
+	tap(at.call(Vector3(106.4, 1.6, -3.6))); await wait(3.0); await snap.call("p3_crossing"); await idle.call()
+	var n2 := 0
+	while not ended and n2 < 900: await get_tree().process_frame; n2 += 1
+	await wait(2.5)
+	print("GH ended: ", ended); await snap.call("p9_end")
 	get_tree().quit()
 
 # ---------------------------------------------------------------- the face in the water (a trial)
