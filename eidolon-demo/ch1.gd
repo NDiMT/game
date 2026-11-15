@@ -1431,6 +1431,7 @@ func _go_build(lv: int) -> void:
 ## the sea's own picture of things lies on the sea where it stands now
 func _go_water_y() -> void:
 	var y := go_sea.position.y
+	RenderingServer.global_shader_parameter_set("sea_y", y)
 	if refl_mat != null: refl_mat.set_shader_parameter("water_y", y)
 	if H.has("main"):
 		for mm in (H["main"].holder as Node).find_children("*", "MeshInstance3D", true, false):
@@ -1651,6 +1652,8 @@ func _play_go() -> void:
 	tap(Vector2(360, 640)); await wait(4.5); await snap.call("t0_level1")
 	print("GO begins at ", gs.me)
 	if OS.get_environment("GH_ONLY") == "start": get_tree().quit(); return
+	if OS.get_environment("GH_ONLY") == "high":      # (a look at the board under the high sea)
+		go_sea.position.y = _go_sea_y(2); _go_water_y(); await wait(1.0); await snap.call("high"); get_tree().quit(); return
 	for lv in GO_LEVELS.size():
 		if lv > 0: await next.call(lv); await snap.call("t%d_level%d" % [lv * 2, lv + 1])
 		if lv == 0:      # (a fall first: out on the low stones, waiting there, till the sea comes up over them)

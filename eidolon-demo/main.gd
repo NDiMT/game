@@ -472,6 +472,7 @@ uniform vec3 c_top : source_color; uniform vec3 c_z : source_color; uniform vec3
 uniform vec3 fog_col : source_color;
 uniform vec4 l0; uniform vec4 l1; uniform vec4 l2; uniform vec4 l3; uniform vec4 l4; uniform vec4 l5; uniform vec4 l6;
 global uniform vec3 view_ax;      // the way the eye looks (from the world toward it): the mist lies round that line
+global uniform float sea_y;      // where the sea's face lies (it moves only with a tide): what is under it fades into the deep
 uniform float sway = 0.0; uniform float time_s = 0.0; uniform float marble = 0.0; uniform float tone_var = 0.0; uniform float rim = 0.0; uniform float flat_n = 0.0; uniform vec3 shadow_col = vec3(0.66, 0.66, 0.86); uniform float mist_k = 0.96; uniform vec3 centre; uniform float mist_r = 7.0; uniform vec3 mist_col : source_color;
 varying vec3 wp; varying vec3 wn;
 float h3(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
@@ -509,7 +510,7 @@ void fragment(){
 	if (rim > 0.0) { float ndv = clamp(dot(n, vec3(0.57735)), 0.0, 1.0); col *= mix(1.0 - 0.2 * rim, 1.0, smoothstep(0.0, 0.55, ndv)); }
 	float l = lit(l0, wp) + lit(l1, wp) + lit(l2, wp) + lit(l3, wp) + lit(l4, wp) + lit(l5, wp) + lit(l6, wp);
 	col = mix(col, col * vec3(1.06, 0.97, 0.80) + vec3(0.09, 0.055, 0.0), clamp(l, 0.0, 1.0) * 0.85);
-	col = mix(col, fog_col, smoothstep(-1.35, -4.6, wp.y) * 0.9);
+	col = mix(col, fog_col, smoothstep(sea_y - 0.05, sea_y - 3.3, wp.y) * 0.9);
 	vec3 d3 = wp - centre; float md = length(d3 - view_ax * dot(d3, view_ax));
 	col = mix(col, mist_col, smoothstep(mist_r * 0.8, mist_r * 1.7, md) * mist_k);
 	ALBEDO = col; ROUGHNESS = 1.0;
@@ -1653,6 +1654,7 @@ func _hollow_glsl(v: String) -> String:
 
 func _ready() -> void:
 	RenderingServer.global_shader_parameter_add("view_ax", RenderingServer.GLOBAL_VAR_TYPE_VEC3, Vector3(0.57735, 0.57735, 0.57735))      # (before any shader is made)
+	RenderingServer.global_shader_parameter_add("sea_y", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, WATER)
 	for k in [["base", SH], ["two", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;")],
 			["mir", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled, shadows_disabled;")],
 			["water", SH_WATER], ["cloth", SH_CLOTH], ["sheet", SH_SHEET], ["mirror", SH_MIRROR], ["ring", SH_RING], ["sea", SH_SEA], ["refl", SH_REFL], ["glass", SH_GLASS], ["pit", SH_PIT], ["face", SH_FACE], ["foam", SH_FOAM], ["fog", SH_FOG], ["shard", SH_SHARD], ["pane", SH_PANE]]:
