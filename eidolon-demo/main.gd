@@ -632,6 +632,7 @@ render_mode unshaded, cull_disabled;
 uniform float water_y = -1.3; uniform float time_s = 0.0; uniform vec3 tint = vec3(0.04, 0.12, 0.2); uniform float strength = 1.0;
 uniform float lift = 0.0; uniform float use_tex = 0.0; uniform float vcol = 0.0; uniform float gain = 1.5; uniform float fade_a = 1.0; uniform sampler2D albedo_tex : source_color, filter_linear_mipmap;
 uniform vec3 under_col = vec3(0.17, 0.39, 0.47);
+uniform float fade_h0 = 1.6; uniform float fade_h1 = 6.5; uniform float fade_min = 0.3;      // (how the picture thins with the height of what it shows: so, for most things; a pillar's own may thin out over its height)
 varying float hh; varying vec3 q;
 void vertex(){
 	vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -649,7 +650,7 @@ void fragment(){
 	if (HOLLOW_Q) discard;   // nothing lies on the sea inside the hollow of a court with a pool
 	// the reflection thins out with height by blending into the colour of the deep water. (It used to be cut
 	// into a pattern of dots, which shimmered whenever the camera moved.)
-	float fade = mix(1.0, 0.3, smoothstep(1.6, 6.5, hh)) * strength * fade_a;
+	float fade = mix(1.0, fade_min, smoothstep(fade_h0, fade_h1, hh)) * strength * fade_a;
 	vec3 c = tint;
 	if (use_tex > 0.5) { vec3 tx = vcol > 0.5 ? mix(vec3(0.77, 0.765, 0.76), vec3(0.59, 0.246, 0.162), smoothstep(0.47, 0.53, COLOR.a)) : texture(albedo_tex, UV).rgb; float rw = smoothstep(0.08, 0.2, tx.r - tx.b); c = mix(tx * 0.92, clamp(tx * gain, 0.0, 1.0), rw); }
 	ALBEDO = mix(under_col, c, fade);
