@@ -668,8 +668,8 @@ func _unhandled_input(ev: InputEvent) -> void:
 ## (Built in measures counted down from GD_G: a depth d stands at the height GD_G - d; the sea lies at WATER.)
 const GD_G := 9.3
 const GCX := 110.0
-const GH_VIEW := 20.0
-const GH_MID_PT := Vector3(111.6, 0, 1.6)
+const GH_VIEW := 14.5
+const GH_MID_PT := Vector3(110.7, 0, 0.7)
 var gh_hr := {}
 var gh_pic: Node3D
 var gh_hang: Node3D
@@ -868,43 +868,79 @@ func _cstatue(x: float, z: float, d: float, yaw: float, pose: String, sc := 1.0,
 		s.get_parent().remove_child(s); _gpar(kind).add_child(s)
 		if tilt != Vector3.ZERO: s.rotation = Vector3(tilt.x, yaw, tilt.z)
 
+## a brazier: a bronze bowl of fire on a stem
+func _gh_brazier(p: Vector3) -> void:
+	cyl(p, 0.16, 0.05, 0.06, pal("gold", "flat"), 10); cyl(p + Vector3(0, 0.06, 0), 0.035, 0.035, 0.62, pal("gold", "flat"), 8)
+	cyl(p + Vector3(0, 0.68, 0), 0.07, 0.25, 0.19, pal("gold", "flat"), 14); cyl(p + Vector3(0, 0.85, 0), 0.21, 0.21, 0.03, pal("dark", "flat"), 14)
+	_gh_flame(p + Vector3(0, 0.88, 0), 1.0)
+
+## a lantern of stone: a short pillar with a lit house on it under a little roof
+func _gh_stone_lamp(p: Vector3) -> void:
+	blk(p + Vector3(-0.21, 0, -0.21), p + Vector3(0.21, 0.1, 0.21), "shade").material_override = pal("shade", "flat")
+	blk(p + Vector3(-0.12, 0.1, -0.12), p + Vector3(0.12, 0.62, 0.12), "stone").material_override = pal("stone", "flat")
+	blk(p + Vector3(-0.19, 0.62, -0.19), p + Vector3(0.19, 0.68, 0.19), "shade").material_override = pal("shade", "flat")
+	for e in [Vector3(-0.15, 0, -0.15), Vector3(0.15, 0, -0.15), Vector3(-0.15, 0, 0.15), Vector3(0.15, 0, 0.15)]:
+		blk(p + e + Vector3(-0.03, 0.68, -0.03), p + e + Vector3(0.03, 0.98, 0.03), "stone").material_override = pal("stone", "flat")
+	blk(p + Vector3(-0.12, 0.7, -0.12), p + Vector3(0.12, 0.96, 0.12), "lamp").material_override = mat(Color("ffd98a"))
+	blk(p + Vector3(-0.22, 0.98, -0.22), p + Vector3(0.22, 1.03, 0.22), "shade").material_override = pal("shade", "flat")
+	var rf := cyl(p + Vector3(0, 1.03, 0), 0.29, 0.03, 0.2, pal("terra", "flat"), 4); rf.rotation.y = PI * 0.25
+	cyl(p + Vector3(0, 1.22, 0), 0.035, 0.035, 0.06, pal("gold", "flat"), 8)
+	var halo := SphereMesh.new(); halo.radius = 0.42; halo.height = 0.84; halo.radial_segments = 14; halo.rings = 7
+	prim(halo, p + Vector3(0, 0.83, 0), mat(Color(1.0, 0.78, 0.4, 0.13), true)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+## a lamp that floats: a little dish of wood with a flame
+func _gh_float_lamp(p: Vector3) -> void:
+	cyl(p, 0.11, 0.17, 0.05, pal("wood", "flat"), 12); cyl(p + Vector3(0, 0.05, 0), 0.06, 0.06, 0.03, pal("gold", "flat"), 8)
+	_gh_flame(p + Vector3(0, 0.08, 0), 0.55)
+
+func _gh_flame(p: Vector3, k: float) -> void:
+	cyl(p, 0.12 * k, 0.0, 0.36 * k, mat(Color("ffb648")), 8).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	cyl(p, 0.065 * k, 0.0, 0.24 * k, mat(Color("fff0b8")), 8).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var halo := SphereMesh.new(); halo.radius = 0.5 * k; halo.height = 1.0 * k; halo.radial_segments = 14; halo.rings = 7
+	prim(halo, p + Vector3(0, 0.16 * k, 0), mat(Color(1.0, 0.72, 0.34, 0.14), true)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
 func _gh_build() -> void:
 	gh_pic = Node3D.new(); gh_pic.position = Vector3(0, GD_G, 0); add_child(gh_pic); gh_hang = Node3D.new(); add_child(gh_hang)
 	gh_inv = Node3D.new(); add_child(gh_inv); gh_inv.visible = false
 	var dS := GD_G - WATER; var dD := dS - 0.5      # the sea; the decks, half a metre over it
-	# the square of causeways, and a platform at each corner
-	for r in [[104.0, 4.4, 116.0, 6.0], [114.4, -6.0, 116.0, 6.0], [104.0, -6.0, 116.0, -4.4], [104.0, -6.0, 105.6, 6.0], [114.0, 4.0, 117.2, 7.2], [102.8, 4.0, 106.0, 7.2], [114.0, -7.2, 117.2, -4.0], [102.8, -7.2, 106.0, -4.0], [108.9, -1.1, 111.1, 1.1]]:
+	var yD := WATER + 0.5
+	# the square of causeways, a platform at each corner, an island in the middle water
+	for r in [[106.0, 2.4, 114.0, 4.0], [112.4, -4.0, 114.0, 4.0], [106.0, -4.0, 114.0, -2.4], [106.0, -4.0, 107.6, 4.0], [112.3, 2.3, 114.9, 4.9], [105.1, 2.3, 107.7, 4.9], [112.3, -4.9, 114.9, -2.3], [104.8, -5.2, 108.0, -2.0], [109.2, -0.8, 110.8, 0.8]]:
 		_cb(r[0], r[1], r[2], r[3], dD, dS + 0.8, "stone"); _cb(r[0] - 0.05, r[1] - 0.05, r[2] + 0.05, r[3] + 0.05, dD + 0.1, dD + 0.26, "shade")
 		_ctiles(r[0], r[1], r[2], r[3], dD, 0.8)
+	_cc(113.6, 3.6, dD - 0.012, dD + 0.01, 0.5, 0.5, "gold", 24); _cc(113.6, 3.6, dD - 0.02, dD, 0.36, 0.36, "stone", 24)      # (where she sets out: a ring of bronze in the floor)
 	# the gate at the far corner: two steps, eight columns in a ring, a dome, and light within
-	var gx := 104.4; var gz := -5.6
+	var gx := 106.4; var gz := -3.6
 	_cb(gx - 1.5, gz - 1.5, gx + 1.5, gz + 1.5, dD - 0.22, dD, "stone"); _cb(gx - 1.25, gz - 1.25, gx + 1.25, gz + 1.25, dD - 0.44, dD - 0.22, "stone")
 	for k in 8: _ccol(gx + cos(k * PI * 0.25 + PI * 0.125) * 1.0, gz + sin(k * PI * 0.25 + PI * 0.125) * 1.0, dD - 0.44, 2.5, 0.085)
 	_cc(gx, gz, dD - 3.16, dD - 2.94, 1.18, 1.18, "shade", 28); _cdome(gx, gz, dD - 3.16, 1.12, "terra", 0.85)
 	for b in [[gx - 0.03, gz - 0.4, gx + 0.03, gz + 0.4], [gx - 0.4, gz - 0.03, gx + 0.4, gz + 0.03]]:
 		blk(Vector3(b[0], -(dD - 0.44), b[1]), Vector3(b[2], -(dD - 0.44) + 1.9, b[3]), "lamp", gh_pic).material_override = under_mat(Color("ffe2a0"))
-	# a statue of her at each side corner, twice her height, on a plinth; an obelisk in the middle water
+	# a statue of her at each side corner on a plinth; an obelisk in the middle water
 	for sw in [false, true]:
-		var c := _gsw([115.6, -5.6, 115.6, -5.6], sw)
-		_cb(c[0] - 0.75, c[1] - 0.75, c[0] + 0.75, c[1] + 0.75, dD - 1.0, dD, "stone"); _cb(c[0] - 0.82, c[1] - 0.82, c[0] + 0.82, c[1] + 0.82, dD - 1.0, dD - 0.88, "shade"); _cb(c[0] - 0.82, c[1] - 0.82, c[0] + 0.82, c[1] + 0.82, dD - 0.14, dD, "shade")
-		_cstatue(c[0], c[1], dD - 1.0, PI * 0.5 if sw else 0.0, "pray", 2.1)
-		var l := _gsw([116.75, 4.45, 116.75, 4.45], sw); _cprop("lamp", l[0], l[1], dD, 1.7, "gold:gold,stone:marble,glow:lamp,frame:wood")
-		for q in [[110.8, -0.8], [110.8, 0.8]]:
-			var p := _gsw([q[0], q[1], q[0], q[1]], sw); _cprop("cypress", p[0], p[1], dD, 1.7, "leaf:cyp~,trunk:trunk")
-		var a2 := _gsw([114.75, 2.9, 114.75, 2.9], sw); _cprop("amphora", a2[0], a2[1], dD, 0.5, "terra:terra,band:wood")
-	_cb(109.5, -0.5, 110.5, 0.5, dD - 0.5, dD, "stone"); _cb(109.66, -0.34, 110.34, 0.34, dD - 3.2, dD - 0.5, "sand"); _cb(109.74, -0.26, 110.26, 0.26, dD - 5.4, dD - 3.2, "sand")
-	_cb(109.82, -0.18, 110.18, 0.18, dD - 5.85, dD - 5.4, "gold")
+		var c := _gsw([113.6, -3.6, 113.6, -3.6], sw)
+		_cb(c[0] - 0.65, c[1] - 0.65, c[0] + 0.65, c[1] + 0.65, dD - 0.9, dD, "stone"); _cb(c[0] - 0.72, c[1] - 0.72, c[0] + 0.72, c[1] + 0.72, dD - 0.9, dD - 0.78, "shade"); _cb(c[0] - 0.72, c[1] - 0.72, c[0] + 0.72, c[1] + 0.72, dD - 0.14, dD, "shade")
+		_cstatue(c[0], c[1], dD - 0.9, PI * 0.5 if sw else 0.0, "pray", 1.9)
+		for q in [[110.55, -0.55], [110.55, 0.55]]:
+			var p := _gsw([q[0], q[1], q[0], q[1]], sw); _cprop("cypress", p[0], p[1], dD, 1.4, "leaf:cyp~,trunk:trunk")
+		# lights: a brazier on either hand of the gate, a lantern of stone half way along each far side, lamps afloat on the middle water
+		var b1 := _gsw([108.0, -2.65, 108.0, -2.65], sw); _gh_brazier(Vector3(b1[0], yD, b1[1]))
+		var s1 := _gsw([110.0, -2.62, 110.0, -2.62], sw); _gh_stone_lamp(Vector3(s1[0], yD, s1[1]))
+		for q in [[111.6, -1.0], [108.5, -0.7], [111.9, 1.75]]:
+			var f := _gsw([q[0], q[1], q[0], q[1]], sw); _gh_float_lamp(Vector3(f[0], WATER + 0.0, f[1]))
+	_cb(109.6, -0.4, 110.4, 0.4, dD - 0.4, dD, "stone"); _cb(109.74, -0.26, 110.26, 0.26, dD - 2.6, dD - 0.4, "sand"); _cb(109.8, -0.2, 110.2, 0.2, dD - 4.3, dD - 2.6, "sand")
+	_cb(109.86, -0.14, 110.14, 0.14, dD - 4.65, dD - 4.3, "gold")
 	# the two white walls. Right: its foot is gone (the raft lies on that shade). Left: its top is gone
-	_cb(114.4, -0.2, 116.0, 0.2, dD - 3.2, dD - 1.9, "marble"); _cb(114.36, -0.24, 116.04, 0.24, dD - 3.2, dD - 3.06, "gold")
-	_cb(109.8, 4.4, 110.2, 6.0, dD - 1.6, dD, "marble"); _cb(109.76, 4.36, 110.24, 6.04, dD - 0.14, dD, "gold")
-	for f in [[114.7, 0.0, 1.78, 0.07], [115.25, 0.1, 1.62, 0.05], [115.7, -0.08, 1.7, 0.06], [115.0, -0.1, 1.45, 0.04], [115.5, 0.05, 1.3, 0.035]]:      # (its last crumbs, going)
+	_cb(112.4, -0.2, 114.0, 0.2, dD - 3.2, dD - 1.9, "marble"); _cb(112.36, -0.24, 114.04, 0.24, dD - 3.2, dD - 3.06, "gold")
+	_cb(109.8, 2.4, 110.2, 4.0, dD - 1.6, dD, "marble"); _cb(109.76, 2.36, 110.24, 4.04, dD - 0.14, dD, "gold")
+	for f in [[112.7, 0.0, 1.78, 0.07], [113.25, 0.1, 1.62, 0.05], [113.7, -0.08, 1.7, 0.06], [113.0, -0.1, 1.45, 0.04], [113.5, 0.05, 1.3, 0.035]]:      # (its last crumbs, going)
 		_cb(f[0] - f[3], f[1] - f[3], f[0] + f[3], f[1] + f[3], dD - f[2] - f[3], dD - f[2] + f[3], "marble")
-	for f in [[110.0, 4.7, 1.72, 0.07], [110.05, 5.3, 1.9, 0.05], [109.95, 5.75, 1.8, 0.06], [110.0, 5.0, 2.1, 0.04], [110.02, 5.5, 2.3, 0.035]]:
+	for f in [[110.0, 2.7, 1.72, 0.07], [110.05, 3.3, 1.9, 0.05], [109.95, 3.75, 1.8, 0.06], [110.0, 3.0, 2.1, 0.04], [110.02, 3.5, 2.3, 0.035]]:
 		_cb(f[0] - f[3], f[1] - f[3], f[0] + f[3], f[1] + f[3], dD - f[2] - f[3], dD - f[2] + f[3], "marble")
 	_gh_flush()
 	for mm2 in gh_pic.find_children("*", "MeshInstance3D", true, false): (mm2 as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	# the rafts, and the posts they slide between
-	for rf in [[117.45, 1.45, 2.0, 116.0, 0.0, 1.0], [112.9, 8.9, 2.2, 110.0, 6.0, -1.0]]:
+	for rf in [[115.45, 1.45, 2.0, 114.0, 0.0, 1.0], [112.9, 6.9, 2.2, 110.0, 4.0, -1.0]]:
 		var n := Node3D.new(); n.position = Vector3(rf[0], WATER + 0.02, rf[1]); n.rotation.y = PI * 0.25; add_child(n)
 		for k in 7: blk(Vector3(-0.7 + k * 0.2, 0, -rf[2] * 0.5), Vector3(-0.52 + k * 0.2, 0.09, rf[2] * 0.5), "wood", n).material_override = pal("wood", "flat")
 		for e in [-1.0, 1.0]: blk(Vector3(-0.74, 0.09, e * (rf[2] * 0.5 - 0.16) - 0.05), Vector3(0.74, 0.14, e * (rf[2] * 0.5 - 0.16) + 0.05), "trunk", n).material_override = pal("trunk", "flat")
@@ -912,13 +948,13 @@ func _gh_build() -> void:
 			for e in [-1.0, 1.0]:
 				var pp := Vector3(rf[3] + t + e * 0.72 * rf[5], WATER - 0.3, rf[4] + t - e * 0.72 * rf[5])
 				cyl(pp, 0.06, 0.06, 1.1, pal("trunk", "flat"), 8); cyl(pp + Vector3(0, 1.1, 0), 0.075, 0.05, 0.06, pal("gold", "flat"), 8)
-	for p in [Vector3(107.0, WATER, -3.0), Vector3(113.0, WATER, 3.0), Vector3(107.2, WATER, 3.0), Vector3(113.0, WATER, -3.0)]: thing("reeds", p, 0.0, "leaf:leaf~,trunk:wood~,pad:leaf2,flower:rose", p.x * 0.9 + p.z * 1.7, 0.9)
-	gh_hr["Rz"] = R(114.5, -6.0, 115.9, 6.0, true, WATER + 0.5); gh_hr["Lz"] = R(104.0, 4.5, 116.0, 5.9, true, WATER + 0.5)
-	stele("gh_st0", Vector3(115.2, WATER + 0.5, 0.0), 0.0, ["What the water does not show,\nis not."])
+	for p in [Vector3(108.3, WATER, -1.7), Vector3(111.7, WATER, 1.7)]: thing("reeds", p, 0.0, "leaf:leaf~,trunk:wood~,pad:leaf2,flower:rose", p.x * 0.9 + p.z * 1.7, 0.8)
+	gh_hr["Rz"] = R(112.5, -4.0, 113.9, 4.0, true, yD); gh_hr["Lz"] = R(106.0, 2.5, 114.0, 3.9, true, yD)
+	stele("gh_st0", Vector3(113.2, yD, 0.0), 0.0, ["What the water does not show,\nis not."])
 
 ## (she is under the right wall, walking to the gate)
 func _gh_begin() -> void:
-	_wake_now(); pos = Vector3(115.2, WATER + 0.5, 0.0); yaw = PI; cam_t = GH_MID_PT
+	_wake_now(); pos = Vector3(113.2, WATER + 0.5, 0.0); yaw = PI; cam_t = GH_MID_PT
 	cam_focus = GH_MID_PT; cam_focus_on = true
 
 func _gh_pre(_dt: float) -> void:
