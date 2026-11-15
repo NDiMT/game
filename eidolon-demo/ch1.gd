@@ -1451,9 +1451,9 @@ func _go_build(lv: int) -> void:
 	_go_water_y(); _mw_rings(true)
 	if go_lv_lbl != null: go_lv_lbl.text = "%d / %d" % [lv + 1, GO_LEVELS.size()]
 
-## what stands about the courts: two mirrors under their sheets at the ends of the channel, a third far behind, each
-## on a pillar of its own out of the sea; a statue of her, broken, on a rock; rocks. Laid by where they fall to the eye
-## (sx across the picture, s from far to near), clear of the courts
+## what stands about the courts: two mirrors under their sheets, large, each on a pillar of its own at an end of the
+## channel, turned to it; her statue, broken, on a rock; rocks, some with green on them. Laid by where they fall to
+## the eye (sx across the picture, s from far to near), clear of the courts
 func _mw_around() -> void:
 	var cx := _go_cx(int(gs.lv)); var bw := float(gs.W) * GO_D * 0.5
 	var zc := ((float(gs.H) - 1.0) * 0.5 - float(gs.c)) * GO_D
@@ -1461,47 +1461,39 @@ func _mw_around() -> void:
 	var at := func(sx: float, sz: float) -> Vector3:
 		var ax := sx / 0.7071
 		return Vector3(cx + (sz + ax) * 0.5, WATER, (sz - ax) * 0.5 + zc)
-	var mirrors := [[Vector3(cx - bw - 1.0, WATER, 0.0), PI * 0.5, "tied", 1.15], [Vector3(cx + bw + 1.0, WATER, 0.0), -PI * 0.5, "hem", 1.15], [at.call(2.9, -reach - 3.4), 0.0, "tied", 0.8]]
-	for m in mirrors:
-		var p: Vector3 = m[0]; var top := WATER + float(m[3])
-		blk(p + Vector3(-0.5, 0.02, -0.5), Vector3(p.x + 0.5, top - 0.08, p.z + 0.5), "shade").material_override = _mw_fmat("pillar", top)
-		blk(Vector3(p.x - 0.56, top - 0.12, p.z - 0.56), Vector3(p.x + 0.56, top, p.z + 0.56), "stone").material_override = _mw_flat("stone")
-		var yw: float = m[1]
-		if yw == 0.0: yw = atan2(cx - p.x, zc - p.z) + 0.3
-		mirror_stand(Vector3(p.x, top, p.z), yw, self, top, String(m[2]), true)
+	for m in [[Vector3(cx - bw - 1.2, WATER, 0.0), PI * 0.5, "tied"], [Vector3(cx + bw + 1.2, WATER, 0.0), -PI * 0.5, "hem"]]:
+		var p: Vector3 = m[0]; var top := WATER + 0.95
+		blk(p + Vector3(-0.62, -0.3, -0.62), Vector3(p.x + 0.62, top - 0.1, p.z + 0.62), "shade").material_override = _mw_fmat("pillar", top)
+		blk(Vector3(p.x - 0.7, top - 0.14, p.z - 0.7), Vector3(p.x + 0.7, top, p.z + 0.7), "stone").material_override = _mw_flat("stone")
+		var ms := mirror_stand(Vector3(p.x, top, p.z), float(m[1]), self, top, String(m[2]), true); ms.scale = Vector3.ONE * 1.45
 	# her statue, broken, on a rock behind the courts to the left, its foot clear of the sea
 	var sp: Vector3 = at.call(-2.9, -reach - 2.6)
 	rock(Vector3(sp.x, 0, sp.z), 1.6)
 	blk(sp + Vector3(-0.62, -0.5, -0.62), sp + Vector3(0.62, 0.34, 0.62), "stone").material_override = pal("shade", "flat")
 	thing("broken_statue", sp + Vector3(0, 0.34, 0), 3.0, "stone:marble", atan2(cx - sp.x, zc - sp.z) + 0.4)
-	# rocks: at the sides, and one before the courts
-	for r in [[-5.5, -reach * 0.3, 1.2], [5.6, reach * 0.35, 1.4], [3.3, reach + 4.2, 1.1], [-3.6, reach + 3.0, 0.8]]:
-		var rp: Vector3 = at.call(float(r[0]), float(r[1]))
-		rock(Vector3(rp.x, 0, rp.z), float(r[2]))
+	# rocks, and on some of them green: a bush, a young cypress, an olive
+	for r in [[3.0, -reach - 3.2, 1.5, "olive"], [-5.5, -reach * 0.3, 1.2, ""], [5.6, reach * 0.35, 1.5, "bush"], [3.3, reach + 4.2, 1.3, "cypress"], [-3.6, reach + 3.0, 1.0, "bush"]]:
+		var rp: Vector3 = at.call(float(r[0]), float(r[1])); var rs: float = r[2]
+		rock(Vector3(rp.x, 0, rp.z), rs)
+		var gp := Vector3(rp.x + 0.05 * rs, WATER + 0.42 * rs, rp.z - 0.05 * rs)
+		match String(r[3]):
+			"bush": thing("bush", gp, 0.0, "leaf:leaf2~,flower:crim", rp.x * 1.3, 0.8 * rs)
+			"cypress": thing("cypress", gp, 1.6 * rs, "leaf:cyp~,trunk:trunk", rp.x * 1.7)
+			"olive": thing("olive", gp + Vector3(0, -0.1, 0), 1.5 * rs, "leaf:leaf~,trunk:trunk,stone:stone,soil:trunk", rp.z)
 
 ## the stone of the courts, with its veins, and its picture on the water as everything has it
 func _mw_flat(n: String) -> ShaderMaterial: return pal(n, "flat")
 
-## a pillar out of the sea: the stone of its slab, yellow on every face, down to its middle; from there it goes over,
-## down to the waterline, into the colour of its own picture on the water: the same stone, shadowed. That picture lies
-## over the sea (not under it: so the sea's blue does not cloud it) and thins out down its length into the sea itself,
-## so that the pillar goes on into its picture and is lost in the water. (Over there, in the eidolon, the same in blue)
-const MW_DEEP := {"warm": Vector3(0.52, 0.45, 0.35), "eid": Vector3(0.18, 0.26, 0.36)}
+## a pillar out of the sea: the stone of its slab, yellow on every face, down to its middle; from there it darkens in
+## its own colour down to the sea. Its picture on the water is as everything's is. (Its materials are entered with the
+## others, so that the frame's light and mist reach them)
 var mw_fmats := {}
-func _mw_rmat(tint: Vector3, h: float) -> ShaderMaterial:
-	var key := "r|%s|%.2f" % [str(tint), h]
-	if mw_fmats.has(key): return mw_fmats[key]
-	var r := refl_mat.duplicate() as ShaderMaterial; r.set_shader_parameter("tint", tint); r.set_shader_parameter("lift", 0.035)
-	r.set_shader_parameter("fade_h0", 0.0); r.set_shader_parameter("fade_h1", h * 1.1); r.set_shader_parameter("fade_min", 0.0)
-	timed.append(r); mw_fmats[key] = r
-	return r
 func _mw_fmat(n: String, top := MW_TOP) -> ShaderMaterial:
 	var key := "f|%s|%.2f" % [n, top]
 	if mw_fmats.has(key): return mw_fmats[key]
 	var m := pal(n, "flat").duplicate() as ShaderMaterial
-	var deep: Vector3 = MW_DEEP["eid" if n.begins_with("eid") else "warm"]
-	m.set_shader_parameter("fade_y0", (top + WATER) * 0.5); m.set_shader_parameter("fade_y1", WATER + 0.02); m.set_shader_parameter("fade_col", deep)
-	m.next_pass = _mw_rmat(deep, top - WATER) if refl_mat != null else null
+	m.set_shader_parameter("fade_y0", (top + WATER) * 0.5); m.set_shader_parameter("fade_y1", WATER - 0.05)
+	m.set_shader_parameter("fade_mul", 0.4); m.set_shader_parameter("fade_emit", 0.0)
 	mw_fmats[key] = m; pmats["mw|" + key] = m
 	return m
 
@@ -1509,7 +1501,7 @@ func _mw_fmat(n: String, top := MW_TOP) -> ShaderMaterial:
 func _mw_tile(v: Vector2i) -> void:
 	var p := _mw_p(v); var far := _mw_side(v) < 0
 	var h := GO_D * 0.5
-	blk(p + Vector3(-h, WATER + 0.02 - MW_TOP, -h), p + Vector3(h, -0.1, h), "shade", go_root).material_override = _mw_fmat("eid" if far else "pillar")
+	blk(p + Vector3(-h, WATER - 0.3 - MW_TOP, -h), p + Vector3(h, -0.1, h), "shade", go_root).material_override = _mw_fmat("eid" if far else "pillar")
 	blk(p + Vector3(-h + 0.035, -0.14, -h + 0.035), p + Vector3(h - 0.035, 0.0, h - 0.035), "stone", go_root).material_override = _mw_flat("eid" if far else "stone")
 
 ## a column, broken: a plinth and two drums
@@ -1542,7 +1534,7 @@ func _mw_stone(v: Vector2i, img: bool) -> Node3D:
 func _mw_slab(v: Vector2i) -> Node3D:
 	var n := Node3D.new(); n.position = _mw_p(v); go_root.add_child(n)
 	var h := GO_D * 0.5 - 0.06
-	blk(Vector3(-h, WATER + 0.02 - MW_TOP, -h), Vector3(h, -0.1, h), "shade", n).material_override = _mw_fmat("pillar")
+	blk(Vector3(-h, WATER - 0.3 - MW_TOP, -h), Vector3(h, -0.1, h), "shade", n).material_override = _mw_fmat("pillar")
 	blk(Vector3(-h + 0.03, -0.14, -h + 0.03), Vector3(h - 0.03, 0.0, h - 0.03), "stone", n).material_override = _mw_flat("block")
 	blk(Vector3(-h + 0.03, -0.004, -0.035), Vector3(h - 0.03, 0.004, 0.035), "gold", n).material_override = _mw_flat("gold")
 	return n
@@ -1552,7 +1544,7 @@ func _mw_slab(v: Vector2i) -> Node3D:
 func _mw_gate() -> Node3D:
 	var g := Node3D.new(); g.position = _mw_p(gs.gate) + Vector3(0, -6.5, 0); go_root.add_child(g)
 	var h := GO_D * 0.5 - 0.06
-	blk(Vector3(-h, WATER + 0.02 - MW_TOP, -h), Vector3(h, -0.1, h), "shade", g).material_override = _mw_fmat("pillar")
+	blk(Vector3(-h, WATER - 0.3 - MW_TOP, -h), Vector3(h, -0.1, h), "shade", g).material_override = _mw_fmat("pillar")
 	blk(Vector3(-h + 0.03, -0.14, -h + 0.03), Vector3(h - 0.03, 0.0, h - 0.03), "stone", g).material_override = _mw_flat("stone")
 	var an := Node3D.new(); an.position = Vector3(0, 0, -0.45); g.add_child(an)
 	var st := func(a: Vector3, b: Vector3, m := "stone") -> void: blk(a, b, m, an).material_override = pal(m, "flat")
