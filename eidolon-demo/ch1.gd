@@ -1537,6 +1537,17 @@ func _go_pre(_dt: float) -> void:
 
 func _go_post(dt: float) -> void:
 	cam_focus = Vector3(_go_cx(int(gs.get("lv", 0))), 0, 0.3); cam_focus_on = true
+	if not go_said.has("her_sea") and H.has("main"):      # her picture on the sea is a dark shape, like that of every other thing on it
+		go_said["her_sea"] = true
+		for mm in (H["main"].holder as Node).find_children("*", "MeshInstance3D", true, false):
+			var mi := mm as MeshInstance3D
+			var ms := [mi.material_override]
+			if mi.mesh != null:
+				for si in mi.mesh.get_surface_count(): ms.append(mi.get_surface_override_material(si))
+			for m in ms:
+				if m is ShaderMaterial and (m as ShaderMaterial).next_pass is ShaderMaterial:
+					var rp := (m as ShaderMaterial).next_pass as ShaderMaterial
+					rp.set_shader_parameter("use_tex", 0.0); rp.set_shader_parameter("fade_a", 1.0); rp.set_shader_parameter("tint", refl_mat.get_shader_parameter("tint") if refl_mat != null and refl_mat.get_shader_parameter("tint") != null else Vector3(0.04, 0.12, 0.2))
 	if started:
 		go_t += dt
 		var lk := "line%d" % int(gs.lv)
