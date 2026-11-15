@@ -132,7 +132,7 @@ func _init() -> void:
 
 func _hollows() -> Array:
 	return [[HX0 + 0.5, HZ0 + 0.5, HX1 - 0.5, HZ1 - 0.5], [TX0 + 0.5, TZ0 + 0.5, TX1 - 0.5, TZ1 - 0.5], [VX0 + 0.5, VZ0 + 0.5, VX1 - 0.5, VZ1 - 0.5],
-		[FX0 + 0.5, FZ0 - 0.1, FX1 - 0.5, FZ1 - 0.5], [GX0 + 0.5, GZ0 + 0.5, GX1 - 0.5, GZ1 - 0.5], [UX0 + 0.5, UZ0 + 0.5, UX1 - 0.5, UZ1 - 0.5]] + ([[MT_X0 + 0.3, MT_Z0 + 0.5, MT_X1 - 0.3, MT_Z1 - 0.5]] if match_demo else []) + (_fig_hollows() if figure_demo else [])
+		[FX0 + 0.5, FZ0 - 0.1, FX1 - 0.5, FZ1 - 0.5], [GX0 + 0.5, GZ0 + 0.5, GX1 - 0.5, GZ1 - 0.5], [UX0 + 0.5, UZ0 + 0.5, UX1 - 0.5, UZ1 - 0.5]] + ([[MT_X0 + 0.3, MT_Z0 + 0.5, MT_X1 - 0.3, MT_Z1 - 0.5]] if match_demo else []) + (_fig_hollows() if figure_demo else []) + ([[107.15, -2.85, 112.85, 2.85]] if geo_demo else [])
 
 # ---------------------------------------------------------------- small builders
 func R(x0: float, z0: float, x1: float, z1: float, on := true, h := 0.0) -> Dictionary:
@@ -907,6 +907,54 @@ func _gh_tiles(r: Array, y: float, step := 0.65) -> void:
 	var z: float = r[1] + step
 	while z < r[3] - 0.15: blk(Vector3(r[0] + 0.03, y, z - 0.008), Vector3(r[2] - 0.03, y + 0.004, z + 0.008), "shade").material_override = m; z += step
 
+## the still water inside the square: as the game's courts have it. A pit with the sky in it, the glass that ripples
+## and blurs over it, a kerb where a road's gap meets it; and everything that stands about, mirrored in it (the game's
+## own mirrored body of her shows in it by itself)
+func _gh_pool() -> void:
+	var x0 := 107.05; var z0 := -2.95; var x1 := 112.95; var z1 := 2.95
+	var tall := Node3D.new(); tall.name = "GhTall"; add_child(tall)
+	var before: Dictionary = gh_pic.get_meta("before")
+	for ch in get_children():
+		if before.has(ch) or ch == tall or not (ch is Node3D): continue
+		(ch as Node3D).reparent(tall, true)
+	var pit := MeshInstance3D.new(); var pm := BoxMesh.new(); pm.size = Vector3(x1 - x0, 2.4, z1 - z0); pit.mesh = pm
+	pit.position = Vector3((x0 + x1) * 0.5, -0.19 - 1.2, (z0 + z1) * 0.5)
+	var pmat := ShaderMaterial.new(); pmat.shader = shaders["pit"]; pmat.set_shader_parameter("y0", -0.2); pmat.set_shader_parameter("y1", -2.4)
+	pit.material_override = pmat; pit.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(pit)
+	# its glass, round the deck and the bridge that stand in it (over them it would lay the water's picture on the stone)
+	for r in [[x0, z0, x1, -1.62], [x0, 1.62, x1, z1], [x0, -1.62, 108.5, -0.6], [108.5, -1.62, 109.0, -1.2], [111.5, -1.62, x1, -0.6], [111.0, -1.62, 111.5, -1.2],
+			[x0, 0.6, 108.5, 1.62], [108.5, 1.2, 109.0, 1.62], [111.5, 0.6, x1, 1.62], [111.0, 1.2, 111.5, 1.62]]:
+		glass(r[0], r[1], r[2], r[3])
+	for r in [[106.95, -1.0, 107.05, 1.0], [107.8, 2.95, 109.2, 3.05], [110.8, -3.05, 112.2, -2.95]]:
+		blk(Vector3(r[0], WATER - 0.8, r[1]), Vector3(r[2], 0.03, r[3]), "stone").material_override = pal("stone", "flat")
+	# the mirrored copy: the same things, turned over about the water, drawn from both sides and not mirrored again in
+	# the sea. Only what stands over the water: what reaches down under it (the decks' footings, what stands in the sea)
+	# would stand up out of it, turned over
+	for mm in tall.find_children("*", "MeshInstance3D", true, false):
+		var mo := mm as MeshInstance3D
+		if mo.mesh == null: continue
+		var box: AABB = mo.global_transform * mo.get_aabb()
+		if box.position.y < -0.08: mo.set_meta("no_twin", true)
+	var tw := tall.duplicate() as Node3D; mroot.add_child(tw); tw.transform = Transform3D.IDENTITY
+	var conv := {}
+	for mm in tw.find_children("*", "MeshInstance3D", true, false):
+		var mi := mm as MeshInstance3D
+		if mi.has_meta("no_twin"): mi.queue_free(); continue
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		if mi.material_override is ShaderMaterial: mi.material_override = _gh_twin_mat(mi.material_override, conv)
+		if mi.mesh == null: continue
+		for si in mi.mesh.get_surface_count():
+			var sm = mi.get_surface_override_material(si)
+			if sm is ShaderMaterial: mi.set_surface_override_material(si, _gh_twin_mat(sm, conv))
+
+func _gh_twin_mat(m: ShaderMaterial, conv: Dictionary) -> ShaderMaterial:
+	if conv.has(m): return conv[m]
+	var c := m.duplicate() as ShaderMaterial
+	if m.shader == shaders["base"]: c.shader = shaders["two"]
+	c.next_pass = null
+	conv[m] = c
+	return c
+
 ## a look: a faint beam of light from a to b
 func _gh_beam(a: Vector3, b: Vector3) -> void:
 	var d := b - a
@@ -940,6 +988,9 @@ func _gh_statue(p: Vector3, yaw: float, veiled: bool) -> void:
 func _gh_build() -> void:
 	gh_pic = Node3D.new(); add_child(gh_pic); gh_hang = Node3D.new(); add_child(gh_hang); gh_inv = Node3D.new(); add_child(gh_inv); gh_inv.visible = false
 	var yD := 0.0      # (the decks stand where the game's floors stand, a man's height over the sea)
+	var before := {}
+	for ch in get_children(): before[ch] = true
+	gh_pic.set_meta("before", before)
 	var slab := func(r: Array) -> void:
 		blk(Vector3(r[0], WATER - 0.8, r[1]), Vector3(r[2], yD, r[3]), "stone").material_override = pal("stone", "flat")
 		blk(Vector3(r[0] - 0.05, yD - 0.26, r[1] - 0.05), Vector3(r[2] + 0.05, yD - 0.1, r[3] + 0.05), "shade").material_override = pal("shade", "flat")
@@ -962,21 +1013,21 @@ func _gh_build() -> void:
 		var b1 := _gsw([107.65, -4.85, 107.65, -4.85], sw); _gh_brazier(Vector3(b1[0], yD, b1[1]))
 	lights[4] = Vector4(107.65, yD + 0.9, -4.85, 0.75); lights[5] = Vector4(105.15, yD + 0.9, -2.35, 0.75); lights[6] = Vector4(gx, yD + 1.4, gz, 0.85)
 	# the turning deck in the middle, and its bridge: held by the look from the right, across the water from road to road
-	cyl(Vector3(110, WATER - 0.6, 0), 0.5, 0.5, 0.75, pal("shade", "flat"), 16)
-	cyl(Vector3(110, yD - 0.32, 0), 1.55, 1.55, 0.32, pal("stone", "flat"), 36); cyl(Vector3(110, yD - 0.34, 0), 1.6, 1.6, 0.08, pal("shade", "flat"), 36)
-	cyl(Vector3(110, yD - 0.004, 0), 0.32, 0.32, 0.02, pal("gold", "flat"), 20)
-	blk(Vector3(107.05, yD - 0.16, -0.6), Vector3(112.95, yD + 0.004, 0.6), "stone").material_override = pal("stone", "flat")
+	cyl(Vector3(110, -0.9, 0), 0.5, 0.5, 0.6, pal("shade", "flat"), 16)
+	cyl(Vector3(110, yD - 0.3, 0), 1.55, 1.55, 0.34, pal("stone", "flat"), 36); cyl(Vector3(110, yD - 0.34, 0), 1.6, 1.6, 0.08, pal("shade", "flat"), 36)
+	cyl(Vector3(110, yD + 0.035, 0), 0.32, 0.32, 0.02, pal("gold", "flat"), 20)
+	blk(Vector3(107.05, yD - 0.16, -0.6), Vector3(112.95, yD + 0.04, 0.6), "stone").material_override = pal("stone", "flat")
 	blk(Vector3(107.1, yD - 0.3, -0.45), Vector3(112.9, yD - 0.16, 0.45), "shade").material_override = pal("shade", "flat")
-	_gh_held(Vector3(107.05, yD, -0.6), Vector3(112.95, yD, 0.6))
+	_gh_held(Vector3(107.05, yD + 0.04, -0.6), Vector3(112.95, yD + 0.04, 0.6))
 	var halo := CylinderMesh.new(); halo.top_radius = 1.75; halo.bottom_radius = 1.75; halo.height = 0.01; halo.radial_segments = 36
-	prim(halo, Vector3(110, yD - 0.33, 0), mat(Color(1.0, 0.8, 0.45, 0.12), true)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	prim(halo, Vector3(110, yD + 0.02, 0), mat(Color(1.0, 0.8, 0.45, 0.12), true)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	lights[2] = Vector4(110.0, yD + 0.2, 0.0, 0.6)
 	# the slab in the far-left road's gap, held by the look that the mirror sends
 	blk(Vector3(105.8, yD - 0.18, -0.95), Vector3(107.0, yD + 0.004, 0.95), "stone").material_override = pal("stone", "flat")
 	_gh_held(Vector3(105.8, yD, -0.95), Vector3(107.0, yD, 0.95)); lights[3] = Vector4(106.4, yD + 0.2, 0.0, 0.55)
 	# the slabs nothing looks at: askew in the water
-	for d in [[108.5, 4.9, 0.5, Vector3(0.06, 0.35, -0.08)], [111.5, -2.0, -0.45, Vector3(-0.05, 0.6, 0.07)]]:
-		var n := Node3D.new(); n.position = Vector3(d[0], WATER + 0.12, d[1]); n.rotation = d[3]; add_child(n)
+	for d in [[108.5, 4.9, 0.5, Vector3(0.06, 0.35, -0.08), WATER + 0.12], [111.5, -2.0, -0.45, Vector3(-0.05, 0.6, 0.07), 0.07]]:
+		var n := Node3D.new(); n.position = Vector3(d[0], d[4], d[1]); n.rotation = d[3]; add_child(n)
 		blk(Vector3(-0.7, -0.3, -0.62), Vector3(0.7, 0.05, 0.62), "stone", n).material_override = pal("stone", "flat")
 		blk(Vector3(-0.7, -0.02, -0.62), Vector3(0.7, 0.05, 0.62), "stone", n).material_override = pal("stone", "flat")
 		for i in 2: blk(Vector3(-0.7 + 0.7 * i + 0.34, 0.05, -0.62), Vector3(-0.7 + 0.7 * i + 0.36, 0.055, 0.62), "shade", n).material_override = pal("shade", "flat")
@@ -992,6 +1043,7 @@ func _gh_build() -> void:
 	var hit := Vector3(mp.x, eye2.y - 0.35, mp.z)
 	_gh_beam(eye2, hit); _gh_beam(hit, Vector3(106.4, yD + 0.05, 0.0))
 	_gh_around()
+	_gh_pool()
 	stele("gh_st0", Vector3(113.2, 0.0, 3.2), 0.0, ["What is looked at,\nstays."])
 	# the look of it: a hard vignette, and small lights adrift over the water
 	var cl := CanvasLayer.new(); cl.layer = 0; add_child(cl)
@@ -1039,7 +1091,7 @@ func _gh_flame_on(n: Node3D, p: Vector3, k: float) -> void:
 
 ## (she stands at the near corner)
 func _gh_begin() -> void:
-	_wake_now(); pos = Vector3(114.5, 0.0, 4.5); yaw = PI * 0.25; cam_t = GH_MID_PT      # (at the edge of the deck: her picture lies on the sea before her)
+	_wake_now(); pos = Vector3(106.8, 0.0, -1.7); yaw = PI * 0.25; cam_t = GH_MID_PT      # (at the edge of the deck: her picture lies on the sea before her)
 	cam_focus = GH_MID_PT; cam_focus_on = true
 	for ql in quote_lbls:
 		if (ql as Label).get_theme_constant("outline_size") == 0: (ql as Label).add_theme_color_override("font_color", Color(0.97, 0.98, 1.0, 1.0))
@@ -1054,17 +1106,6 @@ func _gh_pre(_dt: float) -> void:
 	pos.y = 0.0
 
 func _gh_post(dt: float) -> void:
-	if not gh_said.has("her_dark") and H.has("main"):      # her picture in the sea: a dark shape, as the water in the courts shows her (only its colour; the rest is the game's)
-		gh_said["her_dark"] = true
-		for mm in (H["main"].holder as Node).find_children("*", "MeshInstance3D", true, false):
-			var mi := mm as MeshInstance3D
-			var ms := [mi.material_override]
-			if mi.mesh != null:
-				for si in mi.mesh.get_surface_count(): ms.append(mi.get_surface_override_material(si))
-			for m in ms:
-				if m is ShaderMaterial and (m as ShaderMaterial).next_pass is ShaderMaterial:
-					var rp := (m as ShaderMaterial).next_pass as ShaderMaterial
-					rp.set_shader_parameter("use_tex", 0.0); rp.set_shader_parameter("tint", Vector3(0.05, 0.1, 0.16))
 	cam_focus = GH_MID_PT; cam_focus_on = true
 	if started:
 		gh_t += dt
