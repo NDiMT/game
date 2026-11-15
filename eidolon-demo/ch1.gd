@@ -127,7 +127,7 @@ func _init() -> void:
 	if flip_demo: title_sub = "the turning water  ·  a trial\ntap to begin"; end_sub = "end of the trial\ntap to begin again"
 	if match_demo: title_sub = "the still water  ·  a trial\ntap to begin"
 	if figure_demo: title_sub = "the face in the water  ·  a trial\ntap to begin"
-	if geo_demo: title_sub = "what the water does not show\ntap to begin"
+	if geo_demo: title_sub = "what is looked at, stays  ·  an idea\ntap to begin"
 	if geo_demo: sea_c = Color("2b6880"); mist_c = Color("7f8fb4"); bg_c = Color("1c4a5e"); shadow_c = Vector3(0.5, 0.52, 0.8)      # (this trial: the same sea toward evening)
 
 func _hollows() -> Array:
@@ -658,24 +658,17 @@ func _unhandled_input(ev: InputEvent) -> void:
 		ev = ev.duplicate(); ev.position.y = get_viewport().get_visible_rect().size.y - ev.position.y
 	super._unhandled_input(ev)
 
-# ---------------------------------------------------------------- what the water does not show (a trial)
-## A square of low causeways in the open sea, the same on its left as on its right: she sets out from the near corner,
-## the gate stands under a dome at the far one, a statue of her at each side corner, an obelisk in the middle water.
-## The sea shows it all as a dark shade lying before it. The rule: a thing of white stone is there only where the
-## water shows it. Four white walls bar the four sides. Two rafts float: one on the sea before the square, one on the
-## middle water. Where a raft lies on the shade of a wall's foot, the foot is gone: the top hangs in the air and she
-## walks under it. A tap on a raft sends both across: the outer one round the near corner, the inner one round the
-## obelisk, the other way. So on either road one wall is open and the next is shut: she passes the first, sends the
-## rafts across behind her, and the second opens.
-## (Built in measures counted down from GD_G: a depth d stands at the height GD_G - d; the sea lies at WATER.)
+# ---------------------------------------------------------------- what is looked at, stays (a picture of an idea)
+## Not a level yet: one scene, to see whether the idea reads. The monument is alive: its bridges, rings and slabs drift
+## slowly, rocked by the sea. What a statue of her looks at stands still. The statues are veiled; she carries the
+## veils. Here: a statue on the right looks at the turning deck in the middle, and its bridge stands still across the
+## water; a statue on the near side looks into a bronze mirror, and the mirror sends the look along the far-left road,
+## where it holds a slab in the gap. A third statue is veiled, and the slab it would hold drifts askew in the water.
+## (A thing held by a look has a thin line of gold light on it; the looks themselves are faint beams.)
 const GD_G := 9.3
 const GCX := 110.0
-const GH_VIEW := 14.5
-const GH_MID_PT := Vector3(110.7, 0, 0.7)
-const GH_WALLS := {"L1": [109.8, 2.4, 110.2, 4.0], "R1": [112.4, -0.2, 114.0, 0.2], "L2": [106.0, -0.2, 107.6, 0.2], "R2": [109.8, -4.0, 110.2, -2.4]}      # the white walls (x0, z0, x1, z1)
-const GH_OPEN := [["L1", "R2"], ["R1", "L2"]]      # which walls each lie of the rafts opens
-const GH_RAFT := {"F": [Vector3(111.45, 0, 5.45), Vector3(116.3, 0, 6.3), Vector3(115.45, 0, 1.45)], "G": [Vector3(111.45, 0, -0.95), Vector3(111.5, 0, 1.5), Vector3(109.05, 0, 1.45)]}      # each raft: where it lies at 0, the turn of its way, where it lies at 1
-var gh := {"s": 0, "moving": false}
+const GH_VIEW := 15.0
+const GH_MID_PT := Vector3(109.7, 0, 1.0)
 var gh_pic: Node3D
 var gh_hang: Node3D
 var gh_inv: Node3D
@@ -906,70 +899,92 @@ func _gh_flame(p: Vector3, k: float) -> void:
 	var halo := SphereMesh.new(); halo.radius = 0.5 * k; halo.height = 1.0 * k; halo.radial_segments = 14; halo.rings = 7
 	prim(halo, p + Vector3(0, 0.16 * k, 0), mat(Color(1.0, 0.72, 0.34, 0.14), true)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
+## a look: a faint beam of light from a to b
+func _gh_beam(a: Vector3, b: Vector3) -> void:
+	var d := b - a
+	for k in [[0.035, Color(1.0, 0.93, 0.72, 0.55)], [0.11, Color(1.0, 0.85, 0.55, 0.12)], [0.24, Color(1.0, 0.8, 0.5, 0.05)]]:
+		var c := CylinderMesh.new(); c.top_radius = k[0]; c.bottom_radius = k[0]; c.height = d.length(); c.radial_segments = 10; c.rings = 1
+		var mi := MeshInstance3D.new(); mi.mesh = c; mi.material_override = mat(k[1], true); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(mi)
+		mi.position = (a + b) * 0.5
+		mi.basis = Basis(Quaternion(Vector3.UP, d.normalized()))
+	var sm := SphereMesh.new(); sm.radius = 0.16; sm.height = 0.32; sm.radial_segments = 12; sm.rings = 6
+	prim(sm, b, mat(Color(1.0, 0.88, 0.6, 0.35), true)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+## a line of gold light round a box held by a look
+func _gh_held(a: Vector3, b: Vector3) -> void:
+	for e in [[a.x - 0.03, a.z - 0.03, b.x + 0.03, a.z + 0.03], [a.x - 0.03, b.z - 0.03, b.x + 0.03, b.z + 0.03], [a.x - 0.03, a.z, a.x + 0.03, b.z], [b.x - 0.03, a.z, b.x + 0.03, b.z]]:
+		blk(Vector3(e[0], b.y - 0.01, e[1]), Vector3(e[2], b.y + 0.025, e[3]), "lamp").material_override = mat(Color("ffd890"))
+
+## a statue of her, twice her height, on a plinth; veiled, or looking
+func _gh_statue(p: Vector3, yaw: float, veiled: bool) -> void:
+	var y := p.y
+	blk(Vector3(p.x - 0.55, y, p.z - 0.55), Vector3(p.x + 0.55, y + 0.8, p.z + 0.55), "stone").material_override = pal("stone", "flat")
+	blk(Vector3(p.x - 0.62, y + 0.68, p.z - 0.62), Vector3(p.x + 0.62, y + 0.8, p.z + 0.62), "shade").material_override = pal("shade", "flat")
+	blk(Vector3(p.x - 0.62, y, p.z - 0.62), Vector3(p.x + 0.62, y + 0.12, p.z + 0.62), "shade").material_override = pal("shade", "flat")
+	var top := Vector3(p.x, y + 0.8, p.z)
+	if not veiled: her_statue(top, yaw, "calm", 1.6); return
+	cyl(top, 0.56, 0.26, 2.15, pal("linen", "flat"), 14); ball(top + Vector3(0, 2.32, 0), 0.3, pal("linen", "flat"))
+	cyl(top + Vector3(0, 1.25, 0), 0.4, 0.38, 0.06, pal("rope", "flat"), 14); cyl(top + Vector3(0, 0.4, 0), 0.53, 0.51, 0.06, pal("rope", "flat"), 14)
+	for k in 5:      # its hem, lying in folds on the plinth
+		var a := k * TAU / 5.0 + 0.3
+		var f := ball(top + Vector3(cos(a) * 0.5, 0.04, sin(a) * 0.5), 0.17, pal("linen", "flat")); f.scale = Vector3(1.3, 0.45, 1.0)
+
 func _gh_build() -> void:
-	gh_pic = Node3D.new(); gh_pic.position = Vector3(0, GD_G, 0); add_child(gh_pic); gh_hang = Node3D.new(); add_child(gh_hang)
-	gh_inv = Node3D.new(); add_child(gh_inv); gh_inv.visible = false
-	var dS := GD_G - WATER; var dD := dS - 0.5      # the sea; the decks, half a metre over it
+	gh_pic = Node3D.new(); add_child(gh_pic); gh_hang = Node3D.new(); add_child(gh_hang); gh_inv = Node3D.new(); add_child(gh_inv); gh_inv.visible = false
 	var yD := WATER + 0.5
-	# the square of causeways, a platform at each corner, an island in the middle water
-	for r in [[106.0, 2.4, 114.0, 4.0], [112.4, -4.0, 114.0, 4.0], [106.0, -4.0, 114.0, -2.4], [106.0, -4.0, 107.6, 4.0], [112.3, 2.3, 114.9, 4.9], [104.6, 2.3, 107.7, 5.4], [112.3, -5.4, 115.4, -2.3], [104.8, -5.2, 108.0, -2.0], [109.4, -0.6, 110.6, 0.6]]:
-		_cb(r[0], r[1], r[2], r[3], dD, dS + 0.8, "stone"); _cb(r[0] - 0.05, r[1] - 0.05, r[2] + 0.05, r[3] + 0.05, dD + 0.1, dD + 0.26, "shade")
-		_ctiles(r[0], r[1], r[2], r[3], dD, 0.8)
-	_cc(113.6, 3.6, dD - 0.012, dD + 0.01, 0.5, 0.5, "gold", 24); _cc(113.6, 3.6, dD - 0.02, dD, 0.36, 0.36, "stone", 24)      # (where she sets out: a ring of bronze in the floor)
+	var slab := func(r: Array) -> void:
+		blk(Vector3(r[0], WATER - 0.8, r[1]), Vector3(r[2], yD, r[3]), "stone").material_override = pal("stone", "flat")
+		blk(Vector3(r[0] - 0.05, yD - 0.26, r[1] - 0.05), Vector3(r[2] + 0.05, yD - 0.1, r[3] + 0.05), "shade").material_override = pal("shade", "flat")
+	# the square: four roads, each with a gap in the middle of it, and the corners
+	for r in [[105.75, 2.95, 107.8, 4.25], [109.2, 2.95, 114.25, 4.25], [112.95, -4.25, 114.25, 4.25], [105.75, -4.25, 110.8, -2.95], [112.2, -4.25, 114.25, -2.95], [105.75, -4.25, 107.05, -1.0], [105.75, 1.0, 107.05, 4.25],
+			[112.6, 2.6, 115.0, 5.0], [104.6, 2.3, 107.7, 5.4], [112.3, -5.4, 115.4, -2.3], [104.8, -5.2, 108.0, -2.0], [109.3, 4.25, 110.7, 5.6], [114.25, -0.7, 115.6, 0.7], [109.3, -5.6, 110.7, -4.25]]:
+		slab.call(r)
+	for r in [[105.75, 2.95, 107.8, 4.25], [109.2, 2.95, 112.95, 4.25], [112.95, -2.95, 114.25, 2.95], [107.05, -4.25, 110.8, -2.95], [112.2, -4.25, 112.95, -2.95], [105.75, -2.0, 107.05, -1.0], [105.75, 1.0, 107.05, 2.95]]: tiles(r[0], r[1], r[2], r[3], 0.65)
+	cyl(Vector3(113.6, yD - 0.012, 3.6), 0.5, 0.5, 0.025, pal("gold", "flat"), 24); cyl(Vector3(113.6, yD - 0.004, 3.6), 0.36, 0.36, 0.02, pal("stone", "flat"), 24)
 	# the gate at the far corner: two steps, eight columns in a ring, a dome, and light within
 	var gx := 106.4; var gz := -3.6
-	_cb(gx - 1.5, gz - 1.5, gx + 1.5, gz + 1.5, dD - 0.22, dD, "stone"); _cb(gx - 1.25, gz - 1.25, gx + 1.25, gz + 1.25, dD - 0.44, dD - 0.22, "stone")
-	for k in 8: _ccol(gx + cos(k * PI * 0.25 + PI * 0.125) * 1.0, gz + sin(k * PI * 0.25 + PI * 0.125) * 1.0, dD - 0.44, 2.5, 0.085)
-	_cc(gx, gz, dD - 3.16, dD - 2.94, 1.18, 1.18, "shade", 28); _cdome(gx, gz, dD - 3.16, 1.12, "terra", 0.85)
-	for b in [[gx - 0.03, gz - 0.4, gx + 0.03, gz + 0.4], [gx - 0.4, gz - 0.03, gx + 0.4, gz + 0.03]]:
-		blk(Vector3(b[0], -(dD - 0.44), b[1]), Vector3(b[2], -(dD - 0.44) + 1.9, b[3]), "lamp", gh_pic).material_override = under_mat(Color("ffe2a0"))
-	# a statue of her at each side corner on a plinth; an obelisk in the middle water; lights
-	var li := 2
+	blk(Vector3(gx - 1.5, yD, gz - 1.5), Vector3(gx + 1.5, yD + 0.22, gz + 1.5), "stone").material_override = pal("stone", "flat")
+	blk(Vector3(gx - 1.25, yD + 0.22, gz - 1.25), Vector3(gx + 1.25, yD + 0.44, gz + 1.25), "stone").material_override = pal("stone", "flat")
+	for k in 8: column(Vector3(gx + cos(k * PI * 0.25 + PI * 0.125) * 1.0, yD + 0.44, gz + sin(k * PI * 0.25 + PI * 0.125) * 1.0), 2.5, 0.085)
+	cyl(Vector3(gx, yD + 2.94, gz), 1.18, 1.18, 0.22, pal("shade", "flat"), 28)
+	var dm := SphereMesh.new(); dm.radius = 1.12; dm.height = 1.12 * 0.85; dm.is_hemisphere = true; dm.radial_segments = 24; dm.rings = 8
+	prim(dm, Vector3(gx, yD + 3.16, gz), pal("terra", "flat"))
+	for b in [[gx - 0.03, gz - 0.4, gx + 0.03, gz + 0.4], [gx - 0.4, gz - 0.03, gx + 0.4, gz + 0.03]]: blk(Vector3(b[0], yD + 0.44, b[1]), Vector3(b[2], yD + 2.34, b[3]), "lamp").material_override = under_mat(Color("ffe2a0"))
 	for sw in [false, true]:
-		var c := _gsw([114.4, -4.4, 114.4, -4.4], sw)
-		_cb(c[0] - 0.65, c[1] - 0.65, c[0] + 0.65, c[1] + 0.65, dD - 0.9, dD, "stone"); _cb(c[0] - 0.72, c[1] - 0.72, c[0] + 0.72, c[1] + 0.72, dD - 0.9, dD - 0.78, "shade"); _cb(c[0] - 0.72, c[1] - 0.72, c[0] + 0.72, c[1] + 0.72, dD - 0.14, dD, "shade")
-		_cstatue(c[0], c[1], dD - 0.9, PI * 0.5 if sw else 0.0, "pray", 1.9)
-		var cy := _gsw([114.95, -2.75, 114.95, -2.75], sw); _cprop("cypress", cy[0], cy[1], dD, 1.9, "leaf:cyp~,trunk:trunk")
-		var b1 := _gsw([107.65, -4.85, 107.65, -4.85], sw); _gh_brazier(Vector3(b1[0], yD, b1[1])); lights[li] = Vector4(b1[0], yD + 0.9, b1[1], 0.75); li += 1
-		var s1 := _gsw([108.8, -2.62, 108.8, -2.62], sw); _gh_stone_lamp(Vector3(s1[0], yD, s1[1])); lights[li] = Vector4(s1[0], yD + 0.8, s1[1], 0.55); li += 1
-		var f := _gsw([109.6, -1.9, 109.6, -1.9], sw); _gh_float_lamp(Vector3(f[0], WATER, f[1]))
-	_gh_float_lamp(Vector3(108.6, WATER, -1.4))
-	lights[6] = Vector4(gx, yD + 1.4, gz, 0.85)
-	_cb(109.6, -0.4, 110.4, 0.4, dD - 0.4, dD, "stone"); _cb(109.74, -0.26, 110.26, 0.26, dD - 2.6, dD - 0.4, "sand"); _cb(109.8, -0.2, 110.2, 0.2, dD - 4.3, dD - 2.6, "sand")
-	_cb(109.86, -0.14, 110.14, 0.14, dD - 4.65, dD - 4.3, "gold")
-	_gh_flush()
-	for mm2 in gh_pic.find_children("*", "MeshInstance3D", true, false): (mm2 as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-	# the white walls: a top that always hangs there, and a foot in six courses that goes when the water does not show it
-	for id in GH_WALLS:
-		var w: Array = GH_WALLS[id]
-		var top := blk(Vector3(w[0], yD + 1.9, w[1]), Vector3(w[2], yD + 3.2, w[3]), "marble"); top.material_override = pal("marble", "flat")
-		blk(Vector3(w[0] - 0.04, yD + 3.06, w[1] - 0.04), Vector3(w[2] + 0.04, yD + 3.2, w[3] + 0.04), "gold").material_override = pal("gold", "flat")
-		var foot := []
-		for k in 6:
-			var c := blk(Vector3(w[0], yD + k * 1.9 / 6.0, w[1]), Vector3(w[2], yD + (k + 1) * 1.9 / 6.0, w[3]), "marble"); c.material_override = pal("marble", "flat"); foot.append(c)
-		var band := blk(Vector3(w[0] - 0.04, yD, w[1] - 0.04), Vector3(w[2] + 0.04, yD + 0.14, w[3] + 0.04), "gold"); band.material_override = pal("gold", "flat"); foot.append(band)
-		N["ghfoot" + id] = foot
-	# the rafts, and the posts at their moorings
-	for id in GH_RAFT:
-		var st: Array = GH_RAFT[id]; var ln := 2.0 if id == "F" else 2.1; var hw := 0.7 if id == "F" else 0.6
-		var n := Node3D.new(); n.position = Vector3(st[0].x, WATER + 0.02, st[0].z); n.rotation.y = PI * 0.25; add_child(n); N["ghraft" + id] = n
-		var np := int(hw * 2.0 / 0.2)
-		for k in np: blk(Vector3(-hw + k * 0.2, 0, -ln * 0.5), Vector3(-hw + 0.18 + k * 0.2, 0.09, ln * 0.5), "wood", n).material_override = pal("wood", "flat")
-		for e in [-1.0, 1.0]: blk(Vector3(-hw - 0.04, 0.09, e * (ln * 0.5 - 0.16) - 0.05), Vector3(hw + 0.04, 0.14, e * (ln * 0.5 - 0.16) + 0.05), "trunk", n).material_override = pal("trunk", "flat")
-		cyl(Vector3(0, 0.14, 0), 0.05, 0.05, 0.05, pal("gold", "flat"), 8, n); _gh_flame_on(n, Vector3(0, 0.19, 0), 0.5)
-		for e2 in [0, 2]:
-			for sx in [-1.0, 1.0]:
-				for sz in [-1.0, 1.0]:
-					var pp: Vector3 = st[e2] + Vector3(0.7071, 0, -0.7071) * sx * (hw + 0.22) + Vector3(0.7071, 0, 0.7071) * sz * (ln * 0.5 + 0.12)
-					if _gh_dry(pp): continue
-					cyl(Vector3(pp.x, WATER - 0.3, pp.z), 0.05, 0.05, 0.95, pal("trunk", "flat"), 8); cyl(Vector3(pp.x, WATER + 0.65, pp.z), 0.065, 0.045, 0.06, pal("gold", "flat"), 8)
-	# the floors: the four sides (each in two, with a door where its wall stands), and the four corners
-	rects["GHf"] = R(112.4, 2.4, 114.8, 4.8); rects["GHl"] = R(106.1, 2.5, 107.6, 3.9); rects["GHr"] = R(112.5, -3.9, 113.9, -2.5); rects["GHg"] = R(105.0, -5.0, 107.9, -2.2)
-	rects["GHs1"] = R(110.25, 2.5, 112.5, 3.9); rects["GHs2"] = R(107.5, 2.5, 109.75, 3.9); rects["GHdL1"] = R(109.7, 2.5, 110.3, 3.9)
-	rects["GHe1"] = R(112.5, 0.25, 113.9, 2.5); rects["GHe2"] = R(112.5, -2.6, 113.9, -0.25); rects["GHdR1"] = R(112.5, -0.3, 113.9, 0.3)
-	rects["GHw1"] = R(106.1, 0.25, 107.5, 2.6); rects["GHw2"] = R(106.1, -2.3, 107.5, -0.25); rects["GHdL2"] = R(106.1, -0.3, 107.5, 0.3)
-	rects["GHn1"] = R(110.25, -3.9, 112.6, -2.5); rects["GHn2"] = R(107.8, -3.9, 109.75, -2.5); rects["GHdR2"] = R(109.7, -3.9, 110.3, -2.5)
-	for id in GH_WALLS: _gh_wall(id, id in GH_OPEN[gh.s], true)
+		var b1 := _gsw([107.65, -4.85, 107.65, -4.85], sw); _gh_brazier(Vector3(b1[0], yD, b1[1]))
+	lights[4] = Vector4(107.65, yD + 0.9, -4.85, 0.75); lights[5] = Vector4(105.15, yD + 0.9, -2.35, 0.75); lights[6] = Vector4(gx, yD + 1.4, gz, 0.85)
+	# the turning deck in the middle, and its bridge: held by the look from the right, across the water from road to road
+	cyl(Vector3(110, WATER - 0.6, 0), 0.5, 0.5, 0.75, pal("shade", "flat"), 16)
+	cyl(Vector3(110, yD - 0.32, 0), 1.55, 1.55, 0.32, pal("stone", "flat"), 36); cyl(Vector3(110, yD - 0.34, 0), 1.6, 1.6, 0.08, pal("shade", "flat"), 36)
+	cyl(Vector3(110, yD - 0.004, 0), 0.32, 0.32, 0.02, pal("gold", "flat"), 20)
+	blk(Vector3(107.05, yD - 0.16, -0.6), Vector3(112.95, yD + 0.004, 0.6), "stone").material_override = pal("stone", "flat")
+	blk(Vector3(107.1, yD - 0.3, -0.45), Vector3(112.9, yD - 0.16, 0.45), "shade").material_override = pal("shade", "flat")
+	_gh_held(Vector3(107.05, yD, -0.6), Vector3(112.95, yD, 0.6))
+	var halo := CylinderMesh.new(); halo.top_radius = 1.75; halo.bottom_radius = 1.75; halo.height = 0.01; halo.radial_segments = 36
+	prim(halo, Vector3(110, yD - 0.33, 0), mat(Color(1.0, 0.8, 0.45, 0.12), true)).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	lights[2] = Vector4(110.0, yD + 0.2, 0.0, 0.6)
+	# the slab in the far-left road's gap, held by the look that the mirror sends
+	blk(Vector3(105.8, yD - 0.18, -0.95), Vector3(107.0, yD + 0.004, 0.95), "stone").material_override = pal("stone", "flat")
+	_gh_held(Vector3(105.8, yD, -0.95), Vector3(107.0, yD, 0.95)); lights[3] = Vector4(106.4, yD + 0.2, 0.0, 0.55)
+	# the slabs nothing looks at: askew in the water
+	for d in [[108.5, 4.9, 0.5, Vector3(0.06, 0.35, -0.08)], [111.5, -2.0, -0.45, Vector3(-0.05, 0.6, 0.07)]]:
+		var n := Node3D.new(); n.position = Vector3(d[0], WATER + 0.12, d[1]); n.rotation = d[3]; add_child(n)
+		blk(Vector3(-0.7, -0.3, -0.62), Vector3(0.7, 0.05, 0.62), "stone", n).material_override = pal("stone", "flat")
+		blk(Vector3(-0.7, -0.02, -0.62), Vector3(0.7, 0.05, 0.62), "stone", n).material_override = pal("stone", "flat")
+		for i in 2: blk(Vector3(-0.7 + 0.7 * i + 0.34, 0.05, -0.62), Vector3(-0.7 + 0.7 * i + 0.36, 0.055, 0.62), "shade", n).material_override = pal("shade", "flat")
+	# the statues: right (looking at the deck), near side (looking into the mirror), far side (veiled)
+	_gh_statue(Vector3(114.95, yD, 0.0), -PI * 0.5, false)
+	_gh_statue(Vector3(110.0, yD, 4.95), -PI * 0.5, false)
+	_gh_statue(Vector3(110.0, yD, -4.95), 0.0, true)
+	var veil := ball(Vector3(110.6, yD + 0.85, 5.45), 0.24, pal("linen", "flat")); veil.scale = Vector3(1.4, 0.35, 1.1)      # the veil that was on it
+	var eye1 := Vector3(114.75, yD + 3.05, 0.0); var eye2 := Vector3(109.8, yD + 3.05, 4.95)
+	var mp := Vector3(105.25, yD, 4.95)      # the bronze mirror on the left corner, turned to send the look up the far-left road
+	var mr := mirror_stand(mp, PI * 0.25, self, yD, "bare"); mr.scale = Vector3.ONE * 1.35
+	_gh_beam(eye1, Vector3(110.6, yD + 0.05, 0.0))
+	var hit := Vector3(mp.x, eye2.y - 0.35, mp.z)
+	_gh_beam(eye2, hit); _gh_beam(hit, Vector3(106.4, yD + 0.05, 0.0))
+	_gh_around()
+	stele("gh_st0", Vector3(113.2, yD, 3.2), 0.0, ["What is looked at,\nstays."])
 	# the look of it: a hard vignette, and small lights adrift over the water
 	var cl := CanvasLayer.new(); cl.layer = 0; add_child(cl)
 	var vg := Gradient.new(); vg.offsets = PackedFloat32Array([0.0, 0.36, 0.72, 1.0])
@@ -977,7 +992,6 @@ func _gh_build() -> void:
 	var vt := GradientTexture2D.new(); vt.gradient = vg; vt.fill = GradientTexture2D.FILL_RADIAL; vt.fill_from = Vector2(0.5, 0.47); vt.fill_to = Vector2(1.12, 0.47); vt.width = 256; vt.height = 256
 	var vr := TextureRect.new(); vr.texture = vt; vr.stretch_mode = TextureRect.STRETCH_SCALE; vr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	vr.set_anchors_preset(Control.PRESET_FULL_RECT); vr.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(vr)
-	_gh_around()
 	var rng := RandomNumberGenerator.new(); rng.seed = 11
 	for k in 34:
 		var sm := SphereMesh.new(); sm.radius = 0.035; sm.height = 0.07; sm.radial_segments = 6; sm.rings = 3
@@ -1011,40 +1025,17 @@ func _gh_around() -> void:
 		var am := thing("amphora", Vector3(a[0], WATER - 0.16, a[1]), 0.5, "terra:terra,band:wood", a[2]); am.rotation = Vector3(1.2, a[2], 0.3)
 	for p in [Vector3(115.8, WATER, 11.2), Vector3(103.0, WATER, 7.6), Vector3(117.6, WATER, -8.6), Vector3(120.4, WATER, 7.4)]: thing("reeds", p, 0.0, "leaf:leaf~,trunk:wood~,pad:leaf2,flower:rose", p.x * 0.9 + p.z * 1.7, 0.95)
 
-## is this place of the sea under a floor?
-func _gh_dry(p: Vector3) -> bool:
-	for r in [[106.0, 2.4, 114.0, 4.0], [112.4, -4.0, 114.0, 4.0], [106.0, -4.0, 114.0, -2.4], [106.0, -4.0, 107.6, 4.0], [112.3, 2.3, 114.9, 4.9], [104.6, 2.3, 107.7, 5.4], [112.3, -5.4, 115.4, -2.3], [104.8, -5.2, 108.0, -2.0], [109.4, -0.6, 110.6, 0.6]]:
-		if p.x > r[0] - 0.1 and p.x < r[2] + 0.1 and p.z > r[1] - 0.1 and p.z < r[3] + 0.1: return true
-	return false
-
 func _gh_flame_on(n: Node3D, p: Vector3, k: float) -> void:
 	cyl(p, 0.12 * k, 0.0, 0.36 * k, mat(Color("ffb648")), 8, n).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	cyl(p, 0.065 * k, 0.0, 0.24 * k, mat(Color("fff0b8")), 8, n).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
-## a wall's foot goes (open) or comes back, course by course; its door in the floor with it
-func _gh_wall(id: String, open: bool, at_once := false) -> void:
-	rects["GHd" + id].on = open
-	var foot: Array = N["ghfoot" + id]
-	for k in foot.size():
-		var c: MeshInstance3D = foot[k]
-		var to := Vector3(0.001, 1, 0.001) if open else Vector3.ONE
-		if at_once: c.scale = to; c.visible = not open; continue
-		var tw4 := create_tween(); tw4.tween_interval((k if open else foot.size() - 1 - k) * 0.05)
-		if not open: tw4.tween_callback(c.show)
-		tw4.tween_property(c, "scale", to, 0.32).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		if open: tw4.tween_callback(c.hide)
-
-## (she sets out from the near corner)
+## (she stands at the near corner)
 func _gh_begin() -> void:
 	_wake_now(); pos = Vector3(113.6, WATER + 0.5, 3.6); yaw = PI * 1.25; cam_t = GH_MID_PT
 	cam_focus = GH_MID_PT; cam_focus_on = true
-	# every written thing: a light white, and whole
 	for ql in quote_lbls:
 		if (ql as Label).get_theme_constant("outline_size") == 0: (ql as Label).add_theme_color_override("font_color", Color(0.97, 0.98, 1.0, 1.0))
 	hint.add_theme_color_override("font_color", Color(0.97, 0.98, 1.0, 1.0))
-	for lb in find_children("*", "Label", true, false):
-		var l := lb as Label
-		if l.get_theme_constant("outline_size") <= 14 and l.get_theme_color("font_color").a > 0.5: l.add_theme_color_override("font_color", Color(0.97, 0.98, 1.0, 1.0))
 
 func _gh_write(text: String, hold := 5.5) -> void:
 	for ql in quote_lbls: (ql as Label).text = text
@@ -1053,101 +1044,28 @@ func _gh_write(text: String, hold := 5.5) -> void:
 
 func _gh_pre(_dt: float) -> void:
 	pos.y = WATER + 0.5
-	if H.has("mir"): (H["mir"].holder as Node3D).visible = false
 
 func _gh_post(dt: float) -> void:
-	var see := Vector3(pos.x, 0, pos.z)
-	cam_focus = GH_MID_PT.lerp(see, 0.22); cam_focus_on = true      # the eye keeps the whole square, and leans a little her way
+	for k in H:      # (only she, and her picture in the sea: no other body of hers)
+		if String(k) != "main" and String(k) != "refl": (H[k].holder as Node3D).visible = false
+	cam_focus = GH_MID_PT; cam_focus_on = true
 	if started:
 		gh_t += dt
-		if not gh_said.has("rule") and gh_t > 1.2: gh_said["rule"] = true; _gh_write("What the water does not show,\nis not.")
-		if not gh_said.has("hint") and gh_t > 9.0 and not gh_said.has("raft"): gh_said["hint"] = true; say("tap a raft")
+		if not gh_said.has("rule") and gh_t > 1.2: gh_said["rule"] = true; _gh_write("What is looked at,\nstays.")
 	for f in gh_flies:
 		var t := gh_t * float(f.sp) + float(f.ph)
 		(f.n as Node3D).position = (f.c as Vector3) + Vector3(cos(t) * float(f.r), sin(t * 1.7) * 0.35, sin(t * 0.8) * float(f.r))
 		(f.n as Node3D).scale = Vector3.ONE * (0.55 + 0.45 * sin(t * 3.1 + float(f.ph)))
-	if not ended and not flags.get("gh_end", false) and Vector3(pos.x, 0, pos.z).distance_to(Vector3(107.3, 0, -2.9)) < 0.45: _gh_end()
 
-func _gh_end() -> void:
-	flags["gh_end"] = true
-	print("GH through the gate")
-	route.clear(); route.append({"p": Vector3(106.7, 0, -3.3)})
-	await wait(1.3)
-	_end()
+func _gh_tap(_sp: Vector2) -> void:
+	pass
 
-## a tap: a raft or its other mooring (both rafts go across), the gate, or a place to walk to
-func _gh_tap(sp: Vector2) -> void:
-	if busy: return
-	var px := get_viewport().get_visible_rect().size.x / 720.0
-	var hit := false
-	for id in GH_RAFT:
-		for e in [0, 2]:
-			var q: Vector3 = GH_RAFT[id][e]
-			if cam.unproject_position(Vector3(q.x, WATER + 0.1, q.z)).distance_to(sp) < 54.0 * px: hit = true
-	if hit: _gh_rafts(); return
-	var to = null
-	if cam.unproject_position(Vector3(106.4, WATER + 2.0, -3.6)).distance_to(sp) < 70.0 * px: to = Vector3(107.3, 0, -2.9)
-	else:
-		var o := cam.project_ray_origin(sp); var dr := cam.project_ray_normal(sp)
-		var a: Vector3 = o + dr * ((WATER + 0.5 - o.y) / dr.y)
-		var n := rect_of(Vector3(a.x, 0, a.z))
-		if n.begins_with("GH"): to = Vector3(clampf(a.x, rects[n].x0 + 0.05, rects[n].x1 - 0.05), 0, clampf(a.z, rects[n].z0 + 0.05, rects[n].z1 - 0.05))
-	if to == null: return
-	var pts := find_path(Vector3(pos.x, 0, pos.z), to)
-	if pts.is_empty(): print("GH no way to ", to); await _her_no(); return
-	tapring.position = Vector3(to.x, WATER + 0.54, to.z); tap_p = 0.0
-	route.clear(); speed_cap = PLAY_WALK; face_to = null
-	for q in pts: route.append({"p": Vector3(q.x, 0, q.z)})
-
-## the two rafts go across: the walls they leave come back at once, the walls they reach go when they get there
-func _gh_rafts() -> void:
-	if bool(gh.moving): return
-	for id in GH_OPEN[gh.s]:      # (not while she stands in a doorway that would shut on her)
-		if in_rect(rects["GHd" + id], Vector3(pos.x, 0, pos.z), 0.25): await _her_no(); return
-	gh.moving = true; gh_said["raft"] = true
-	var s0 := int(gh.s); var s1 := 1 - s0
-	for id in GH_OPEN[s0]: _gh_wall(id, false)
-	var go := func(v: float) -> void:
-		for id in GH_RAFT:
-			var st: Array = GH_RAFT[id]
-			var a: Vector3 = st[0] if s0 == 0 else st[2]; var b: Vector3 = st[2] if s0 == 0 else st[0]; var m: Vector3 = st[1]
-			var p := a.lerp(m, v * 2.0) if v < 0.5 else m.lerp(b, v * 2.0 - 1.0)
-			var q := a.lerp(m, v).lerp(m.lerp(b, v), v)      # (a curve round the corner, not two straight legs)
-			(N["ghraft" + id] as Node3D).position = Vector3(q.x, WATER + 0.02, q.z)
-	var tw5 := create_tween(); tw5.tween_method(go, 0.0, 1.0, 1.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	await tw5.finished
-	gh.s = s1
-	for id in GH_OPEN[s1]: _gh_wall(id, true)
-	print("GH rafts at ", s1, ": open ", GH_OPEN[s1])
-	await wait(0.4)
-	gh.moving = false
-
-## (the trial, played through as a player would: FLIP=geo ... -- geodemo)
+## (FLIP=geo ... -- geodemo: the picture is taken, and that is all)
 func _play_geo() -> void:
 	var dir := OS.get_environment("SHOT_DIR")
-	var snap := func(n: String) -> void:
-		if dir != "": await RenderingServer.frame_post_draw; get_viewport().get_texture().get_image().save_png("%s/%s.png" % [dir, n])
-	var idle := func() -> void:
-		var still := 0
-		while still < 18:
-			await get_tree().process_frame
-			still = still + 1 if (not busy and not bool(gh.moving) and route.is_empty() and pending == "") else 0
-	var at := func(p: Vector3) -> Vector2: return cam.unproject_position(p)
-	var yD := WATER + 0.5
 	await get_tree().create_timer(1.0).timeout
-	tap(Vector2(360, 640)); await wait(4.0); await snap.call("p0_start")
-	print("GH begins at ", pos)
-	if OS.get_environment("GH_ONLY") == "start": get_tree().quit(); return
-	# the left road: under the first wall (its foot is gone), up to the second (whole)
-	tap(at.call(Vector3(106.8, yD, 1.2))); await idle.call(); print("GH 1: at ", pos); await snap.call("p1_at_the_second_wall")
-	tap(at.call(Vector3(106.8, yD, -1.5))); await idle.call(); print("GH 2 (it must not pass): at ", pos)
-	# the rafts across: the second wall opens (the first shuts behind her)
-	tap(at.call(Vector3(GH_RAFT["G"][0].x, WATER + 0.1, GH_RAFT["G"][0].z))); await wait(1.0); await snap.call("p2_rafts_crossing"); await idle.call(); await snap.call("p3_second_wall_open")
-	tap(at.call(Vector3(106.4, WATER + 2.0, -3.6))); await wait(2.0); await snap.call("p4_under_it"); await idle.call()
-	var n2 := 0
-	while not ended and n2 < 600: await get_tree().process_frame; n2 += 1
-	await wait(2.0)
-	print("GH ended: ", ended); await snap.call("p9_end")
+	tap(Vector2(360, 640)); await wait(5.0)
+	if dir != "": await RenderingServer.frame_post_draw; get_viewport().get_texture().get_image().save_png("%s/idea.png" % dir)
 	get_tree().quit()
 
 # ---------------------------------------------------------------- the face in the water (a trial)
