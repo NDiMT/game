@@ -1524,34 +1524,77 @@ func _mw_rail(cells: Dictionary, d: Vector2i, line: int, a0: int, a1: int) -> vo
 	for c2 in [s0, s1]:      # a post where it ends
 		bb((c2 as Vector3) - al * 0.07 - out * 0.07, (c2 as Vector3) + al * 0.07 + out * 0.07 + Vector3(0, 0.43, 0))
 
-## what stands about the courts: one mirror under its sheet, large, on a pillar of its own away behind them; her
-## statue, broken, on a rock; and rocks of strange shapes with green on them (props/rock_*: made in Tripo, brought down
-## to a few faces and flat colours): an arch, a ring, a column, a leaning stack, one like a mushroom. Laid by where they
-## fall to the eye (sx across the picture, s from far to near): the tall ones behind the courts, the low ones at the
-## sides and before them, so that none hides a square
+## what stands about the courts, strewn about them as if by chance (each court its own way, the same each time): one
+## mirror under its sheet, large, on a pillar of its own; her statue, broken, on a rock; and rocks worn into the shapes
+## of strange statues (props/stat_*: made in Tripo, brought down to a few faces and flat colours), all with their
+## pictures on the water. Nothing is put where it would hide a square, the gate, or the words at the top
 func _mw_around() -> void:
-	var cx := _go_cx(int(gs.lv)); var bw := float(gs.W) * GO_D * 0.5
-	var zc := ((float(gs.H) - 1.0) * 0.5 - float(gs.c)) * GO_D
-	var reach := (float(gs.W) + float(gs.H)) * GO_D * 0.5      # (from the middle to a corner of the board, in s)
-	var at := func(sx: float, sz: float) -> Vector3:
-		var ax := sx / 0.7071
-		return Vector3(cx + (sz + ax) * 0.5, WATER, (sz - ax) * 0.5 + zc)
-	var rng := RandomNumberGenerator.new(); rng.seed = 7919 + int(gs.lv) * 31      # (each court its own way of turning things)
-	var p: Vector3 = at.call(-0.5 * reach, -0.98 * reach); var top := WATER + 0.95
-	blk(p + Vector3(-0.8, -0.3, -0.8), Vector3(p.x + 0.8, top - 0.1, p.z + 0.8), "stone").material_override = _mw_flat("stone")
-	blk(Vector3(p.x - 0.9, top - 0.14, p.z - 0.9), Vector3(p.x + 0.9, top, p.z + 0.9), "stone").material_override = _mw_flat("stone")
-	var yw: float = PI * 0.25 + rng.randf_range(0.45, 1.05) * (1.0 if rng.randf() < 0.5 else -1.0)      # turned anyhow, but never edge-on to the eye
-	var ms := mirror_stand(Vector3(p.x, top, p.z), yw, self, top, "tied", true); ms.scale = Vector3.ONE * 2.0
-	# her statue, broken, on a rock behind the courts, its foot clear of the sea
-	var sp: Vector3 = at.call(-1.4, -reach - 3.0)
-	rock(Vector3(sp.x, 0, sp.z), 1.6)
-	blk(sp + Vector3(-0.62, -0.5, -0.62), sp + Vector3(0.62, 0.34, 0.62), "stone").material_override = pal("shade", "flat")
-	thing("broken_statue", sp + Vector3(0, 0.34, 0), 3.0, "stone:marble", atan2(cx - sp.x, zc - sp.z) + 0.4)
-	# the rocks: [which, sx, s, height]
-	for r in [["ring", 0.62 * reach, -0.92 * reach, 3.3], ["column", 2.1, -reach - 4.8, 3.6], ["mush", -6.2, -0.55 * reach, 1.7],
-			["lean", 6.4, 0.6 * reach, 2.0], ["arch", 3.3, reach + 5.0, 2.3], ["column", -3.7, reach + 4.0, 1.7]]:
-		var rp: Vector3 = at.call(float(r[1]), float(r[2]))
-		thing("rock_" + String(r[0]), rp + Vector3(0, -0.22, 0), float(r[3]), "", rng.randf_range(-PI, PI))
+	var rng := RandomNumberGenerator.new(); rng.seed = 7919 + int(gs.lv) * 31
+	var cells: Array = (gs.floor as Dictionary).keys() + (gs.cols as Dictionary).keys() + (gs.chan as Dictionary).keys()
+	var placed := []
+	var kinds := []
+	for k in ["stat_hood", "stat_face", "stat_cairn", "stat_hand", "stat_monk", "stat_profile", "stat_balance"]:
+		if FileAccess.file_exists("res://props/%s.glb" % k): kinds.append(k)
+	var items := [["mirror", 4.9, 1.0], ["statue", 3.7, 1.3]]
+	var nr := 7 if int(gs.W) > 5 else 6
+	for k in nr:
+		var hgt := rng.randf_range(1.5, 3.5)
+		items.append(["rock", hgt, 0.32 * hgt + 0.25])
+	var ki := rng.randi_range(0, maxi(kinds.size() - 1, 0))
+	for it in items:
+		var h: float = it[1]; var r: float = it[2]
+		var p := Vector3.ZERO; var found := false
+		for tries in 120:
+			p = _mw_spot(rng)
+			if _mw_spot_ok(p, h, r, cells, placed): found = true; break
+		if not found: continue
+		placed.append(Vector4(p.x, p.z, r, 0.0))
+		var yw := rng.randf_range(-PI, PI)
+		match String(it[0]):
+			"mirror":
+				var top := WATER + 0.95
+				blk(p + Vector3(-0.8, -0.3, -0.8), Vector3(p.x + 0.8, top - 0.1, p.z + 0.8), "stone").material_override = _mw_flat("stone")
+				blk(Vector3(p.x - 0.9, top - 0.14, p.z - 0.9), Vector3(p.x + 0.9, top, p.z + 0.9), "stone").material_override = _mw_flat("stone")
+				var my: float = PI * 0.25 + rng.randf_range(0.45, 1.05) * (1.0 if rng.randf() < 0.5 else -1.0)      # turned anyhow, but never edge-on to the eye
+				var ms := mirror_stand(Vector3(p.x, top, p.z), my, self, top, "tied", true); ms.scale = Vector3.ONE * 2.0
+			"statue":
+				rock(Vector3(p.x, 0, p.z), 1.6)
+				blk(p + Vector3(-0.62, -0.5, -0.62), p + Vector3(0.62, 0.34, 0.62), "stone").material_override = pal("shade", "flat")
+				thing("broken_statue", p + Vector3(0, 0.34, 0), 3.0, "stone:marble", yw)
+			"rock":
+				if kinds.is_empty(): rock(Vector3(p.x, 0, p.z), h * 0.6); continue
+				var n := Node3D.new(); n.position = p + Vector3(0, -0.25, 0); n.rotation.y = yw; add_child(n)
+				prop_model(String(kinds[ki % kinds.size()]), n, h, 0.0, false, true, "")      # (with its picture on the water)
+				ki += 1
+
+## a place on the sea about the courts, anywhere within the picture
+func _mw_spot(rng: RandomNumberGenerator) -> Vector3:
+	var f := _mw_focus(); var view := _mw_view()
+	var sx := rng.randf_range(-view * 0.5, view * 0.5)
+	var sz := rng.randf_range(-view * 1.45, view * 1.45)      # (from far behind the courts to well before them)
+	var ax := sx / 0.7071
+	return Vector3(f.x + (sz + ax) * 0.5, WATER, f.z + (sz - ax) * 0.5)
+
+## where a thing on the sea falls in the picture: across, and down
+func _mw_scr(p: Vector3) -> Vector2: return Vector2((p.x - p.z) * 0.7071, (p.x + p.z) * 0.4082 - p.y * 0.8165)
+
+## a thing of that height and girth may stand there: clear of the courts, hiding no square (nor the gate), whole in the
+## picture and clear of the words at its top, not crowding what already stands about
+func _mw_spot_ok(p: Vector3, h: float, r: float, cells: Array, placed: Array) -> bool:
+	var sp := _mw_scr(p); var st := _mw_scr(p + Vector3(0, h, 0))
+	for v in cells:
+		var c := _mw_p(v)
+		if Vector2(c.x - p.x, c.z - p.z).length() < GO_D * 0.75 + r + 0.7: return false
+		if (c.x + c.z) >= (p.x + p.z): continue      # (nearer the eye than the thing: it cannot be hidden by it)
+		var sc := _mw_scr(c)
+		if absf(sc.x - sp.x) < r + 1.25 and sc.y > st.y - 0.7 and sc.y < sp.y + 0.4: return false
+	var view := _mw_view(); var hh := view * 16.0 / 9.0 * 0.5
+	var f := _mw_scr(_mw_focus()); var cy := f.y - 1.9
+	if absf(sp.x - f.x) > view * 0.5 - r - 0.2: return false
+	if st.y < cy - hh + view * 0.42 or sp.y > cy + hh - 0.8: return false
+	for q in placed:
+		if Vector2(q.x - p.x, q.y - p.z).length() < float(q.z) + r + 1.1: return false
+	return true
 
 ## the stone of the courts, with its veins, and its picture on the water as everything has it
 func _mw_flat(n: String) -> ShaderMaterial: return pal(n, "flat")
