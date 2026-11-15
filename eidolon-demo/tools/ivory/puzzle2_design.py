@@ -23,6 +23,7 @@ HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.dirname(os.pat
 T = json.load(open(os.path.join(ROOT, 'goiv', 'trace.json')))
 FL = T['floors']; H = {k: v['h'] for k, v in FL.items()}
 TRIES = int(sys.argv[1]) if len(sys.argv) > 1 else 40000
+MINLEN = int(sys.argv[3]) if len(sys.argv) > 3 else 15
 rnd = random.Random(int(sys.argv[2]) if len(sys.argv) > 2 else 3)
 
 # ------------------------------------------------------------------ the way: a grid on each floor, the flights between
@@ -199,16 +200,16 @@ def random_trial():
         c = [n for n in pool if n not in used]
         if not c: return None
         n = rnd.choice(c); used.add(n); return n
-    t1 = [n for n in NAMES if NODES[n][0] == 'T1']; up = [n for n in NAMES if NODES[n][0] in ('L', 'T2')]
-    stone = pick(t1 + up); mirror = pick(t1 + up)
+    t1 = [n for n in NAMES if NODES[n][0] == 'T1']
+    stone = pick(t1); mirror = pick(t1)
     faces = []
     for _ in range(rnd.choice((2, 3, 3, 4))):
-        n = pick([m for m in WALK if NODES[m][0] in ('T1', 'L', 'T2')])
+        n = pick([m for m in WALK if NODES[m][0] == 'T1'] if rnd.random() < 0.8 else [m for m in WALK if NODES[m][0] in ('L', 'T2')])
         if n is None or not FLATNB[n]: continue
         faces.append((n, rnd.choice(FLATNB[n])))
     route = None
     if rnd.random() < 0.8:      # a statue pacing a straight run of two or three nodes on one floor
-        a = rnd.choice([m for m in NAMES if NODES[m][0] in ('T1', 'L') and m not in used])
+        a = rnd.choice([m for m in NAMES if NODES[m][0] == 'T1' and m not in used])
         nb = [m for m in FLATNB[a] if m not in used]
         if nb:
             b = rnd.choice(nb); r = [a, b]
@@ -220,9 +221,9 @@ def random_trial():
 def evaluate(d):
     t = Trial(d['stone'], d['mirror'], d['faces'], d['route'])
     r = t.solve()
-    if not r or r.get('length') is None or r.get('stuck', 1) > 0 or r.get('ways', 0) != 1: return None
+    if not r or r.get('length') is None or r.get('ways', 0) > 2: return None
     L = r['length']
-    if not (15 <= L <= 32): return None
+    if not (MINLEN <= L <= 32): return None
     # every thing needed: without it, no way at all, or a way at least 3 swipes shorter
     abl = {}
     no_m = Trial(d['stone'], None, d['faces'], d['route']).solve()
@@ -241,7 +242,7 @@ def evaluate(d):
         a = Trial(None, d['mirror'], d['faces'], d['route']).solve()
         if a is not None and a.get('length') is not None and a['length'] > L - 3: return None
         abl['stone'] = a['length'] if a else None
-    return {'length': L, 'states': r['states'], 'ablation': abl}
+    return {'length': L, 'states': r['states'], 'ablation': abl, 'stuck': r.get('stuck', 0), 'ways': r.get('ways')}
 
 def main():
     best = []
@@ -250,7 +251,7 @@ def main():
         if d['stone'] is None or d['mirror'] is None or len(d['faces']) < 2: continue
         e = evaluate(d)
         if e:
-            score = e['length'] + 3 * len(d['faces']) + (4 if d['route'] else 0)
+            score = e['length'] + 3 * len(d['faces']) + (4 if d['route'] else 0) - 3 * (e.get('stuck', 0) > 0)
             best.append((score, d, e)); print('found', k, e['length'], d, e['ablation'], flush=True)
     best.sort(key=lambda x: -x[0])
     if not best: print('none found'); return

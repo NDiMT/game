@@ -2057,9 +2057,9 @@ uniform float dk = 0.0;
 uniform float haze = 0.0;
 uniform float bounce = 0.0;
 uniform float sil = 0.0;      // (far off: a shape in the haze, its faces hardly told apart; no detail, only gradation)
-uniform float lf_len = 1.55;
+uniform float lf_len = 3.3;
 uniform float lfog = 0.0;      // (the level's own rock: its depth under the floor it bears is in COLOR.g, a quarter of a metre to one)
-uniform float lf_hi = 0.75;
+uniform float lf_hi = 0.3;
 uniform float lf_lo = 3.2;
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
@@ -2096,8 +2096,9 @@ void fragment(){
 	float fk = max(1.0 - smoothstep(fog_ref + fog_lo, fog_ref + fog_hi, wp.y), far_k);
 	if (haze > 0.0) fk = max(fk, haze * 0.22 * smoothstep(44.0, 52.0, -VERTEX.z));      // (VERTEX: from the eye)
 	if (lfog > 0.5) {      // (into the mist softly, as mist does: a long fading, its edge in wisps)
-		float wisp = fbm(wp * 0.42 + vec3(0.0, wp.y * 0.25, 0.0)) - 0.5;
-		fk = max(fk, 1.0 - exp(-max(ld + wisp * 0.7 - lf_hi, 0.0) / lf_len));
+		float wisp = fbm(wp * 0.3 + vec3(0.0, wp.y * 0.2, 0.0)) - 0.5;
+		float lt = clamp((ld + wisp * 0.35 - lf_hi) / lf_len, 0.0, 1.0);
+		fk = max(fk, lt * lt * (3.0 - 2.0 * lt));
 	}
 	ALBEDO = c * (1.0 - fk);
 	EMISSION = bgc(sy) * fk + c_top * emit;
@@ -3578,6 +3579,12 @@ func _ivr_build() -> void:
 	var k := get_viewport().get_visible_rect().size.x / 720.0
 	var vh := get_viewport().get_visible_rect().size.y
 	var cl := CanvasLayer.new(); cl.layer = 1; add_child(cl)
+	var mg := Gradient.new(); mg.offsets = PackedFloat32Array([0.0, 0.52, 0.8, 1.0])
+	var mc := Color("ddbf9d")
+	mg.colors = PackedColorArray([Color(mc, 0.0), Color(mc, 0.0), Color(mc, 0.24), Color(mc, 0.52)])
+	var mt := GradientTexture2D.new(); mt.gradient = mg; mt.fill_from = Vector2(0.5, 0.0); mt.fill_to = Vector2(0.5, 1.0); mt.width = 4; mt.height = 256
+	var mr := TextureRect.new(); mr.texture = mt; mr.stretch_mode = TextureRect.STRETCH_SCALE; mr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	mr.set_anchors_preset(Control.PRESET_FULL_RECT); mr.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(mr)
 	var vg := Gradient.new(); vg.offsets = PackedFloat32Array([0.0, 0.5, 0.82, 1.0])
 	vg.colors = PackedColorArray([Color(0.3, 0.2, 0.12, 0), Color(0.3, 0.2, 0.12, 0), Color(0.3, 0.2, 0.12, 0.08), Color(0.3, 0.2, 0.12, 0.22)])
 	var vt := GradientTexture2D.new(); vt.gradient = vg; vt.fill = GradientTexture2D.FILL_RADIAL; vt.fill_from = Vector2(0.5, 0.5); vt.fill_to = Vector2(1.15, 0.5); vt.width = 256; vt.height = 256
