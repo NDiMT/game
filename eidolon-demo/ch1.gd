@@ -1299,6 +1299,8 @@ const GO_LEVELS := [
 	{"map": ["  z  ", "  R  ", "  1  ", "  1  ", "  b  "], "line": "The sea lifts\nwhat floats.", "sol": [[2, 3], [2, 2], [2, 1], [2, 0]]},
 	{"map": ["z    ", "RRR  ", "  1  ", "  1  ", "  R3c"], "line": "Go down with the sea,\ncome up with it.", "sol": [[4, 4], [4, 4], [4, 4], [4, 4], [3, 4], [2, 4], [2, 3], [2, 2], [2, 1], [1, 1], [0, 1], [0, 0]]},
 	{"map": ["z3   ", " R1  ", "  R  ", "  R1R", "    b"], "line": "Two rafts,\none tide.", "sol": [[4, 4], [4, 3], [3, 3], [2, 3], [2, 3], [2, 3], [2, 3], [2, 2], [2, 1], [1, 1], [1, 0], [0, 0]]},
+	{"map": ["y     ", "1     ", "1     ", "1111W ", "   R12", "     c"], "line": "The wheel holds the sea.", "sol": [[5, 4], [4, 4], [4, 3], [3, 4], [3, 3], [2, 3], [1, 3], [0, 3], [0, 2], [0, 1], [0, 0]]},
+	{"map": ["y111  ", "   11 ", "    1 ", "   WR ", "    R3", "   21c"], "line": "Hold it where\nit serves you.", "sol": [[5, 5], [5, 5], [5, 4], [4, 4], [4, 3], [3, 3], [4, 2], [4, 1], [3, 1], [3, 0], [2, 0], [1, 0], [0, 0]]},
 ]
 var gs := {}
 var go_root: Node3D
@@ -1311,6 +1313,9 @@ var go_sea: Node3D
 var go_tide_lbl: Label
 
 func _go_cx(lv: int) -> float: return 110.0 + 40.0 * lv
+func _go_xz(lv: int, i: int, j: int) -> Vector3:
+	var rows: Array = GO_LEVELS[lv].map
+	return Vector3(_go_cx(lv) + (i - (String(rows[0]).length() - 1) * 0.5) * GO_D, 0, (j - (rows.size() - 1) * 0.5) * GO_D)
 func _go_key(i: int, j: int) -> String: return "%d,%d" % [i, j]
 func _go_ij(k) -> Vector2i:
 	var s := String(k).split(","); return Vector2i(int(s[0]), int(s[1]))
@@ -1322,19 +1327,20 @@ func _go_top(h: int) -> float: return WATER + 0.2 + 0.45 * h
 func _go_h(v: Vector2i, l := -1) -> int:
 	var c = gs.cells.get(_go_key(v.x, v.y), null)
 	if c == null: return -9
+	if String(c) == "W": return 9
 	return (l if l >= 0 else _go_level()) + 1 if String(c) == "R" else int(c)
 
 func _go_under(v: Vector2i, l: int) -> bool:
 	var c = gs.cells.get(_go_key(v.x, v.y), null)
-	return c != null and String(c) != "R" and l > int(c)
+	return c != null and String(c) != "R" and String(c) != "W" and l > int(c)
 
 ## where she stands on a stone, now
 func _go_w(i: int, j: int) -> Vector3:
-	var x := _go_cx(int(gs.lv)) + (i - 2) * GO_D; var z := (j - 2) * GO_D
+	var p := _go_xz(int(gs.lv), i, j)
 	var c = gs.cells.get(_go_key(i, j), null)
 	var y := 0.0
-	if c != null: y = (go_sea.position.y + 0.65) if String(c) == "R" else _go_top(int(c))
-	return Vector3(x, y, z)
+	if c != null: y = (go_sea.position.y + 0.65) if String(c) == "R" else _go_top(2 if String(c) == "W" else int(c))
+	return Vector3(p.x, y, p.z)
 
 func _go_build(lv: int) -> void:
 	if go_root != null: go_root.queue_free()
@@ -1343,7 +1349,7 @@ func _go_build(lv: int) -> void:
 	go_dots = []
 	var L: Dictionary = GO_LEVELS[lv]
 	var rows: Array = L.map
-	gs = {"lv": lv, "cells": {}, "rafts": {}, "me": "", "gate": "", "phase": 0, "busy": false, "dead": false, "won": false}
+	gs = {"lv": lv, "cells": {}, "rafts": {}, "me": "", "gate": "", "phase": 0, "hold": false, "busy": false, "dead": false, "won": false}
 	go_sea.position.y = _go_sea_y(0); _go_water_y()
 	for j in rows.size():
 		var row: String = rows[j]
@@ -1359,7 +1365,7 @@ func _go_build(lv: int) -> void:
 	# the stones: pillars up out of the sea, each to its height
 	for k in gs.cells:
 		var v := _go_ij(k)
-		var p := Vector3(_go_cx(lv) + (v.x - 2) * GO_D, 0, (v.y - 2) * GO_D)
+		var p := _go_xz(lv, v.x, v.y)
 		if String(gs.cells[k]) == "R":      # a raft: a pontoon of planks on a float, moored to four posts
 			var rn := Node3D.new(); rn.position = Vector3(p.x, go_sea.position.y, p.z); go_root.add_child(rn); gs.rafts[k] = rn
 			blk(Vector3(-0.6, -0.15, -0.6), Vector3(0.6, 0.45, 0.6), "wood", rn).material_override = pal("trunk", "flat")
@@ -1367,7 +1373,10 @@ func _go_build(lv: int) -> void:
 			for e in [Vector3(-0.72, 0, -0.72), Vector3(0.72, 0, -0.72), Vector3(-0.72, 0, 0.72), Vector3(0.72, 0, 0.72)]:
 				cyl(p + e + Vector3(0, WATER - 0.6, 0), 0.06, 0.06, 2.9, pal("trunk", "flat"), 8, go_root); cyl(p + e + Vector3(0, WATER + 2.3, 0), 0.075, 0.05, 0.06, pal("gold", "flat"), 8, go_root)
 			continue
-		var h := int(gs.cells[k]); var top := _go_top(h)
+		var wh: bool = String(gs.cells[k]) == "W"
+		var h := 2 if wh else int(gs.cells[k]); var top := _go_top(h)
+		if wh:      # the wheel that holds the sea: a capstan on a stone of the middle height
+			var w := winch(p + Vector3(0, top, 0), -PI * 0.75, go_root, false); N["go_wheel"] = w.wheel
 		blk(p + Vector3(-0.65, WATER - 1.2, -0.65), p + Vector3(0.65, top, 0.65), "stone", go_root).material_override = pal("stone", "flat")
 		blk(p + Vector3(-0.7, top - 0.26, -0.7), p + Vector3(0.7, top - 0.1, 0.7), "shade", go_root).material_override = pal("shade", "flat")
 		cyl(p + Vector3(0, top, 0), 0.2, 0.2, 0.012, mat(Color(pals["stone"][0]).darkened(0.1)), 20, go_root)
@@ -1405,7 +1414,7 @@ func _go_build(lv: int) -> void:
 	prim(glow, Vector3(0, 1.1, 0), mat(Color(1.0, 0.82, 0.45, 0.1), true), an).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	lights[6] = Vector4(g.x, g.y + 1.1, g.z, 0.95)
 	# a gauge of the tide by the board: a post with a bronze ring at each level
-	var gp := Vector3(_go_cx(lv) + 3.6, 0, 2.4)
+	var gp := _go_xz(lv, String(rows[0]).length(), rows.size() - 2)
 	cyl(gp + Vector3(0, WATER - 0.8, 0), 0.12, 0.12, 2.9, pal("stone", "flat"), 10, go_root)
 	for l in 3: cyl(gp + Vector3(0, _go_sea_y(l) - 0.02, 0), 0.16, 0.16, 0.04, pal("gold", "flat"), 14, go_root)
 	# what lies about the board, in the sea: the same things as about the square
@@ -1440,7 +1449,7 @@ func _go_dots() -> void:
 	go_dots = []
 	if bool(gs.dead) or bool(gs.won): return
 	var me := _go_ij(gs.me)
-	var l := _go_level(); var nl := int(GO_TIDE[(int(gs.phase) + 1) % GO_TIDE.size()])
+	var l := _go_level(); var nl := l if bool(gs.hold) else int(GO_TIDE[(int(gs.phase) + 1) % GO_TIDE.size()])
 	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1), Vector2i(0, 0)]:
 		var t: Vector2i = me + d
 		if not gs.cells.has(_go_key(t.x, t.y)) or _go_under(t, l) or absi(_go_h(t) - _go_h(me)) > 1: continue
@@ -1454,7 +1463,7 @@ func _go_dots() -> void:
 func _go_tide_ui() -> void:
 	if go_tide_lbl == null: return
 	var l := _go_level(); var nl := int(GO_TIDE[(int(gs.phase) + 1) % GO_TIDE.size()])
-	go_tide_lbl.text = ["low", "mid", "high"][l] + ("   ▲" if nl > l else ("   ▼" if nl < l else "   ·"))
+	go_tide_lbl.text = ["low", "mid", "high"][l] + ("   held" if bool(gs.hold) else ("   ▲" if nl > l else ("   ▼" if nl < l else "   ·")))
 
 func _go_begin() -> void:
 	_wake_now()
@@ -1535,6 +1544,23 @@ func _go_act(t: Vector2i) -> void:
 	gs.busy = true
 	var me := _go_ij(gs.me)
 	var d := t - me
+	if absi(d.x) + absi(d.y) == 1 and String(gs.cells.get(_go_key(t.x, t.y), "")) == "W":      # the wheel: the sea held, or let go
+		go_said["stepped"] = true
+		face_to = _go_w(t.x, t.y)
+		var up := tw(); up.set_parallel(); up.tween_property(self, "a_wL", 1.0, 0.3); up.tween_property(self, "a_wR", 1.0, 0.3); up.tween_property(self, "a_lean", 0.12, 0.3)
+		tgtL = _go_w(t.x, t.y) + Vector3(0, 0.75, 0); tgtR = tgtL
+		await up.finished
+		var wh: Node3D = N["go_wheel"]
+		var wt := create_tween(); wt.tween_property(wh, "rotation:x", wh.rotation.x + PI * 2.0, 0.9).set_trans(Tween.TRANS_SINE)
+		var was := bool(gs.hold)
+		await wt.finished
+		var dn := tw(); dn.set_parallel(); dn.tween_property(self, "a_wL", 0.0, 0.35); dn.tween_property(self, "a_wR", 0.0, 0.35); dn.tween_property(self, "a_lean", 0.0, 0.35)
+		if not was: await _go_tide()      # (this turn of hers still moves the sea; from now it is held)
+		gs.hold = not was
+		print("GO the wheel: the sea is ", "held" if bool(gs.hold) else "let go", " at ", ["low", "mid", "high"][_go_level()])
+		say("the sea is held" if bool(gs.hold) else "the sea goes on")
+		_go_dots(); _go_tide_ui()
+		gs.busy = false; return
 	if absi(d.x) + absi(d.y) > 1 or _go_under(t, _go_level()) or absi(_go_h(t) - _go_h(me)) > 1: await _her_no(); gs.busy = false; return
 	go_said["stepped"] = true
 	if d != Vector2i.ZERO:
@@ -1552,7 +1578,7 @@ func _go_act(t: Vector2i) -> void:
 ## the sea's step: up, down, or it stands
 func _go_tide() -> void:
 	var l0 := _go_level()
-	gs.phase = int(gs.phase) + 1
+	if not bool(gs.hold): gs.phase = int(gs.phase) + 1
 	var l1 := _go_level()
 	_go_dots(); _go_tide_ui()
 	if l1 != l0:
