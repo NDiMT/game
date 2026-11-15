@@ -1524,9 +1524,11 @@ func _mw_rail(cells: Dictionary, d: Vector2i, line: int, a0: int, a1: int) -> vo
 	for c2 in [s0, s1]:      # a post where it ends
 		bb((c2 as Vector3) - al * 0.07 - out * 0.07, (c2 as Vector3) + al * 0.07 + out * 0.07 + Vector3(0, 0.43, 0))
 
-## what stands about the courts: two mirrors under their sheets, large, each on a pillar of its own at an end of the
-## channel, turned to it; her statue, broken, on a rock; rocks, some with green on them. Laid by where they fall to
-## the eye (sx across the picture, s from far to near), clear of the courts
+## what stands about the courts: one mirror under its sheet, large, on a pillar of its own away behind them; her
+## statue, broken, on a rock; and rocks of strange shapes with green on them (props/rock_*: made in Tripo, brought down
+## to a few faces and flat colours): an arch, a ring, a column, a leaning stack, one like a mushroom. Laid by where they
+## fall to the eye (sx across the picture, s from far to near): the tall ones behind the courts, the low ones at the
+## sides and before them, so that none hides a square
 func _mw_around() -> void:
 	var cx := _go_cx(int(gs.lv)); var bw := float(gs.W) * GO_D * 0.5
 	var zc := ((float(gs.H) - 1.0) * 0.5 - float(gs.c)) * GO_D
@@ -1534,27 +1536,22 @@ func _mw_around() -> void:
 	var at := func(sx: float, sz: float) -> Vector3:
 		var ax := sx / 0.7071
 		return Vector3(cx + (sz + ax) * 0.5, WATER, (sz - ax) * 0.5 + zc)
-	var rng := RandomNumberGenerator.new(); rng.seed = 7919 + int(gs.lv) * 31      # (each court its own way of turning them)
-	for m in [[at.call(-0.5 * reach, -0.98 * reach), 0.0, "tied"], [at.call(0.62 * reach, -0.92 * reach), 0.0, "hem"]]:      # (away behind the courts, to left and right, with open water between: so tall, before them they would hide squares)
-		var p: Vector3 = m[0]; var top := WATER + 0.95
-		blk(p + Vector3(-0.8, -0.3, -0.8), Vector3(p.x + 0.8, top - 0.1, p.z + 0.8), "stone").material_override = _mw_flat("stone")
-		blk(Vector3(p.x - 0.9, top - 0.14, p.z - 0.9), Vector3(p.x + 0.9, top, p.z + 0.9), "stone").material_override = _mw_flat("stone")
-		var yw: float = PI * 0.25 + rng.randf_range(0.45, 1.05) * (1.0 if rng.randf() < 0.5 else -1.0)      # turned anyhow, but never edge-on to the eye
-		var ms := mirror_stand(Vector3(p.x, top, p.z), yw, self, top, String(m[2]), true); ms.scale = Vector3.ONE * 2.0
-	# her statue, broken, on a rock behind the courts to the left, its foot clear of the sea
+	var rng := RandomNumberGenerator.new(); rng.seed = 7919 + int(gs.lv) * 31      # (each court its own way of turning things)
+	var p: Vector3 = at.call(-0.5 * reach, -0.98 * reach); var top := WATER + 0.95
+	blk(p + Vector3(-0.8, -0.3, -0.8), Vector3(p.x + 0.8, top - 0.1, p.z + 0.8), "stone").material_override = _mw_flat("stone")
+	blk(Vector3(p.x - 0.9, top - 0.14, p.z - 0.9), Vector3(p.x + 0.9, top, p.z + 0.9), "stone").material_override = _mw_flat("stone")
+	var yw: float = PI * 0.25 + rng.randf_range(0.45, 1.05) * (1.0 if rng.randf() < 0.5 else -1.0)      # turned anyhow, but never edge-on to the eye
+	var ms := mirror_stand(Vector3(p.x, top, p.z), yw, self, top, "tied", true); ms.scale = Vector3.ONE * 2.0
+	# her statue, broken, on a rock behind the courts, its foot clear of the sea
 	var sp: Vector3 = at.call(-1.4, -reach - 3.0)
 	rock(Vector3(sp.x, 0, sp.z), 1.6)
 	blk(sp + Vector3(-0.62, -0.5, -0.62), sp + Vector3(0.62, 0.34, 0.62), "stone").material_override = pal("shade", "flat")
 	thing("broken_statue", sp + Vector3(0, 0.34, 0), 3.0, "stone:marble", atan2(cx - sp.x, zc - sp.z) + 0.4)
-	# rocks, and on some of them green: a bush, a young cypress, an olive
-	for r in [[2.2, -reach - 4.4, 1.5, "olive"], [-6.2, -reach * 0.55, 1.2, ""], [6.3, reach * 0.57, 1.5, "bush"], [3.3, reach + 5.0, 1.3, "cypress"], [-3.6, reach + 4.0, 1.0, "bush"]]:
-		var rp: Vector3 = at.call(float(r[0]), float(r[1])); var rs: float = r[2]
-		rock(Vector3(rp.x, 0, rp.z), rs)
-		var gp := Vector3(rp.x + 0.05 * rs, WATER + 0.42 * rs, rp.z - 0.05 * rs)
-		match String(r[3]):
-			"bush": thing("bush", gp, 0.0, "leaf:leaf2~,flower:crim", rp.x * 1.3, 0.8 * rs)
-			"cypress": thing("cypress", gp, 1.6 * rs, "leaf:cyp~,trunk:trunk", rp.x * 1.7)
-			"olive": thing("olive", gp + Vector3(0, -0.1, 0), 1.5 * rs, "leaf:leaf~,trunk:trunk,stone:stone,soil:trunk", rp.z)
+	# the rocks: [which, sx, s, height]
+	for r in [["ring", 0.62 * reach, -0.92 * reach, 3.3], ["column", 2.1, -reach - 4.8, 3.6], ["mush", -6.2, -0.55 * reach, 1.7],
+			["lean", 6.4, 0.6 * reach, 2.0], ["arch", 3.3, reach + 5.0, 2.3], ["column", -3.7, reach + 4.0, 1.7]]:
+		var rp: Vector3 = at.call(float(r[1]), float(r[2]))
+		thing("rock_" + String(r[0]), rp + Vector3(0, -0.22, 0), float(r[3]), "", rng.randf_range(-PI, PI))
 
 ## the stone of the courts, with its veins, and its picture on the water as everything has it
 func _mw_flat(n: String) -> ShaderMaterial: return pal(n, "flat")
