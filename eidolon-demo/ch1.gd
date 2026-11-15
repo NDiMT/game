@@ -1054,6 +1054,17 @@ func _gh_pre(_dt: float) -> void:
 	pos.y = 0.0
 
 func _gh_post(dt: float) -> void:
+	if not gh_said.has("her_dark") and H.has("main"):      # her picture in the sea: a dark shape, as the water in the courts shows her (only its colour; the rest is the game's)
+		gh_said["her_dark"] = true
+		for mm in (H["main"].holder as Node).find_children("*", "MeshInstance3D", true, false):
+			var mi := mm as MeshInstance3D
+			var ms := [mi.material_override]
+			if mi.mesh != null:
+				for si in mi.mesh.get_surface_count(): ms.append(mi.get_surface_override_material(si))
+			for m in ms:
+				if m is ShaderMaterial and (m as ShaderMaterial).next_pass is ShaderMaterial:
+					var rp := (m as ShaderMaterial).next_pass as ShaderMaterial
+					rp.set_shader_parameter("use_tex", 0.0); rp.set_shader_parameter("tint", Vector3(0.05, 0.1, 0.16))
 	cam_focus = GH_MID_PT; cam_focus_on = true
 	if started:
 		gh_t += dt
