@@ -197,22 +197,27 @@ def slab(name, outline, h, thick=0.46, keep=()):
     for _ in range(max(1, n // 5)):
         i0, w = rnd.randrange(n), rnd.randint(1, 3); dh = rnd.uniform(0.08, 0.22)
         for j in range(-w, w + 1): hang[(i0 + j) % n] = max(hang[(i0 + j) % n], dh * (0.5 + 0.5 * math.cos(math.pi * j / (w + 1))))
+    dk = [min([math.hypot(x - k[0], z - k[1]) for k in keep] or [9.0]) for (x, z) in outline]      # (how far from where a flight comes)
+    near = [d < 0.9 for d in dk]
+    eh = [rnd.uniform(0.09, 0.17) for _ in range(n)]      # (the top edge cut off broadly, as by hand: its breadth wanders)
+    for _ in range(2): eh = [0.25 * eh[i - 1] + 0.5 * eh[i] + 0.25 * eh[(i + 1) % n] for i in range(n)]
+    eh = [max(0.004, eh[i] * min(1.0, max(0.0, (dk[i] - 0.8) / 0.8))) for i in range(n)]      # (dying away before a flight: square where it meets the floor)
     inner, top, rim, bot, und = [], [], [], [], []
     for i, (x, z) in enumerate(outline):
         nx, nz = nr[i]
-        near_flight = any(math.hypot(x - k[0], z - k[1]) < 0.9 for k in keep)
-        e = 0.004 if near_flight else rnd.uniform(0.025, 0.04)
-        inner.append((x - nx * 0.14, h, z - nz * 0.14))
-        if rnd.random() < 0.2 and not near_flight:      # a chip: the edge a little lower and further in
+        near_flight = near[i]
+        e = eh[i]; ev = e * (1.0 if near_flight else rnd.uniform(0.65, 0.95))
+        inner.append((x - nx * 0.26, h, z - nz * 0.26))
+        if rnd.random() < 0.2 and dk[i] > 1.3:      # a chip: the edge a little lower and further in
             dy, dn = -rnd.uniform(0.02, 0.05), -rnd.uniform(0.01, 0.035)
         else: dy, dn = 0.0, 0.0
         top.append((x + nx * (dn - e), h + dy, z + nz * (dn - e)))
-        rim.append((x + nx * dn, h + dy - e, z + nz * dn))
+        rim.append((x + nx * dn, h + dy - ev, z + nz * dn))
         b = rnd.uniform(0.0, 0.05)
         yb = h - thick + rnd.uniform(-0.03, 0.03) - hang[i] + (rnd.uniform(0.04, 0.09) if (rnd.random() < 0.12 and not near_flight) else 0.0)
         bot.append((x - nx * b, yb, z - nz * b))
         und.append((x - nx * (b + 0.07), yb - 0.035, z - nz * (b + 0.07)))
-    bm = bmesh.new(); loft(bm, [inner, top, rim, bot, und], cap0=True, cap1=True)
+    bm = bmesh.new(); loft(bm, [top, rim, bot, und], cap0=True, cap1=True)      # (the top one face: no inner ring to fold over itself at a notch)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
     return finish(bm, name + '_slab')
 
@@ -415,7 +420,7 @@ def blocks(name, poly, top_y, keep=()):
         st = rnd.uniform(0.05, 0.2)      # (a step out partway down: the face breaks across, never one straight pillar)
         o0 = -rnd.uniform(0.06, 0.2) if led else 0.0      # (a ledge's face leans back above its step: it takes more light)
         rings = [(yt, 0.0, o0), (y1, rnd.uniform(0.0, 0.06), rnd.uniform(-0.05, 0.06)), (y2, rnd.uniform(0.04, 0.1), st), (yt - 16.0, rnd.uniform(0.1, 0.3), st + rnd.uniform(0.3, 0.8))]
-        ch = (rnd.uniform(0.0, 0.16), rnd.uniform(0.0, 0.16))
+        ch = (rnd.uniform(0.05, 0.22), rnd.uniform(0.05, 0.22))      # (its outer corners cut off, as the picture's)
         cut = (math.cos(th) + rnd.uniform(-0.6, 0.6) * -math.sin(th), math.sin(th) + rnd.uniform(-0.6, 0.6) * math.cos(th)) if (led and rnd.random() < 0.5) else None
         obs.append(frame_block(nm_, c, th, -hl, hl, -din, out, rings, rnd.uniform(0.035, 0.065), ch, lean, cut))
     for i in range(n):
@@ -494,14 +499,48 @@ def ray_exit(poly, p, d):
     return None if best is None else (p[0] + d[0] * best, p[1] + d[1] * best)
 
 
+def faceted(poly, keep=(), seg=(0.5, 0.95), jit=0.06):
+    """an outline cut as a mason cuts a slab: each edge in a few flat lengths, each turned a little its own way (so
+    each face of the slab takes the light a little differently); left straight where a flight meets it (keep)"""
+    P = ccw(poly); n = len(P); out = []
+    for i in range(n):
+        a_, b_ = P[i], P[(i + 1) % n]
+        L = math.hypot(b_[0] - a_[0], b_[1] - a_[1])
+        if L < 1e-6: continue
+        en = edge_n(a_, b_)
+        out.append(a_)
+        t = rnd.uniform(*seg)
+        while t < L - 0.3:
+            q = (a_[0] + (b_[0] - a_[0]) * t / L, a_[1] + (b_[1] - a_[1]) * t / L)
+            o = 0.0 if any(math.hypot(q[0] - k[0], q[1] - k[1]) < 0.95 for k in keep) else rnd.uniform(-jit, jit)
+            out.append((q[0] + en[0] * o, q[1] + en[1] * o)); t += rnd.uniform(*seg)
+    return out
+
+
+def cut_corners(poly, keep=()):
+    """every corner of a floor that stands out, cut off aslant as a mason cuts it (the picture's floors): each cut its
+    own size, not quite square to the corner; not where a flight meets the floor (keep: (point, radius))"""
+    P = ccw(poly); n = len(P); out = []
+    for i in range(n):
+        a_, b_, c_ = P[i - 1], P[i], P[(i + 1) % n]
+        e0 = (b_[0] - a_[0], b_[1] - a_[1]); e1 = (c_[0] - b_[0], c_[1] - b_[1])
+        L0 = math.hypot(*e0) or 1.0; L1 = math.hypot(*e1) or 1.0
+        if e0[0] * e1[1] - e0[1] * e1[0] <= 1e-6 or any(math.hypot(b_[0] - k[0], b_[1] - k[1]) < r for (k, r) in keep):
+            out.append(b_); continue
+        d0 = min(rnd.uniform(0.14, 0.3), L0 * 0.3); d1 = min(d0 * rnd.uniform(0.7, 1.35), L1 * 0.3)
+        out.append((b_[0] - e0[0] / L0 * d0, b_[1] - e0[1] / L0 * d0)); out.append((b_[0] + e1[0] / L1 * d1, b_[1] + e1[1] / L1 * d1))
+    return out
+
+
 def floor(name, x0, x1, z0, z1, h, ch, poly=None):
     """a floor of the way: its marble slab on the rock, the rock in broad blocks under its edge"""
     poly = poly or rect(x0, x1, z0, z1, ch)
-    out = square_to_flights(broken(grow(poly, 0.05)), h)
-    poly = simplify(square_to_flights(densify(ccw(poly), 0.3), h))
     fls = (PLAN or {}).get('flights', [])
     keep = [(fl[i][0], fl[i][2]) for fl in fls for i in (0, 1) if abs(fl[i][1] - h) < 0.05]
     kp = [((fl[i][0], fl[i][2]), fl[2] * 0.5 + 0.3) for fl in fls for i in (0, 1) if abs(fl[i][1] - h) < 0.05]
+    poly = cut_corners(poly, kp)
+    out = square_to_flights(broken(faceted(grow(poly, 0.05), keep), seg=0.3, jit=0.012, chip=0.06), h)
+    poly = simplify(square_to_flights(densify(ccw(poly), 0.3), h))
     vol = (PLAN or {}).get('volute')
     if vol and abs(vol[1] - h) < 0.05 and inside(poly, (vol[0], vol[2])):      # (where the cloth goes over the edge)
         q = ray_exit(poly, (vol[0], vol[2]), (1.0, 0.0))
