@@ -1392,6 +1392,7 @@ func _mw_palettes() -> void:
 	pals["eid"] = ["4d6c87", "3b5770", "304a62"]; pals["eid2"] = ["2e455b", "253a4e", "1e3143"]
 	pals["eidst"] = ["8eb1c9", "7096b1", "5c819d"]; pals["eidband"] = ["dcf0f7", "b8d9e7", "93bbd0"]
 	pals["block"] = ["efdfc0", "dcc49e", "a8969d"]; pals["pillar"] = ["f8efe1", "ecd8bc", "d9c09d"]
+	pals["niche"] = ["6e5c4d", "5a4a3e", "493c33"]; pals["eidniche"] = ["1f3042", "1a283a", "152132"]
 	pal("pillar", "flat").set_shader_parameter("marble", 1.0)
 	pal("eid", "flat").set_shader_parameter("marble", 0.55); pal("eidst", "flat").set_shader_parameter("marble", 0.35)
 
@@ -1434,6 +1435,7 @@ func _go_build(lv: int) -> void:
 	var before := {}
 	for ch in get_children(): before[ch] = true
 	for v in (gs.floor as Dictionary).keys() + (gs.cols as Dictionary).keys(): _mw_tile(v)
+	_mw_edges()
 	for v in gs.cols: _mw_column(v)
 	for v in gs.rings: gs.nr[v] = _mw_ring(v)
 	for k in (gs.sb as Array).size():
@@ -1450,6 +1452,54 @@ func _go_build(lv: int) -> void:
 	lights[6] = Vector4.ZERO
 	_go_water_y(); _mw_rings(true)
 	if go_lv_lbl != null: go_lv_lbl.text = "%d / %d" % [lv + 1, GO_LEVELS.size()]
+
+## the courts' edges, dressed as the houses of the chapter are: along every edge that does not give onto the channel
+## a balustrade (balusters with a belly, between a plinth and a rail, a post at each end), under the paving a moulding
+## standing out of the face, and in the face of every pillar that looks out an arched window, dark, in a frame
+func _mw_edges() -> void:
+	var cells := {}
+	for v in (gs.floor as Dictionary).keys() + (gs.cols as Dictionary).keys(): cells[v] = true
+	var h := GO_D * 0.5
+	for far in [false, true]:
+		var wins := []
+		for v in cells:
+			if (_mw_side(v) < 0) != far: continue
+			var p := _mw_p(v)
+			for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var nb: Vector2i = v + d
+				if cells.has(nb) or (gs.chan as Dictionary).has(nb): continue
+				var out := Vector3(d.x, 0, d.y); var al := Vector3(absf(float(d.y)), 0, absf(float(d.x)))
+				var fc := p + out * h
+				bb(fc - al * h + Vector3(0, -0.25, 0), fc + al * h + out * 0.05 + Vector3(0, -0.15, 0))      # the moulding
+				bb(fc - al * h + Vector3(0, -0.3, 0), fc + al * h + out * 0.025 + Vector3(0, -0.25, 0))
+				var ww := 0.26; var wy0 := -1.02; var wy1 := -0.5
+				bb(fc - al * (ww + 0.07) + Vector3(0, wy0 - 0.07, 0), fc + al * (ww + 0.07) + out * 0.02 + Vector3(0, wy1, 0))      # the window's frame
+				wins.append([fc, out, al, ww, wy0, wy1])
+				var e := fc - out * 0.13
+				bb(e - al * (h - 0.02) - out * 0.07, e + al * (h - 0.02) + out * 0.07 + Vector3(0, 0.05, 0))      # the plinth
+				bb(e - al * (h - 0.02) - out * 0.08 + Vector3(0, 0.33, 0), e + al * (h - 0.02) + out * 0.08 + Vector3(0, 0.39, 0))      # the rail
+				for k in 7:      # the balusters: a foot, a belly, a neck
+					var c := e + al * (-h + 0.2 + (2.0 * h - 0.4) * k / 6.0)
+					bb(c - al * 0.03 - out * 0.03 + Vector3(0, 0.05, 0), c + al * 0.03 + out * 0.03 + Vector3(0, 0.1, 0))
+					bb(c - al * 0.045 - out * 0.045 + Vector3(0, 0.1, 0), c + al * 0.045 + out * 0.045 + Vector3(0, 0.22, 0))
+					bb(c - al * 0.026 - out * 0.026 + Vector3(0, 0.22, 0), c + al * 0.026 + out * 0.026 + Vector3(0, 0.33, 0))
+				for sx in [-1.0, 1.0]:      # a post at each end
+					var c2: Vector3 = e + al * float(sx) * (h - 0.07)
+					bb(c2 - al * 0.065 - out * 0.065, c2 + al * 0.065 + out * 0.065 + Vector3(0, 0.42, 0))
+		bb_end("eid" if far else "stone", go_root)
+		for w in wins:      # the windows: dark, under a round head
+			var fc: Vector3 = w[0]; var out: Vector3 = w[1]; var al: Vector3 = w[2]; var ww: float = w[3]
+			bb(fc - al * ww + Vector3(0, float(w[4]), 0), fc + al * ww + out * 0.032 + Vector3(0, float(w[5]), 0))
+		bb_end("eidniche" if far else "niche", go_root)
+		for w in wins:
+			var fc: Vector3 = w[0]; var out: Vector3 = w[1]; var ww: float = w[3]
+			var fr := cyl(fc + out * 0.01 + Vector3(0, float(w[5]), 0), ww + 0.07, ww + 0.07, 0.02, pal("eid" if far else "stone", "flat"), 20, go_root)
+			var dk := cyl(fc + out * 0.022 + Vector3(0, float(w[5]), 0), ww, ww, 0.02, pal("eidniche" if far else "niche", "flat"), 20, go_root)
+			for c3 in [fr, dk]:      # (a disc turned to face out of the wall; only its upper half shows over the window)
+				var ci := c3 as MeshInstance3D
+				ci.position = fc + out * (0.01 if c3 == fr else 0.022) + Vector3(0, float(w[5]), 0)
+				if absf(out.x) > 0.5: ci.rotation.z = PI * 0.5
+				else: ci.rotation.x = PI * 0.5
 
 ## what stands about the courts: two mirrors under their sheets, large, each on a pillar of its own at an end of the
 ## channel, turned to it; her statue, broken, on a rock; rocks, some with green on them. Laid by where they fall to
