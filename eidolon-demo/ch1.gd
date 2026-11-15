@@ -128,11 +128,12 @@ func _init() -> void:
 	if match_demo: title_sub = "the still water  ·  a trial\ntap to begin"
 	if figure_demo: title_sub = "the face in the water  ·  a trial\ntap to begin"
 	if geo_demo: title_sub = "what is looked at, stays\ntap to begin"
+	if go_demo: title_sub = "step by step  ·  a trial\ntap to begin"; sea_c = Color("2b6880"); mist_c = Color("7f8fb4"); bg_c = Color("1c4a5e"); shadow_c = Vector3(0.5, 0.52, 0.8)
 	if geo_demo: sea_c = Color("2b6880"); mist_c = Color("7f8fb4"); bg_c = Color("1c4a5e"); shadow_c = Vector3(0.5, 0.52, 0.8)      # (this trial: the same sea toward evening)
 
 func _hollows() -> Array:
 	return [[HX0 + 0.5, HZ0 + 0.5, HX1 - 0.5, HZ1 - 0.5], [TX0 + 0.5, TZ0 + 0.5, TX1 - 0.5, TZ1 - 0.5], [VX0 + 0.5, VZ0 + 0.5, VX1 - 0.5, VZ1 - 0.5],
-		[FX0 + 0.5, FZ0 - 0.1, FX1 - 0.5, FZ1 - 0.5], [GX0 + 0.5, GZ0 + 0.5, GX1 - 0.5, GZ1 - 0.5], [UX0 + 0.5, UZ0 + 0.5, UX1 - 0.5, UZ1 - 0.5]] + ([[MT_X0 + 0.3, MT_Z0 + 0.5, MT_X1 - 0.3, MT_Z1 - 0.5]] if match_demo else []) + (_fig_hollows() if figure_demo else []) + ([[107.15, -2.85, 112.85, 2.85]] if geo_demo else [])
+		[FX0 + 0.5, FZ0 - 0.1, FX1 - 0.5, FZ1 - 0.5], [GX0 + 0.5, GZ0 + 0.5, GX1 - 0.5, GZ1 - 0.5], [UX0 + 0.5, UZ0 + 0.5, UX1 - 0.5, UZ1 - 0.5]] + ([[MT_X0 + 0.3, MT_Z0 + 0.5, MT_X1 - 0.3, MT_Z1 - 0.5]] if match_demo else []) + (_fig_hollows() if figure_demo else []) + ([[107.15, -2.85, 112.85, 2.85]] if geo_demo else []) + ([[107.5, -2.5, 112.5, 2.5]] if go_demo else [])
 
 # ---------------------------------------------------------------- small builders
 func R(x0: float, z0: float, x1: float, z1: float, on := true, h := 0.0) -> Dictionary:
@@ -253,11 +254,12 @@ void fragment(){
 	}
 }"""
 var flip_test := OS.get_environment("FLIP") == "1"      # every water turns the picture
+var go_demo := OS.has_feature("godemo") or OS.get_environment("FLIP") == "go"      # the trial played a step at a time (Eidolon GO)
 var geo_demo := OS.has_feature("geodemo") or OS.get_environment("FLIP") == "geo"      # the trial of the hall of images: ways that join where their pictures join
 var figure_demo := OS.has_feature("figuredemo") or OS.get_environment("FLIP") == "figure"      # the trial of the face in the water: three courts where a picture is made whole in the water
 var match_demo := OS.has_feature("matchdemo") or OS.get_environment("FLIP") == "match"      # the trial of the still water: one new court, where the world and what its water shows are to be made to agree
-var flip_demo := OS.has_feature("flipdemo") or OS.get_environment("FLIP") == "demo" or match_demo or figure_demo or geo_demo      # the trial as a thing to play: the first two waters turn the picture, and it ends behind the second sluice
-var FLIP_DEMO_WATERS := ["M"] if match_demo else ([] if (figure_demo or geo_demo) else ["H", "T"])
+var flip_demo := OS.has_feature("flipdemo") or OS.get_environment("FLIP") == "demo" or match_demo or figure_demo or geo_demo or go_demo      # the trial as a thing to play: the first two waters turn the picture, and it ends behind the second sluice
+var FLIP_DEMO_WATERS := ["M"] if match_demo else ([] if (figure_demo or geo_demo or go_demo) else ["H", "T"])
 var flip_wid := ""      # the water the picture was turned over at
 var flip_anchor := Vector3.ZERO      # where she stands, while her shadow is played
 var flip_anchor_yaw := 0.0
@@ -484,7 +486,7 @@ func _flip_icon_press() -> void:
 	else: _flip(Vector2.ZERO, [WL.find(flip_icon_wid)])
 
 ## (the trial, with the eye's own turn) the pane over the picture stays: it gives the world its look, and the turned picture its other look
-func _flip_pane_always() -> bool: return flip_fx == "" and (flip_demo or flip_test) and not geo_demo      # (not in the trial of the look: its waters are the game's own, as they were)
+func _flip_pane_always() -> bool: return flip_fx == "" and (flip_demo or flip_test) and not geo_demo and not go_demo      # (not in the trial of the look: its waters are the game's own, as they were)
 
 ## The turn itself, as a thing the eye does: it comes down until it looks along the waterline (the world stands above the
 ## line and what the water shows of it hangs below, she above and her shadow under her feet), and goes on under it.
@@ -1278,6 +1280,503 @@ func _play_geo() -> void:
 	while not ended and n2 < 900: await get_tree().process_frame; n2 += 1
 	await wait(2.5)
 	print("GH ended: ", ended); await snap.call("p9_end")
+	get_tree().quit()
+
+# ---------------------------------------------------------------- Eidolon GO (a trial)
+## The game played a step at a time, after the GO games: each level is a square board of stones in the sea. A tap on
+## a stone next to her takes her one step; then the world takes its step. Statues of her guard the boards, and what a
+## statue looks at turns to stone: the stone right in front of it. Come at a statue from behind or from the side and
+## she throws a veil over it, and it sinks. Some walk a line, turning at its ends. Drums of columns can be pushed, and
+## one pushed into a hole fills it. A hand mirror, once: a statue that looks at her from afar, along a clear line, sees
+## itself in it and turns to stone.
+## Maps: rows of characters, one per stone. ' ' sea, '_' a still pool (level 1's middle), '.' stone, 'S' where she
+## starts, 'G' the gate, 'O' a hole, 'P' a drum, 'M' the mirror; a statue that stands: r l d u (it looks along +i, -i,
+## +j, -j); one that walks: R L D U. A stone (i, j) lies at x = centre + (i - 2) * GO_D, z = (j - 2) * GO_D.
+const GO_D := 1.6
+const GO_VIEW := 11.0
+const GO_LEVELS := [
+	{"map": ["G.d..", ".___.", ".___u", ".___.", "..r.S"], "pool": true, "line": "What is looked at,\nstays."},
+	{"map": ["G....", "....L", "  O  ", "..P..", "..S.."], "pool": false, "line": "Stone can fill the sea."},
+	{"map": [" .G. ", "  d  ", ".....", ". u .", "M...S"], "pool": false, "line": "Let it see itself."},
+]
+var gs := {}
+var go_root: Node3D
+var go_twin: Node3D
+var go_fade: ColorRect
+var go_dots: Array = []
+var go_t := 0.0
+var go_said := {}
+var go_flies := []
+
+func _go_cx(lv: int) -> float: return 110.0 + 40.0 * lv
+func _go_w(i: int, j: int) -> Vector3: return Vector3(_go_cx(int(gs.lv)) + (i - 2) * GO_D, 0.0, (j - 2) * GO_D)
+func _go_key(i: int, j: int) -> String: return "%d,%d" % [i, j]
+
+## the map of a level, as rows (level 1's is written with its own corrections: see GO_LEVELS)
+func _go_rows(lv: int) -> Array:
+	var L: Dictionary = GO_LEVELS[lv]
+	return (L.map as Array).duplicate()
+
+func _go_build(lv: int) -> void:
+	if go_root != null: go_root.queue_free()
+	if go_twin != null: go_twin.queue_free()
+	go_root = Node3D.new(); add_child(go_root)
+	for d in go_dots: (d as Node).queue_free()
+	go_dots = []
+	var rows := _go_rows(lv)
+	gs = {"lv": lv, "cells": {}, "pillars": {}, "guards": [], "mirror": "", "has_mirror": false, "me": "", "busy": false, "dead": false, "won": false}
+	var before := {}
+	for ch in get_children(): before[ch] = true
+	var tall := Node3D.new(); go_root.add_child(tall)
+	var cx := _go_cx(lv)
+	for j in rows.size():
+		var row: String = rows[j]
+		for i in row.length():
+			var c := row[i]
+			if c == " " or c == "_": continue
+			var k := _go_key(i, j)
+			gs.cells[k] = "hole" if c == "O" else ("gate" if c == "G" else "floor")
+			if c == "S": gs.me = k
+			if c == "M": gs.mirror = k
+			if c == "P": gs.pillars[k] = null
+			if c in ["r", "l", "d", "u", "R", "L", "D", "U"]:
+				var dv := {"r": Vector2i(1, 0), "l": Vector2i(-1, 0), "d": Vector2i(0, 1), "u": Vector2i(0, -1)}[c.to_lower()] as Vector2i
+				gs.guards.append({"at": Vector2i(i, j), "dir": dv, "walks": c == c.to_upper(), "alive": true})
+	# the stones, and the ways between them
+	for k in gs.cells:
+		var ij: PackedStringArray = String(k).split(","); var i := int(ij[0]); var j := int(ij[1]); var p := _go_w(i, j)
+		if gs.cells[k] == "hole":
+			for e in [[-0.66, -0.66, 0.66, -0.6], [-0.66, 0.6, 0.66, 0.66], [-0.66, -0.6, -0.6, 0.6], [0.6, -0.6, 0.66, 0.6]]:      # (a bronze rim round the hole)
+				blk(p + Vector3(e[0], -0.06, e[1]), p + Vector3(e[2], 0.02, e[3]), "gold").material_override = pal("gold", "flat")
+			continue
+		var hw := 0.65 if gs.cells[k] != "gate" else 1.1
+		blk(p + Vector3(-hw, WATER - 0.8, -hw), p + Vector3(hw, 0.0, hw), "stone").material_override = pal("stone", "flat")
+		blk(p + Vector3(-hw - 0.05, -0.26, -hw - 0.05), p + Vector3(hw + 0.05, -0.1, hw + 0.05), "shade").material_override = pal("shade", "flat")
+		cyl(p + Vector3(0, 0.0, 0), 0.2, 0.2, 0.012, mat(Color(pals["stone"][0]).darkened(0.1)), 20)      # (the spot she stands on)
+		for d in [Vector2i(1, 0), Vector2i(0, 1)]:
+			var k2 := _go_key(i + d.x, j + d.y)
+			if not gs.cells.has(k2): continue
+			var q := p + Vector3(d.x * GO_D * 0.5, 0, d.y * GO_D * 0.5)
+			var ax := Vector3(0.36 if d.x == 0 else GO_D * 0.5 - 0.6, 0, 0.36 if d.y == 0 else GO_D * 0.5 - 0.6)
+			if gs.cells[k2] == "hole" or gs.cells[k] == "hole": continue
+			blk(q - Vector3(ax.x, 0.8 - WATER, ax.z), q + Vector3(ax.x, -0.02, ax.z), "stone").material_override = pal("stone", "flat")
+	for k in gs.cells:      # (the way into a hole is laid, and waits for its drum)
+		if gs.cells[k] != "hole": continue
+		pass
+	# the gate: eight columns in a ring, a dome, light within
+	for k in gs.cells:
+		if gs.cells[k] != "gate": continue
+		var ij2: PackedStringArray = String(k).split(","); var g := _go_w(int(ij2[0]), int(ij2[1]))
+		blk(g + Vector3(-1.0, 0, -1.0), g + Vector3(1.0, 0.16, 1.0), "stone").material_override = pal("stone", "flat")
+		for m in 8: column(g + Vector3(cos(m * PI * 0.25 + PI * 0.125) * 0.8, 0.16, sin(m * PI * 0.25 + PI * 0.125) * 0.8), 2.2, 0.075)
+		cyl(g + Vector3(0, 2.36, 0), 0.98, 0.98, 0.18, pal("shade", "flat"), 28)
+		var dm := SphereMesh.new(); dm.radius = 0.92; dm.height = 0.92 * 0.85; dm.is_hemisphere = true; dm.radial_segments = 24; dm.rings = 8
+		prim(dm, g + Vector3(0, 2.54, 0), pal("terra", "flat"))
+		for b2 in [[-0.03, -0.34, 0.03, 0.34], [-0.34, -0.03, 0.34, 0.03]]: blk(g + Vector3(b2[0], 0.16, b2[1]), g + Vector3(b2[2], 1.9, b2[3]), "lamp").material_override = under_mat(Color("ffe2a0"))
+		for e in [Vector3(0.95, 0, 0.95), Vector3(-0.95, 0, 0.95)]: _gh_brazier(g + e * Vector3(1, 0, 1) + Vector3(0, 0.16, 0))
+		lights[6] = Vector4(g.x, 1.4, g.z, 0.85); lights[4] = Vector4(g.x + 0.95, 1.0, g.z + 0.95, 0.7); lights[5] = Vector4(g.x - 0.95, 1.0, g.z + 0.95, 0.7)
+	# what lies about the board: the same things as about the square
+	var before2 := {}
+	for ch in get_children(): before2[ch] = true
+	_gh_around()
+	var deco := Node3D.new(); go_root.add_child(deco)
+	for ch in get_children():
+		if before2.has(ch) or not (ch is Node3D) or ch == go_root: continue
+		(ch as Node3D).reparent(deco, true)
+	deco.position.x += cx - 110.0
+	for ch in get_children():      # (all that was made for this level stands under its root)
+		if before.has(ch) or ch == go_root or not (ch is Node3D): continue
+		(ch as Node3D).reparent(tall, true)
+	# level 1's middle is a still pool, as in the game's courts: a pit with the sky in it, its glass, and all that stands about mirrored in it
+	if bool(GO_LEVELS[lv].pool):
+		var x0 := cx - 2.55; var x1 := cx + 2.55; var z0 := -2.55; var z1 := 2.55
+		var pit := MeshInstance3D.new(); var pm := BoxMesh.new(); pm.size = Vector3(x1 - x0, 2.4, z1 - z0); pit.mesh = pm
+		pit.position = Vector3((x0 + x1) * 0.5, -0.19 - 1.2, (z0 + z1) * 0.5)
+		var pmat := ShaderMaterial.new(); pmat.shader = shaders["pit"]; pmat.set_shader_parameter("y0", -0.2); pmat.set_shader_parameter("y1", -2.4)
+		pit.material_override = pmat; pit.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; go_root.add_child(pit)
+		var gq := QuadMesh.new(); gq.size = Vector2(x1 - x0, z1 - z0); gq.orientation = PlaneMesh.FACE_Y
+		var gm := ShaderMaterial.new(); gm.shader = shaders["glass"]; timed.append(gm)
+		gm.set_shader_parameter("lost_a", 0.0); gm.set_shader_parameter("blur_px", 0.6); gm.set_shader_parameter("lod", 0.0)
+		prim(gq, Vector3((x0 + x1) * 0.5, 0.012, (z0 + z1) * 0.5), gm, go_root).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		for mm in tall.find_children("*", "MeshInstance3D", true, false):
+			var mo := mm as MeshInstance3D
+			if mo.mesh == null: continue
+			var box: AABB = mo.global_transform * mo.get_aabb()
+			if box.position.y < -0.08: mo.set_meta("no_twin", true)
+		go_twin = tall.duplicate() as Node3D; mroot.add_child(go_twin); go_twin.transform = Transform3D.IDENTITY
+		var conv := {}
+		for mm in go_twin.find_children("*", "MeshInstance3D", true, false):
+			var mi := mm as MeshInstance3D
+			if mi.has_meta("no_twin"): mi.queue_free(); continue
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			if mi.material_override is ShaderMaterial: mi.material_override = _gh_twin_mat(mi.material_override, conv)
+			if mi.mesh == null: continue
+			for si in mi.mesh.get_surface_count():
+				var sm = mi.get_surface_override_material(si)
+				if sm is ShaderMaterial: mi.set_surface_override_material(si, _gh_twin_mat(sm, conv))
+	# what moves: drums, the mirror, the statues (and the stone each one looks at)
+	for k in gs.pillars:
+		var ij3: PackedStringArray = String(k).split(","); var n := Node3D.new(); n.position = _go_w(int(ij3[0]), int(ij3[1])); go_root.add_child(n)
+		cyl(Vector3.ZERO, 0.46, 0.46, 0.9, pal("stone", "flat"), 18, n); cyl(Vector3(0, 0.9, 0), 0.47, 0.47, 0.03, pal("shade", "flat"), 18, n)
+		for f in 9: blk(Vector3(cos(f * TAU / 9.0) * 0.45 - 0.035, 0.05, sin(f * TAU / 9.0) * 0.45 - 0.035), Vector3(cos(f * TAU / 9.0) * 0.45 + 0.035, 0.86, sin(f * TAU / 9.0) * 0.45 + 0.035), "shade", n).material_override = pal("shade", "flat")
+		gs.pillars[k] = n
+	if gs.mirror != "":
+		var ij4: PackedStringArray = String(gs.mirror).split(","); var mn := Node3D.new(); mn.position = _go_w(int(ij4[0]), int(ij4[1])); go_root.add_child(mn); N["go_mirror"] = mn
+		blk(Vector3(-0.22, 0, -0.22), Vector3(0.22, 0.36, 0.22), "stone", mn).material_override = pal("stone", "flat")
+		var mf := Node3D.new(); mf.position = Vector3(0, 0.62, 0); mf.rotation = Vector3(-0.35, PI * 0.25, 0); mn.add_child(mf)
+		cyl(Vector3(0, -0.02, 0), 0.24, 0.24, 0.04, pal("gold", "flat"), 24, mf).rotation.x = PI * 0.5
+		var pane := cyl(Vector3(0, -0.005, 0.02), 0.2, 0.2, 0.012, mat(Color(0.85, 0.92, 0.98)), 24, mf); pane.rotation.x = PI * 0.5
+		cyl(Vector3(0, -0.34, 0), 0.03, 0.03, 0.3, pal("gold", "flat"), 8, mf)
+		var glow := SphereMesh.new(); glow.radius = 0.5; glow.height = 1.0; glow.radial_segments = 12; glow.rings = 6
+		prim(glow, Vector3(0, 0.62, 0), mat(Color(0.8, 0.92, 1.0, 0.12), true), mn).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	for g in gs.guards:
+		var at: Vector2i = g.at; var p := _go_w(at.x, at.y)
+		var st := her_statue(p, atan2(float(g.dir.x), float(g.dir.y)), "calm", 1.05)
+		st.reparent(go_root, true); g["node"] = st
+		var mk := Node3D.new(); go_root.add_child(mk); g["mark"] = mk      # the stone it looks at: a glow on it, and its look
+		var q := QuadMesh.new(); q.size = Vector2(1.2, 1.2); q.orientation = PlaneMesh.FACE_Y
+		prim(q, Vector3(0, 0.02, 0), mat(Color(1.0, 0.55, 0.3, 0.32), true), mk).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var q2 := QuadMesh.new(); q2.size = Vector2(0.7, 0.7); q2.orientation = PlaneMesh.FACE_Y
+		prim(q2, Vector3(0, 0.025, 0), mat(Color(1.0, 0.7, 0.45, 0.35), true), mk).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var bm := MeshInstance3D.new(); var cm := CylinderMesh.new(); cm.top_radius = 0.03; cm.bottom_radius = 0.03; cm.height = 1.0; cm.radial_segments = 8; bm.mesh = cm
+		bm.material_override = mat(Color(1.0, 0.8, 0.55, 0.4), true); bm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; go_root.add_child(bm); g["beam"] = bm
+		if bool(g.walks):      # (one that walks has a line of small bronze studs along its way)
+			var a := at
+			for s in 2:
+				var d2: Vector2i = g.dir if s == 0 else -(g.dir as Vector2i)
+				var c2 := a
+				while gs.cells.has(_go_key(c2.x + d2.x, c2.y + d2.y)) and gs.cells[_go_key(c2.x + d2.x, c2.y + d2.y)] == "floor":
+					c2 += d2
+				g["end%d" % s] = c2
+			var e0: Vector2i = g.end0; var e1: Vector2i = g.end1
+			var lo := Vector2i(mini(e0.x, e1.x), mini(e0.y, e1.y)); var hi := Vector2i(maxi(e0.x, e1.x), maxi(e0.y, e1.y))
+			for x in range(lo.x, hi.x + 1):
+				for y in range(lo.y, hi.y + 1):
+					cyl(_go_w(x, y) + Vector3(0, 0.0, 0), 0.07, 0.07, 0.02, pal("gold", "flat"), 10, go_root)
+	_go_marks()
+	var ijm: PackedStringArray = String(gs.me).split(",")
+	pos = _go_w(int(ijm[0]), int(ijm[1])); route.clear(); face_to = null
+	_go_dots()
+
+## where each statue looks, and the glow on the stone it looks at
+func _go_marks() -> void:
+	for g in gs.guards:
+		var mk: Node3D = g.mark; var bm: MeshInstance3D = g.beam
+		mk.visible = bool(g.alive); bm.visible = bool(g.alive)
+		if not bool(g.alive): continue
+		var f: Vector2i = (g.at as Vector2i) + (g.dir as Vector2i)
+		var fp := _go_w(f.x, f.y); mk.position = fp
+		mk.visible = gs.cells.has(_go_key(f.x, f.y))
+		var eye := _go_w((g.at as Vector2i).x, (g.at as Vector2i).y) + Vector3(0, 1.85, 0) + Vector3((g.dir as Vector2i).x, 0, (g.dir as Vector2i).y) * 0.18
+		var tgt := fp + Vector3(0, 0.05, 0)
+		var dd := tgt - eye
+		bm.position = (eye + tgt) * 0.5; bm.basis = Basis(Quaternion(Vector3.UP, dd.normalized())); bm.scale = Vector3(1, dd.length(), 1)
+
+## small rings on the stones she can step to
+func _go_dots() -> void:
+	for d in go_dots: (d as Node).queue_free()
+	go_dots = []
+	if bool(gs.dead) or bool(gs.won): return
+	var me := _go_ij(gs.me)
+	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var t: Vector2i = me + d; var k := _go_key(t.x, t.y)
+		if not gs.cells.has(k) or gs.cells[k] == "hole": continue
+		var r := MeshInstance3D.new(); var tm := TorusMesh.new(); tm.inner_radius = 0.2; tm.outer_radius = 0.25; tm.rings = 24; tm.ring_segments = 4; r.mesh = tm
+		r.material_override = mat(Color(1, 1, 1, 0.55)); r.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; r.position = _go_w(t.x, t.y) + Vector3(0, 0.03, 0); r.scale = Vector3(1, 0.2, 1)
+		go_root.add_child(r); go_dots.append(r)
+
+func _go_ij(k) -> Vector2i:
+	var s := String(k).split(","); return Vector2i(int(s[0]), int(s[1]))
+
+func _go_guard_at(v: Vector2i):
+	for g in gs.guards:
+		if bool(g.alive) and (g.at as Vector2i) == v: return g
+	return null
+
+## can a statue that walks step onto v?
+func _go_free_for_guard(v: Vector2i) -> bool:
+	var k := _go_key(v.x, v.y)
+	if not gs.cells.has(k) or gs.cells[k] != "floor": return false
+	if gs.pillars.has(k) or _go_guard_at(v) != null or String(gs.mirror) == k: return false
+	return true
+
+## is she seen? (the stone right in front of a statue that is still a statue)
+func _go_seen() -> bool:
+	var me := _go_ij(gs.me)
+	for g in gs.guards:
+		if bool(g.alive) and (g.at as Vector2i) + (g.dir as Vector2i) == me: return true
+	return false
+
+func _go_begin() -> void:
+	_wake_now()
+	for ql in quote_lbls:
+		var l := ql as Label
+		var o := l.get_theme_constant("outline_size")
+		if o == 0: l.add_theme_color_override("font_color", Color(1, 1, 1, 1))
+		elif l.material != null: l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0))
+		else: l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.16))
+	hint.add_theme_color_override("font_color", Color(1, 1, 1, 1)); hint.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.72)); hint.add_theme_constant_override("outline_size", 10)
+	var cl := CanvasLayer.new(); cl.layer = 0; add_child(cl)
+	var vg := Gradient.new(); vg.offsets = PackedFloat32Array([0.0, 0.36, 0.72, 1.0])
+	vg.colors = PackedColorArray([Color(0.02, 0.04, 0.1, 0), Color(0.02, 0.04, 0.1, 0), Color(0.02, 0.04, 0.1, 0.42), Color(0.02, 0.04, 0.1, 0.86)])
+	var vt := GradientTexture2D.new(); vt.gradient = vg; vt.fill = GradientTexture2D.FILL_RADIAL; vt.fill_from = Vector2(0.5, 0.47); vt.fill_to = Vector2(1.12, 0.47); vt.width = 256; vt.height = 256
+	var vr := TextureRect.new(); vr.texture = vt; vr.stretch_mode = TextureRect.STRETCH_SCALE; vr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	vr.set_anchors_preset(Control.PRESET_FULL_RECT); vr.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(vr)
+	var cl2 := CanvasLayer.new(); cl2.layer = 5; add_child(cl2)
+	go_fade = ColorRect.new(); go_fade.color = Color(0.03, 0.05, 0.1, 0.0); go_fade.set_anchors_preset(Control.PRESET_FULL_RECT); go_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl2.add_child(go_fade)
+	var rng := RandomNumberGenerator.new(); rng.seed = 11
+	for k in 30:
+		var sm := SphereMesh.new(); sm.radius = 0.035; sm.height = 0.07; sm.radial_segments = 6; sm.rings = 3
+		var fm := prim(sm, Vector3.ZERO, mat(Color(1.0, 0.86, 0.5, 0.85), true)); fm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		go_flies.append({"n": fm, "c": Vector3(rng.randf_range(-7.0, 7.0), WATER + rng.randf_range(0.5, 3.4), rng.randf_range(-7.0, 7.0)), "ph": rng.randf_range(0.0, TAU), "r": rng.randf_range(0.5, 1.6), "sp": rng.randf_range(0.15, 0.4)})
+	_go_build(0)
+	yaw = PI * 1.25; cam_t = Vector3(_go_cx(0), 0, 0); cam_focus = cam_t; cam_focus_on = true
+
+func _go_write(text: String, hold := 4.5) -> void:
+	for ql in quote_lbls: (ql as Label).text = text
+	var qt := create_tween(); qt.tween_property(quote_box, "modulate:a", 1.0, 0.5); qt.tween_interval(hold); qt.tween_property(quote_box, "modulate:a", 0.0, 0.7)
+	quote_glow.modulate.a = 1.0
+
+func _go_pre(_dt: float) -> void:
+	pos.y = 0.0
+
+func _go_post(dt: float) -> void:
+	cam_focus = Vector3(_go_cx(int(gs.get("lv", 0))), 0, 0.3); cam_focus_on = true
+	if started:
+		go_t += dt
+		var lk := "line%d" % int(gs.lv)
+		if not go_said.has(lk) and go_t > 1.0: go_said[lk] = true; _go_write(String(GO_LEVELS[int(gs.lv)].line))
+		if not go_said.has("hint") and go_t > 6.0 and not go_said.has("stepped"): go_said["hint"] = true; say("tap a stone next to her")
+	for f in go_flies:
+		var t := go_t * float(f.sp) + float(f.ph)
+		(f.n as Node3D).position = Vector3(_go_cx(int(gs.get("lv", 0))), 0, 0) + (f.c as Vector3) + Vector3(cos(t) * float(f.r), sin(t * 1.7) * 0.35, sin(t * 0.8) * float(f.r))
+		(f.n as Node3D).scale = Vector3.ONE * (0.55 + 0.45 * sin(t * 3.1 + float(f.ph)))
+
+## a tap: a stone next to her (a step, a push, a veil), or a statue that looks at her from afar (the mirror)
+func _go_tap(sp: Vector2) -> void:
+	if busy or bool(gs.busy) or bool(gs.dead) or bool(gs.won): return
+	var px := get_viewport().get_visible_rect().size.x / 720.0
+	var best := ""; var bd := 64.0 * px
+	for g in gs.guards:      # (a statue may be tapped by its body too)
+		if not bool(g.alive): continue
+		var a: Vector2i = g.at
+		var d := cam.unproject_position(_go_w(a.x, a.y) + Vector3(0, 1.1, 0)).distance_to(sp)
+		if d < bd: bd = d; best = _go_key(a.x, a.y)
+	for k in gs.cells:
+		var v := _go_ij(k)
+		var d2 := cam.unproject_position(_go_w(v.x, v.y)).distance_to(sp)
+		if d2 < bd: bd = d2; best = k
+	if best == "": return
+	_go_act(_go_ij(best))
+
+func _go_act(t: Vector2i) -> void:
+	gs.busy = true
+	var me := _go_ij(gs.me)
+	var d := t - me
+	var g = _go_guard_at(t)
+	if g != null and absi(d.x) + absi(d.y) > 1:      # the mirror: from afar, along its look, with nothing between
+		if bool(gs.has_mirror) and _go_line_clear(t, me, g): await _go_mirror(g); await _go_world(); gs.busy = false; return
+		await _her_no(); gs.busy = false; return
+	if absi(d.x) + absi(d.y) != 1: await _her_no(); gs.busy = false; return
+	var k := _go_key(t.x, t.y)
+	if not gs.cells.has(k) or gs.cells[k] == "hole": await _her_no(); gs.busy = false; return
+	go_said["stepped"] = true
+	if g != null:      # come at from behind or the side: a veil over it
+		await _go_veil(g)
+	elif gs.pillars.has(k):      # a drum: pushed one stone on
+		var to := t + d; var k2 := _go_key(to.x, to.y)
+		var pn: Node3D = gs.pillars[k]
+		if gs.cells.has(k2) and gs.cells[k2] == "hole":
+			gs.pillars.erase(k); gs.cells[k2] = "floor"
+			_go_walk_to(t, true)
+			var tw1 := create_tween(); tw1.tween_property(pn, "position", _go_w(to.x, to.y), 0.55).set_trans(Tween.TRANS_SINE)
+			tw1.tween_property(pn, "position:y", -0.9, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+			await tw1.finished
+			blk(_go_w(to.x, to.y) + Vector3(-0.65, WATER - 0.8, -0.65), _go_w(to.x, to.y) + Vector3(0.65, -0.02, 0.65), "stone", go_root).material_override = pal("stone", "flat")
+			for dd in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var nb: Vector2i = to + dd
+				if gs.cells.has(_go_key(nb.x, nb.y)) and gs.cells[_go_key(nb.x, nb.y)] != "hole":
+					var q := _go_w(to.x, to.y) + Vector3(dd.x * GO_D * 0.5, 0, dd.y * GO_D * 0.5)
+					var ax := Vector3(0.36 if dd.x == 0 else GO_D * 0.5 - 0.6, 0, 0.36 if dd.y == 0 else GO_D * 0.5 - 0.6)
+					blk(q - Vector3(ax.x, 0.8 - WATER, ax.z), q + Vector3(ax.x, -0.02, ax.z), "stone", go_root).material_override = pal("stone", "flat")
+			print("GO the drum fills the hole at ", to)
+		elif _go_free_for_guard(to):
+			gs.pillars.erase(k); gs.pillars[k2] = pn
+			_go_walk_to(t, true)
+			var tw2 := create_tween(); tw2.tween_property(pn, "position", _go_w(to.x, to.y), 0.6).set_trans(Tween.TRANS_SINE)
+			await tw2.finished
+		else: await _her_no(); gs.busy = false; return
+	await _go_walk_to(t)
+	if String(gs.mirror) == gs.me:      # the mirror: taken up
+		gs.has_mirror = true; gs.mirror = ""
+		var mn: Node3D = N["go_mirror"]
+		var tw3 := create_tween(); tw3.tween_property(mn, "scale", Vector3.ONE * 0.01, 0.4); tw3.tween_callback(mn.hide)
+		say("a mirror: a statue that looks at her will see itself"); print("GO she takes up the mirror")
+	if _go_seen(): await _go_die(); return
+	await _go_world()
+	gs.busy = false
+
+## she walks one stone (with a push, she follows the drum)
+func _go_walk_to(t: Vector2i, pushing := false) -> void:
+	gs.me = _go_key(t.x, t.y)
+	route.clear(); speed_cap = 1.25 if pushing else PLAY_WALK; face_to = null
+	route.append({"p": _go_w(t.x, t.y)})
+	while not route.is_empty(): await get_tree().process_frame
+
+func _go_line_clear(t: Vector2i, me: Vector2i, g: Dictionary) -> bool:
+	var dv := me - t
+	if dv.x != 0 and dv.y != 0: return false
+	var step := Vector2i(signi(dv.x), signi(dv.y))
+	if step != (g.dir as Vector2i): return false      # it must be looking at her
+	var c := t + step
+	while c != me:
+		var k := _go_key(c.x, c.y)
+		if gs.pillars.has(k) or _go_guard_at(c) != null: return false
+		c += step
+	return true
+
+func _go_veil(g: Dictionary) -> void:
+	face_to = (g.node as Node3D).position
+	var up := tw(); up.set_parallel(); up.tween_property(self, "a_wL", 1.0, 0.35); up.tween_property(self, "a_wR", 1.0, 0.35); up.tween_property(self, "a_lean", 0.15, 0.35)
+	tgtL = (g.node as Node3D).position + Vector3(0, 1.9, 0); tgtR = tgtL
+	await up.finished
+	g.alive = false; _go_marks()
+	var at: Vector2i = g.at; var p := _go_w(at.x, at.y)
+	var veil := Node3D.new(); veil.position = p + Vector3(0, 2.6, 0); veil.scale = Vector3(1.0, 0.1, 1.0); go_root.add_child(veil)
+	cyl(Vector3(0, -2.6, 0), 0.5, 0.24, 2.0, pal("linen", "flat"), 14, veil); ball(Vector3(0, -0.45, 0), 0.27, pal("linen", "flat"), veil)
+	var vt := create_tween().set_parallel(); vt.tween_property(veil, "scale", Vector3.ONE, 0.45).set_trans(Tween.TRANS_SINE); vt.tween_property(veil, "position:y", 2.6, 0.45)
+	var dn := tw(); dn.set_parallel(); dn.tween_property(self, "a_wL", 0.0, 0.4); dn.tween_property(self, "a_wR", 0.0, 0.4); dn.tween_property(self, "a_lean", 0.0, 0.4)
+	await vt.finished
+	(g.node as Node3D).hide()
+	var sk := create_tween(); sk.tween_property(veil, "position:y", 0.6, 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN); sk.tween_property(veil, "scale", Vector3(1.3, 0.02, 1.3), 0.3)
+	await sk.finished
+	print("GO a statue is veiled at ", at)
+
+func _go_mirror(g: Dictionary) -> void:
+	var at: Vector2i = g.at; var p := _go_w(at.x, at.y)
+	face_to = p
+	var up := tw(); up.set_parallel(); up.tween_property(self, "a_wR", 1.0, 0.35)
+	tgtR = pos + (p - pos).normalized() * 0.4 + Vector3(0, 1.3, 0)
+	await up.finished
+	var fl := MeshInstance3D.new(); var cm := CylinderMesh.new(); cm.top_radius = 0.06; cm.bottom_radius = 0.06; cm.height = 1.0; fl.mesh = cm
+	fl.material_override = mat(Color(0.9, 0.97, 1.0, 0.8), true); go_root.add_child(fl)
+	var a := pos + Vector3(0, 1.3, 0); var b := p + Vector3(0, 1.8, 0); var dd := b - a
+	fl.position = (a + b) * 0.5; fl.basis = Basis(Quaternion(Vector3.UP, dd.normalized())); fl.scale = Vector3(1, dd.length(), 1)
+	var ft := create_tween(); ft.tween_property(fl, "transparency", 1.0, 0.8)
+	g.alive = false; _go_marks(); gs.has_mirror = false
+	var st: Node3D = g.node
+	var sk := create_tween(); sk.tween_interval(0.3); sk.tween_property(st, "rotation:z", 0.25, 0.4).set_trans(Tween.TRANS_SINE)
+	sk.tween_property(st, "position:y", -2.4, 0.8).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	var dn := tw(); dn.tween_interval(0.6); dn.tween_property(self, "a_wR", 0.0, 0.4)
+	await sk.finished
+	st.hide(); fl.queue_free()
+	print("GO a statue sees itself in the mirror, at ", at)
+
+## the world takes its step: those that walk walk (or turn at the end of their way)
+func _go_world() -> void:
+	var moved := false
+	for g in gs.guards:
+		if not bool(g.alive) or not bool(g.walks): continue
+		var nx: Vector2i = (g.at as Vector2i) + (g.dir as Vector2i)
+		var st: Node3D = g.node
+		if _go_free_for_guard(nx) and _go_key(nx.x, nx.y) != String(gs.me):
+			g.at = nx
+			create_tween().tween_property(st, "position", _go_w(nx.x, nx.y), 0.5).set_trans(Tween.TRANS_SINE)
+		else:
+			g.dir = -(g.dir as Vector2i)
+			create_tween().tween_property(st, "rotation:y", st.rotation.y + PI, 0.5).set_trans(Tween.TRANS_SINE)
+		moved = true
+	if moved:
+		await wait(0.52)
+		_go_marks()
+	_go_dots()
+	if _go_seen(): await _go_die(); return
+	var gk := String(gs.me)
+	if gs.cells.get(gk, "") == "gate": await _go_win()
+
+## seen: she turns to stone, and the level begins again
+func _go_die() -> void:
+	gs.dead = true; _go_dots()
+	print("GO she is seen, at ", gs.me)
+	say("she was seen")
+	var gr := create_tween(); gr.tween_property(self, "a_lean", -0.06, 0.4)
+	await wait(1.1)
+	var f := create_tween(); f.tween_property(go_fade, "color:a", 1.0, 0.6)
+	await f.finished
+	a_lean = 0.0
+	_go_build(int(gs.lv)); yaw = PI * 1.25
+	var f2 := create_tween(); f2.tween_property(go_fade, "color:a", 0.0, 0.6)
+	await f2.finished
+
+func _go_win() -> void:
+	gs.won = true; _go_dots()
+	print("GO level ", int(gs.lv) + 1, " done")
+	await wait(0.9)
+	if int(gs.lv) + 1 >= GO_LEVELS.size():
+		print("GO all levels done"); _end(); return
+	var f := create_tween(); f.tween_property(go_fade, "color:a", 1.0, 0.7)
+	await f.finished
+	_go_build(int(gs.lv) + 1); yaw = PI * 1.25
+	cam_t = Vector3(_go_cx(int(gs.lv)), 0, 0.3); go_t = 0.0
+	var f2 := create_tween(); f2.tween_property(go_fade, "color:a", 0.0, 0.7)
+	await f2.finished
+
+## (the trial played through, with one fall in the first level to show the rule: FLIP=go ... -- godemo)
+func _play_go() -> void:
+	var dir := OS.get_environment("SHOT_DIR")
+	var snap := func(n: String) -> void:
+		if dir != "": await RenderingServer.frame_post_draw; get_viewport().get_texture().get_image().save_png("%s/%s.png" % [dir, n])
+	var idle := func() -> void:
+		var still := 0
+		while still < 10:
+			await get_tree().process_frame
+			still = still + 1 if (not busy and not bool(gs.busy) and route.is_empty()) else 0
+	var step := func(i: int, j: int) -> void:
+		_go_tap(cam.unproject_position(_go_w(i, j)))
+		await get_tree().process_frame
+		await idle.call()
+		await wait(0.25)
+	await get_tree().create_timer(1.0).timeout
+	tap(Vector2(360, 640)); await wait(4.5); await snap.call("q0_level1")
+	print("GO begins at ", gs.me)
+	if OS.get_environment("GH_ONLY") == "start": get_tree().quit(); return
+	# level 1: straight on to the left, into the look of the statue that faces her: seen
+	await step.call(3, 4)
+	while bool(gs.dead) or go_fade.color.a > 0.01: await get_tree().process_frame
+	await wait(0.8)
+	# then up the right: the first statue from behind, the second from the side
+	for s in [[4, 3], [4, 2], [4, 1], [4, 0], [3, 0], [2, 0], [1, 0], [0, 0]]: await step.call(s[0], s[1])
+	await snap.call("q1_level1_done")
+	while go_fade.color.a > 0.01 or int(gs.lv) < 1: await get_tree().process_frame
+	await wait(2.5); await snap.call("q2_level2")
+	# level 2: the drum into the hole; across behind the one that walks; from its side, a veil; to the gate
+	await step.call(2, 3); await step.call(2, 2)
+	var g2: Dictionary = gs.guards[0]
+	while true:      # (steps back and forth on the drum's stone till the walker has gone by)
+		var a2: Vector2i = g2.at
+		if a2.x <= 1 or (a2 == Vector2i(2, 1) and (g2.dir as Vector2i).x < 0): break
+		await step.call(2, 3); await step.call(2, 2)
+	var a3: Vector2i = g2.at
+	if a3 == Vector2i(2, 1): await step.call(2, 1)
+	else:
+		await step.call(2, 1)
+	for s in [[2, 0], [1, 0], [0, 0]]:
+		if bool(gs.won) or int(gs.lv) != 1: break
+		await step.call(s[0], s[1])
+	await snap.call("q3_level2_done")
+	while go_fade.color.a > 0.01 or int(gs.lv) < 2: await get_tree().process_frame
+	await wait(2.5); await snap.call("q4_level3")
+	# level 3: along the bottom to the mirror; back; the middle statue from behind; the mirror at the one that guards the gate
+	for s in [[3, 4], [2, 4], [1, 4], [0, 4]]: await step.call(s[0], s[1])
+	await snap.call("q5_mirror")
+	for s in [[1, 4], [2, 4], [2, 3]]: await step.call(s[0], s[1])
+	await step.call(2, 1)      # (the mirror: a tap on the statue that guards the gate)
+	await snap.call("q6_seen_itself")
+	for s in [[2, 2], [2, 1], [2, 0]]: await step.call(s[0], s[1])
+	var n2 := 0
+	while not ended and n2 < 900: await get_tree().process_frame; n2 += 1
+	await wait(2.5)
+	print("GO ended: ", ended); await snap.call("q9_end")
 	get_tree().quit()
 
 # ---------------------------------------------------------------- the face in the water (a trial)
@@ -3216,6 +3715,13 @@ func _self() -> void:
 
 # ---------------------------------------------------------------- I.1
 func tap(sp: Vector2) -> void:
+	if go_demo and not started:      # (the trial played a step at a time: the eye draws back to hold the board)
+		started = true
+		var tg2 := create_tween(); tg2.tween_property(title_box, "modulate:a", 0.0, 0.7); tg2.tween_callback(title_box.hide)
+		create_tween().tween_property(cam, "size", GO_VIEW, 2.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		return
+	if go_demo and started and not ended and woke:
+		_go_tap(sp); return
 	if geo_demo and not started:      # (the trial of what the water does not show: the eye draws back to hold the whole square)
 		started = true
 		var tg := create_tween(); tg.tween_property(title_box, "modulate:a", 0.0, 0.7); tg.tween_callback(title_box.hide)
@@ -3818,6 +4324,7 @@ func _do_place6() -> void:
 # ---------------------------------------------------------------- frame, and the runs that try the chapter
 func _process(dt: float) -> void:
 	if geo_demo: _gh_pre(dt)
+	if go_demo: _go_pre(dt)
 	if flip_moving: _flip_pre()
 	super._process(dt)
 	if flip_moving: _flip_post()
@@ -3826,6 +4333,7 @@ func _process(dt: float) -> void:
 	if flip_on and not flip_busy and not flip_homing and _flat(pos, flip_anchor) > FLIP_LEASH: _shadow_home()      # too far from her
 	if figure_demo: _fig_frame(dt)
 	if geo_demo: _gh_post(dt)
+	if go_demo: _go_post(dt)
 	if match_demo and not ended and not flip_on and not flip_busy and pos.z > MT_Z1 + 0.7: route.clear(); _end()
 	if flip_demo and not ended and not busy and not flip_busy and not flip_on and rects.has("S2") and rects["S2"].on and pos.z < TZ0 - 0.9: route.clear(); _end()      # (the trial ends behind the second sluice)
 	if not flip_on and not flip_busy and woke: _stele_watch()
@@ -3872,6 +4380,8 @@ func _ready() -> void:
 	if figure_demo: _fig_begin()
 	if geo_demo: _gh_begin()
 	if "geodemo" in args: hand_play = true; _play_geo()
+	if go_demo: _go_begin()
+	if "godemo" in args: hand_play = true; _play_go()
 	if "figuredemo" in args: hand_play = true; _play_figure()
 	if "matchdemo" in args: hand_play = true; _play_match()
 	if "flipdemo" in args: hand_play = true; _play_flipdemo()
