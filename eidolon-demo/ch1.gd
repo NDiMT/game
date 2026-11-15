@@ -1386,14 +1386,15 @@ func _go_build(lv: int) -> void:
 	for k in gs.cells:
 		if gs.cells[k] != "gate": continue
 		var gv := _go_ij(k); var g := _go_w(gv.x, gv.y)
-		blk(g + Vector3(-1.0, 0, -1.0), g + Vector3(1.0, 0.16, 1.0), "stone", go_root).material_override = pal("stone", "flat")
-		for m in 8: column(g + Vector3(cos(m * PI * 0.25 + PI * 0.125) * 0.8, 0.16, sin(m * PI * 0.25 + PI * 0.125) * 0.8), 2.2, 0.075)
-		cyl(g + Vector3(0, 2.36, 0), 0.98, 0.98, 0.18, pal("shade", "flat"), 28, go_root)
-		var dm := SphereMesh.new(); dm.radius = 0.92; dm.height = 0.92 * 0.85; dm.is_hemisphere = true; dm.radial_segments = 24; dm.rings = 8
-		prim(dm, g + Vector3(0, 2.54, 0), pal("terra", "flat"), go_root)
-		for b2 in [[-0.03, -0.34, 0.03, 0.34], [-0.34, -0.03, 0.34, 0.03]]: blk(g + Vector3(b2[0], 0.16, b2[1]), g + Vector3(b2[2], 1.9, b2[3]), "lamp", go_root).material_override = under_mat(Color("ffe2a0"))
-		for e in [Vector3(0.95, 0, 0.95), Vector3(-0.95, 0, 0.95)]: _gh_brazier(g + e + Vector3(0, 0.16, 0))
-		lights[6] = Vector4(g.x, 1.4, g.z, 0.85); lights[4] = Vector4(g.x + 0.95, 1.0, g.z + 0.95, 0.7); lights[5] = Vector4(g.x - 0.95, 1.0, g.z + 0.95, 0.7)
+		blk(g + Vector3(-1.0, WATER - 0.8, -1.0), g + Vector3(1.0, 0.0, 1.0), "stone", go_root).material_override = pal("stone", "flat")
+		var gn := Node3D.new(); gn.position = g; gn.rotation.y = -PI * 0.25; go_root.add_child(gn)      # the gate: a round temple of marble with a dome of terracotta, made in Tripo (props/gate); its door faces her board
+		var gm := prop_model("gate", gn, 3.3, 0.0, false, false, "marble:stone,terra:terra,gold:gold,glow:lamp")
+		for mm in gm.find_children("*", "MeshInstance3D", true, false):
+			var mi := mm as MeshInstance3D
+			for si in mi.mesh.get_surface_count():
+				if String(mi.mesh.surface_get_name(si)).begins_with("glow") or (mi.get_surface_override_material(si) == pal("lamp", "flat")): mi.set_surface_override_material(si, under_mat(Color("ffe2a0")))
+		for e in [Vector3(1.25, 0, -0.55), Vector3(-0.55, 0, 1.25)]: _gh_brazier(g + e)      # (a fire on either hand of the door, not before it)
+		lights[6] = Vector4(g.x + 0.5, 1.2, g.z + 0.5, 0.85); lights[4] = Vector4(g.x + 1.25, 1.0, g.z - 0.55, 0.7); lights[5] = Vector4(g.x - 0.55, 1.0, g.z + 1.25, 0.7)
 	# what lies about the board, in the sea: the same things as about the square
 	_gh_around()
 	var cx := _go_cx(lv)
