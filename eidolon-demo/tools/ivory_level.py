@@ -211,13 +211,21 @@ def slab(name, outline, h, thick=0.46, keep=()):
         if rnd.random() < 0.2 and dk[i] > 1.3:      # a chip: the edge a little lower and further in
             dy, dn = -rnd.uniform(0.02, 0.05), -rnd.uniform(0.01, 0.035)
         else: dy, dn = 0.0, 0.0
-        top.append((x + nx * (dn - e), h + dy, z + nz * (dn - e)))
+        top.append((x + nx * (dn - e), h, z + nz * (dn - e)))      # (the top itself dead level: a chip only takes the edge)
         rim.append((x + nx * dn, h + dy - ev, z + nz * dn))
         b = rnd.uniform(0.0, 0.05)
         yb = h - thick + rnd.uniform(-0.03, 0.03) - hang[i] + (rnd.uniform(0.04, 0.09) if (rnd.random() < 0.12 and not near_flight) else 0.0)
         bot.append((x - nx * b, yb, z - nz * b))
         und.append((x - nx * (b + 0.07), yb - 0.035, z - nz * (b + 0.07)))
-    bm = bmesh.new(); loft(bm, [top, rim, bot, und], cap0=True, cap1=True)      # (the top one face: no inner ring to fold over itself at a notch)
+    bm = bmesh.new(); vs = loft(bm, [top, rim, bot, und], cap0=False, cap1=False)
+    tops = []
+    for ring in (vs[0], vs[-1]):      # (each cap filled within its outline, notches and all: the L of a floor is never bridged)
+        es = [bm.edges.get((ring[i], ring[(i + 1) % len(ring)])) for i in range(len(ring))]
+        r = bmesh.ops.triangle_fill(bm, use_beauty=True, use_dissolve=False, edges=[e for e in es if e is not None])
+        if ring is vs[0]: tops = [g for g in r['geom'] if isinstance(g, bmesh.types.BMFace)]
+    poly2 = [(p[0], p[2]) for p in top]
+    bad = [f for f in tops if not inside(poly2, (f.calc_center_median().x, -f.calc_center_median().y))]
+    if bad or not tops: print('SLAB', name, 'cap triangles outside its outline:', len(bad), 'of', len(tops))
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
     return finish(bm, name + '_slab')
 
