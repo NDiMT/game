@@ -474,6 +474,7 @@ uniform vec4 l0; uniform vec4 l1; uniform vec4 l2; uniform vec4 l3; uniform vec4
 global uniform vec3 view_ax;      // the way the eye looks (from the world toward it): the mist lies round that line
 global uniform float sea_y;      // where the sea's face lies (it moves only with a tide): what is under it fades into the deep
 uniform float sway = 0.0; uniform float time_s = 0.0; uniform float marble = 0.0; uniform float tone_var = 0.0; uniform float rim = 0.0; uniform float flat_n = 0.0; uniform vec3 shadow_col = vec3(0.66, 0.66, 0.86); uniform float mist_k = 0.96; uniform vec3 centre; uniform float mist_r = 7.0; uniform vec3 mist_col : source_color;
+uniform float fade_y0 = -1000.0; uniform float fade_y1 = -1001.0; uniform vec3 fade_col = vec3(0.04, 0.12, 0.2);      // (a pillar out of the sea: from fade_y0 down to fade_y1 it goes over into the colour of its picture on the water)
 varying vec3 wp; varying vec3 wn;
 float h3(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
 float vn(vec3 p){ vec3 i = floor(p); vec3 f = fract(p); f = f * f * (3.0 - 2.0 * f);
@@ -513,7 +514,8 @@ void fragment(){
 	col = mix(col, fog_col, smoothstep(sea_y - 0.05, sea_y - 3.3, wp.y) * 0.9);
 	vec3 d3 = wp - centre; float md = length(d3 - view_ax * dot(d3, view_ax));
 	col = mix(col, mist_col, smoothstep(mist_r * 0.8, mist_r * 1.7, md) * mist_k);
-	ALBEDO = col; ROUGHNESS = 1.0;
+	float fk = 1.0 - smoothstep(fade_y1, fade_y0, wp.y);
+	ALBEDO = col * (1.0 - fk); EMISSION = fade_col * fk; ROUGHNESS = 1.0;
 }
 void light(){
 	float facing = smoothstep(0.0, 0.12, dot(NORMAL, LIGHT));

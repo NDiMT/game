@@ -686,7 +686,7 @@ var gh_st := {}      # the statues: id -> {statue, veil, fold, beams, stand, loo
 var gh := {"deck": 30.0, "deck_held": false, "slab_t": 0.0, "slab_held": false, "slab_out": 1.2, "busy": false}
 
 func _gh_clear_code(code: String) -> String:      # (a thing of the picture is not paled by the water's haze: the sea's face tints it)
-	return code.replace("col = mix(col, fog_col, smoothstep(-1.35, -4.6, wp.y) * 0.9);", "").replace("col *= mix(0.9, 1.0, clamp(smoothstep(-1.6, -0.1, wp.y) + wt, 0.0, 1.0));", "")
+	return code.replace("col = mix(col, fog_col, smoothstep(sea_y - 0.05, sea_y - 3.3, wp.y) * 0.9);", "").replace("col *= mix(0.9, 1.0, clamp(smoothstep(-1.6, -0.1, wp.y) + wt, 0.0, 1.0));", "")
 
 ## the colour n of the world's palette: for the monument as it stands ("real"), or for its picture under the water ("twin")
 func _gm(n: String, kind: String) -> ShaderMaterial:
@@ -1294,7 +1294,7 @@ func _play_geo() -> void:
 ## 'a'.. their images, '~' the channel, '=' a slab in it. "sol": the steps of a way through (x, z, w: a walk, p: a push).
 const GO_D := 1.6
 const GO_VIEW := 12.0
-const MW_TOP := WATER + 0.65      # the floor of both courts
+const MW_TOP := WATER + 1.7      # the floor of both courts: tall pillars out of the sea
 const MW_NONE := Vector2i(-99, -99)
 const MW_REACH := 0.42      # how far into her square she stands to set her hands on a stone
 const MW_PITCH := 35.264
@@ -1397,7 +1397,7 @@ func _mw_palettes() -> void:
 func _go_build(lv: int) -> void:
 	if go_root != null: go_root.queue_free()
 	go_root = Node3D.new(); add_child(go_root)
-	mw_push = {}
+	mw_push = {}; mw_fmats = {}
 	var L: Dictionary = GO_LEVELS[lv]
 	var rows: Array = L.map
 	var H := rows.size(); var W := 0
@@ -1450,43 +1450,44 @@ func _go_build(lv: int) -> void:
 	_go_water_y(); _mw_rings(true)
 	if go_lv_lbl != null: go_lv_lbl.text = "%d / %d" % [lv + 1, GO_LEVELS.size()]
 
-## what lies about the courts, in the sea, laid for an eye that looks from the front: far behind, her head, sunk to the
-## lips; at the two ends of the water, two bronze mirrors on their plinths, turned to it; at the sides columns and
-## rocks; before the court (low, so as to hide nothing of it) the boat at its mooring, lamps and jars afloat, reeds
+## what stands about the courts: mirrors under their sheets, each on a pillar of its own out of the sea (the same
+## stone, going down into its picture on the water), two at the ends of the channel, the rest round about, turned to
+## the courts. Laid by where they fall to the eye (sx across the picture, s from far to near), clear of the courts
 func _mw_around() -> void:
 	var cx := _go_cx(int(gs.lv)); var bw := float(gs.W) * GO_D * 0.5
-	var zf := -float(gs.c) * GO_D - GO_D * 0.5; var zn := (float(gs.H) - 1.0 - float(gs.c)) * GO_D + GO_D * 0.5
-	var hp := Vector3(cx - bw * 0.78, WATER, zf - 4.6)      # (her head stands on its own ledge of rock, above the sea: under it only its dark image)
-	rock(Vector3(hp.x, 0, hp.z), 1.9)
-	blk(hp + Vector3(-1.1, -0.8, -1.0), hp + Vector3(1.1, 0.42, 1.0), "stone").material_override = pal("shade", "flat")
-	var hd := sculpt_head(hp + Vector3(0, 0.42, 0), 2.7, 0.98, Vector3(-0.1, 0, 0.04), 2)
-	if hd == null: thing("broken_statue", hp, 3.0, "stone:marble", 0.4)
-	else:      # (no picture of it on the sea: so tall a thing lay there as a black stain under it)
-		for mm in hd.find_children("*", "MeshInstance3D", true, false):
-			var mi := mm as MeshInstance3D
-			if mi.material_override is ShaderMaterial:
-				var m2 := (mi.material_override as ShaderMaterial).duplicate() as ShaderMaterial; m2.next_pass = null; mi.material_override = m2
-	for sx in [-1.0, 1.0]:
-		var mp := Vector3(cx + sx * (bw + 0.5), WATER, 0.0)
-		blk(mp + Vector3(-0.42, -0.6, -0.42), mp + Vector3(0.42, 0.16, 0.42), "stone").material_override = pal("stone", "flat")
-		blk(mp + Vector3(-0.48, 0.16, -0.48), mp + Vector3(0.48, 0.22, 0.48), "shade").material_override = pal("shade", "flat")
-		mirror_stand(mp + Vector3(0, 0.22, 0), -sx * PI * 0.5 + sx * 0.35, self, WATER, "bare", true)
-		column(Vector3(cx + sx * (bw + 1.9), WATER - 0.5, zf + 0.6), 2.4 if sx > 0 else 1.3, 0.17, true)
-		rock(Vector3(cx + sx * (bw + 2.6), 0, zf - 2.2), 1.3)
-		_gh_float_lamp(Vector3(cx + sx * (bw + 0.9), WATER, zn + 1.5 + (0.6 if sx > 0 else 0.0)))
-	thing("broken_statue", Vector3(cx + bw + 2.2, WATER - 0.8, zf - 3.4), 3.0, "stone:marble", 2.6)
-	var bt := Node3D.new(); bt.position = Vector3(cx + bw * 0.55, WATER, zn + 2.9); bt.rotation.y = PI * 0.08; add_child(bt); build_boat(bt)
-	cyl(Vector3(cx + bw * 0.55 - 1.4, WATER - 0.4, zn + 2.3), 0.07, 0.07, 1.25, pal("trunk", "flat"), 8); cyl(Vector3(cx + bw * 0.55 - 1.4, WATER + 0.85, zn + 2.3), 0.085, 0.06, 0.07, pal("gold", "flat"), 8)
-	for a in [[-0.7, 2.4, 0.6], [-2.6, 4.2, 1.9], [1.4, 4.9, 2.6]]:
-		var am := thing("amphora", Vector3(cx + float(a[0]), WATER - 0.16, zn + float(a[1])), 0.5, "terra:terra,band:wood", a[2]); am.rotation = Vector3(1.2, a[2], 0.3)
-	for p in [Vector3(cx - bw - 1.2, WATER, zn + 1.0), Vector3(cx + bw + 1.6, WATER, zn + 0.4), Vector3(cx - bw - 0.6, WATER, zf - 1.0)]:
-		thing("reeds", p, 0.0, "leaf:leaf~,trunk:wood~,pad:leaf2,flower:rose", p.x * 0.9 + p.z * 1.7, 0.95)
+	var zc := ((float(gs.H) - 1.0) * 0.5 - float(gs.c)) * GO_D
+	var reach := (float(gs.W) + float(gs.H)) * GO_D * 0.5      # (from the middle to a corner of the board, in s)
+	var spots := [[-(bw + 1.0), 0.0, true], [bw + 1.0, 0.0, true]]      # x, z (from the middle), at the channel's ends
+	for e in [[-2.7, -reach - 2.2], [2.9, -reach - 3.4], [0.3, -reach - 5.6], [-5.4, -reach * 0.35], [5.6, reach * 0.3], [-3.2, reach + 3.8], [3.4, reach + 4.6]]:
+		var sx: float = float(e[0]) / 0.7071; var sz: float = e[1]
+		spots.append([(sz + sx) * 0.5, (sz - sx) * 0.5 + zc, false])
+	var k := 0
+	for sp in spots:
+		var p := Vector3(cx + float(sp[0]), WATER, float(sp[1]))
+		var top := WATER + (1.15 if bool(sp[2]) else 0.55 + 0.25 * float(k % 3))
+		blk(p + Vector3(-0.5, -1.4, -0.5), Vector3(p.x + 0.5, top - 0.08, p.z + 0.5), "shade").material_override = _mw_fmat("shade")
+		blk(Vector3(p.x - 0.56, top - 0.12, p.z - 0.56), Vector3(p.x + 0.56, top, p.z + 0.56), "stone").material_override = pal("stone", "flat")
+		var to := Vector3(cx, 0, zc) - p
+		var yw := atan2(to.x, to.z) + (0.35 if k % 2 == 0 else -0.3)
+		if bool(sp[2]): yw = (-PI * 0.5 if float(sp[0]) > 0.0 else PI * 0.5)
+		mirror_stand(Vector3(p.x, top, p.z), yw, self, top, "tied" if k % 2 == 0 else "hem", true)
+		k += 1
+
+## the stone of a pillar out of the sea: from just under its top down to the waterline it goes over into the colour of
+## its own picture on the water, so that the two meet as one
+var mw_fmats := {}
+func _mw_fmat(n: String) -> ShaderMaterial:
+	if mw_fmats.has(n): return mw_fmats[n]
+	var m := pal(n, "flat").duplicate() as ShaderMaterial
+	m.set_shader_parameter("fade_y0", MW_TOP - 0.25); m.set_shader_parameter("fade_y1", WATER + 0.02)
+	mw_fmats[n] = m
+	return m
 
 ## a square of the floor: a pillar out of the sea, paved; over there in the dark stone of the eidolon
 func _mw_tile(v: Vector2i) -> void:
 	var p := _mw_p(v); var far := _mw_side(v) < 0
 	var h := GO_D * 0.5
-	blk(p + Vector3(-h, WATER - 1.4 - MW_TOP, -h), p + Vector3(h, -0.1, h), "shade", go_root).material_override = pal("eid2" if far else "shade", "flat")
+	blk(p + Vector3(-h, WATER - 1.4 - MW_TOP, -h), p + Vector3(h, -0.1, h), "shade", go_root).material_override = _mw_fmat("eid2" if far else "shade")
 	blk(p + Vector3(-h + 0.035, -0.14, -h + 0.035), p + Vector3(h - 0.035, 0.0, h - 0.035), "stone", go_root).material_override = pal("eid" if far else "stone", "flat")
 
 ## a column, broken: a plinth and two drums
@@ -1518,7 +1519,7 @@ func _mw_stone(v: Vector2i, img: bool) -> Node3D:
 func _mw_slab(v: Vector2i) -> Node3D:
 	var n := Node3D.new(); n.position = _mw_p(v); go_root.add_child(n)
 	var h := GO_D * 0.5 - 0.06
-	blk(Vector3(-h, WATER - 1.4 - MW_TOP, -h), Vector3(h, -0.1, h), "shade", n).material_override = pal("eid2", "flat")
+	blk(Vector3(-h, WATER - 1.4 - MW_TOP, -h), Vector3(h, -0.1, h), "shade", n).material_override = _mw_fmat("eid2")
 	blk(Vector3(-h + 0.03, -0.14, -h + 0.03), Vector3(h - 0.03, 0.0, h - 0.03), "stone", n).material_override = pal("block", "flat")
 	blk(Vector3(-h + 0.03, -0.004, -0.035), Vector3(h - 0.03, 0.004, 0.035), "gold", n).material_override = pal("gold", "flat")
 	return n
@@ -1528,7 +1529,7 @@ func _mw_slab(v: Vector2i) -> Node3D:
 func _mw_gate() -> Node3D:
 	var g := Node3D.new(); g.position = _mw_p(gs.gate) + Vector3(0, -6.5, 0); go_root.add_child(g)
 	var h := GO_D * 0.5 - 0.06
-	blk(Vector3(-h, WATER - 1.4 - MW_TOP, -h), Vector3(h, -0.1, h), "shade", g).material_override = pal("shade", "flat")
+	blk(Vector3(-h, WATER - 1.4 - MW_TOP, -h), Vector3(h, -0.1, h), "shade", g).material_override = _mw_fmat("shade")
 	blk(Vector3(-h + 0.03, -0.14, -h + 0.03), Vector3(h - 0.03, 0.0, h - 0.03), "stone", g).material_override = pal("stone", "flat")
 	var an := Node3D.new(); an.position = Vector3(0, 0, -0.45); g.add_child(an)
 	var st := func(a: Vector3, b: Vector3, m := "stone") -> void: blk(a, b, m, an).material_override = pal(m, "flat")
@@ -1601,6 +1602,7 @@ func _go_begin() -> void:
 		if ch is MeshInstance3D and (ch as MeshInstance3D).material_override == sea_mat: go_sea = ch
 	if go_sea == null: go_sea = Node3D.new(); go_sea.position.y = WATER; add_child(go_sea)
 	_mw_palettes()
+	for fm in fogs: (fm as ShaderMaterial).set_shader_parameter("dens", 0.0)      # (the world's low mist lay over the first court only, and through the pillars: here the air is clear)
 	for ql in quote_lbls:
 		var l := ql as Label
 		var o := l.get_theme_constant("outline_size")
@@ -1610,8 +1612,8 @@ func _go_begin() -> void:
 	hint.add_theme_color_override("font_color", Color(1, 1, 1, 1)); hint.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.72)); hint.add_theme_constant_override("outline_size", 10)
 	var cl := CanvasLayer.new(); cl.layer = 0; add_child(cl)
 	var vg := Gradient.new(); vg.offsets = PackedFloat32Array([0.0, 0.36, 0.72, 1.0])
-	vg.colors = PackedColorArray([Color(0.02, 0.04, 0.1, 0), Color(0.02, 0.04, 0.1, 0), Color(0.02, 0.04, 0.1, 0.42), Color(0.02, 0.04, 0.1, 0.86)])
-	var vt := GradientTexture2D.new(); vt.gradient = vg; vt.fill = GradientTexture2D.FILL_RADIAL; vt.fill_from = Vector2(0.5, 0.47); vt.fill_to = Vector2(1.12, 0.47); vt.width = 256; vt.height = 256
+	vg.colors = PackedColorArray([Color(0.02, 0.04, 0.1, 0), Color(0.02, 0.04, 0.1, 0), Color(0.02, 0.04, 0.1, 0.16), Color(0.02, 0.04, 0.1, 0.42)])      # (gentle: only the corners darken)
+	var vt := GradientTexture2D.new(); vt.gradient = vg; vt.fill = GradientTexture2D.FILL_RADIAL; vt.fill_from = Vector2(0.5, 0.47); vt.fill_to = Vector2(1.2, 0.47); vt.width = 256; vt.height = 256
 	var vr := TextureRect.new(); vr.texture = vt; vr.stretch_mode = TextureRect.STRETCH_SCALE; vr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	vr.set_anchors_preset(Control.PRESET_FULL_RECT); vr.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(vr)
 	var cl2 := CanvasLayer.new(); cl2.layer = 5; add_child(cl2)
@@ -1749,13 +1751,13 @@ func _mw_merge_fx(k: int, at: Vector2i) -> void:
 	fm.albedo_color = Color(1.0, 0.9, 0.62, 0.0)
 	var sm := SphereMesh.new(); sm.radius = 1.0; sm.height = 2.0; sm.radial_segments = 16; sm.rings = 8
 	var fl := prim(sm, p + Vector3(0, 0.5, 0), fm, go_root); fl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var sl := _mw_slab(at); sl.position.y = MW_TOP - 2.4
+	var sl := _mw_slab(at); sl.position.y = WATER - 2.6
 	gs.ns[at] = sl
 	var t := create_tween(); t.set_parallel()
 	t.tween_property(fm, "albedo_color:a", 0.55, 0.35); t.tween_property(fm, "albedo_color:a", 0.0, 0.9).set_delay(0.35)
-	t.tween_property(a, "position:y", MW_TOP - 1.7, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	t.tween_property(b, "position:y", MW_TOP - 1.7, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	t.tween_property(sl, "position:y", MW_TOP, 1.2).set_delay(0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	t.tween_property(a, "position:y", WATER - 1.2, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	t.tween_property(b, "position:y", WATER - 1.2, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	t.tween_property(sl, "position:y", MW_TOP, 1.4).set_delay(0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await t.finished
 	a.visible = false; b.visible = false; fl.queue_free()
 	gs.slabs[at] = true
