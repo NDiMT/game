@@ -9,6 +9,15 @@ A level is **real 3D in the picture's style**, never the picture shown. The user
 
 Everything is in `eidolon-demo/`. The first level, ivory (`goiv/`), is the worked example. Its numbers below are starting values, not laws.
 
+## 0. A new level: from the puzzle to a concept to 3D
+
+The levels are many, in one system. A new level is made in this order (the second level, `gosea/`, "The Drowned Sanctuary", is the worked example):
+- **The puzzle first**, proven by a solver on a board of its own (`tools/go/first_trial.py`).
+- **The plan from the board**: the board's cells laid square in world metres, with room for the flights between floors (`tools/go/shield_plan.py` writes `<level>/plan.json` and `<level>/puzzle.json`, and asserts that the plan's way is the board's).
+- **Build it** with `tools/ivory_level.py` (it runs without trees, columns, arches or a relief).
+- **A concept from our own blockout**: render the built level through the game's eye (`tools/go/preview.py -- <glb> <json> <png> [px] [sea y]`, with placeholders for far scenery from the plan's `scenery`), and have the image model repaint it in our style with a new setting, keeping the layout. Then refine its light and sky in a second pass. Store it as `<level>/concept.jpg` (the model returns JPEG data even for .png names).
+- **The game loads the level's own folder** (`go_dir`, chosen by `FLIP=<level>`): its own palettes and sky sampled from its concept (tone bands and warm/cool balance by region, not single pixels), its own key light, its own far scenery.
+
 ## 1. The plan: square on a grid, from the picture
 
 - **Calibrate the eye on the picture.** Orthographic, yaw 45°, pitch 35°, pixels per metre, and the origin pixel at height 0. `tools/ivory/trace.py` has `at(px, py, h)` to turn a picture point at a height into a world point.
@@ -74,6 +83,12 @@ Everything is in `eidolon-demo/`. The first level, ivory (`goiv/`), is the worke
 - **The heroine (Ione)**:
   - The hero shader's level branch: smooth normals, two ramps (skin and cloth) in the picture's colours, the level's sun only.
   - No grain, no extra lights, or her white burns out.
+
+- **A level at sea** (the eye has no perspective):
+  - A sea without end would climb the whole screen. The sea is a sheet whose far edge is a straight line across the screen at the concept's horizon; the sky shows above it.
+  - Far things stand in the sea, each set by where its foot meets the water in the concept and where its top is; its height follows. Far off means small and near the horizon.
+  - Mist is a band by height just over the water, not by depth under each floor; the sea's own colour lies between the haze far off and the mist below.
+  - A sky with four stops (high, a warm band at the horizon, the haze under it, the mist at the bottom), and a low sun drawn on it.
 
 ## 4. The puzzle: Lara Croft GO rules, proven before it is built
 

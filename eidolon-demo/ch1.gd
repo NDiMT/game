@@ -3580,12 +3580,15 @@ func _ivs_far() -> void:
 	# the colossal face, lying in the sea by the causeway, looking up at the eye
 	var sea_y := IV_O.y + float(ivr_sea_y)
 	var fc: Vector3 = spot_y.call((1180.0 - 768.0) / ppm, (1376.0 - 1230.0) / ppm, sea_y)
-	var hp := Node3D.new(); add_child(hp); hp.global_position = fc
-	var hd := prop_model("iv_head", hp, 3.6); hd.position = Vector3(0, -1.2, 0)
+	var hp := Node3D.new(); add_child(hp); hp.global_position = fc + Vector3(0, -1.0, 0)      # (half sunk: the water at its cheek)
+	var hd := prop_model("iv_head", hp, 3.9); hd.position = Vector3(0, -1.3, 0)
 	for m in hd.find_children("*", "MeshInstance3D", true, false):
 		(m as MeshInstance3D).material_override = _iv_mat("seaface", 0.04, {"fog_hi": sea_y + 0.3, "fog_lo": sea_y - 1.2}); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var fz := Vector3(0.62, 0.55, 0.56).normalized()
-	var fy := (Vector3(-0.85, 0.3, 0.42) - fz * Vector3(-0.85, 0.3, 0.42).dot(fz)).normalized()
+	var fzv := Vector3(0.52, 0.42, 0.74); var fyv := Vector3(-0.78, 0.55, -0.1)      # (as the fallen face of the ivory level: it looks up at the eye, its crown to the upper left)
+	if OS.get_environment("IVS_FZ") != "": var q := OS.get_environment("IVS_FZ").split(","); fzv = Vector3(float(q[0]), float(q[1]), float(q[2]))
+	if OS.get_environment("IVS_FY") != "": var q2 := OS.get_environment("IVS_FY").split(","); fyv = Vector3(float(q2[0]), float(q2[1]), float(q2[2]))
+	var fz := fzv.normalized()
+	var fy := (fyv - fz * fyv.dot(fz)).normalized()
 	var fx := fy.cross(fz)
 	hp.basis = Basis(fz, fy, -fx)
 	# (the eye has no perspective: a thing far off is small and stands near the horizon; each is set by where its foot
@@ -3814,7 +3817,15 @@ func _ivr_build() -> void:
 	var gm := StandardMaterial3D.new(); gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm.albedo_texture = load("res://goiv/glow.png")
 	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; gm.albedo_color = Color(1.0, 0.96, 0.86, 0.5)
 	iv_glow = MeshInstance3D.new(); iv_glow.mesh = gq; iv_glow.material_override = gm; iv_glow.position = Vector3(0, 0.4, 0); iv_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; iv_ring.add_child(iv_glow)
-	if go_drown: _ivs_sea(float(j.get("sea_y", -1.6))); _ivs_far()
+	if go_drown:
+		_ivs_sea(float(j.get("sea_y", -1.6))); _ivs_far()
+		for ar in (j.get("arches", []) as Array):      # (a pale light standing in the arch over the ring: the way out)
+			var pq := QuadMesh.new(); pq.size = Vector2(1.1, 2.0)
+			var pmat := StandardMaterial3D.new(); pmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; pmat.albedo_texture = load("res://goiv/glow.png")
+			pmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; pmat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; pmat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+			pmat.albedo_color = Color(0.72, 0.88, 1.0, 0.42)
+			var pg := MeshInstance3D.new(); pg.mesh = pq; pg.material_override = pmat; pg.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			iv_root.add_child(pg); pg.global_position = V.call(ar[0]) + Vector3(0, 1.0, 0)
 	else: _ivr_far()
 	# before the eye: dark leaves at the top, dark rocks at the foot, the warm shade in the corners
 	var k := get_viewport().get_visible_rect().size.x / 720.0
