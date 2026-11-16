@@ -2978,7 +2978,7 @@ func _iv_post(dt: float) -> void:
 	if not iv_won: iv_glow.scale = Vector3.ONE * (0.92 + 0.12 * pl)
 	if iv_leaves != null: iv_leaves.pivot_offset = Vector2.ZERO; iv_leaves.rotation = deg_to_rad(1.3 * sin(iv_t * 0.9) + 0.6 * sin(iv_t * 2.3))
 	if started and ivp_on:
-		if not iv_said.has("line") and iv_t > 1.6: iv_said["line"] = true; _go_write(_ivg_line(), 4.5)
+		if not iv_said.has("line") and iv_t > 1.6 and (not go_wake or (ivw_line_at > 0.0 and iv_t > ivw_line_at)): iv_said["line"] = true; _go_write(_ivg_line(), 4.5)
 	elif started:
 		if not iv_said.has("line") and iv_t > 1.2 and (not go_wake or ivw_awake): iv_said["line"] = true; _go_write(_ivg_line(), 4.5)
 		if not iv_said.has("hint") and iv_t > 8.0 and iv_moves == 0 and not go_wake: iv_said["hint"] = true; say("tap the way to walk")
@@ -3788,7 +3788,7 @@ func _ivw_observer(j: Dictionary) -> void:
 	for m in hd.find_children("*", "MeshInstance3D", true, false):
 		(m as MeshInstance3D).material_override = _iv_mat("observer", float(j.get("observer_haze", 0.28)), ex); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_ivs_mirror(hp, func(_mi: MeshInstance3D) -> Array:
-		var mx := {"fog_hi": ivr_sea_y + 1.7, "fog_lo": ivr_sea_y - 0.1, "haze": 1.0, "mirror_fade": 4.0, "mirror_wob": 0.07}; mx.merge(rim); return ["observer", float(j.get("observer_haze", 0.28)), mx])
+		var mx := {"fog_hi": ivr_sea_y + 1.7, "fog_lo": ivr_sea_y - 0.1, "haze": 1.0, "mirror_fade": 1.4, "mirror_wob": 0.07}; mx.merge(rim); return ["observer", float(j.get("observer_haze", 0.28)), mx])
 
 ## rings of ripples spreading slowly about a thing standing in the still water, one after another, fading
 const IVW_RINGS_SH := """
@@ -3875,6 +3875,7 @@ func _ivw_veil(p: Vector3, ax: String) -> void:
 
 var ivw_close := 1.0      # (the eye close on her: 1 while she lies there, 0 when it holds the whole level)
 var ivw_awake := false
+var ivw_line_at := -1.0      # (when the waking's line may come: a moment after the title has gone)
 var ivw_risers := []      # [[mesh, its place up, its image or null]] the sunken stones
 var ivw_up := 0.0      # (how far up the stones are: 0 sunk, 1 risen)
 const IVW_SINK := 0.62      # (how deep the stones lie under their places: their tops a hand under the water, plain to see)
@@ -7328,7 +7329,8 @@ func tap(sp: Vector2) -> void:
 	if go_demo and not started:      # (the trial played a step at a time: the eye draws back to hold the board)
 		started = true
 		var tg2 := create_tween(); tg2.tween_property(title_box, "modulate:a", 0.0, 0.7); tg2.tween_callback(title_box.hide)
-		create_tween().tween_property(cam, "size", IV_VIEW if go_iv else _mw_view(), 2.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		if go_wake: ivw_line_at = iv_t + 1.2      # (the waking holds the eye itself, close on her; its line after the title has gone)
+		else: create_tween().tween_property(cam, "size", IV_VIEW if go_iv else _mw_view(), 2.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		return
 	if go_demo and started and not ended and woke:
 		_go_tap(sp); return
