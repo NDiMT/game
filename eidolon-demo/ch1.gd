@@ -2088,7 +2088,7 @@ const IV_QUARRY_SKY_S := Vector3(0.22, 0.46, 0.9)
 const IV_WAKE_PAL := {      # the waking: dawn over a still sea. Pearl and rose marble, its shade lilac; warm mauve rock; the Observer pale in the haze
 	"marble2": ["f5e7e1", "decdd0", "c6b0bc", "9d8599"],      # (lit from above: the tops brightest, the sides that face the light a step darker, never burnt white)
 	"rock2": ["c39f98", "93727c", "684a57", "4a3140"],
-	"observer": ["fbf3f0", "e6d7da", "d2bfcb", "b29dba"],      # (her shade soft: the face under the veil must never fall into a dark hole)
+	"observer": ["c9a69f", "a9878c", "8a6b78", "6d5262"],      # (the rock's own hues, its shade a little lighter so her face under the veil still reads)      # (her shade soft: the face under the veil must never fall into a dark hole)
 	"phead": ["f3e4df", "dcc4c4", "b9a0ad", "917b93"],
 	"groove": ["e2cac6", "e2cac6", "e2cac6", "e2cac6"],
 	"line": ["fff4ee", "fff4ee", "fff4ee", "fff4ee"],
@@ -2160,6 +2160,7 @@ uniform float smooth_k = 0.0;      // (a statue: soft marble shaded by its own s
 uniform float mirror_fade = 0.0; uniform float mirror_wob = 0.0;      // (an image in the water: gone into the sea by this depth; wavering by this much)
 uniform float rim_k = 0.0; uniform vec3 rim_col : source_color = vec3(1.0, 0.86, 0.62); uniform vec3 rim_dir = vec3(-0.6, 0.3, -0.6);      // (the low sun behind it: its edges catch the light)
 uniform float wline_k = 0.0;      // (where a thing meets the still water: a fine line of light)
+uniform float wet_k = 0.0; uniform float dry_y = -100.0;      // (a stone come up out of the water: wet below a line that sinks as it drains)
 uniform float sun_k = 0.0; uniform vec3 sun_col : source_color = vec3(1.0, 0.8, 0.45);      // (the low sun's warm light on the faces it falls on, in a gradient:
 uniform vec2 sun_scr = vec2(0.5, 0.3); uniform float sun_rad = 0.8; uniform float sun_lo = 0.0; uniform float sun_hi = 3.0;      //  warmest high up and toward the sun, fading into the stone's own colour)
 uniform float rich_k = 0.0; uniform vec3 lichen_col : source_color = vec3(0.77, 0.73, 0.57);      // (rock as it weathers: each break its own tone, beds across its faces, lichen on what faces the sky)
@@ -2227,6 +2228,13 @@ void fragment(){
 		c += rim_col * rim_k * fr2 * (0.3 + 0.7 * smoothstep(-0.3, 0.7, dot(fn, normalize(rim_dir))));
 	}
 	c *= 1.0 + bounce * vec3(0.16, 0.07, -0.02) * smoothstep(0.15, -0.55, d);      // (warm light thrown back from the mist into the shade)
+	if (wet_k > 0.0) {
+		float wet = wet_k * (1.0 - smoothstep(dry_y - 0.08, dry_y + 0.02, wy));
+		c = mix(c, c * vec3(0.8, 0.8, 0.87), wet * 0.75);      // (darker and a little cooler: wet stone)
+		float run = smoothstep(0.8, 1.0, sin(dot(wp.xz, vec2(37.0, 29.0)) + sin(wp.x * 7.0) * 2.0)) * smoothstep(0.5, 1.0, fract(wy * 2.4 + TIME * 1.7));
+		c += vec3(1.0) * run * wet * 0.24 * (1.0 - abs(fn.y));      // (water running down its sides)
+		c += vec3(1.0) * wet * 0.07 * smoothstep(0.7, 0.95, fn.y);      // (a sheen on its top)
+	}
 	if (sun_k > 0.0 && sil < 0.5) {
 		float lit = smoothstep(-0.05, 0.45, d);      // (the faces the light falls on)
 		float up = smoothstep(sun_lo, sun_hi, wy);      // (higher, warmer: the light lies on the tops and the upper faces)
@@ -3870,9 +3878,6 @@ var ivw_awake := false
 var ivw_risers := []      # [[mesh, its place up, its image or null]] the sunken stones
 var ivw_up := 0.0      # (how far up the stones are: 0 sunk, 1 risen)
 const IVW_SINK := 0.62      # (how deep the stones lie under their places: their tops a hand under the water, plain to see)
-var ivw_chain: Node3D
-var ivw_links := []
-var ivw_chain_pts := []      # [[point, moves with the stones]]
 
 ## the waking: she lies curled at the threshold, her palms on the stone. She stirs; she pushes herself up; she looks out
 ## to sea, toward the Observer, and back; she rises, unsure of her joints, halting halfway. Then the eye draws back.
@@ -3901,6 +3906,7 @@ func _ivw_snap(nm: String) -> void:      # (to judge the waking: a frame at each
 	var d := OS.get_environment("SHOT_DIR")
 	if d == "" or OS.get_environment("IVW_SNAPS") == "": return
 	await RenderingServer.frame_post_draw; get_viewport().get_texture().get_image().save_png("%s/%s.png" % [d, nm])
+	if OS.get_environment("IVW_QUIT_AT") == nm: get_tree().quit()
 
 func _ivw_rise() -> void:
 	iv_busy = true
@@ -3965,7 +3971,6 @@ func _ivw_winch(p: Vector3) -> void:
 		var c := CylinderMesh.new(); c.top_radius = r0; c.bottom_radius = r1; c.height = h; c.radial_segments = seg; c.rings = 1; return c
 	M.call(cyl.call(0.17, 0.19, 0.5, 18), "marble2", Vector3(0, 0, 0.25), iv_wheel, X)
 	for zb in [0.035, 0.465]: M.call(cyl.call(0.205, 0.205, 0.045, 18), "bronze", Vector3(0, 0, zb), iv_wheel, X)
-	M.call(cyl.call(0.196, 0.2, 0.15, 24), "iron", Vector3(0, 0, 0.2), iv_wheel, X)      # (the chain wound on the drum)
 	M.call(cyl.call(0.2, 0.2, 0.05, 18), "bronze", Vector3(0, 0, 0.515), iv_wheel, X)
 	var kn := SphereMesh.new(); kn.radius = 0.06; kn.height = 0.1; kn.radial_segments = 10; kn.rings = 5; M.call(kn, "bronze", Vector3(0, 0, 0.56), iv_wheel, Vector3.ZERO)
 	for k in 2:      # (two bars through its head: four arms to push)
@@ -3975,42 +3980,7 @@ func _ivw_winch(p: Vector3) -> void:
 			var tip := BoxMesh.new(); tip.size = Vector3(0.06, 0.07, 0.07)
 			var a := PI * 0.5 * k
 			M.call(tip, "bronze", Vector3(cos(a) * 0.5 * sgn, sin(a) * 0.5 * sgn, 0.42), iv_wheel, Vector3(0, 0, a))
-	# the chain: off the drum toward the stones, over the threshold's edge, down into the water, from stone to stone
-	var O := IV_O; var sy := ivr_sea_y
-	var pts := [[Vector3(1.09, 0.32, 0.13), false], [Vector3(0.92, 0.035, 0.24), false], [Vector3(0.62, 0.035, 0.2), false], [Vector3(0.46, 0.035, -0.12), false], [Vector3(0.44, 0.035, -0.55), false], [Vector3(0.45, sy - 0.22, -0.85), false],
-		[Vector3(0.52, -0.16, -1.5), true], [Vector3(0.56, -0.42, -2.25), true], [Vector3(0.52, -0.16, -3.0), true],
-		[Vector3(0.56, -0.42, -3.75), true], [Vector3(0.52, -0.16, -4.5), true]]
-	var off := p - (O + Vector3(1.25, 0.0, 0.0))      # (the chain is laid for the winch where the plan has it)
-	for q in pts: ivw_chain_pts.append([O + (q[0] as Vector3) + off * (0.0 if q[1] else 1.0), q[1]])
-	var lm := BoxMesh.new(); lm.size = Vector3(0.05, 0.062, 0.13)      # (links big enough to be read from the eye: the chain is what tells that the winch lifts the stones)
-	var cm: Material = _iv_mat("iron", 0.0, {"under_k": 1.0, "clip_k": 0.0, "clip_y": IV_O.y + ivr_sea_y, "shadow_k": 0.0})
-	if OS.get_environment("IVW_RED") != "": var sm := StandardMaterial3D.new(); sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; sm.albedo_color = Color(1, 0, 0); cm = sm
-	ivw_chain = Node3D.new(); add_child(ivw_chain); ivw_chain.global_transform = Transform3D.IDENTITY
-	for k in 90:      # (each link its own mesh: few enough to keep simple)
-		var li := MeshInstance3D.new(); li.mesh = lm; li.material_override = cm; li.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; li.visible = false
-		ivw_chain.add_child(li); ivw_links.append(li)
-	_ivw_chain_lay()
-
-func _ivw_chain_lay() -> void:
-	if ivw_chain == null: return
-	var dy := -IVW_SINK * (1.0 - ivw_up)
-	var P := []
-	for q in ivw_chain_pts: P.append((q[0] as Vector3) + Vector3(0, dy if q[1] else 0.0, 0))
-	var n := 0
-	for i in P.size() - 1:
-		var a: Vector3 = P[i]; var b: Vector3 = P[i + 1]
-		var L := a.distance_to(b); var cnt := maxi(1, int(L / 0.105))
-		var z := (b - a).normalized(); var x := z.cross(Vector3.UP).normalized() if absf(z.y) < 0.98 else Vector3.RIGHT
-		var y := z.cross(x)
-		for j in cnt:
-			if n >= ivw_links.size(): break
-			var bs := Basis(x, y, z) if (n % 2 == 0) else Basis(y, -x, z)      # (each link turned a quarter to the last)
-			var li := ivw_links[n] as MeshInstance3D
-			li.global_transform = Transform3D(bs, a.lerp(b, (j + 0.5) / cnt)); li.visible = true; n += 1
-	for k in range(n, ivw_links.size()): (ivw_links[k] as MeshInstance3D).visible = false
-	if OS.get_environment("IV_TRACE") != "" and n > 0:
-		var l0 := ivw_links[0] as MeshInstance3D
-		print("IVW chain ", n, " links; first at ", l0.global_position, " in tree ", l0.is_visible_in_tree(), " mat ", l0.material_override)
+	# (no chain: the stones come up out of the water by themselves as it turns; the user: "the winch needs no chain")
 
 ## the stones of the plan's risers, sunk under their places; their images in the water with them
 func _ivw_risers_find(lv: Node3D, mn: Node3D) -> void:
@@ -4046,27 +4016,80 @@ func _ivw_risers_find(lv: Node3D, mn: Node3D) -> void:
 					if (bx as AABB).grow(0.05).has_point(Vector3(cc.x, (bx as AABB).get_center().y, cc.z)): on_stone = true
 				if not at_node or on_stone: on = true
 		if on: ivw_risers.append([mi2, mi2.position, null, Vector3.ZERO])
+	var zs := []
+	for r in ivw_risers: zs.append(((r[0] as MeshInstance3D).global_transform * (r[0] as MeshInstance3D).get_aabb().get_center()).z)
+	var z0: float = zs.max(); var z1: float = zs.min()
+	for i in ivw_risers.size():
+		var r: Array = ivw_risers[i]
+		var nm := String((r[0] as MeshInstance3D).name).to_lower()
+		r.append(clampf((z0 - float(zs[i])) / maxf(0.01, z0 - z1), 0.0, 1.0))      # [4] its turn: the stone nearest the threshold first
+		r.append(nm.get_slice("_", 1) if nm.begins_with("riser_") else "")      # [5] which stone
+		r.append(false)      # [6] has it broken the water
 	_ivw_risers_set(0.0)
 
+const IVW_STAGGER := 0.42      # (how much of the rise each stone waits for the one before it)
 func _ivw_risers_set(u: float) -> void:
 	ivw_up = u
-	var e := u * u * (3.0 - 2.0 * u)
+	var sea := IV_O.y + ivr_sea_y
+	var e_min := 1.0
 	for r in ivw_risers:
-		var d := Vector3(0, -IVW_SINK * (1.0 - e), 0)
-		(r[0] as MeshInstance3D).position = (r[1] as Vector3) + d
+		var t: float = float(r[4]) if r.size() > 4 else 0.0
+		var p := clampf((u - t * IVW_STAGGER) / (1.0 - IVW_STAGGER), 0.0, 1.0)
+		var d := Vector3(0, -IVW_SINK * (1.0 - _ivw_back(p)), 0)
+		var rm := r[0] as MeshInstance3D
+		rm.position = (r[1] as Vector3) + d
 		if r[2] != null: (r[2] as MeshInstance3D).position = (r[3] as Vector3) + d
-	if ivs_sea_mat != null: ivs_sea_mat.set_shader_parameter("riser_up", clampf(1.0 - IVW_SINK * (1.0 - e) / maxf(0.05, -ivr_sea_y), 0.0, 1.0))      # (their waves as their tops break the water)
-	_ivw_chain_lay()
+		if r.size() > 6 and String(r[5]) != "":
+			e_min = minf(e_min, p * p * (3.0 - 2.0 * p))
+			if String(rm.name).to_lower().contains("marble"):
+				var top := (rm.global_transform * rm.get_aabb()).end.y
+				if not bool(r[6]) and u > 0.0 and top > sea + 0.01: r[6] = true; _ivw_emerge(r)
+				elif bool(r[6]) and top < sea - 0.05: r[6] = false
+	if ivs_sea_mat != null: ivs_sea_mat.set_shader_parameter("riser_up", clampf(1.0 - IVW_SINK * (1.0 - e_min) / maxf(0.05, -ivr_sea_y), 0.0, 1.0))      # (their waves once the last is up)
+
+func _ivw_back(p: float) -> float:      # (up a little past its place and settling back: a heavy stone come up out of the water)
+	var q := p - 1.0
+	return 1.0 + 2.1 * q * q * q + 1.1 * q * q
+
+## a stone breaks the still water: rings go out from it, water leaps from its edges, and it comes up wet, the water
+## running down its sides as it drains, drying from the top down
+func _ivw_emerge(r: Array) -> void:
+	var rm := r[0] as MeshInstance3D
+	var bb := rm.global_transform * rm.get_aabb()
+	var c := bb.get_center(); var sea := IV_O.y + ivr_sea_y
+	var rad := maxf(bb.size.x, bb.size.z) * 0.5
+	_ivw_ripple(Vector3(c.x, sea, c.z), rad + 0.8)
+	get_tree().create_timer(0.45).timeout.connect(func() -> void: _ivw_ripple(Vector3(c.x, sea, c.z), rad + 1.35))
+	_ivw_splash(Vector3(c.x, sea + 0.02, c.z), rad)
+	for q in ivw_risers:
+		if q.size() > 5 and String(q[5]) == String(r[5]):
+			var qm := (q[0] as MeshInstance3D).material_override as ShaderMaterial
+			if qm == null: continue
+			qm.set_shader_parameter("wet_k", 1.0); qm.set_shader_parameter("dry_y", bb.end.y + 0.6)
+			var tw := create_tween(); tw.tween_interval(0.6)
+			tw.tween_method(func(v: float) -> void: qm.set_shader_parameter("dry_y", v), bb.end.y + 0.6, sea - 0.15, 2.8).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+
+func _ivw_splash(at: Vector3, rad: float) -> void:      # (drops thrown up from a stone's edges as it breaks the water)
+	var p := CPUParticles3D.new(); add_child(p); p.global_position = at
+	p.one_shot = true; p.amount = 40; p.lifetime = 0.62; p.explosiveness = 0.8; p.local_coords = false
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING; p.emission_ring_axis = Vector3.UP; p.emission_ring_height = 0.02
+	p.emission_ring_radius = rad + 0.06; p.emission_ring_inner_radius = rad * 0.75
+	p.direction = Vector3.UP; p.spread = 30.0; p.initial_velocity_min = 0.9; p.initial_velocity_max = 1.9; p.gravity = Vector3(0, -7.0, 0)
+	p.scale_amount_min = 0.55; p.scale_amount_max = 1.0
+	var sm := SphereMesh.new(); sm.radius = 0.024; sm.height = 0.048; sm.radial_segments = 6; sm.rings = 3
+	var m := StandardMaterial3D.new(); m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.vertex_color_use_as_albedo = true; sm.material = m; p.mesh = sm
+	var g := Gradient.new(); g.offsets = PackedFloat32Array([0.0, 0.6, 1.0]); g.colors = PackedColorArray([Color(1, 1, 1, 0.95), Color(1, 0.99, 0.98, 0.75), Color(1, 1, 1, 0.0)])
+	p.color_ramp = g
+	p.emitting = true
+	get_tree().create_timer(1.6).timeout.connect(p.queue_free)
 
 func _ivw_raise(up: bool) -> void:
 	if ivw_risers.is_empty(): ivw_up = 1.0 if up else 0.0; return
-	var t := create_tween(); t.tween_method(_ivw_risers_set, ivw_up, 1.0 if up else 0.0, 1.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	await get_tree().create_timer(0.75).timeout
-	for r in ivw_risers:
-		var rm := r[0] as MeshInstance3D
-		if String(rm.name).to_lower().contains("marble"): _ivw_ripple(rm.global_transform * rm.get_aabb().get_center(), 1.6)
-	await get_tree().create_timer(0.3).timeout
-	await _ivw_snap("w7_rising")
+	var t := create_tween(); t.tween_method(_ivw_risers_set, ivw_up, 1.0 if up else 0.0, 3.2)      # (each stone eases by itself, in its turn)
+	for k in 4:
+		await get_tree().create_timer(0.55).timeout
+		await _ivw_snap("w7_rising%d" % k)
 	if t.is_running(): await t.finished
 	await _ivw_snap("w8_risen")
 

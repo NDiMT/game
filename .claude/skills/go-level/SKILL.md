@@ -61,6 +61,14 @@ The levels are many, in one system. A new level is made in this order (the secon
   - A volute may be a winch that raises them: kind `winch`, `once: true` (it turns no more), `toggles.bridge` (the ways over the sunken stones are no ways until they are up).
   - The way's discs and lines over the sunken stones sink and rise with them (they are clipped at the water, so no way shows over the water until the stones are up).
   - Never `await a_tween.finished` after other waits: if it has already ended, the signal never comes again and the level hangs (the autoplay stopped after the winch). Guard it: `if t.is_running(): await t.finished`.
+  - **Stones rising out of the water, made beautiful** (`_ivw_risers_set`, `_ivw_emerge`; the user: "the winch needs no chain, but I'd like the stones to come up out of the water beautifully"):
+    - No chain: the winch is a capstan, and the stones rise by themselves as it turns.
+    - Each stone rises in its turn, the one nearest the threshold first. The riders over the water go between them.
+    - Each overshoots its place a little and settles back (`_ivw_back`), so it reads as a heavy stone come up.
+    - As its top breaks the surface: two rings go out, and drops leap from its edges (`CPUParticles3D`, ring emitter).
+    - It comes up wet: darker and cooler, with water running down its sides. A dry line sinks down it as it drains (`wet_k`, `dry_y` in IV_SH; its slab and its rock alike).
+    - The shore foam around the stones comes in once the last is up.
+  - To judge one moment without playing the whole level, take snapshots (`IVW_SNAPS=1`) and quit at a named one (`IVW_QUIT_AT=w8_risen`).
 - **Her waking** (a level that opens on her): with the rig there is no lying clip, so she lies curled: the kneel clip held by `a_drop = 0.5`, the spine bent by `a_lean`, her palms laid on the stone (`palm_on`, `tgtL/tgtR`, `palm_nL/palm_nR`).
   - She stirs, pushes herself up (the palms lift late), looks out to sea and back (`yaw`), and rises with a halt halfway, unsure of her joints.
   - The eye starts close on her (`ivw_close` in `_ivr_cam`) and draws back to the whole level once she stands.
@@ -80,7 +88,9 @@ The levels are many, in one system. A new level is made in this order (the secon
     - Measure the horizon and the sun on the chosen image and put them in the plan (`horizon`, `sun`). Nothing is drawn on the sea near the horizon (`hz_v` in the sea shader), so its far edge never shows as a seam.
   - **The colossus in the water: 3D, standing, smooth marble in clean bands** (`props/observer_veiled.glb`):
     - Have the image model paint the statue alone: whole figure, simple large folds, plain grey background. Then `tripo make <png> --for game-mobile` (if the download fails, `tripo task get <id> --download`), and `fbx2glb.py ... 16000 smooth`.
-    - Shade it with smooth normals in a few crisp bands (`smooth_k` 2), with soft shade tones so the face under the veil never falls into a dark hole.
+    - Shade it with smooth normals in a few crisp bands (`smooth_k` 2).
+    - Colour: the rock's own hues (the user: "the same hues as the stone"), its shade a little lighter than the rock's so the face under the veil never falls into a dark hole.
+    - Turn: 30 degrees to her left, toward the island.
     - What failed: busts. Faceted at 1.6k was "a melted blob", at 7k "crumpled paper"; the soft smooth one looked "waxy, tragic".
     - Turn its face to the eye and the light: check with `tools/go/prop_yaw.py`, which frames each turn a metre tall under the game's key light.
     - Place it from where it should stand on the screen: solve its foot onto the sea plane along the eye, and keep its footprint clear of every rock (about 1.8 m from the nearest edge). The user wanted it near: lower on the screen and larger, with only a short mist at its foot.
