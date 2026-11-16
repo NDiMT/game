@@ -2088,7 +2088,7 @@ const IV_QUARRY_SKY_S := Vector3(0.22, 0.46, 0.9)
 const IV_WAKE_PAL := {      # the waking: dawn over a still sea. Pearl and rose marble, its shade lilac; warm mauve rock; the Observer pale in the haze
 	"marble2": ["f5e7e1", "decdd0", "c6b0bc", "9d8599"],      # (lit from above: the tops brightest, the sides that face the light a step darker, never burnt white)
 	"rock2": ["c39f98", "93727c", "684a57", "4a3140"],
-	"observer": ["c9a69f", "a9878c", "8a6b78", "6d5262"],      # (the rock's own hues, its shade a little lighter so her face under the veil still reads)      # (her shade soft: the face under the veil must never fall into a dark hole)
+	"observer": ["d6b5ad", "bb9a9e", "9a7a88", "7a5f6f"],      # (the rock's own hues, its shade a little lighter so her face under the veil still reads)      # (her shade soft: the face under the veil must never fall into a dark hole)
 	"phead": ["f3e4df", "dcc4c4", "b9a0ad", "917b93"],
 	"groove": ["e2cac6", "e2cac6", "e2cac6", "e2cac6"],
 	"line": ["fff4ee", "fff4ee", "fff4ee", "fff4ee"],
@@ -2211,9 +2211,9 @@ void fragment(){
 		if (dot(sn, vd) < 0.0) sn = -sn;
 		float sd = dot(sn, normalize(key_dir));
 		if (smooth_k > 1.5) {      // (marble carved smooth, its light in a few clean bands, as the concepts' statues: no facet noise, no wax)
-			c = mix(c_dark, c_mid, smoothstep(-0.46, -0.22, sd));
-			c = mix(c, c_lit, smoothstep(0.02, 0.24, sd));
-			c = mix(c, c_top, smoothstep(0.6, 0.78, sn.y) * 0.85);
+			c = mix(c_dark, c_mid, smoothstep(-0.55, -0.12, sd));
+			c = mix(c, c_lit, smoothstep(-0.06, 0.34, sd));
+			c = mix(c, c_top, smoothstep(0.5, 0.82, sn.y) * 0.85);
 		} else {
 		c = mix(c_dark, c_mid, smoothstep(-0.95, -0.05, sd));
 		c = mix(c, c_lit, smoothstep(-0.2, 0.85, sd));

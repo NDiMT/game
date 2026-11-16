@@ -434,14 +434,14 @@
  "walls": null,
  "trench": null,
  "observer": [
-  -8.26,
-  -1.1,
-  -5.77,
-  6.4,
-  -0.23
+  -8.61,
+  -1.8,
+  -5.84,
+  5.5,
+  -0.5
  ],
  "observer_haze": 0.03,
- "observer_model": "observer_veiled",
+ "observer_model": "observer",
  "horizon": 0.3714,
  "sun": [
   0.5,
@@ -450,9 +450,9 @@
  "stair_groove": 0.03,
  "shore": {
   "rect": [
-   -10.8845,
+   -12.0145,
    -13.9785,
-   4.0855,
+   4.0955,
    2.9715
   ],
   "D": 1.6
