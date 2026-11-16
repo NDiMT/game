@@ -43,7 +43,7 @@ def plan():
         ('24', '25'): [[-(ROW[4] + E), HM, -2.0], [-(ROW[5] - E), HT, -2.0], 0.9, 5],
         ('35', 'R'): [[-(ROW[5] + E), HT, -3.0], [-(ROW[6] - 0.7), HR, -3.0], 0.9, 5],
     }
-    intro = [[0.0, HS, 2.55], [0.0, H0, E], 0.9, 9]      # (out of the snow and the mist, up to the court)
+    intro = [[0.0, -2.6, 4.65], [0.0, H0, E], 0.9, 18]      # (out of the snow and the mist, a long way up to the court)
     flights = list(fl.values()) + [intro]
     edges = []
     for p_, q_, k in M['ways']:
@@ -56,10 +56,10 @@ def plan():
         else: edges.append([a, b, []])
     floors = {
         'C': {'h': H0, 'xz': [[E, E], [-E, E], [-E, -2.6], [-(ROW[2] - E), -2.6], [-(ROW[2] - E), -0.55], [-(ROW[2] + E), -0.55],
-                              [-(ROW[2] + E), -4.45], [-0.6, -4.45], [-0.6, -5.5], [E, -5.5], [E, -1.45], [1.75, -1.45], [1.75, -0.55], [E, -0.55]]},      # (a bay past the court's east end, for a brazier)
+                              [-(ROW[2] + E), -4.45], [-0.6, -4.45], [-0.6, -5.5], [E, -5.5], [E, -1.85], [2.0, -1.85], [2.0, -0.5], [E, -0.5]]},      # (the dial's balcony south of the court, room on it for a brazier)
         'M': {'h': HM, 'xz': [[-(ROW[3] - E), -0.55], [-(ROW[3] - E), -2.45], [-(ROW[3] + E), -2.45], [-(ROW[3] + E), -1.45],
                               [-(ROW[4] - E), -1.45], [-(ROW[4] - E), -2.45], [-(ROW[4] + E), -2.45], [-(ROW[4] + E), -1.6], [-(ROW[4] + 1.3), -1.6],
-                              [-(ROW[4] + 1.3), -0.3], [-(ROW[4] + E), -0.3], [-(ROW[4] + E), -0.55]]},      # (a bay at the west, for a broken column)
+                              [-(ROW[4] + 1.3), -0.55]]},      # (a bay at the west, for a broken column; its north edge on the floor's, so no jog)
         'T': {'h': HT, 'xz': [[-(ROW[5] - E), E], [-(ROW[5] + E), E], [-(ROW[5] + E), -1.0], [-(ROW[5] + 1.35), -1.0], [-(ROW[5] + 1.35), -2.3],
                               [-(ROW[5] + E), -2.3], [-(ROW[5] + E), -3.45], [-(ROW[5] - E), -3.45],
                               [-(ROW[5] - E), -E], [-(ROW[4] - E), -E], [-(ROW[4] - E), E]]},      # (a bay behind the terrace, for columns)
@@ -79,12 +79,12 @@ def plan():
         'nodes': nodes, 'edges': edges, 'ring': nodes['R'], 'stone': nodes[M['stone']],
         'faces': [[nodes['05'], [0, 0, 1]], [nodes['32'], [1, 0, 0]]],
         'columns': [[[-5.75, HM, -0.95], 0.8], [[-7.55, HT, -1.35], 1.25], [[-7.55, HT, -1.95], 0.7]],
-        'braziers': [[-0.05, H0, -5.15], [1.4, H0, -0.6], [-8.15, HR, -2.25], [-8.15, HR, -3.75]],      # (warm lights: past the court, by the dial, at the dais)
+        'braziers': [[-0.05, H0, -5.15], [1.68, H0, -1.48], [-8.15, HR, -2.25], [-8.15, HR, -3.75]],      # (warm lights: past the court, beside the dial (to the eye's right of its face), at the dais)
         'arches': [[[-(ROW[6] + 0.55), HR, -3.0], 'x']],
         'rocks': [[[1.2, -0.7, -3.4], 1.0, -0.6], [[-2.4, -0.4, 0.6], 0.9, -0.3], [[-3.9, 0.1, -3.6], 1.1, 0.0], [[-6.2, 0.6, 1.5], 1.0, 0.7],
                   [[-8.3, 1.0, -0.6], 1.1, 1.1], [[-5.6, 0.3, -4.4], 1.0, 0.3], [[2.0, -1.0, 0.8], 0.9, -1.0]],
         'volute': None, 'head': None, 'relief': None, 'cypress': None,
-        'eye': {'pitch': 35.0, 'centre': [-3.6, 0.55, -0.9], 'width': 10.2},
+        'eye': {'pitch': 35.0, 'centre': [-4.49, 0.5, -3.72], 'width': 10.8},      # (the whole level, the arch's top 4.1 m under the frame's: the moon's sky above it; the long stair up out of the mist below)
         'scenery': [['face', [-14.0, 9.0, -14.0], [5.0, 5.0, 5.0], [0.95, 0.96, 1.0]]],      # (for the concept's layout only: the moon)
     }
     return pl, puzzle

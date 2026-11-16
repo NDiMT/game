@@ -202,11 +202,11 @@ def slab(name, outline, h, thick=0.6, keep=()):
     eh = [rnd.uniform(0.09, 0.17) for _ in range(n)]      # (the top edge cut off broadly, as by hand: its breadth wanders)
     for _ in range(2): eh = [0.25 * eh[i - 1] + 0.5 * eh[i] + 0.25 * eh[(i + 1) % n] for i in range(n)]
     eh = [max(0.004, eh[i] * min(1.0, max(0.0, (dk[i] - 0.8) / 0.8))) for i in range(n)]      # (dying away before a flight: square where it meets the floor)
-    inner, top, rim, bot, und = [], [], [], [], []
+    inner, top, rim, bot, und, evs = [], [], [], [], [], []
     for i, (x, z) in enumerate(outline):
         nx, nz = nr[i]
         near_flight = near[i]
-        e = eh[i]; ev = e * (1.0 if near_flight else rnd.uniform(0.65, 0.95))
+        e = eh[i]; ev = e * (1.0 if near_flight else rnd.uniform(0.65, 0.95)); evs.append(ev)
         inner.append((x - nx * 0.26, h, z - nz * 0.26))
         if rnd.random() < 0.2 and dk[i] > 1.3:      # a chip: the edge a little lower and further in
             dy, dn = -rnd.uniform(0.02, 0.05), -rnd.uniform(0.01, 0.035)
@@ -225,9 +225,37 @@ def slab(name, outline, h, thick=0.6, keep=()):
         if ring is vs[0]: tops = [g for g in r['geom'] if isinstance(g, bmesh.types.BMFace)]
     poly2 = [(p[0], p[2]) for p in top]
     bad = [f for f in tops if not inside(poly2, (f.calc_center_median().x, -f.calc_center_median().y))]
-    if bad or not tops: print('SLAB', name, 'cap triangles outside its outline:', len(bad), 'of', len(tops))
+    if bad or not tops: print('SLAB', name, 'cap triangles outside its outline:', len(bad), 'of', len(tops), 'at', [(round(f.calc_center_median().x, 2), round(-f.calc_center_median().y, 2)) for f in bad])
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    if (PLAN or {}).get('scene') == 'moon': SNOWS.append(snow_lip(name, outline, h, nr, eh, evs, dk))
     return finish(bm, name + '_slab')
+
+
+SNOWS = []
+def snow_lip(name, outline, h, nr, eh, evs, dk):
+    """snow lying on a floor's edge (a level in the snow): a soft roll along the edge, a little proud of the top, rolling
+    over it and hanging down past the chamfer, here and there a lump hanging lower; it dies away where a flight meets
+    the floor. (Its own dice, so the stone under it is cut as it was.)"""
+    rs = random.Random(sum(ord(c) * (i + 1) for i, c in enumerate(name)) + 7); n = len(outline)      # (a seed of its own, the same every run)
+    th = [rs.uniform(0.035, 0.09) for _ in range(n)]
+    g0 = [rs.uniform(0.0, 0.06) for _ in range(n)]
+    for _ in range(3):
+        th = [0.25 * th[i - 1] + 0.5 * th[i] + 0.25 * th[(i + 1) % n] for i in range(n)]
+        g0 = [0.25 * g0[i - 1] + 0.5 * g0[i] + 0.25 * g0[(i + 1) % n] for i in range(n)]
+    for _ in range(max(1, n // 7)):      # (lumps hanging lower)
+        i0, w = rs.randrange(n), rs.randint(0, 2); dh = rs.uniform(0.05, 0.13)
+        for j in range(-w, w + 1): g0[(i0 + j) % n] += dh * (0.5 + 0.5 * math.cos(math.pi * j / (w + 1)))
+    prof = []      # (out along the edge's normal, up from the top) for each point of the roll, outward then back under
+    for i, (x, z) in enumerate(outline):
+        f = min(1.0, max(0.0, (dk[i] - 0.75) / 0.6)); e = eh[i]; t_ = th[i] * f; g = (max(evs[i] * 0.95, 0.03) + g0[i]) * f
+        o0 = -(e + 0.13)
+        pts = [(o0, 0.0), (-(e + 0.05), 0.55 * t_), (-e * 0.45, t_), (0.03 + 0.12 * g, 0.5 * t_), (0.05 + 0.18 * g, -0.35 * g), (0.03, -g), (-0.04, -g + 0.02), (-(e + 0.06), -0.012)]
+        prof.append([(o0 + (o - o0) * f, u * f) for (o, u) in pts])
+    rings = []
+    for k in range(len(prof[0])):
+        rings.append([(outline[i][0] + nr[i][0] * prof[i][k][0], h + prof[i][k][1], outline[i][1] + nr[i][1] * prof[i][k][0]) for i in range(n)])
+    bm = bmesh.new(); loft(bm, rings, cap0=False, cap1=False)
+    return finish(bm, name + '_snow')
 
 
 def resample(poly, seg=(0.8, 1.4)):
@@ -940,6 +968,7 @@ def join(obs, name):
 
 
 M = join(marble, 'marble'); R = join(rock, 'rock'); O = join(olive, 'olive') if olive else None; B = join(barks, 'bark') if barks else None
+SN = join(SNOWS, 'snow') if SNOWS else None
 if PLAN is not None and PLAN.get('relief'):      # (the small carved stone: on the face of the rock toward the eye, half sunk in it)
     rp = Vector(PLAN['relief']); Wd = RELIEF_W
     for lift in (0.0, 0.25, -0.25, 0.5):
@@ -948,7 +977,7 @@ if PLAN is not None and PLAN.get('relief'):      # (the small carved stone: on t
         if hit:
             PLAN['relief'] = [loc.x, loc.z - 0.17, -loc.y]; PLAN['relief'] = list(Vector(PLAN['relief']) + Wd * 0.05)
             print('RELIEF on the rock at', [round(v, 2) for v in PLAN['relief']]); break
-print('TRIS', sum(len(o.data.polygons) for o in (M, R, O, B) if o is not None))
+print('TRIS', sum(len(o.data.polygons) for o in (M, R, O, B, SN) if o is not None))
 
 # ------------------------------------------------------------------ the shade of corners and clefts, into the vertices
 scene.render.engine = 'CYCLES'
@@ -956,7 +985,7 @@ scene.cycles.device = 'CPU'
 scene.cycles.samples = SAMPLES
 w = bpy.data.worlds.new('w'); scene.world = w; w.light_settings.distance = 0.55      # (only the close corners and clefts darken)
 scene.render.bake.target = 'VERTEX_COLORS'
-for o in (M, R, O, B):
+for o in (M, R, O, B, SN):
     if o is None: continue
     mat = bpy.data.materials.new(o.name); o.data.materials.append(mat)
     ca = o.data.color_attributes.new('ao', 'BYTE_COLOR', 'CORNER')
@@ -981,7 +1010,7 @@ for extra in (dict(export_vertex_color='ACTIVE'), dict(export_colors=True), {}):
 
 # ------------------------------------------------------------------ the way, for the game
 if PLAN is not None:
-    way = {k: PLAN.get(k) for k in ('heights', 'nodes', 'edges', 'volute', 'head', 'ring', 'eye', 'flights', 'floors', 'relief', 'faces', 'stone', 'scene', 'sea_y', 'arches')}
+    way = {k: PLAN.get(k) for k in ('heights', 'nodes', 'edges', 'volute', 'head', 'ring', 'eye', 'flights', 'floors', 'relief', 'faces', 'stone', 'scene', 'sea_y', 'arches', 'braziers')}
     way['stair_groove'] = STAIR_GROOVE
     with open(OUTJ, 'w') as f: json.dump(way, f, indent=1)
     print('DONE'); sys.exit(0)

@@ -131,6 +131,7 @@ func _init() -> void:
 	if go_demo: title_sub = "two worlds  ·  a trial\ntap to begin"; sea_c = Color("2b6880"); mist_c = Color("7f8fb4"); bg_c = Color("1c4a5e"); shadow_c = Vector3(0.5, 0.52, 0.8)
 	if go_iv: title_sub = "the fallen faces  ·  a trial\ntap to begin"; sea_c = Color("dcbd9c"); mist_c = Color("f1d6b1"); bg_c = Color("f1d6b1"); shadow_c = Vector3(0.84, 0.74, 0.68)
 	if go_drown: title_sub = "the drowned sanctuary  ·  a trial\ntap to begin"; sea_c = Color("5f8199"); mist_c = Color("7f9cb2"); bg_c = Color("9a9fc2"); shadow_c = Vector3(0.72, 0.77, 0.88)
+	if go_moon: title_sub = "the moon dial  ·  a trial\ntap to begin"; sea_c = Color("8aabd3"); mist_c = Color("8eafd8"); bg_c = Color("4f6c9e"); shadow_c = Vector3(0.6, 0.67, 0.84)
 	if geo_demo: sea_c = Color("2b6880"); mist_c = Color("7f8fb4"); bg_c = Color("1c4a5e"); shadow_c = Vector3(0.5, 0.52, 0.8)      # (this trial: the same sea toward evening)
 
 func _hollows() -> Array:
@@ -256,7 +257,7 @@ void fragment(){
 	}
 }"""
 var flip_test := OS.get_environment("FLIP") == "1"      # every water turns the picture
-var go_demo := OS.has_feature("godemo") or OS.get_environment("FLIP") == "go" or OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or OS.get_environment("FLIP") == "gosea" or OS.has_feature("gosea")      # the trial played a step at a time (Eidolon GO)
+var go_demo := OS.has_feature("godemo") or OS.get_environment("FLIP") == "go" or OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or OS.get_environment("FLIP") == "gosea" or OS.has_feature("gosea") or OS.get_environment("FLIP") == "gomoon" or OS.has_feature("gomoon")      # the trial played a step at a time (Eidolon GO)
 var geo_demo := OS.has_feature("geodemo") or OS.get_environment("FLIP") == "geo"      # the trial of the hall of images: ways that join where their pictures join
 var figure_demo := OS.has_feature("figuredemo") or OS.get_environment("FLIP") == "figure"      # the trial of the face in the water: three courts where a picture is made whole in the water
 var match_demo := OS.has_feature("matchdemo") or OS.get_environment("FLIP") == "match"      # the trial of the still water: one new court, where the world and what its water shows are to be made to agree
@@ -2006,8 +2007,9 @@ func _play_go() -> void:
 ## volute so that a pillar rises out of the mist to close the gap above, pushes the meander stone off the foot of the
 ## stair, and walks up into the ring of light. The fallen face beside the way is one of the thousand he carved.
 var go_drown := OS.get_environment("FLIP") == "gosea" or OS.has_feature("gosea")      # the second level: the drowned sanctuary (gosea/), in the same system
-var go_iv := OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or go_drown
-var go_dir := "res://gosea/" if go_drown else "res://goiv/"      # the level's own folder: its level.glb, level.json, puzzle.json
+var go_moon := OS.get_environment("FLIP") == "gomoon" or OS.has_feature("gomoon")      # the third level: the moon dial (gomoon/), a sanctuary in the snow at night
+var go_iv := OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or go_drown or go_moon
+var go_dir := "res://gosea/" if go_drown else ("res://gomoon/" if go_moon else "res://goiv/")      # the level's own folder: its level.glb, level.json, puzzle.json
 const IV_O := Vector3(460.0, 0.0, 0.0)      # (far from the world, and from the courts of the other trial)
 const IV_T := 2.0      # from one node of the way to the next
 const IV_PITCH := 37.0
@@ -2047,9 +2049,33 @@ const IV_SEA_PAL := {      # the drowned sanctuary at dusk: warm coral light on 
 }
 const IV_SEA_BG := ["8a8db3", "ebb3a2", "a2a8c4", "7093a8"]      # the sky over the sea: high, at the horizon, the haze under it, the mist at the bottom
 const IV_SEA_SKY_S := Vector3(0.185, 0.34, 0.84)      # (where on the screen, top to bottom, each of the last three is reached)
-func _iv_pal(kind: String) -> Array: return (IV_SEA_PAL[kind] if (go_drown and IV_SEA_PAL.has(kind)) else IV_PAL[kind]) as Array
+const IV_MOON_PAL := {      # the moon dial: a night in the snow under the moon. Snow on every top, pale blue marble, deep blue-violet rock; the moonlight from the left
+	"marble2": ["e2edf9", "abc6e6", "8da5cc", "7083ab"],
+	"rock2": ["c9dcf0", "56619a", "3f4a80", "2c3264"],      # (its tops under snow; as the picture's: the faces to the left a deep violet-blue, those to the right near navy)
+	"phead": ["e8edf4", "d0d8e6", "a4afc6", "7c88a5"],
+	"guard": ["e6f2fc", "bcd6ef", "8eaed6", "6a8aba"],      # (the frozen guardian: pale blue stone rimmed with frost)
+	"snow": ["eef5fd", "dce8f6", "b8cbe6", "9bb2d8"],      # (the snow lying on the edges: white, its shade a soft blue)
+	"far": ["e4eef9", "d6e5f6", "a6bfe2", "7f9bc9"],      # (far peaks: their lit sides snow, the shaded ones a soft blue)
+	"far1": ["cddcf0", "bfd2ec", "98b2da", "7894c3"],
+	"farsil": ["a5bfe0", "9fb9dc", "97b2d8", "8fabd3"],
+	"bronze": ["e2bd78", "c4924c", "8e6236", "5f4128"],
+	"silver": ["f4f7fb", "e2e9f2", "b8c5d8", "8e9db6"],
+	"iron": ["59607a", "474d66", "353a50", "25283a"],
+	"groove": ["a8bcd8", "a8bcd8", "a8bcd8", "a8bcd8"],
+	"line": ["f1f7fe", "f1f7fe", "f1f7fe", "f1f7fe"],
+	"ring": ["ffe6a6", "ffe6a6", "ffe6a6", "ffe6a6"],
+}
+const IV_MOON_BG := ["3a5486", "7e9ecb", "8eadd6", "86a7cf"]      # the night sky: high, low over the peaks, the haze under it, the mist at the bottom
+const IV_MOON_SKY_S := Vector3(0.24, 0.46, 0.9)
+func _iv_pal(kind: String) -> Array:
+	if go_moon and IV_MOON_PAL.has(kind): return IV_MOON_PAL[kind] as Array
+	return (IV_SEA_PAL[kind] if (go_drown and IV_SEA_PAL.has(kind)) else IV_PAL[kind]) as Array
 func _iv_sky(m: ShaderMaterial) -> void:      # the sky's colours (and the mist's, which is the sky at that height on the screen)
-	if go_drown:
+	if go_moon:
+		m.set_shader_parameter("bg_top", Color(String(IV_MOON_BG[0]))); m.set_shader_parameter("bg_hz", Color(String(IV_MOON_BG[1])))
+		m.set_shader_parameter("bg_mid", Color(String(IV_MOON_BG[2]))); m.set_shader_parameter("bg_bot", Color(String(IV_MOON_BG[3])))
+		m.set_shader_parameter("sky4", 1.0); m.set_shader_parameter("sky_s", IV_MOON_SKY_S)
+	elif go_drown:
 		m.set_shader_parameter("bg_top", Color(String(IV_SEA_BG[0]))); m.set_shader_parameter("bg_hz", Color(String(IV_SEA_BG[1])))
 		m.set_shader_parameter("bg_mid", Color(String(IV_SEA_BG[2]))); m.set_shader_parameter("bg_bot", Color(String(IV_SEA_BG[3])))
 		m.set_shader_parameter("sky4", 1.0); m.set_shader_parameter("sky_s", IV_SEA_SKY_S); m.set_shader_parameter("sea_k", 1.0)
@@ -2091,6 +2117,8 @@ uniform float mirror_k = 0.0; uniform float mirror_y = 0.0;      // (a thing's i
 uniform vec3 sea_c : source_color = vec3(0.3, 0.45, 0.56);
 uniform float shadow_k = 1.0;      // (how much cast shadow falls on it: none on the rock, whose faces are each one clean tone)
 uniform float lf_lo = 3.2;
+uniform vec3 ao_tint : source_color = vec3(0.93, 0.83, 0.78);      // (the colour the close corners darken toward: warm in the sun, cool under the moon)
+uniform vec3 vein_tint : source_color = vec3(0.9, 0.86, 0.83);
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 uniform float sky4 = 0.0; uniform vec3 bg_hz : source_color = vec3(1.0); uniform vec3 sky_s = vec3(0.19, 0.36, 0.84);
@@ -2121,10 +2149,10 @@ void fragment(){
 		float px = max(length(dFdx(q)), length(dFdy(q)));
 		float v1 = 1.0 - smoothstep(0.0, 0.03 + px * 0.6, abs(w - 0.5));
 		float v2 = 1.0 - smoothstep(0.0, 0.016 + px * 0.6, abs(fbm(q * 2.3 + 20.0) - 0.47));
-		c = mix(c, c * vec3(0.9, 0.86, 0.83), veins * (0.6 * v1 + 0.3 * v2));
+		c = mix(c, c * vein_tint, veins * (0.6 * v1 + 0.3 * v2));
 		c *= 1.0 + veins * (w - 0.5) * 0.05;
 	}
-	if (ao_k > 0.0) { float ao = max(pow(clamp(COLOR.r, 0.0, 1.0), 0.3), 0.22); c *= mix(1.0, ao, ao_k); c = mix(c, c * vec3(0.93, 0.83, 0.78), (1.0 - ao) * ao_k * 0.6); }
+	if (ao_k > 0.0) { float ao = max(pow(clamp(COLOR.r, 0.0, 1.0), 0.3), 0.22); c *= mix(1.0, ao, ao_k); c = mix(c, c * ao_tint, (1.0 - ao) * ao_k * 0.6); }
 	float ld = COLOR.g * 4.0;
 	if (lfog > 0.5) c *= 1.0 - dk * smoothstep(0.0, 0.9, ld);      // (the rock darker under the floor it bears, before the mist takes it)
 	else c *= 1.0 - dk * smoothstep(fog_ref + fog_hi + 2.4, fog_ref + fog_hi, wy);      // (the rock darkens as it goes down, before the mist takes it)
@@ -2158,6 +2186,10 @@ uniform vec3 bg_top : source_color; uniform vec3 bg_mid : source_color; uniform 
 uniform float uv_flip = 0.0;
 uniform vec2 sun = vec2(0.42, 0.1);
 uniform float sun_k = 0.0;      // (a sun low in the sky: its disc and its glow)
+uniform float moon_k = 0.0; uniform float moon_r = 0.16;      // (a moon: at sun, so wide across the screen)
+float h2(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float vn2(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(h2(i), h2(i + vec2(1, 0)), f.x), mix(h2(i + vec2(0, 1)), h2(i + vec2(1, 1)), f.x), f.y); }
 uniform float sky4 = 0.0; uniform vec3 bg_hz : source_color = vec3(1.0); uniform vec3 sky_s = vec3(0.19, 0.36, 0.84);
 vec3 bgc(float s){
 	if (sky4 > 0.5) { vec3 c = mix(bg_top, bg_hz, smoothstep(sky_s.x * 0.3, sky_s.x, s)); c = mix(c, bg_mid, smoothstep(sky_s.x, sky_s.y, s)); return mix(c, bg_bot, smoothstep(sky_s.y, sky_s.z, s)); }
@@ -2169,6 +2201,16 @@ void fragment(){
 	if (sun_k > 0.0) { vec2 q = (SCREEN_UV - sun) * vec2(1.0, 1.778); float r = length(q);
 		ALBEDO = mix(ALBEDO, vec3(1.0, 0.95, 0.85), sun_k * (1.0 - smoothstep(0.052, 0.058, r)));
 		ALBEDO += sun_k * vec3(0.12, 0.07, 0.03) * exp(-r * r * 14.0); }
+	if (moon_k > 0.0) {      // (a great full moon: its halo, its disc, its seas soft grey-blue, its limb a little darker)
+		vec2 q = (SCREEN_UV - sun) * vec2(1.0, 1.778 * (uv_flip > 0.5 ? -1.0 : 1.0)); float r = length(q) / moon_r;
+		ALBEDO += moon_k * vec3(0.17, 0.21, 0.26) * exp(-max(r - 1.0, 0.0) * 1.7) * smoothstep(0.98, 1.0, r);
+		ALBEDO += moon_k * vec3(0.05, 0.06, 0.08) * exp(-max(r - 1.0, 0.0) * 0.45);
+		vec2 m = q / moon_r;
+		float sea = vn2(m * 2.3 + vec2(3.1, 1.7)) * 0.62 + vn2(m * 5.1 + vec2(7.3, 2.9)) * 0.38;
+		vec3 mc = mix(vec3(0.92, 0.95, 0.98), vec3(0.8, 0.85, 0.92), smoothstep(0.52, 0.74, sea) * 0.6);
+		mc *= 1.0 - 0.07 * dot(m, m);
+		ALBEDO = mix(ALBEDO, mc, moon_k * (1.0 - smoothstep(0.988, 1.0, r)));
+	}
 }
 """
 var iv_shader: Shader
@@ -2208,6 +2250,8 @@ func _iv_mat(kind: String, far_k := 0.0, extra := {}) -> ShaderMaterial:
 	_iv_sky(m)
 	if go_drown:
 		m.set_shader_parameter("shade_tint", Color(0.74, 0.79, 0.9)); m.set_shader_parameter("clip_k", 1.0); m.set_shader_parameter("clip_y", IV_O.y + ivr_sea_y)
+	if go_moon:      # (a shadow on the snow is blue; so are its close corners and the veins of its marble)
+		m.set_shader_parameter("shade_tint", Color(0.6, 0.68, 0.84)); m.set_shader_parameter("ao_tint", Color(0.82, 0.87, 0.97)); m.set_shader_parameter("vein_tint", Color(0.87, 0.91, 0.98))
 	m.set_shader_parameter("key_dir", iv_key); m.set_shader_parameter("far_k", far_k)
 	m.set_shader_parameter("uv_flip", iv_uvf); m.set_shader_parameter("alb_in_light", iv_alb)
 	if OS.get_environment("IV_DBG") != "": m.set_shader_parameter("dbg", float(OS.get_environment("IV_DBG")))
@@ -2727,7 +2771,7 @@ func _iv_begin() -> void:
 	_iv_overlay(cl, "res://goiv/rock_bl.png", Vector2(-60 * k, vh - 380 * k), Vector2(430, 430) * k)
 	_iv_overlay(cl, "res://goiv/rock_br.png", Vector2(720 * k - 380 * k, vh - 360 * k), Vector2(430, 430) * k)
 	var cl2 := CanvasLayer.new(); cl2.layer = 5; add_child(cl2)
-	iv_fade = ColorRect.new(); iv_fade.color = Color(1.0, 0.95, 0.86, 0.0); iv_fade.set_anchors_preset(Control.PRESET_FULL_RECT); iv_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl2.add_child(iv_fade)
+	iv_fade = ColorRect.new(); iv_fade.color = Color(0.86, 0.92, 1.0, 0.0) if go_moon else Color(1.0, 0.95, 0.86, 0.0); iv_fade.set_anchors_preset(Control.PRESET_FULL_RECT); iv_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl2.add_child(iv_fade)
 	for ql in quote_lbls:
 		var l := ql as Label
 		if l.get_theme_constant("outline_size") == 0: l.add_theme_color_override("font_color", Color(0.3, 0.21, 0.15, 1))
@@ -3115,7 +3159,7 @@ func _ivp_begin() -> void:
 			sm.set_shader_parameter("iv_look", 1.0); sm.set_shader_parameter("iv_key", iv_key)
 			sm.set_shader_parameter("iv_skin_lt", Color("f7eadc")); sm.set_shader_parameter("iv_skin_dk", Color("bc9f87"))
 			if OS.get_environment("IV_HDBG") != "": sm.set_shader_parameter("iv_skin_lt", Color(1, 0, 0)); sm.set_shader_parameter("iv_skin_dk", Color(0, 0, 1))
-			sm.set_shader_parameter("iv_cloth_lt", Color("b45d3b")); sm.set_shader_parameter("iv_cloth_dk", Color("6a2c1f")); sm.set_shader_parameter("iv_shade", Color(0.74, 0.78, 0.9) if go_drown else Color(0.86, 0.79, 0.74))
+			sm.set_shader_parameter("iv_cloth_lt", Color("b45d3b")); sm.set_shader_parameter("iv_cloth_dk", Color("6a2c1f")); sm.set_shader_parameter("iv_shade", Color(0.74, 0.78, 0.9) if go_drown else (Color(0.66, 0.72, 0.9) if go_moon else Color(0.86, 0.79, 0.74)))
 	if ivr_on:
 		get_viewport().msaa_3d = Viewport.MSAA_4X      # (its edges smooth, as the picture's are)
 		_ivr_build()
@@ -3126,7 +3170,7 @@ func _ivp_begin() -> void:
 	if ivr_on: _ivr_cam()
 	else: _ivp_cam()
 	var cl2 := CanvasLayer.new(); cl2.layer = 5; add_child(cl2)
-	iv_fade = ColorRect.new(); iv_fade.color = Color(1.0, 0.95, 0.86, 0.0); iv_fade.set_anchors_preset(Control.PRESET_FULL_RECT); iv_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl2.add_child(iv_fade)
+	iv_fade = ColorRect.new(); iv_fade.color = Color(0.86, 0.92, 1.0, 0.0) if go_moon else Color(1.0, 0.95, 0.86, 0.0); iv_fade.set_anchors_preset(Control.PRESET_FULL_RECT); iv_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl2.add_child(iv_fade)
 
 func _ivp_pre(_dt: float) -> void:
 	if iv_root == null: return
@@ -3428,7 +3472,7 @@ func _ivr_cam() -> void:
 	var vp := get_viewport().get_visible_rect().size
 	cam.keep_aspect = Camera3D.KEEP_WIDTH; cam.size = w * maxf(1.0, (vp.x / vp.y) / 0.5625)
 
-func _ivr_mat(kind: String, ao := 1.0, local := false) -> ShaderMaterial: return _iv_mat(kind, 0.0, {"lfog": 1.0 if (local and not go_drown) else 0.0, "fog_hi": (ivr_sea_y + 1.5) if go_drown else -3.6, "fog_lo": (ivr_sea_y - 0.15) if go_drown else -7.5, "ao_k": ao * ({"marble2": 0.4, "olive2": 0.2, "bark": 0.3, "rock2": 0.0} as Dictionary).get(kind, 1.0), "veins": 0.6 if kind == "marble2" else 0.0, "dk": 0.0, "bounce": 0.0, "haze": 1.0, "shadow_k": 0.0 if kind == "rock2" else 1.0, "lf_hi": 1.0 if go_drown else 0.5, "lf_len": 2.6 if go_drown else 1.9})
+func _ivr_mat(kind: String, ao := 1.0, local := false) -> ShaderMaterial: return _iv_mat(kind, 0.0, {"lfog": 1.0 if (local and not go_drown) else 0.0, "fog_hi": (ivr_sea_y + 1.5) if go_drown else (-1.4 if go_moon else -3.6), "fog_lo": (ivr_sea_y - 0.15) if go_drown else (-5.4 if go_moon else -7.5), "ao_k": ao * ({"marble2": 0.4, "olive2": 0.2, "bark": 0.3, "rock2": 0.0} as Dictionary).get(kind, 1.0), "veins": (0.35 if go_moon else 0.6) if kind == "marble2" else 0.0, "dk": 0.0, "bounce": 0.0, "haze": 1.0, "shadow_k": 0.0 if kind == "rock2" else 1.0, "lf_hi": 1.0 if go_drown else (1.0 if go_moon else 0.5), "lf_len": 2.6 if go_drown else (2.8 if go_moon else 1.9)})
 
 ## the way drawn on the stone: a pale line, and at each node a pale disc in a darker ring
 func _ivr_way() -> void:
@@ -3677,6 +3721,171 @@ func _ivs_far() -> void:
 	_ivr_colonnade(rs, spot_y, S2.call(1330, 640), Vector2(9.0, 4.6), r0.y, 4, 0.85, 0.34, 4, rng)
 	_iv_commit(rs, "farsil", self, 0.16, {"sil": 1.0, "fog_hi": r0.y - 0.2, "fog_lo": sea_y + 0.05}, false)
 
+# ---------------------------------------------------------------- the moon dial (gomoon/): its own things
+const IVM_MOON := Vector2(0.7, 0.15)      # (the moon on the screen: where its middle is, and how wide it is across the screen)
+const IVM_MOON_R := 0.15
+const IVM_FLAME_SH := """
+shader_type spatial;
+render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled;      // (drawn over what is behind it, not added: on the snow an added flame burns out white)
+uniform float seed = 0.0;
+uniform float k = 1.0;
+void vertex(){      // (always upright, always turned to the eye)
+	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0], MODEL_MATRIX[1], vec4(normalize(cross(INV_VIEW_MATRIX[0].xyz, MODEL_MATRIX[1].xyz)), 0.0), MODEL_MATRIX[3]);
+}
+void fragment(){
+	float t = TIME * 5.0 + seed * 17.0;
+	float y = 1.0 - UV.y;
+	float sway = (sin(t * 1.3 + y * 4.0) * 0.07 + sin(t * 2.3 + y * 8.0) * 0.035) * y;
+	float x = abs((UV.x - 0.5 - sway) * 2.0);
+	float lick = 0.9 + 0.1 * sin(t * 3.1);
+	float w = (y < 0.22 ? sqrt(y / 0.22) : pow(max(1.0 - (y - 0.22) / (0.78 * lick), 0.0), 1.15)) * 0.62;
+	float a = 1.0 - smoothstep(w * 0.55, w + 0.02, x);
+	float core = (1.0 - smoothstep(w * 0.15, w * 0.6, x)) * (1.0 - smoothstep(0.25, 0.75, y));
+	vec3 c = mix(vec3(1.0, 0.36, 0.06), vec3(1.0, 0.72, 0.28), smoothstep(0.0, 0.6, 1.0 - x / max(w, 0.001)));
+	c = mix(c, vec3(1.0, 0.95, 0.75), core);
+	ALBEDO = c; ALPHA = clamp(a * k * (0.9 + 0.1 * sin(t * 2.0)), 0.0, 1.0);
+}
+"""
+var ivm_flame_sh: Shader
+
+## the moon dial: a bronze disc that faces the eye, on a pedestal of marble behind it, turned about its axle. On its face
+## a full moon above and a crescent below, in silver; turned half round, the crescent stands above: the moon's other
+## face, and every face bound to it looks the other way
+func _ivm_dial(base: Vector3) -> void:
+	var b := _ivp_basis(); var fz := Vector3(b.z.x, 0, b.z.z).normalized()      # (its face to the eye)
+	var fx := Vector3.UP.cross(fz)
+	var R := 0.36; var T := 0.08; var H := 0.64      # (its radius, its thickness, the height of its axle)
+	var sd := Node3D.new(); iv_root.add_child(sd); sd.global_position = base; sd.basis = Basis(fx, Vector3.UP, fz)
+	var ps := _iv_st()
+	_iv_box(ps, Vector3(-0.44, 0.0, -0.22), Vector3(0.44, 0.1, 0.16))      # (the plinth)
+	_iv_box(ps, Vector3(-0.38, 0.1, -0.18), Vector3(0.38, 0.17, 0.1))
+	_iv_box(ps, Vector3(-0.09, 0.17, -T * 0.5 - 0.17), Vector3(0.09, H + 0.02, -T * 0.5 - 0.03))      # (the pedestal behind the disc)
+	_iv_box(ps, Vector3(-0.12, H + 0.02, -T * 0.5 - 0.2), Vector3(0.12, H + 0.08, -T * 0.5 - 0.0))
+	var pm := MeshInstance3D.new(); pm.mesh = ps.commit(); pm.material_override = _ivr_mat("marble2", 0.0); sd.add_child(pm)
+	var hub := CylinderMesh.new(); hub.top_radius = 0.045; hub.bottom_radius = 0.045; hub.height = 0.2; hub.radial_segments = 12; hub.rings = 1      # (the axle, bronze, from the pedestal into the disc's middle)
+	var hm := MeshInstance3D.new(); hm.mesh = hub; hm.material_override = _ivr_mat("bronze", 0.0); hm.position = Vector3(0, H, -T * 0.5 - 0.02); hm.rotation.x = PI * 0.5; sd.add_child(hm)
+	iv_wheel = Node3D.new(); iv_root.add_child(iv_wheel); iv_wheel.global_position = base + Vector3(0, H, 0); iv_wheel.basis = Basis(fx, Vector3.UP, fz)
+	var dm := CylinderMesh.new(); dm.top_radius = R; dm.bottom_radius = R; dm.height = T; dm.radial_segments = 40; dm.rings = 1
+	var di := MeshInstance3D.new(); di.mesh = dm; di.material_override = _ivr_mat("bronze", 0.0); di.rotation.x = PI * 0.5; iv_wheel.add_child(di)
+	var rim := TorusMesh.new(); rim.inner_radius = R - 0.035; rim.outer_radius = R + 0.012; rim.rings = 40; rim.ring_segments = 8
+	var ri := MeshInstance3D.new(); ri.mesh = rim; ri.material_override = _ivr_mat("bronze", 0.0); ri.rotation.x = PI * 0.5; ri.scale = Vector3(1, 1.6, 1); iv_wheel.add_child(ri)
+	# the full moon above, the crescent below: silver, standing a little proud of the face
+	var sv := _iv_st(); var z0 := T * 0.5; var z1 := T * 0.5 + 0.018
+	var c0 := Vector2(0, 0.19); var r0 := 0.082
+	for k in 28:
+		var a0 := TAU * float(k) / 28.0; var a1 := TAU * float(k + 1) / 28.0
+		var p0 := Vector3(c0.x + cos(a0) * r0, c0.y + sin(a0) * r0, 0); var p1 := Vector3(c0.x + cos(a1) * r0, c0.y + sin(a1) * r0, 0)
+		_iv_tri(sv, Vector3(c0.x, c0.y, z1), p0 + Vector3(0, 0, z1), p1 + Vector3(0, 0, z1), Vector3(0, 0, 1))
+		_iv_quad(sv, p0 + Vector3(0, 0, z0), p1 + Vector3(0, 0, z0), p1 + Vector3(0, 0, z1), p0 + Vector3(0, 0, z1), Vector3(p0.x + p1.x - 2.0 * c0.x, p0.y + p1.y - 2.0 * c0.y, 0))
+	for sp in [Vector2(-0.2, 0.06), Vector2(0.21, 0.02), Vector2(-0.15, -0.12), Vector2(0.17, -0.15), Vector2(0.0, 0.0)]:      # (stars between them)
+		var sr := 0.022 if sp.length() > 0.01 else 0.03
+		for k in 4:
+			var a0 := TAU * float(k) / 4.0; var a1 := TAU * float(k + 1) / 4.0; var am := (a0 + a1) * 0.5
+			var q0 := Vector3(sp.x + cos(a0) * sr, sp.y + sin(a0) * sr, z1); var q1 := Vector3(sp.x + cos(a1) * sr, sp.y + sin(a1) * sr, z1)
+			var qm := Vector3(sp.x + cos(am) * sr * 0.35, sp.y + sin(am) * sr * 0.35, z1)
+			_iv_tri(sv, Vector3(sp.x, sp.y, z1 + 0.004), q0, qm, Vector3(0, 0, 1)); _iv_tri(sv, Vector3(sp.x, sp.y, z1 + 0.004), qm, q1, Vector3(0, 0, 1))
+	var cc := Vector2(0, -0.19); var cr := 0.082; var dd := 0.05      # (the crescent: the moon's disc, less a disc of the same size moved aside)
+	var ty := sqrt(cr * cr - dd * dd * 0.25); var th0 := atan2(ty, -dd * 0.5); var ph0 := atan2(ty, dd * 0.5)
+	var outer := []; var inner := []
+	for k in 25:
+		var t := float(k) / 24.0
+		var ao := lerpf(th0, -th0, t); var ai := lerpf(ph0, -ph0, t)
+		outer.append(Vector3(cc.x + cos(ao) * cr, cc.y + sin(ao) * cr, 0)); inner.append(Vector3(cc.x - dd + cos(ai) * cr, cc.y + sin(ai) * cr, 0))
+	for k in 24:
+		var o0: Vector3 = outer[k]; var o1: Vector3 = outer[k + 1]; var i0: Vector3 = inner[k]; var i1: Vector3 = inner[k + 1]
+		_iv_quad(sv, o0 + Vector3(0, 0, z1), o1 + Vector3(0, 0, z1), i1 + Vector3(0, 0, z1), i0 + Vector3(0, 0, z1), Vector3(0, 0, 1))
+		_iv_quad(sv, o0 + Vector3(0, 0, z0), o1 + Vector3(0, 0, z0), o1 + Vector3(0, 0, z1), o0 + Vector3(0, 0, z1), Vector3(o0.x + o1.x - 2.0 * cc.x, o0.y + o1.y - 2.0 * cc.y, 0))
+		_iv_quad(sv, i0 + Vector3(0, 0, z0), i1 + Vector3(0, 0, z0), i1 + Vector3(0, 0, z1), i0 + Vector3(0, 0, z1), -Vector3(i0.x + i1.x - 2.0 * (cc.x - dd), i0.y + i1.y - 2.0 * cc.y, 0))
+	var smi := MeshInstance3D.new(); smi.mesh = sv.commit(); smi.material_override = _ivr_mat("silver", 0.0); iv_wheel.add_child(smi)
+	for m in [pm, hm, di, ri, smi]: (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+
+## a brazier: an iron drum on the snow with a fire in it, its glow, and a warm pool of light on the floor about it
+func _ivm_brazier(p: Vector3) -> void:
+	var n := Node3D.new(); iv_root.add_child(n); n.global_position = p
+	var parts := [[0.15, 0.15, 0.05, 0.025], [0.115, 0.13, 0.36, 0.23], [0.155, 0.15, 0.045, 0.43], [0.14, 0.14, 0.03, 0.465]]      # (top r, bottom r, height, middle)
+	for q in parts:
+		var cm := CylinderMesh.new(); cm.top_radius = float(q[0]); cm.bottom_radius = float(q[1]); cm.height = float(q[2]); cm.radial_segments = 14; cm.rings = 1
+		var mi := MeshInstance3D.new(); mi.mesh = cm; mi.material_override = _ivr_mat("iron", 0.0); mi.position = Vector3(0, float(q[3]), 0); n.add_child(mi)
+	var em := StandardMaterial3D.new(); em.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; em.albedo_color = Color(1.0, 0.42, 0.12)
+	var ec := CylinderMesh.new(); ec.top_radius = 0.125; ec.bottom_radius = 0.125; ec.height = 0.01; ec.radial_segments = 14; ec.rings = 1
+	var emb := MeshInstance3D.new(); emb.mesh = ec; emb.material_override = em; emb.position = Vector3(0, 0.476, 0); emb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; n.add_child(emb)
+	if ivm_flame_sh == null: ivm_flame_sh = Shader.new(); ivm_flame_sh.code = IVM_FLAME_SH
+	for f in [[0.36, 0.56, 0.0, 1.0], [0.24, 0.4, 0.07, 0.8]]:
+		var fq := QuadMesh.new(); fq.size = Vector2(float(f[0]), float(f[1]))
+		var fm := ShaderMaterial.new(); fm.shader = ivm_flame_sh; fm.set_shader_parameter("seed", p.x * 0.37 + p.z * 0.71 + float(f[2]) * 9.0); fm.set_shader_parameter("k", float(f[3]))
+		var fi := MeshInstance3D.new(); fi.mesh = fq; fi.material_override = fm; fi.position = Vector3(float(f[2]) * 0.3, 0.47 + float(f[1]) * 0.5, 0); fi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; n.add_child(fi)
+	var gq := QuadMesh.new(); gq.size = Vector2(1.5, 1.5)
+	var gm := StandardMaterial3D.new(); gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm.albedo_texture = load("res://goiv/glow.png")
+	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; gm.albedo_color = Color(1.0, 0.55, 0.22, 0.42)
+	var gi := MeshInstance3D.new(); gi.mesh = gq; gi.material_override = gm; gi.position = Vector3(0, 0.66, 0); gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; n.add_child(gi)
+	var lq := QuadMesh.new(); lq.size = Vector2(2.3, 2.3); lq.orientation = PlaneMesh.FACE_Y
+	var lm := StandardMaterial3D.new(); lm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; lm.albedo_texture = load("res://goiv/glow.png")
+	lm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; lm.albedo_color = Color(1.0, 0.66, 0.36, 0.34); lm.render_priority = 2
+	var li := MeshInstance3D.new(); li.mesh = lq; li.material_override = lm; li.position = Vector3(0, 0.014, 0); li.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; n.add_child(li)
+
+## a snowy peak far off: a pyramid of a few broad faces, its ridges running down from the summit and out into the haze
+func _ivm_peak(st: SurfaceTool, top: Vector3, w: float, h: float, rng: RandomNumberGenerator) -> void:
+	var n := 7
+	var a0 := rng.randf_range(0.0, TAU)
+	var dirs := []
+	for k in n: dirs.append(a0 + TAU * float(k) / float(n) + rng.randf_range(-0.28, 0.28))
+	var lv := [[0.2, 0.3], [0.55, 0.68], [1.0, 1.0], [7.0, 3.0]]      # (how far down, how far out: of its height, of its half width)
+	var rings := []
+	for li in lv.size():
+		var ring := []
+		for k in n:
+			var a: float = float(dirs[k]) + rng.randf_range(-0.06, 0.06) * float(li)
+			var rr := w * 0.5 * float(lv[li][1]) * rng.randf_range(0.72, 1.22)
+			var y := top.y - h * float(lv[li][0]) + (rng.randf_range(-0.07, 0.07) * h if li < lv.size() - 1 else 0.0)
+			ring.append(Vector3(top.x + cos(a) * rr, y, top.z + sin(a) * rr))
+		rings.append(ring)
+	for k in n:
+		var a: Vector3 = rings[0][k]; var c: Vector3 = rings[0][(k + 1) % n]
+		var o := a + c - top * 2.0
+		_iv_tri(st, top, a, c, Vector3(o.x, 0.3, o.z))
+	for li in rings.size() - 1:
+		for k in n:
+			var a: Vector3 = rings[li][k]; var c: Vector3 = rings[li][(k + 1) % n]; var d: Vector3 = rings[li + 1][(k + 1) % n]; var e: Vector3 = rings[li + 1][k]
+			var mid := (a + c + d + e) * 0.25
+			_iv_quad(st, a, c, d, e, Vector3(mid.x - top.x, 0, mid.z - top.z))
+
+## far off: snowy peaks in the haze under the moon, paler with distance, each going into the mist from a little under its top
+func _ivm_far() -> void:
+	var b := _ivp_basis(); var bx := b.x; var by := b.y; var fwd := -b.z
+	var ce: Array = ivr_eye.centre
+	var ref := IV_O + Vector3(float(ce[0]), float(ce[1]), float(ce[2]))
+	var rng := RandomNumberGenerator.new(); rng.seed = 57
+	var spot := func(sx: float, sy: float, dep: float) -> Vector3: return ref + bx * sx + by * sy + fwd * dep
+	# [its summit on the screen (across, up, metres from the eye's middle), width, height, depth, haze, palette, how soon it fades]
+	for f in [
+			[3.7, 3.7, 7.0, 4.6, 26.0, 0.1, "far", 0.42],      # (the great peak at the right, under the moon)
+			[-3.6, 4.4, 5.0, 3.8, 30.0, 0.2, "far", 0.42],      # (one behind the arch at the left)
+			[1.0, 2.8, 5.0, 3.4, 30.0, 0.2, "far", 0.42],
+			[6.2, 2.6, 4.4, 3.2, 23.0, 0.1, "far", 0.42],
+			[-1.6, 1.8, 4.4, 2.8, 34.0, 0.3, "far1", 0.4],
+			[2.6, 1.4, 5.0, 2.4, 20.0, 0.12, "far1", 0.45]]:
+		var top: Vector3 = spot.call(float(f[0]), float(f[1]), float(f[4]))
+		var h := float(f[3])
+		var st := _iv_st(); _ivm_peak(st, top, float(f[2]), h, rng)
+		_iv_commit(st, String(f[6]), self, float(f[5]), {"fog_hi": top.y - h * float(f[7]), "fog_lo": top.y - h * 1.1}, false)
+
+## the snow falling before the eye: near flakes larger and slower, far ones small
+func _ivm_snow(cl: CanvasLayer) -> void:
+	var vs := get_viewport().get_visible_rect().size
+	var k := vs.x / 720.0
+	for layer in 2:
+		var pt := CPUParticles2D.new(); cl.add_child(pt)
+		pt.amount = 60 if layer == 0 else 45
+		pt.lifetime = 22.0 if layer == 0 else 13.0
+		pt.preprocess = pt.lifetime
+		pt.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE; pt.emission_rect_extents = Vector2(vs.x * 0.65, 4.0)
+		pt.position = Vector2(vs.x * 0.42, -14.0)
+		pt.direction = Vector2(0.16, 1.0); pt.spread = 9.0; pt.gravity = Vector2.ZERO
+		pt.initial_velocity_min = (52.0 if layer == 0 else 92.0) * k; pt.initial_velocity_max = (78.0 if layer == 0 else 130.0) * k
+		pt.texture = load("res://goiv/glow.png")
+		pt.scale_amount_min = (0.017 if layer == 0 else 0.026) * k; pt.scale_amount_max = (0.025 if layer == 0 else 0.038) * k
+		pt.color = Color(1.0, 1.0, 1.0, 0.7 if layer == 0 else 0.9)
+
 ## the rock that bears a row of things far off: one ridge, its crest flat under the feet, its sides going down and out
 ## as a hill does (as the picture's: no table, no row of pillars), wider and wider into the haze
 func _ivr_ridge_under(st: SurfaceTool, feet: Array, margin: float, rng: RandomNumberGenerator) -> void:
@@ -3801,6 +4010,7 @@ func _ivr_build() -> void:
 	var bm := ShaderMaterial.new(); var bs := Shader.new(); bs.code = IV_BG_SH; bm.shader = bs
 	_iv_sky(bm)
 	if go_drown: bm.set_shader_parameter("sun", Vector2(0.305, 0.19)); bm.set_shader_parameter("sun_k", 1.0)
+	if go_moon: bm.set_shader_parameter("sun", IVM_MOON); bm.set_shader_parameter("moon_k", 1.0); bm.set_shader_parameter("moon_r", IVM_MOON_R)
 	var bq := QuadMesh.new(); bq.size = Vector2(900, 900)
 	var bgi := MeshInstance3D.new(); bgi.mesh = bq; bgi.material_override = bm; bgi.position = Vector3(0, 0, -140.0); bgi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; cam.add_child(bgi)
 	# the level, as Blender made it
@@ -3811,7 +4021,7 @@ func _ivr_build() -> void:
 	for m in lv.find_children("*", "MeshInstance3D", true, false):
 		var mi := m as MeshInstance3D
 		var nm := String(mi.name).to_lower() + "|" + String(mi.get_parent().name).to_lower()
-		var kind := "rock2" if nm.contains("rock") else ("olive2" if nm.contains("olive") else ("bark" if nm.contains("bark") else "marble2"))
+		var kind := "rock2" if nm.contains("rock") else ("olive2" if nm.contains("olive") else ("bark" if nm.contains("bark") else ("snow" if nm.contains("snow") else "marble2")))
 		mi.material_override = _ivr_mat(kind, 1.0, true); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	if go_drown:      # (the level's image in the still water, faint)
 		_ivs_mirror(lv, func(mi: MeshInstance3D) -> Array:
@@ -3845,7 +4055,9 @@ func _ivr_build() -> void:
 	_ivr_way()
 	iv_me = "s"; iv_block = String(ivg.block) if ivg_on else "b0"
 	iv_block_n = _ivr_block(); iv_block_n.global_position = ivp_nodes[iv_block]
-	if ivg_vol != "": _ivp_volute(ivp_nodes[ivg_vol])
+	if ivg_vol != "":
+		if go_moon: _ivm_dial(ivp_nodes[ivg_vol])
+		else: _ivp_volute(ivp_nodes[ivg_vol])
 	elif not ivg_on and j.get("volute") != null: _ivp_volute(V.call(j.volute))
 	if ivg_on: _ivg_build()
 	if j.get("relief") != null:
@@ -3874,15 +4086,18 @@ func _ivr_build() -> void:
 		var hi := MeshInstance3D.new(); hi.mesh = hm; hi.material_override = _iv_mat("rock2", 0.0, {"fog_hi": -9.0, "fog_lo": -14.0}); hi.position = Vector3(0, 0.012, 0); iv_ring.add_child(hi)
 	var gq := QuadMesh.new(); gq.size = Vector2(1.7, 1.7)
 	var gm := StandardMaterial3D.new(); gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm.albedo_texture = load("res://goiv/glow.png")
-	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; gm.albedo_color = Color(1.0, 0.96, 0.86, 0.5)
+	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm.blend_mode = BaseMaterial3D.BLEND_MODE_MIX if go_moon else BaseMaterial3D.BLEND_MODE_ADD; gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; gm.albedo_color = Color(1.0, 0.76, 0.36, 0.42) if go_moon else Color(1.0, 0.96, 0.86, 0.5)      # (on the snow a glow added burns white: drawn over it, golden)
 	iv_glow = MeshInstance3D.new(); iv_glow.mesh = gq; iv_glow.material_override = gm; iv_glow.position = Vector3(0, 0.4, 0); iv_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; iv_ring.add_child(iv_glow)
-	if go_drown:
-		_ivs_sea(float(j.get("sea_y", -1.6))); _ivs_far()
+	if go_moon:
+		_ivm_far()
+		for bz in (j.get("braziers", []) as Array): _ivm_brazier(V.call(bz))
+	if go_drown or go_moon:
+		if go_drown: _ivs_sea(float(j.get("sea_y", -1.6))); _ivs_far()
 		for ar in (j.get("arches", []) as Array):      # (a pale light standing in the arch over the ring: the way out)
 			var pq := QuadMesh.new(); pq.size = Vector2(1.1, 2.0)
 			var pmat := StandardMaterial3D.new(); pmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; pmat.albedo_texture = load("res://goiv/glow.png")
-			pmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; pmat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; pmat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-			pmat.albedo_color = Color(0.72, 0.88, 1.0, 0.42)
+			pmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; pmat.blend_mode = BaseMaterial3D.BLEND_MODE_MIX if go_moon else BaseMaterial3D.BLEND_MODE_ADD; pmat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+			pmat.albedo_color = Color(1.0, 0.8, 0.46, 0.34) if go_moon else Color(0.72, 0.88, 1.0, 0.42)
 			var pg := MeshInstance3D.new(); pg.mesh = pq; pg.material_override = pmat; pg.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			iv_root.add_child(pg); pg.global_position = V.call(ar[0]) + Vector3(0, 1.0, 0)
 	else: _ivr_far()
@@ -3905,6 +4120,11 @@ func _ivr_build() -> void:
 	var lr := _iv_overlay(cl, "res://goiv/leaves_tl.png", Vector2(720 * k + 60 * k, -150 * k), Vector2(440, 440) * k); lr.flip_h = true; lr.position.x -= 440 * k; lr.rotation = 0.18
 	if go_drown:      # (at sea: the leaves above, cool in the dusk; no rocks before the eye, the mist is open)
 		for ov in [iv_leaves, lr]: (ov as CanvasItem).modulate = Color(0.62, 0.66, 0.8)
+	elif go_moon:      # (in the snow at night: snowy pine above at the left, the snow falling; the mist open below)
+		lr.visible = false
+		if FileAccess.file_exists("res://gomoon/pine_tl.png"): iv_leaves.texture = load("res://gomoon/pine_tl.png")
+		else: iv_leaves.modulate = Color(0.24, 0.29, 0.42)
+		_ivm_snow(cl)
 	else:
 		_iv_overlay(cl, "res://goiv/rock_bl.png", Vector2(-80 * k, vh - 360 * k), Vector2(400, 400) * k)
 		_iv_overlay(cl, "res://goiv/rock_br.png", Vector2(720 * k - 330 * k, vh - 330 * k), Vector2(400, 400) * k)
@@ -3959,7 +4179,7 @@ func _ivg_build() -> void:
 		var hn := Node3D.new(); st.add_child(hn); hn.position = Vector3(0, ph, 0)
 		var hd := prop_model("iv_head", hn, 0.74 if f.line else 0.62)
 		for m in hd.find_children("*", "MeshInstance3D", true, false):
-			(m as MeshInstance3D).material_override = _ivr_mat("marble2", 0.0); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+			(m as MeshInstance3D).material_override = _ivr_mat("phead" if go_moon else "marble2", 0.0); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		f.n = st; f.head = hn
 		# its gaze: a faint red line along the floor to the node it watches, and a ring on that node
 		var lm := BoxMesh.new(); lm.size = Vector3(1.0, 0.004, 0.05)
@@ -3981,7 +4201,7 @@ func _ivg_build() -> void:
 		var sh := Node3D.new(); ivg_w.add_child(sh); sh.name = "body"
 		var sm := prop_model("iv_colossus", sh, 1.3)
 		for m in sm.find_children("*", "MeshInstance3D", true, false):
-			(m as MeshInstance3D).material_override = _ivr_mat("marble2", 0.0); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+			(m as MeshInstance3D).material_override = _ivr_mat("guard" if go_moon else "marble2", 0.0); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		ivg_w.global_position = ivp_nodes[ivg_route[0]]
 		_ivg_w_aim(0.0)
 
