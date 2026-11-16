@@ -84,10 +84,14 @@ The levels are many, in one system. A new level is made in this order (the secon
   - The hero shader's level branch: smooth normals, two ramps (skin and cloth) in the picture's colours, the level's sun only.
   - No grain, no extra lights, or her white burns out.
 
+- **The mist is what lies behind.** Its colour at each point of the screen is the backdrop there (the sky above the horizon, the sea's own colour below it), so whatever goes into it is gone without an edge. Never let a far thing end on a line (the sea's edge, a box's bottom): the user sees "stones floating", "cut abruptly".
+- **Far things**: rock that is solid under whatever stands on it (columns, a statue) and fades only further down (from about 40% of its height); never a box or a colonnade hanging in the haze. Compose them as the concept does (one great mass in the middle, a tall stack beside it, smaller ones, paler layers behind), not scattered.
 - **A level at sea** (the eye has no perspective):
   - A sea without end would climb the whole screen. The sea is a sheet whose far edge is a straight line across the screen at the concept's horizon; the sky shows above it.
-  - Far things stand in the sea, each set by where its foot meets the water in the concept and where its top is; its height follows. Far off means small and near the horizon.
+  - Far things stand just behind the level (in this eye "far" is only paler, never smaller), each set by its top in the concept and by where it has wholly gone into the mist; below that the sea lies in front of it, and no edge shows.
   - Mist is a band by height just over the water, not by depth under each floor; the sea's own colour lies between the haze far off and the mist below.
+  - Nothing under the water is drawn. The surface lets a little through (alpha 0.7) over a deep floor of the same colours, and what stands in the water has its image there: a copy turned over about the sea level, shaded with its own faces' light, dimming as it goes down (`_ivs_mirror`).
+  - A great thing in the water (the colossal face) is solid, with its own light and shade, a shadow and its image in the water; the user did not want it faded.
   - A sky with four stops (high, a warm band at the horizon, the haze under it, the mist at the bottom), and a low sun drawn on it.
 
 ## 4. The puzzle: Lara Croft GO rules, proven before it is built
