@@ -2052,7 +2052,7 @@ func _iv_sky(m: ShaderMaterial) -> void:      # the sky's colours (and the mist'
 	if go_drown:
 		m.set_shader_parameter("bg_top", Color(String(IV_SEA_BG[0]))); m.set_shader_parameter("bg_hz", Color(String(IV_SEA_BG[1])))
 		m.set_shader_parameter("bg_mid", Color(String(IV_SEA_BG[2]))); m.set_shader_parameter("bg_bot", Color(String(IV_SEA_BG[3])))
-		m.set_shader_parameter("sky4", 1.0); m.set_shader_parameter("sky_s", IV_SEA_SKY_S)
+		m.set_shader_parameter("sky4", 1.0); m.set_shader_parameter("sky_s", IV_SEA_SKY_S); m.set_shader_parameter("sea_k", 1.0)
 	else:
 		for i in 3: m.set_shader_parameter(["bg_top", "bg_mid", "bg_bot"][i], Color(String(IV_BG[i])))
 const IV_SH := """
@@ -2085,6 +2085,8 @@ uniform float sil = 0.0;      // (far off: a shape in the haze, its faces hardly
 uniform float lf_len = 1.9;
 uniform float lfog = 0.0;      // (the level's own rock: its depth under the floor it bears is in COLOR.g, a quarter of a metre to one)
 uniform float lf_hi = 0.5;
+uniform float sea_k = 0.0;      // (a level at sea: the mist is the sea's colour where the sea lies behind, so what sinks into it leaves no edge)
+uniform vec3 sea_c : source_color = vec3(0.3, 0.45, 0.56);
 uniform float shadow_k = 1.0;      // (how much cast shadow falls on it: none on the rock, whose faces are each one clean tone)
 uniform float lf_lo = 3.2;
 varying vec3 wp;
@@ -2130,6 +2132,7 @@ void fragment(){
 	}
 	ALBEDO = c * (1.0 - fk);
 	vec3 mist = bgc(sy);
+	if (sea_k > 0.0) mist = mix(mist, sea_c, smoothstep(0.21, 0.38, sy) * (1.0 - smoothstep(0.5, 0.92, sy)) * 0.9 * sea_k);
 	EMISSION = mist * fk + c_top * emit;
 	if (dbg > 0.5) { ALBEDO = vec3(0.0); EMISSION = dbg > 3.5 ? vec3(fk) : (dbg > 2.5 ? c : (dbg > 1.5 ? vec3(d * 0.5 + 0.5) : fn * 0.5 + 0.5)); }
 }
@@ -3583,7 +3586,7 @@ func _ivs_far() -> void:
 	var hp := Node3D.new(); add_child(hp); hp.global_position = fc + Vector3(0, -1.0, 0)      # (half sunk: the water at its cheek)
 	var hd := prop_model("iv_head", hp, 3.9); hd.position = Vector3(0, -1.3, 0)
 	for m in hd.find_children("*", "MeshInstance3D", true, false):
-		(m as MeshInstance3D).material_override = _iv_mat("seaface", 0.04, {"fog_hi": sea_y + 0.3, "fog_lo": sea_y - 1.2}); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		(m as MeshInstance3D).material_override = _iv_mat("seaface", 0.04, {"fog_hi": sea_y + 1.35, "fog_lo": sea_y + 0.05}); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var fzv := Vector3(0.52, 0.42, 0.74); var fyv := Vector3(-0.78, 0.55, -0.1)      # (as the fallen face of the ivory level: it looks up at the eye, its crown to the upper left)
 	if OS.get_environment("IVS_FZ") != "": var q := OS.get_environment("IVS_FZ").split(","); fzv = Vector3(float(q[0]), float(q[1]), float(q[2]))
 	if OS.get_environment("IVS_FY") != "": var q2 := OS.get_environment("IVS_FY").split(","); fyv = Vector3(float(q2[0]), float(q2[1]), float(q2[2]))
@@ -3591,39 +3594,47 @@ func _ivs_far() -> void:
 	var fy := (fyv - fz * fyv.dot(fz)).normalized()
 	var fx := fy.cross(fz)
 	hp.basis = Basis(fz, fy, -fx)
-	# (the eye has no perspective: a thing far off is small and stands near the horizon; each is set by where its foot
-	# meets the water in the concept and where its top is, so its height follows from those)
+	# far off, as the concept has it: cliffs and stacks rising out of the haze. The eye has no perspective, so "far" is
+	# only paler and smaller; each stands just behind the level, set by its top in the concept and by where its body
+	# has gone wholly into the mist (its foot, below which the sea lies in front of it). It fades into the mist from a
+	# little under its top down to that foot; the mist there is the sea's own colour, so it has no edge anywhere.
 	var cosp := cos(deg_to_rad(IVP_TH))
-	var foot := func(X: float, Yb: float) -> Vector3: return spot_y.call((X - 768.0) / ppm, (1376.0 - Yb) / ppm, sea_y)
-	# stacks and isles: [x, the y of its foot, the y of its top (in the concept), width (m), haze, palette]
+	var dep_at := func(Yw: float) -> float:      # (how deep the sea lies behind the concept's height Yw on the screen)
+		var syw := (1376.0 - Yw) / ppm
+		return (sea_y - ref.y - by.y * syw) / fwd.y
+	# [x, top y, the y where it is wholly gone (concept px), width (m), haze, palette, how soon it fades (0..1)]
 	for f in [
-			[860, 640, 470, 2.2, 0.3, "far"],      # (the island's crown, under the statue and the colonnade)
-			[650, 650, 545, 1.7, 0.32, "far"], [1060, 660, 575, 1.5, 0.32, "far"],      # (its shoulders)
-			[355, 700, 470, 0.7, 0.26, "far1"], [300, 830, 650, 0.85, 0.22, "far1"],      # (stacks at the left, by the sun)
-			[1215, 760, 350, 0.85, 0.26, "far1"], [1300, 800, 620, 1.0, 0.22, "far1"],      # (a tall stack at the right)
-			[1450, 880, 700, 0.95, 0.2, "far1"],      # (the stack of the right colonnade)
-			[140, 560, 520, 2.6, 0.62, "far"], [1500, 570, 525, 2.4, 0.62, "far"]]:      # (low isles along the horizon)
-		var fb: Vector3 = foot.call(float(f[0]), float(f[1]))
-		var h := (float(f[1]) - float(f[2])) / ppm / cosp
-		var top := fb + Vector3(0, h, 0)
+			[1290, 120, 640, 4.6, 0.6, "far", 0.25],      # (a great pale mountain behind, at the right)
+			[150, 330, 640, 2.8, 0.56, "far", 0.25],      # (low pale hills at the left, beyond the sun)
+			[853, 425, 1000, 2.5, 0.22, "far", 0.16],      # (the island in the middle: its cliff under the colonnade and the statue)
+			[620, 560, 960, 1.6, 0.34, "far", 0.2], [1075, 545, 940, 1.3, 0.34, "far", 0.2],      # (its shoulders, further back and paler)
+			[1228, 345, 900, 1.25, 0.2, "far1", 0.2],      # (a tall stack right of the island)
+			[338, 425, 820, 0.9, 0.26, "far1", 0.2],      # (a stack at the left, by the sun)
+			[40, 505, 980, 1.7, 0.24, "far1", 0.2],      # (a headland at the far left)
+			[1415, 640, 1060, 1.5, 0.16, "far1", 0.22]]:      # (the stack of the colonnade at the right)
+		var dd: float = dep_at.call(float(f[2]))
+		var top: Vector3 = P.call(float(f[0]), float(f[1]), dd)
+		var tall := top.y - sea_y
 		var st := _iv_st(); _ivr_crag(st, top, float(f[3]), rng, false, 0.62, false, true)
-		_iv_commit(st, String(f[5]), self, float(f[4]), fog.call(top.y, float(f[3])), false)
+		_iv_commit(st, String(f[5]), self, float(f[4]), {"sil": 1.0, "fog_hi": top.y - tall * float(f[6]), "fog_lo": sea_y + 0.05}, false)
 	# the colonnade on the island's crown, going away to the left; the statue at its end, on its pedestal
-	var c0: Vector3 = foot.call(880.0, 640.0) + Vector3(0, (640.0 - 470.0) / ppm / cosp, 0)
+	var di: float = dep_at.call(1000.0)
+	var c0: Vector3 = P.call(853, 425, di)
 	var cs := _iv_st()
-	_ivr_colonnade(cs, spot_y, S2.call(880, 455), Vector2(-7.0, 6.0), c0.y, 6, 0.95, 0.3, 6, rng)
-	_iv_commit(cs, "farsil", self, 0.3, fog.call(c0.y, 1.0), false)
-	var sp := c0 + bx * (40.0 / ppm)
-	var ps := _iv_st(); _iv_box(ps, sp + Vector3(-0.25, -0.5, -0.25), sp + Vector3(0.25, 0.35, 0.25)); _iv_commit(ps, "farsil", self, 0.3, fog.call(sp.y, 1.0), false)
-	var col := prop_model("iv_colossus", self, 2.0)
-	col.position = sp + Vector3(0, 0.35, 0); col.rotation.y = PI * 0.15
+	_ivr_colonnade(cs, spot_y, S2.call(880, 425), Vector2(-7.0, 6.0), c0.y, 6, 0.95, 0.3, 6, rng)
+	_iv_commit(cs, "farsil", self, 0.24, {"sil": 1.0, "fog_hi": c0.y - 0.2, "fog_lo": sea_y + 0.05}, false)
+	var sp: Vector3 = spot_y.call(S2.call(912, 400).x, S2.call(912, 400).y, c0.y)
+	var ps := _iv_st(); _iv_box(ps, sp + Vector3(-0.25, -0.5, -0.25), sp + Vector3(0.25, 0.3, 0.25)); _iv_commit(ps, "farsil", self, 0.24, {"sil": 1.0, "fog_hi": c0.y - 0.2, "fog_lo": sea_y + 0.05}, false)
+	var col := prop_model("iv_colossus", self, 2.4)
+	col.position = sp + Vector3(0, 0.3, 0); col.rotation.y = PI * 0.15
 	for m in col.find_children("*", "MeshInstance3D", true, false):
-		(m as MeshInstance3D).material_override = _iv_mat("farsil", 0.3, {"sil": 1.0, "fog_hi": sp.y - 1.0, "fog_lo": sp.y - 6.0}); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		(m as MeshInstance3D).material_override = _iv_mat("farsil", 0.24, {"sil": 1.0, "fog_hi": c0.y - 0.2, "fog_lo": sea_y + 0.05}); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# the colonnade on the stack at the right, going away to the right
-	var r0: Vector3 = foot.call(1450.0, 880.0) + Vector3(0, (880.0 - 700.0) / ppm / cosp, 0)
+	var dr: float = dep_at.call(1060.0)
+	var r0: Vector3 = P.call(1415, 640, dr)
 	var rs := _iv_st()
-	_ivr_colonnade(rs, spot_y, S2.call(1360, 700), Vector2(9.0, 4.4), r0.y, 4, 0.85, 0.34, 4, rng)
-	_iv_commit(rs, "farsil", self, 0.2, fog.call(r0.y, 1.0), false)
+	_ivr_colonnade(rs, spot_y, S2.call(1330, 640), Vector2(9.0, 4.6), r0.y, 4, 0.85, 0.34, 4, rng)
+	_iv_commit(rs, "farsil", self, 0.16, {"sil": 1.0, "fog_hi": r0.y - 0.2, "fog_lo": sea_y + 0.05}, false)
 
 ## the rock that bears a row of things far off: one ridge, its crest flat under the feet, its sides going down and out
 ## as a hill does (as the picture's: no table, no row of pillars), wider and wider into the haze
