@@ -2406,7 +2406,7 @@ func _iv_mat(kind: String, far_k := 0.0, extra := {}) -> ShaderMaterial:
 		m.set_shader_parameter("shade_tint", Color(0.68, 0.6, 0.78)); m.set_shader_parameter("ao_tint", Color(0.86, 0.78, 0.86)); m.set_shader_parameter("vein_tint", Color(0.93, 0.88, 0.9))      # (cast shadows that read, a deep lilac: the way Lara Croft GO gives its places depth)
 		m.set_shader_parameter("clip_k", 1.0); m.set_shader_parameter("clip_y", IV_O.y + ivr_sea_y); m.set_shader_parameter("sea_c", Color("ead2cf"))      # (an image in the water dims toward the pearl of the sea, not toward blue)
 		m.set_shader_parameter("wline_k", 0.6); m.set_shader_parameter("mirror_fade", 2.0); m.set_shader_parameter("mirror_wob", 0.035)
-		if kind == "rock2": m.set_shader_parameter("rich_k", 0.5)      # (rock as it weathers, but quietly: big plain faces read first)
+		if kind == "rock2": m.set_shader_parameter("rich_k", 0.0)      # (the rock one even colour, each face one clean tone: no beds, no lichen, no speckle; the user's ask)
 	if go_quarry:      # (the afternoon: shadows a cool lilac on the warm marble)
 		m.set_shader_parameter("shade_tint", Color(0.76, 0.74, 0.84)); m.set_shader_parameter("ao_tint", Color(0.9, 0.85, 0.86)); m.set_shader_parameter("vein_tint", Color(0.93, 0.9, 0.87))
 		if kind == "quarry": m.set_shader_parameter("drill", 1.0)
@@ -3080,6 +3080,10 @@ func _iv_do_push(dest: String) -> void:
 
 func _iv_win() -> void:
 	iv_won = true
+	if go_wake and ivw_gate_m != null:      # (the gate's light flares as she stands in it)
+		var gf := create_tween().set_parallel()
+		gf.tween_method(func(v: float) -> void: ivw_gate_m.set_shader_parameter("k", v), 1.0, 2.6, 1.4).set_trans(Tween.TRANS_SINE)
+		gf.tween_property(ivw_gate_glow, "albedo_color:a", 0.75, 1.4).set_trans(Tween.TRANS_SINE)
 	print("IV level done in ", iv_moves, " moves")
 	var gm := iv_glow.material_override as StandardMaterial3D
 	var f := create_tween().set_parallel()
@@ -3686,7 +3690,13 @@ func _ivr_way() -> void:
 					_iv_riser(iv_root, foot_k - IV_O - dd * 0.012, up_k - IV_O - dd * 0.012)
 					_iv_line(iv_root, up_k - IV_O, up_k + dd * run - IV_O)
 			_iv_line(iv_root, hi_p - IV_O, a1 - IV_O)
-		else: _iv_line(iv_root, (pts[0] as Vector3) - IV_O, (ivp_nodes[e[1]] as Vector3) - IV_O)
+		else:
+			var la: Vector3 = pts[0]; var lb: Vector3 = ivp_nodes[e[1]]
+			var ex_n := String(ivg_exit) if ivg_on else "r"
+			var ld := (lb - la); ld.y = 0.0; ld = ld.normalized()
+			if String(e[1]) == ex_n: lb -= ld * 0.52      # (the line ends at the ring's rim: never inside it)
+			if String(e[0]) == ex_n: la += ld * 0.52
+			_iv_line(iv_root, la - IV_O, lb - IV_O)
 	for k in ivp_nodes:
 		if k == "r" or k == "s" or (ivg_on and (k == ivg_exit or k == ivg_vol)): continue
 		var p: Vector3 = (ivp_nodes[k] as Vector3) - IV_O
@@ -3820,6 +3830,7 @@ func _ivw_rings(at: Vector3, size: float) -> void:
 	add_child(mi); mi.global_position = at + Vector3(0, 0.015, 0)
 
 func _ivw_scene2(j: Dictionary) -> void:
+	for ar in (j.get("arches", []) as Array): _ivw_gate_light(Vector3(float(ar[0][0]), float(ar[0][1]), float(ar[0][2])), String(ar[1]))
 	for ar in (j.get("arches", []) as Array): _ivw_veil(Vector3(float(ar[0][0]), float(ar[0][1]), float(ar[0][2])), String(ar[1]))
 	var lvn := iv_root.get_child(0) as Node3D      # (the level as Blender made it: its sunken stones)
 	for ch in iv_root.get_children():
@@ -3827,6 +3838,64 @@ func _ivw_scene2(j: Dictionary) -> void:
 	_ivw_risers_find(lvn, ivw_mirror)
 	a_drop = 0.5; a_headp = 0.3; a_lean = 0.86; palm_on = true; a_wL = 1.0; a_wR = 1.0; palm_nL = Vector3.UP; palm_nR = Vector3.UP      # (she lies curled where she woke, her palms on the stone)
 	if OS.get_environment("IVW_SKIP") != "": a_drop = 0.0; a_headp = 0.0; a_lean = 0.0; palm_on = false; a_wL = 0.0; a_wR = 0.0; ivw_close = 0.0      # (to judge the look: awake already)
+
+## light in the gate (the user: "maybe the gate should glow, have light inside it"): a soft warm light filling its
+## opening, brightest low in the middle, stirring a little; a glow about it; its light lying on the stone before it;
+## motes of light rising from it. At the end it flares.
+const IVW_GATE_SH := """
+shader_type spatial;
+render_mode unshaded, cull_disabled, shadows_disabled, depth_draw_never, blend_add;
+uniform vec3 col : source_color = vec3(1.0, 0.93, 0.8);
+uniform float k = 1.0;
+varying vec2 q;
+void vertex(){ q = VERTEX.xy; }
+void fragment(){
+	float r = 0.41; float hs = 1.34;
+	float across = abs(q.x) / r;
+	float up = q.y / (hs + r);
+	float a = (1.0 - smoothstep(0.55, 1.0, across)) * 0.55 + 0.45;      // (brightest in the middle)
+	a *= 1.0 - smoothstep(0.35, 1.0, up) * 0.6;      // (and low, where it falls on the threshold)
+	a *= 0.86 + 0.14 * sin(TIME * 1.2 + q.y * 3.0 + sin(TIME * 0.7 + q.x * 5.0));      // (stirring)
+	ALBEDO = col * a * 0.62 * k;
+}
+"""
+var ivw_gate_m: ShaderMaterial
+var ivw_gate_glow: StandardMaterial3D
+func _ivw_gate_light(p: Vector3, ax: String) -> void:
+	var r := 0.41; var hs := 1.34
+	var st := SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var V := func(x: float, y: float) -> void: st.add_vertex(Vector3(x, y, 0.0))
+	V.call(-r, 0.0); V.call(r, 0.0); V.call(r, hs)
+	V.call(-r, 0.0); V.call(r, hs); V.call(-r, hs)
+	for i in 16:      # (the round head)
+		var a0 := PI * float(i) / 16.0; var a1 := PI * float(i + 1) / 16.0
+		V.call(0.0, hs); V.call(cos(a0) * r, hs + sin(a0) * r); V.call(cos(a1) * r, hs + sin(a1) * r)
+	var mi := MeshInstance3D.new(); mi.mesh = st.commit(); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ivw_gate_m = ShaderMaterial.new(); var sh := Shader.new(); sh.code = IVW_GATE_SH; ivw_gate_m.shader = sh; mi.material_override = ivw_gate_m
+	iv_root.add_child(mi); mi.global_position = IV_O + p
+	if ax != "x": mi.rotation.y = PI * 0.5      # (the opening across the way: along x the gate's face is the x-y plane)
+	var front := Vector3(0, 0, 1) if ax == "x" else Vector3(1, 0, 0)
+	if (ivp_nodes.get(String(ivg_exit) if ivg_on else "r", IV_O + p) as Vector3).dot(front) < (IV_O + p).dot(front): front = -front      # (toward the ring)
+	var gq := QuadMesh.new(); gq.size = Vector2(2.6, 2.6)      # (the glow about it)
+	ivw_gate_glow = StandardMaterial3D.new(); ivw_gate_glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; ivw_gate_glow.albedo_texture = load("res://goiv/glow.png")
+	ivw_gate_glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; ivw_gate_glow.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; ivw_gate_glow.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	ivw_gate_glow.albedo_color = Color(1.0, 0.92, 0.8, 0.32)
+	var gl := MeshInstance3D.new(); gl.mesh = gq; gl.material_override = ivw_gate_glow; gl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	iv_root.add_child(gl); gl.global_position = IV_O + p + Vector3(0, 0.95, 0) + front * 0.05
+	var fq := QuadMesh.new(); fq.size = Vector2(1.5, 1.5); fq.orientation = PlaneMesh.FACE_Y      # (its light lying on the stone before it)
+	var fm := StandardMaterial3D.new(); fm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; fm.albedo_texture = load("res://goiv/glow.png")
+	fm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; fm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; fm.albedo_color = Color(1.0, 0.92, 0.8, 0.3)
+	var fl := MeshInstance3D.new(); fl.mesh = fq; fl.material_override = fm; fl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	iv_root.add_child(fl); fl.global_position = IV_O + p + Vector3(0, 0.015, 0) + front * 0.45
+	var pt := CPUParticles3D.new(); iv_root.add_child(pt); pt.global_position = IV_O + p + Vector3(0, 0.3, 0)      # (motes of light rising from it)
+	pt.amount = 14; pt.lifetime = 4.0; pt.preprocess = 4.0; pt.local_coords = false
+	pt.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX; pt.emission_box_extents = Vector3(0.32, 0.25, 0.12) if ax == "x" else Vector3(0.12, 0.25, 0.32)
+	pt.direction = Vector3.UP; pt.spread = 18.0; pt.gravity = Vector3(0, 0.05, 0); pt.initial_velocity_min = 0.12; pt.initial_velocity_max = 0.3
+	var mq := QuadMesh.new(); mq.size = Vector2(0.06, 0.06)
+	var mm := StandardMaterial3D.new(); mm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; mm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; mm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mm.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES; mm.vertex_color_use_as_albedo = true; mm.albedo_texture = load("res://goiv/glow.png"); mq.material = mm; pt.mesh = mq
+	var g := Gradient.new(); g.offsets = PackedFloat32Array([0.0, 0.25, 1.0]); g.colors = PackedColorArray([Color(1, 0.95, 0.85, 0.0), Color(1, 0.95, 0.85, 0.9), Color(1, 0.95, 0.9, 0.0)])
+	pt.color_ramp = g; pt.emitting = true
 
 const IVW_VEIL_SH := """
 shader_type spatial;

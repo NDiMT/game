@@ -106,7 +106,7 @@ The levels are many, in one system. A new level is made in this order (the secon
   - **Rock that is richer** (`rich_k`): each break its own tone, beds across the upright faces, lichen on what faces the sky, a fine speckle.
 - **Lara Croft GO's atmosphere** (the user: "study Lara Croft GO's whole style and get the same atmosphere"). Its makers describe big plain-colour surfaces rather than visible triangles, a custom lighting system, fog, vistas and foreground silhouettes, and a distinct palette per chapter. In our levels that means:
   - **Light and shadow that read**: a key light high at the side, so tops are bright and the faces toward the eye fall into shade. Cast shadows a deep tint of the place (`shade_tint`; lilac at dawn), on the rock too (`shadow_k` about 0.8). Pale shadows make a place flat.
-  - **Big plain surfaces**: keep surface noise quiet (rock speckle `rich_k` about 0.5, veins about 0.25). The big faces must read first.
+  - **Big plain surfaces**: no surface noise on the rock (`rich_k` 0): each face one even, clean tone. Beds, lichen and speckle read as "something strange" to the user. Keep the marble's veins faint (about 0.25).
   - **Foreground silhouettes**: dark, soft-edged shapes before the eye at the frame's corners (rocks at the lower corners, a branch above), tinted toward the place's shade (`modulate`), never over the way or the threshold. Add a soft darkening at the edges.
   - **Fog and vistas**: the hazy backdrop, paler the farther.
   - **Life**: motes of light drifting slowly (`CPUParticles3D`, additive glow, world space), a few far birds paled by the haze (a V mesh whose wings beat now and then in the vertex shader), a ripple now and then in the open water (`_ivw_life`).
@@ -117,6 +117,8 @@ The levels are many, in one system. A new level is made in this order (the secon
     - the gate hiding her at the end;
     - the ring's glow cut by the gate's pillars.
   - **The ring is set whole before a gate, never in its opening**: the opening is narrower than its glow, and the gate's depth hides her from the eye.
+  - **The way's line stops at the ring's rim** (`_ivr_way`): a line running into the ring "looks ugly".
+  - **The gate holds light** (`_ivw_gate_light`): a soft warm light fills its opening, brightest low in the middle and stirring. Around it: a glow, its light lying on the stone before it, motes rising. At the end it flares as she stands on the ring.
 - **The words** (titles and the lines of the story): white letters with a soft black shadow all round them, made of the old haze in many thin black outline steps. No offset shadow, no warm glow, no red rule or lozenge over them.
 - **Check what the eye sees of a thing before blaming the renderer**: a chain laid "up the screen" from a winch hid wholly behind its drum. Paint the thing plain red with an unshaded material to see where it is, and route it on the eye's side.
 - **A hero prop from an image** (the Observer, a colossal veiled bust): paint it alone on a plain background, `tripo make <png> --for game-mobile` (it returns FBX), then decimate to about 7k triangles with flat faces and export GLB to `props/` (`tools/go/fbx2glb.py`). Keep the FBX: decimate again from it, never from a decimated GLB. Place it by its foot, height and turn, give it a palette of its own and haze, clip it at the water, and mirror it.
