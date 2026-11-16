@@ -1,0 +1,8 @@
+{"palette": "day", "orb": {"x": 0.42, "y": 0.1, "r": 0.06}, "layers": [
+ {"el": "clouds_tower", "x": 0.82, "y": 0.2, "w": 0.45, "depth": "far", "fade": 0.3, "haze": 0.5},
+ {"el": "ridge_soft", "x": 0.5, "y": 0.37, "w": 1.5, "depth": "far", "fade": 0.4},
+ {"el": "temple_hill", "x": 0.3, "y": 0.33, "w": 0.5, "depth": "mid", "fade": 0.4},
+ {"el": "colonnade_ridge", "x": 0.75, "y": 0.4, "w": 0.7, "depth": "mid", "fade": 0.35},
+ {"el": "colossus", "x": 0.55, "y": 0.36, "w": 0.16, "depth": "far", "fade": 0.35},
+ {"el": "cypress_row", "x": 0.2, "y": 0.47, "w": 0.6, "depth": "near", "fade": 0.35}],
+ "mist": {"from": 0.45, "to": 0.72}}

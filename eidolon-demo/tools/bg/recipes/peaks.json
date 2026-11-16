@@ -1,0 +1,7 @@
+{"palette": "night", "orb": {"x": 0.7, "y": 0.14, "r": 0.15}, "layers": [
+ {"el": "clouds_wisp", "x": 0.45, "y": 0.23, "w": 1.3, "depth": "far", "fade": 0.0, "haze": 0.6},
+ {"el": "ridge_far", "x": 0.5, "y": 0.36, "w": 1.5, "depth": "far", "fade": 0.4},
+ {"el": "peak_great", "x": 0.72, "y": 0.36, "w": 0.75, "depth": "mid", "fade": 0.45},
+ {"el": "ridge_alpine", "x": 0.3, "y": 0.42, "w": 1.1, "depth": "mid", "fade": 0.4},
+ {"el": "spires", "x": 0.06, "y": 0.47, "w": 0.32, "depth": "near", "fade": 0.4}],
+ "mist": {"from": 0.42, "to": 0.66}}

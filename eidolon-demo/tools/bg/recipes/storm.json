@@ -1,0 +1,7 @@
+{"palette": "storm", "orb": null, "layers": [
+ {"el": "clouds_tower", "x": 0.25, "y": 0.18, "w": 0.6, "depth": "far", "fade": 0.3, "haze": 0.35},
+ {"el": "clouds_bank", "x": 0.75, "y": 0.14, "w": 1.0, "depth": "far", "fade": 0.0, "haze": 0.4},
+ {"el": "mesa_cliffs", "x": 0.72, "y": 0.38, "w": 0.7, "depth": "far", "fade": 0.4},
+ {"el": "aqueduct", "x": 0.4, "y": 0.43, "w": 1.0, "depth": "mid", "fade": 0.35},
+ {"el": "statue_head", "x": 0.85, "y": 0.5, "w": 0.4, "depth": "near", "fade": 0.4}],
+ "mist": {"from": 0.48, "to": 0.75}}

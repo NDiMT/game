@@ -1,0 +1,7 @@
+{"palette": "dusk", "orb": {"x": 0.25, "y": 0.2, "r": 0.06}, "layers": [
+ {"el": "clouds_bank", "x": 0.5, "y": 0.5, "w": 1.6, "depth": "far", "fade": 0.0, "haze": 0.4},
+ {"el": "waterfall_cliff", "x": 0.86, "y": 0.34, "w": 0.4, "depth": "mid", "fade": 0.4},
+ {"el": "island_float", "x": 0.62, "y": 0.22, "w": 0.34, "depth": "mid", "fade": 0.0},
+ {"el": "island_float", "x": 0.2, "y": 0.36, "w": 0.22, "flip": true, "depth": "far", "fade": 0.0},
+ {"el": "spires", "x": 0.08, "y": 0.5, "w": 0.3, "depth": "near", "fade": 0.4}],
+ "mist": {"from": 0.48, "to": 0.75}}

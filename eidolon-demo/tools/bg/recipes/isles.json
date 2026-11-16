@@ -1,0 +1,7 @@
+{"palette": "dawn", "orb": {"x": 0.3, "y": 0.22, "r": 0.07}, "layers": [
+ {"el": "clouds_bank", "x": 0.7, "y": 0.18, "w": 0.9, "depth": "far", "fade": 0.0, "haze": 0.5},
+ {"el": "clouds_wisp", "x": 0.25, "y": 0.12, "w": 1.0, "depth": "far", "fade": 0.0, "haze": 0.55},
+ {"el": "islands_low", "x": 0.55, "y": 0.39, "w": 1.3, "depth": "far", "fade": 0.1},
+ {"el": "lighthouse_rock", "x": 0.86, "y": 0.36, "w": 0.26, "depth": "mid", "fade": 0.35},
+ {"el": "sea_stacks", "x": 0.25, "y": 0.43, "w": 0.75, "depth": "mid", "fade": 0.25}],
+ "mist": {"from": 0.45, "to": 0.7}}
