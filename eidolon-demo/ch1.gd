@@ -2086,6 +2086,8 @@ uniform float lf_len = 1.9;
 uniform float lfog = 0.0;      // (the level's own rock: its depth under the floor it bears is in COLOR.g, a quarter of a metre to one)
 uniform float lf_hi = 0.5;
 uniform float sea_k = 0.0;      // (a level at sea: the mist is the sea's colour where the sea lies behind, so what sinks into it leaves no edge)
+uniform float clip_k = 0.0; uniform float clip_y = -1e9;      // (a level at sea: nothing under the water is drawn; the water shows a thing's image instead)
+uniform float mirror_k = 0.0; uniform float mirror_y = 0.0;      // (a thing's image in the water: drawn below it, shaded as the thing itself is)
 uniform vec3 sea_c : source_color = vec3(0.3, 0.45, 0.56);
 uniform float shadow_k = 1.0;      // (how much cast shadow falls on it: none on the rock, whose faces are each one clean tone)
 uniform float lf_lo = 3.2;
@@ -2101,8 +2103,12 @@ float vn(vec3 p){ vec3 i = floor(p); vec3 f = fract(p); f = f * f * (3.0 - 2.0 *
 		mix(mix(h3(i + vec3(0, 0, 1)), h3(i + vec3(1, 0, 1)), f.x), mix(h3(i + vec3(0, 1, 1)), h3(i + vec3(1, 1, 1)), f.x), f.y), f.z); }
 float fbm(vec3 p){ return vn(p) * 0.55 + vn(p * 2.1 + 3.1) * 0.3 + vn(p * 4.3 + 7.7) * 0.15; }
 void fragment(){
+	if (clip_k > 0.5 && wp.y < clip_y) discard;
+	if (mirror_k > 0.5 && wp.y > mirror_y) discard;
 	vec3 fn = normalize(cross(dFdx(wp), dFdy(wp)));
 	if (dot(fn, INV_VIEW_MATRIX[2].xyz) < 0.0) fn = -fn;
+	if (mirror_k > 0.5) fn.y = -fn.y;      // (in the water: each face as lit as it is above)
+	float wy = mirror_k > 0.5 ? 2.0 * mirror_y - wp.y : wp.y;
 	float d = dot(fn, normalize(key_dir));
 	vec3 c = mix(c_dark, c_mid, smoothstep(-0.34, -0.14, d));      // (the light simple and sharp, as the picture's: each face one tone)
 	c = mix(c, c_lit, smoothstep(0.16, 0.34, d));
@@ -2121,15 +2127,16 @@ void fragment(){
 	if (ao_k > 0.0) { float ao = max(pow(clamp(COLOR.r, 0.0, 1.0), 0.3), 0.22); c *= mix(1.0, ao, ao_k); c = mix(c, c * vec3(0.93, 0.83, 0.78), (1.0 - ao) * ao_k * 0.6); }
 	float ld = COLOR.g * 4.0;
 	if (lfog > 0.5) c *= 1.0 - dk * smoothstep(0.0, 0.9, ld);      // (the rock darker under the floor it bears, before the mist takes it)
-	else c *= 1.0 - dk * smoothstep(fog_ref + fog_hi + 2.4, fog_ref + fog_hi, wp.y);      // (the rock darkens as it goes down, before the mist takes it)
+	else c *= 1.0 - dk * smoothstep(fog_ref + fog_hi + 2.4, fog_ref + fog_hi, wy);      // (the rock darkens as it goes down, before the mist takes it)
 	if (flat_mode > 0.5) c = c_top;
 	float sy = uv_flip > 0.5 ? 1.0 - SCREEN_UV.y : SCREEN_UV.y;
-	float fk = max(1.0 - smoothstep(fog_ref + fog_lo, fog_ref + fog_hi, wp.y), far_k);
+	float fk = max(1.0 - smoothstep(fog_ref + fog_lo, fog_ref + fog_hi, wy), far_k);
 	if (haze > 0.0) fk = max(fk, haze * 0.22 * smoothstep(44.0, 52.0, -VERTEX.z));      // (VERTEX: from the eye)
 	if (lfog > 0.5) {      // (into the mist softly, as mist does: a long fading, its edge in wisps)
 		float lt = clamp((ld - lf_hi) / lf_len, 0.0, 1.0);      // (one clean fade down each face: no wisps, they smudged the rock)
 		fk = max(fk, lt * lt * (3.0 - 2.0 * lt));
 	}
+	if (mirror_k > 0.5) c = mix(c, sea_c, 0.28 + 0.5 * smoothstep(0.0, 3.2, mirror_y - wp.y));      // (the image dims as it goes down into the water)
 	ALBEDO = c * (1.0 - fk);
 	vec3 mist = bgc(sy);
 	if (sea_k > 0.0) mist = mix(mist, sea_c, smoothstep(0.21, 0.38, sy) * (1.0 - smoothstep(0.5, 0.92, sy)) * 0.9 * sea_k);
@@ -2199,7 +2206,8 @@ func _iv_mat(kind: String, far_k := 0.0, extra := {}) -> ShaderMaterial:
 	var p: Array = _iv_pal(kind)
 	for i in 4: m.set_shader_parameter(["c_top", "c_lit", "c_mid", "c_dark"][i], Color(String(p[i])))
 	_iv_sky(m)
-	if go_drown: m.set_shader_parameter("shade_tint", Color(0.74, 0.79, 0.9))
+	if go_drown:
+		m.set_shader_parameter("shade_tint", Color(0.74, 0.79, 0.9)); m.set_shader_parameter("clip_k", 1.0); m.set_shader_parameter("clip_y", IV_O.y + ivr_sea_y)
 	m.set_shader_parameter("key_dir", iv_key); m.set_shader_parameter("far_k", far_k)
 	m.set_shader_parameter("uv_flip", iv_uvf); m.set_shader_parameter("alb_in_light", iv_alb)
 	if OS.get_environment("IV_DBG") != "": m.set_shader_parameter("dbg", float(OS.get_environment("IV_DBG")))
@@ -3507,16 +3515,32 @@ func _ivr_far() -> void:
 	feet = _ivr_colonnade(ts, spot_y, Vector2(0.42, 4.6), Vector2(-4.8, 5.7), ty, 7, 0.84, 0.25, 7, rng)
 	_ivr_ridge_under(ts, feet, 0.1, rng)
 	_iv_commit(ts, "farsil", self, 0.42, fog.call(ty, 1.0), false)
-	# the colossus on the crown of the far hill: on a plinth, as the picture's
+	# the colossus on the crown of the far hill: on a plinth, as the picture's, the plinth on a crown of rock that goes
+	# down into the haze (never a block hanging in the air)
 	var cl: Vector3 = P.call(878, 398, 25.5)
 	var ss := _iv_st()
 	_iv_box(ss, cl + Vector3(-0.27, -0.95, -0.27), cl + Vector3(0.27, 0.0, 0.27))
 	_iv_box(ss, cl + Vector3(-0.32, -0.95, -0.32), cl + Vector3(0.32, -0.8, 0.32))
-	_iv_commit(ss, "farsil", self, 0.42, fog.call(cl.y, 1.0), false)
+	_ivr_crag(ss, cl + Vector3(0, -0.93, 0), 1.3, rng, false, 0.62, true, true)
+	_iv_commit(ss, "farsil", self, 0.42, {"sil": 1.0, "fog_hi": cl.y - 1.1, "fog_lo": cl.y - 3.6}, false)
 	var col := prop_model("iv_colossus", self, 2.4)
 	col.position = cl; col.rotation.y = PI * 0.3
 	for m in col.find_children("*", "MeshInstance3D", true, false):
 		(m as MeshInstance3D).material_override = _iv_mat("farsil", 0.12, {"sil": 1.0, "fog_hi": cl.y - 1.0, "fog_lo": cl.y - 6.0}); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+## a thing's image in the still water: a copy of it turned over about the sea's level, shaded as the thing is
+func _ivs_mirror(src: Node3D, kind_of: Callable) -> Node3D:
+	var sea_w := IV_O.y + ivr_sea_y
+	var mn := src.duplicate() as Node3D
+	src.get_parent().add_child(mn)
+	mn.global_transform = Transform3D(Basis.from_scale(Vector3(1, -1, 1)), Vector3(0, 2.0 * sea_w, 0)) * src.global_transform
+	for m in mn.find_children("*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		var kd: Array = kind_of.call(mi)
+		var ex: Dictionary = (kd[2] as Dictionary).duplicate()
+		ex["mirror_k"] = 1.0; ex["mirror_y"] = sea_w; ex["clip_k"] = 0.0; ex["shadow_k"] = 0.0
+		mi.material_override = _iv_mat(String(kd[0]), float(kd[1]), ex); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mn
 
 ## the drowned sanctuary's sea: still water under the level, its own colour between the haze far off and the mist
 ## below, a warm path where the low sun lies on it, broken by ripples
@@ -3528,6 +3552,7 @@ uniform float sky4 = 0.0; uniform vec3 bg_hz : source_color = vec3(1.0); uniform
 uniform vec3 sea_c : source_color = vec3(0.3, 0.45, 0.56);
 uniform vec3 glint_c : source_color = vec3(0.99, 0.87, 0.76);
 uniform vec2 sun = vec2(0.305, 0.19);
+uniform float sea_a = 1.0;      // (the surface: how much of the sea's own colour; the rest is what lies under it, the images in the water)
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 vec3 bgc(float s){
@@ -3541,6 +3566,7 @@ void fragment(){
 	float path = exp(-pow((SCREEN_UV.x - sun.x) * 5.0, 2.0)) * (1.0 - smoothstep(0.19, 0.55, s));
 	c = mix(c, glint_c, path * 0.35 * smoothstep(0.1, 0.9, rip));
 	ALBEDO = c;
+	if (sea_a < 0.999) ALPHA = sea_a;
 }
 """
 func _ivs_sea(sea_y: float) -> void:
@@ -3556,12 +3582,18 @@ func _ivs_sea(sea_y: float) -> void:
 	var sy_h := (1376.0 - IVS_HORIZON) / ppm
 	var ph := ref + by * sy_h + fwd * ((y - ref.y - by.y * sy_h) / fwd.y)      # (the horizon, below the middle of the screen)
 	var hb := Vector3(-fwd.x, 0, -fwd.z).normalized()
-	var st := SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var c := [ph - bx * 80.0, ph + bx * 80.0, ph + bx * 80.0 + hb * 120.0, ph - bx * 80.0 + hb * 120.0]
-	for t in [[0, 1, 2], [0, 2, 3]]:
-		for i in t: st.set_normal(Vector3.UP); st.add_vertex(c[i])
-	var mi := MeshInstance3D.new(); mi.mesh = st.commit(); mi.material_override = m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(mi)
+	# (two sheets: the surface, a little clear; and deep under it, along the eye, a floor of the same colours over the
+	# same part of the screen: where nothing is in the water the sea looks as before, where an image is it shows)
+	var mf := m.duplicate() as ShaderMaterial
+	m.set_shader_parameter("sea_a", 0.7)
+	for pass_i in 2:
+		var off := Vector3.ZERO if pass_i == 0 else fwd * 40.0
+		var st := SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		for t in [[0, 1, 2], [0, 2, 3]]:
+			for i in t: st.set_normal(Vector3.UP); st.add_vertex((c[i] as Vector3) + off)
+		var mi := MeshInstance3D.new(); mi.mesh = st.commit(); mi.material_override = m if pass_i == 0 else mf; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mi)
 	ivs_horizon = ph
 
 ## far off over the sea, where the concept (gosea/concept.png) has each thing: the colossal face of the one who was
@@ -3586,7 +3618,7 @@ func _ivs_far() -> void:
 	var hp := Node3D.new(); add_child(hp); hp.global_position = fc + Vector3(0, -1.0, 0)      # (half sunk: the water at its cheek)
 	var hd := prop_model("iv_head", hp, 3.9); hd.position = Vector3(0, -1.3, 0)
 	for m in hd.find_children("*", "MeshInstance3D", true, false):
-		(m as MeshInstance3D).material_override = _iv_mat("seaface", 0.04, {"fog_hi": sea_y + 1.35, "fog_lo": sea_y + 0.05}); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		(m as MeshInstance3D).material_override = _iv_mat("seaface", 0.0, {"fog_hi": -900.0, "fog_lo": -901.0}); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	var fzv := Vector3(0.52, 0.42, 0.74); var fyv := Vector3(-0.78, 0.55, -0.1)      # (as the fallen face of the ivory level: it looks up at the eye, its crown to the upper left)
 	if OS.get_environment("IVS_FZ") != "": var q := OS.get_environment("IVS_FZ").split(","); fzv = Vector3(float(q[0]), float(q[1]), float(q[2]))
 	if OS.get_environment("IVS_FY") != "": var q2 := OS.get_environment("IVS_FY").split(","); fyv = Vector3(float(q2[0]), float(q2[1]), float(q2[2]))
@@ -3594,6 +3626,7 @@ func _ivs_far() -> void:
 	var fy := (fyv - fz * fyv.dot(fz)).normalized()
 	var fx := fy.cross(fz)
 	hp.basis = Basis(fz, fy, -fx)
+	_ivs_mirror(hp, func(_mi: MeshInstance3D) -> Array: return ["seaface", 0.0, {"fog_hi": -900.0, "fog_lo": -901.0}])
 	# far off, as the concept has it: cliffs and stacks rising out of the haze. The eye has no perspective, so "far" is
 	# only paler and smaller; each stands just behind the level, set by its top in the concept and by where its body
 	# has gone wholly into the mist (its foot, below which the sea lies in front of it). It fades into the mist from a
@@ -3606,12 +3639,12 @@ func _ivs_far() -> void:
 	for f in [
 			[1290, 120, 640, 4.6, 0.6, "far", 0.25],      # (a great pale mountain behind, at the right)
 			[150, 330, 640, 2.8, 0.56, "far", 0.25],      # (low pale hills at the left, beyond the sun)
-			[853, 425, 1000, 2.5, 0.22, "far", 0.16],      # (the island in the middle: its cliff under the colonnade and the statue)
-			[620, 560, 960, 1.6, 0.34, "far", 0.2], [1075, 545, 940, 1.3, 0.34, "far", 0.2],      # (its shoulders, further back and paler)
-			[1228, 345, 900, 1.25, 0.2, "far1", 0.2],      # (a tall stack right of the island)
-			[338, 425, 820, 0.9, 0.26, "far1", 0.2],      # (a stack at the left, by the sun)
-			[40, 505, 980, 1.7, 0.24, "far1", 0.2],      # (a headland at the far left)
-			[1415, 640, 1060, 1.5, 0.16, "far1", 0.22]]:      # (the stack of the colonnade at the right)
+			[853, 425, 1000, 2.5, 0.22, "far", 0.42],      # (the island in the middle: its cliff under the colonnade and the statue)
+			[620, 560, 960, 1.6, 0.34, "far", 0.36], [1075, 545, 940, 1.3, 0.34, "far", 0.36],      # (its shoulders, further back and paler)
+			[1228, 345, 900, 1.25, 0.2, "far1", 0.38],      # (a tall stack right of the island)
+			[338, 425, 820, 0.9, 0.26, "far1", 0.36],      # (a stack at the left, by the sun)
+			[40, 505, 980, 1.7, 0.24, "far1", 0.36],      # (a headland at the far left)
+			[1415, 640, 1060, 1.5, 0.16, "far1", 0.45]]:      # (the stack of the colonnade at the right)
 		var dd: float = dep_at.call(float(f[2]))
 		var top: Vector3 = P.call(float(f[0]), float(f[1]), dd)
 		var tall := top.y - sea_y
@@ -3755,6 +3788,8 @@ func _ivr_block() -> Node3D:
 
 func _ivr_build() -> void:
 	iv_root = Node3D.new(); iv_root.position = IV_O; add_child(iv_root)
+	var j0 = JSON.parse_string(FileAccess.get_file_as_string(go_dir + "level.json"))
+	if j0 is Dictionary and (j0 as Dictionary).get("sea_y") != null: ivr_sea_y = float(j0.sea_y)
 	var bm := ShaderMaterial.new(); var bs := Shader.new(); bs.code = IV_BG_SH; bm.shader = bs
 	_iv_sky(bm)
 	if go_drown: bm.set_shader_parameter("sun", Vector2(0.305, 0.19)); bm.set_shader_parameter("sun_k", 1.0)
@@ -3770,6 +3805,11 @@ func _ivr_build() -> void:
 		var nm := String(mi.name).to_lower() + "|" + String(mi.get_parent().name).to_lower()
 		var kind := "rock2" if nm.contains("rock") else ("olive2" if nm.contains("olive") else ("bark" if nm.contains("bark") else "marble2"))
 		mi.material_override = _ivr_mat(kind, 1.0, true); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	if go_drown:      # (the level's image in the still water, faint)
+		_ivs_mirror(lv, func(mi: MeshInstance3D) -> Array:
+			var nm := String(mi.name).to_lower() + "|" + String(mi.get_parent().name).to_lower()
+			var kd := "rock2" if nm.contains("rock") else "marble2"
+			return [kd, 0.0, {"fog_hi": ivr_sea_y + 1.5, "fog_lo": ivr_sea_y - 0.15, "veins": 0.6 if kd == "marble2" else 0.0, "haze": 1.0}])
 	# its way
 	var j: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(go_dir + "level.json"))
 	if j.has("eye"): ivr_eye = j.eye
