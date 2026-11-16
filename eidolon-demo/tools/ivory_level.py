@@ -865,16 +865,17 @@ else:
         fl[4:] = [STEPS[-1]]
     for (c, r_, top) in PLAN.get('rocks', []):      # rock that binds the floors into one mountain
         rock += ledge('ledge', c, r_, top)
-    for (p, h) in PLAN['columns']:
+    for (p, h) in PLAN.get('columns', []):
         x_, z_ = on_floor(p[0], p[1], p[2], 0.42)
         marble += column(x_, p[1], z_, h)
-    for (p, ax) in PLAN['arches']:
+    for (p, ax) in PLAN.get('arches', []):
         marble += arch(p[0], p[1], p[2], W=1.42, Hh=2.3, r=0.41, D=0.36, along_x=(ax == 'x'))
-    cp, ch_ = PLAN['cypress']
-    x_, z_ = on_floor(cp[0], cp[1], cp[2], 0.32)
-    lv, bk = cypress(x_, cp[1], z_, ch_); olive += lv; barks += bk
+    if PLAN.get('cypress'):
+        cp, ch_ = PLAN['cypress']
+        x_, z_ = on_floor(cp[0], cp[1], cp[2], 0.32)
+        lv, bk = cypress(x_, cp[1], z_, ch_); olive += lv; barks += bk
     U = Vector((0.7071, 0.0, -0.7071)); W = Vector((0.7071, 0.0, 0.7071)); Y = Vector((0.0, 1.0, 0.0))
-    PLAN['relief'] = list(Vector(PLAN['relief']) + W * 0.32)      # (a small carved stone set in the face of the rock: the game puts it there)
+    if PLAN.get('relief'): PLAN['relief'] = list(Vector(PLAN['relief']) + W * 0.32)      # (a small carved stone set in the face of the rock: the game puts it there)
     RELIEF_W = W
 
 
@@ -887,7 +888,7 @@ def join(obs, name):
     return o
 
 
-M = join(marble, 'marble'); R = join(rock, 'rock'); O = join(olive, 'olive'); B = join(barks, 'bark')
+M = join(marble, 'marble'); R = join(rock, 'rock'); O = join(olive, 'olive') if olive else None; B = join(barks, 'bark') if barks else None
 if PLAN is not None and PLAN.get('relief'):      # (the small carved stone: on the face of the rock toward the eye, half sunk in it)
     rp = Vector(PLAN['relief']); Wd = RELIEF_W
     for lift in (0.0, 0.25, -0.25, 0.5):
@@ -896,7 +897,7 @@ if PLAN is not None and PLAN.get('relief'):      # (the small carved stone: on t
         if hit:
             PLAN['relief'] = [loc.x, loc.z - 0.17, -loc.y]; PLAN['relief'] = list(Vector(PLAN['relief']) + Wd * 0.05)
             print('RELIEF on the rock at', [round(v, 2) for v in PLAN['relief']]); break
-print('TRIS', sum(len(o.data.polygons) for o in (M, R, O, B)))
+print('TRIS', sum(len(o.data.polygons) for o in (M, R, O, B) if o is not None))
 
 # ------------------------------------------------------------------ the shade of corners and clefts, into the vertices
 scene.render.engine = 'CYCLES'
@@ -905,6 +906,7 @@ scene.cycles.samples = SAMPLES
 w = bpy.data.worlds.new('w'); scene.world = w; w.light_settings.distance = 0.55      # (only the close corners and clefts darken)
 scene.render.bake.target = 'VERTEX_COLORS'
 for o in (M, R, O, B):
+    if o is None: continue
     mat = bpy.data.materials.new(o.name); o.data.materials.append(mat)
     ca = o.data.color_attributes.new('ao', 'BYTE_COLOR', 'CORNER')
     o.data.color_attributes.active_color = ca
@@ -928,7 +930,7 @@ for extra in (dict(export_vertex_color='ACTIVE'), dict(export_colors=True), {}):
 
 # ------------------------------------------------------------------ the way, for the game
 if PLAN is not None:
-    way = {k: PLAN[k] for k in ('heights', 'nodes', 'edges', 'volute', 'head', 'ring', 'eye', 'flights', 'floors', 'relief')}
+    way = {k: PLAN.get(k) for k in ('heights', 'nodes', 'edges', 'volute', 'head', 'ring', 'eye', 'flights', 'floors', 'relief', 'faces', 'stone', 'scene')}
     way['stair_groove'] = STAIR_GROOVE
     with open(OUTJ, 'w') as f: json.dump(way, f, indent=1)
     print('DONE'); sys.exit(0)
