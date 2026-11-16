@@ -2,3 +2,4 @@ build/
 .godot/
 shots/*.mp4
 hero_models/hq*.glb
+__pycache__/
