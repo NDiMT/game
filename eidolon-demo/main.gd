@@ -903,6 +903,7 @@ var sway_v := Vector2.ZERO
 var head_yaw := 0.0
 var a_hy := 0.0
 var a_drop := 0.0
+var a_rise := -1.0      # (ione4: up from one knee, 0 kneeling to 1 standing, through a lunge; below 0 not in use)
 var a_lean := 0.0
 var a_pool := 0.0
 var a_hold := 0.0
@@ -5126,6 +5127,7 @@ func _process(dt: float) -> void:
 	var i4c := ""      # ione4: the clip she should be in. She has steps on the spot for a turn where she stands, and a kneel that a_drop runs forward and back
 	if rig_file.begins_with("ione4") and H.has("main") and H["main"].ap != null and (H["main"].ap as AnimationPlayer).has_animation("kneel") and OS.get_environment("IONE4_CLIPS") != "0":
 		i4c = "kneel" if a_drop > 0.01 else ("turn_step" if (moving and spd < 0.12 and route.is_empty()) else ("walk" if moving else "idle"))
+		if a_rise >= 0.0 and (H["main"].ap as AnimationPlayer).has_animation("rise"): i4c = "rise"
 	if moving != walk_on or (i4c != "" and i4c != String(H["main"].get("clip", "idle"))):
 		walk_on = moving
 		for h in H.values():
@@ -5144,6 +5146,8 @@ func _process(dt: float) -> void:
 		elif i4c == "turn_step": hap.speed_scale = (1.0 - smoothstep(0.0, 1.0, pose_k)) * 1.1
 		elif i4c == "kneel" and hap.current_animation == "kneel":
 			hap.speed_scale = 1.0; hap.seek(clampf(a_drop / 0.5, 0.0, 1.0) * (hap.current_animation_length - 0.06), true)
+		elif i4c == "rise" and hap.current_animation == "rise":
+			hap.speed_scale = 1.0; hap.seek(clampf(a_rise, 0.0, 1.0) * (hap.current_animation_length - 0.04), true)
 	if hero_real: (H["ghost"].holder as Node3D).visible = near > 0.01
 	var prox := clampf(1.0 - (pos.x - MX - 0.5) / 1.4, 0.0, 1.0)
 	flash = move_toward(flash, 0.0, dt * 0.7)

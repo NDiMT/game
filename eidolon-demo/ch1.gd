@@ -3847,8 +3847,9 @@ func _ivw_scene2(j: Dictionary) -> void:
 	for ch in iv_root.get_children():
 		if ch is Node3D and not (ch as Node3D).find_children("riser_*", "MeshInstance3D", true, false).is_empty() and ch != ivw_mirror: lvn = ch; break
 	_ivw_risers_find(lvn, ivw_mirror)
-	a_drop = 0.5; a_headp = 0.34; a_lean = 0.05; palm_on = false; a_wL = 0.0; a_wR = 0.0      # (on one knee where she woke: the front foot planted, the back knee on the stone, her head bowed)
-	if OS.get_environment("IVW_SKIP") != "": a_drop = 0.0; a_headp = 0.0; a_lean = 0.0; palm_on = false; a_wL = 0.0; a_wR = 0.0; ivw_close = 0.0      # (to judge the look: awake already)
+	a_drop = 0.0; a_rise = 0.0; a_headp = 0.3; a_lean = 0.0; palm_on = false; a_wL = 0.0; a_wR = 0.0      # (on one knee where she woke: the front foot planted, the back knee on the stone, her head bowed)
+	if OS.get_environment("IVW_YAW") != "": yaw += float(OS.get_environment("IVW_YAW"))      # (to judge her pose from the side)
+	if OS.get_environment("IVW_SKIP") != "": a_drop = 0.0; a_rise = -1.0; a_headp = 0.0; a_lean = 0.0; palm_on = false; a_wL = 0.0; a_wR = 0.0; ivw_close = 0.0      # (to judge the look: awake already)
 
 ## light in the gate (the user: "maybe the gate should glow, have light inside it"): a soft warm light filling its
 ## opening, brightest low in the middle, stirring a little; a glow about it; its light lying on the stone before it;
@@ -3997,19 +3998,18 @@ func _ivw_snap(nm: String) -> void:      # (to judge the waking: a frame at each
 	await RenderingServer.frame_post_draw; get_viewport().get_texture().get_image().save_png("%s/%s.png" % [d, nm])
 	if OS.get_environment("IVW_QUIT_AT") == nm: get_tree().quit()
 
-func _ivw_rise() -> void:      # (on one knee; a moment still; then she rises, slowly, straight up, without turning; the eye does not move)
+func _ivw_rise() -> void:      # (on one knee; a moment still; then she rises slowly, as one rises from one knee: her weight forward, the back knee up, a lunge, the back foot drawn in and stepped through; she does not turn; the eye does not move)
 	iv_busy = true
 	await _ivw_snap("w0_kneel")
 	await get_tree().create_timer(1.5).timeout
 	var t := create_tween().set_parallel(true)
-	t.tween_property(self, "a_lean", 0.17, 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)      # (her weight comes forward over the front foot)
-	t.tween_property(self, "a_drop", 0.0, 3.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT).set_delay(0.55)      # (and she pushes up from it, slowly)
-	t.tween_property(self, "a_lean", 0.0, 2.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT).set_delay(2.4)      # (upright as she comes up)
-	t.tween_property(self, "a_headp", 0.0, 2.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT).set_delay(2.9)      # (her head lifts last: she looks out over the water)
-	await get_tree().create_timer(1.4).timeout; await _ivw_snap("w1_push")
-	await get_tree().create_timer(1.3).timeout; await _ivw_snap("w2_rising")
-	await get_tree().create_timer(1.3).timeout; await _ivw_snap("w3_almost")
+	t.tween_property(self, "a_rise", 1.0, 4.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	t.tween_property(self, "a_headp", 0.0, 1.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT).set_delay(3.2)      # (her head lifts last: she looks out over the water)
+	await get_tree().create_timer(1.3).timeout; await _ivw_snap("w1_forward")
+	await get_tree().create_timer(1.2).timeout; await _ivw_snap("w2_lunge")
+	await get_tree().create_timer(1.2).timeout; await _ivw_snap("w3_step")
 	if t.is_running(): await t.finished
+	a_rise = -1.0
 	_ivw_ripple(pos, 1.3)
 	await _ivw_snap("w4_stand")
 	ivw_awake = true

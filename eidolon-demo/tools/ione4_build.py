@@ -6,7 +6,7 @@
 #     the same reason (the sash on the shoulder, the wrap of the neck)
 #   - clips: "idle" and "walk" from the generator, with the feet held to the floor (the generator pins the hips and
 #     lets the feet wander), the walk timed for 1.1 m/s, a breath laid over the idle; "turn_step" (steps on the spot)
-#     and "kneel" (down onto one knee) are made here
+#     and "kneel" (down onto one knee) and "rise" (up from one knee, through a lunge) are made here
 #   - three weights of the same model, each with the unwrap kept, the data picture as the material's image, and the
 #     cloth (alpha) and the data (rgb) in the vertex colours as well, for her reflection
 # usage: python3.11 -I ione4_build.py -- <rig+clips.glb> <data.png> <out dir> <name>
@@ -319,6 +319,36 @@ for f in range(NK + 1):
 kn = {"rot": kr, "hips": kh}
 l, r = foot_lift(fk(kn)); print("BUILD kneel: feet off the floor at the end %.3f %.3f, hips end at %.3f, right knee at %.3f" % (l[-1], r[-1], kh[-1, 2], fk1(kr[-1], kh[-1])[B("RightLeg")][2]))
 clips["kneel"] = kn
+# ---- rise: from the kneel up to standing, as one rises from one knee (the kneel run backwards swung the back leg
+#      forward while she was still low, and her leg bent strangely). The weight comes forward over the front foot; the
+#      back knee lifts off the floor, its toes still on it; she comes up into a lunge as far as the back leg reaches;
+#      then the back foot steps up beside the front one and she stands. The game runs it forward (a_rise).
+NR = int(os.environ.get("RISE_FRAMES", "72"))
+rr = np.zeros((NR + 1, NB, 3, 3)); rh = np.zeros((NR + 1, 3))
+upR = B("RightUpLeg"); reach = (thigh + shin) * 0.98
+for f in range(NR + 1):
+    u = f / NR; rot = stand.copy()
+    fw = ease(u / 0.35); sl = ease((u - 0.25) / 0.3); st = ease((u - 0.5) / 0.45)      # (weight forward; the back foot drawn in on its toes; the step through)
+    lean = 5.0 * (1.0 - ease(u / 0.35)) + 12.0 * math.sin(math.pi * min(u / 0.8, 1.0))
+    turn(rot, B("Spine"), roty(lean)); turn(rot, B("Head"), roty(6.0 * (1.0 - ease(u / 0.8))))
+    heel = 0.035 * ease(u / 0.35) * (1.0 - st)
+    pb = ra1 + (ra0 - ra1) * 0.4 * sl
+    ank = pb * (1.0 - st) + ra0 * st; ank = ank.copy(); ank[2] += heel + 0.04 * math.sin(math.pi * st)
+    pitch = (62.0 + 12.0 * ease(u / 0.35)) * (1.0 - st)
+    hips = stand_h.copy()
+    hips[0] = stand_h[0] - back_end * ((1.0 - fw) + 0.45 * fw) * (1.0 - st)
+    hips[2] = stand_h[2] - drop_end * (1.0 - ease((u - 0.04) / 0.9))
+    for _ in range(3):      # (no higher than the back leg reaches while its foot is still behind)
+        hj = fk1(rot, hips)[upR]; dxy = math.hypot(hj[0] - ank[0], hj[1] - ank[1])
+        zmax = ank[2] + math.sqrt(max(reach * reach - dxy * dxy, 0.0))
+        if hj[2] > zmax: hips[2] -= hj[2] - zmax
+    leg_ik(rot, hips, "Left", la0, 0.0)
+    leg_ik(rot, hips, "Right", ank, pitch)
+    turn(rot, RT, roty((-50.0 - 10.0 * ease(u / 0.35)) * (1.0 - st)))      # (the toes flat on the floor till the step)
+    rr[f] = rot; rh[f] = hips
+rz = {"rot": rr, "hips": rh}
+l, r = foot_lift(fk(rz)); print("BUILD rise: lowest foot lift %.3f %.3f, hips from %.3f to %.3f" % (l.min(), r.min(), rh[0, 2], rh[-1, 2]))
+clips["rise"] = rz
 only = os.environ.get("CLIPS", "")
 if only: clips = {k: v for k, v in clips.items() if k in only.split(",")}
 
