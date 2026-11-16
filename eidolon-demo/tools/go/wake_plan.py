@@ -1,6 +1,6 @@
 """The plan of "The Waking" (the first level, gowake/): dawn over a still sea. She wakes on a marble threshold at the
 water's edge; three stepping stones cross the still water to a pillar of rock; a stair climbs to its terrace, a second
-stair to the landing at its top, where a gate stands square to the way, the ring of light in its opening. Far out in the sea
+stair to the landing at its top, where a gate stands square to the way, the ring of light on its threshold. Far out in the sea
 stands the Observer, the first statue of her, veiled, looking out to where she was lost.
 
 It teaches the game: a swipe is a step; a swipe into a thing works it; a flight is climbed by a swipe; the ring ends the
@@ -23,7 +23,7 @@ N = {
     'E': [-2.7, H1, -6.0],     # the terrace: the head of the first stair
     'F': [-4.2, H1, -6.0],     #   its far end, the foot of the second
     'G': [-4.2, H2, -8.7],     # the landing at the top
-    'R': [-4.2, H2, -10.2],    # the ring, in the gate's opening
+    'R': [-4.2, H2, -9.6],     # the ring, on the gate's threshold: whole before it, the gate framing it
     'W': [1.25, H0, 0.0],      # the winch on the threshold: its chains raise the stones out of the water
 }
 WAY = ['S', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'R']
@@ -63,7 +63,7 @@ def plan():
     pl = {      # (horizon: the sea's rim in the backdrop, gowake/backdrop.jpg, made by tools/bg/iso_backdrop.py from tools/bg/recipes/wake_far.json)
         'scene': 'wake', 'sea_y': SEA, 'risers': ['A', 'B', 'C'], 'horizon': 0.3714, 'sun': [0.5, 0.341], 'heights': {'H0': H0, 'H1': H1, 'H2': H2}, 'floors': floors, 'flights': [fl1, fl2],
         'nodes': N, 'edges': edges, 'ring': N['R'], 'stone': None, 'faces': [],
-        'arches': [[[-4.2, H2, -10.2], 'x']],      # (the gate: square to the way, the ring in its opening; behind it the eye would lose her)
+        'arches': [[[-4.2, H2, -10.4], 'x']],      # (the gate: square to the way, just behind the ring; its pillars clear of the ring's glow, which they cut when it lay in the opening)
         'rocks': [[[-1.6, H0 - 0.35, -6.9], 1.0, H0 - 0.25],       # (the pillar's shoulders, under the stair, the terrace and the landing:
                   [[-3.0, H1 - 0.45, -7.25], 1.05, H1 - 0.35],      #  one mass of rock rising out of the water; every top below the way)
                   [[-5.55, H1 - 0.4, -7.6], 1.05, H1 - 0.15],

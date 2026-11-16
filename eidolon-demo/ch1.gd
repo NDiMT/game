@@ -2365,7 +2365,7 @@ func _iv_bg_scale() -> Vector2:      # (the painting is 9:16; on a taller or a w
 	var vp := get_viewport().get_visible_rect().size
 	var r := vp.y / maxf(vp.x, 1.0); var rb := 16.0 / 9.0
 	return Vector2(1.0, r / rb) if r >= rb else Vector2(r / rb, 1.0)
-var iv_key := (Vector3(0.6, 0.66, -0.45) if go_drown else (Vector3(-0.45, 0.8, 0.38) if go_wake else Vector3(-0.56, 0.72, 0.41))) if (OS.get_environment("IV_MODE") != "plate" and OS.get_environment("IV_MODE") != "3d") else IV_KEY      # (the sea: the low sun on the faces toward the eye's right)
+var iv_key := (Vector3(0.6, 0.66, -0.45) if go_drown else (Vector3(-0.45, 0.82, -0.15) if go_wake else Vector3(-0.56, 0.72, 0.41))) if (OS.get_environment("IV_MODE") != "plate" and OS.get_environment("IV_MODE") != "3d") else IV_KEY      # (the sea: the low sun on the faces toward the eye's right)
 var iv_mats := {}
 var iv_uvf := float(OS.get_environment("IV_UVF")) if OS.get_environment("IV_UVF") != "" else 0.0
 var iv_alb := float(OS.get_environment("IV_ALB")) if OS.get_environment("IV_ALB") != "" else 0.0
@@ -2403,10 +2403,10 @@ func _iv_mat(kind: String, far_k := 0.0, extra := {}) -> ShaderMaterial:
 	if go_drown:
 		m.set_shader_parameter("shade_tint", Color(0.74, 0.79, 0.9)); m.set_shader_parameter("clip_k", 1.0); m.set_shader_parameter("clip_y", IV_O.y + ivr_sea_y)
 	if go_wake:      # (dawn: the shade lilac; what lies under the still water is not drawn, its image is)
-		m.set_shader_parameter("shade_tint", Color(0.85, 0.79, 0.9)); m.set_shader_parameter("ao_tint", Color(0.9, 0.83, 0.88)); m.set_shader_parameter("vein_tint", Color(0.93, 0.88, 0.9))
+		m.set_shader_parameter("shade_tint", Color(0.68, 0.6, 0.78)); m.set_shader_parameter("ao_tint", Color(0.86, 0.78, 0.86)); m.set_shader_parameter("vein_tint", Color(0.93, 0.88, 0.9))      # (cast shadows that read, a deep lilac: the way Lara Croft GO gives its places depth)
 		m.set_shader_parameter("clip_k", 1.0); m.set_shader_parameter("clip_y", IV_O.y + ivr_sea_y); m.set_shader_parameter("sea_c", Color("ead2cf"))      # (an image in the water dims toward the pearl of the sea, not toward blue)
 		m.set_shader_parameter("wline_k", 0.6); m.set_shader_parameter("mirror_fade", 2.0); m.set_shader_parameter("mirror_wob", 0.035)
-		if kind == "rock2": m.set_shader_parameter("rich_k", 1.0)
+		if kind == "rock2": m.set_shader_parameter("rich_k", 0.5)      # (rock as it weathers, but quietly: big plain faces read first)
 	if go_quarry:      # (the afternoon: shadows a cool lilac on the warm marble)
 		m.set_shader_parameter("shade_tint", Color(0.76, 0.74, 0.84)); m.set_shader_parameter("ao_tint", Color(0.9, 0.85, 0.86)); m.set_shader_parameter("vein_tint", Color(0.93, 0.9, 0.87))
 		if kind == "quarry": m.set_shader_parameter("drill", 1.0)
@@ -3650,7 +3650,7 @@ func _ivr_cam() -> void:
 	var vp := get_viewport().get_visible_rect().size
 	cam.keep_aspect = Camera3D.KEEP_WIDTH; cam.size = w * maxf(1.0, (vp.x / vp.y) / 0.5625)
 
-func _ivr_mat(kind: String, ao := 1.0, local := false) -> ShaderMaterial: return _iv_mat(kind, 0.0, {"lfog": 1.0 if (local and not iv_at_sea) else 0.0, "fog_hi": (ivr_sea_y + (0.04 if go_wake else 1.5)) if iv_at_sea else (-1.4 if go_moon else (-1.6 if go_quarry else -3.6)), "fog_lo": (ivr_sea_y - (0.7 if go_wake else 0.15)) if iv_at_sea else (-5.4 if go_moon else (-6.0 if go_quarry else -7.5)), "ao_k": ao * ({"marble2": 0.4, "olive2": 0.2, "bark": 0.3, "rock2": 0.0, "quarry": 0.55} as Dictionary).get(kind, 1.0), "veins": (0.35 if go_moon else (0.25 if go_quarry else (0.4 if go_wake else 0.6))) if (kind == "marble2" or kind == "quarry") else 0.0, "dk": 0.17 if kind == "quarry" else 0.0, "bounce": 0.0, "haze": 1.0, "shadow_k": 0.0 if kind == "rock2" else 1.0, "lf_hi": 1.0 if iv_at_sea else (1.0 if go_moon else (1.4 if go_quarry else 0.5)), "lf_len": 2.6 if iv_at_sea else (2.8 if go_moon else (3.2 if go_quarry else 1.9))})
+func _ivr_mat(kind: String, ao := 1.0, local := false) -> ShaderMaterial: return _iv_mat(kind, 0.0, {"lfog": 1.0 if (local and not iv_at_sea) else 0.0, "fog_hi": (ivr_sea_y + (0.04 if go_wake else 1.5)) if iv_at_sea else (-1.4 if go_moon else (-1.6 if go_quarry else -3.6)), "fog_lo": (ivr_sea_y - (0.7 if go_wake else 0.15)) if iv_at_sea else (-5.4 if go_moon else (-6.0 if go_quarry else -7.5)), "ao_k": ao * ({"marble2": 0.4, "olive2": 0.2, "bark": 0.3, "rock2": 0.0, "quarry": 0.55} as Dictionary).get(kind, 1.0), "veins": (0.35 if go_moon else (0.25 if go_quarry else (0.25 if go_wake else 0.6))) if (kind == "marble2" or kind == "quarry") else 0.0, "dk": 0.17 if kind == "quarry" else 0.0, "bounce": 0.0, "haze": 1.0, "shadow_k": (0.8 if go_wake else 0.0) if kind == "rock2" else 1.0, "lf_hi": 1.0 if iv_at_sea else (1.0 if go_moon else (1.4 if go_quarry else 0.5)), "lf_len": 2.6 if iv_at_sea else (2.8 if go_moon else (3.2 if go_quarry else 1.9))})
 
 ## the way drawn on the stone: a pale line, and at each node a pale disc in a darker ring
 func _ivr_way() -> void:
@@ -3786,7 +3786,7 @@ func _ivw_observer(j: Dictionary) -> void:
 	var hd := prop_model(String(j.get("observer_model", "observer")), hp, float(ob[3]))
 	var sea := IV_O.y + ivr_sea_y
 	var lowp := String(j.get("observer_model", "observer")).ends_with("_lp")      # (a low-poly one: faceted as everything else is)
-	var rim := {"smooth_k": 0.0 if lowp else 3.0, "rim_k": 0.0, "veins": 0.4, "ao_k": 0.0}      # (the light slab's own stone: its colour, its bands of light and shade, its veins; the user's ask)
+	var rim := {"smooth_k": 0.0 if lowp else 3.0, "rim_k": 0.0, "veins": 0.25, "ao_k": 0.0}      # (the light slab's own stone: its colour, its bands of light and shade, its veins; the user's ask)
 	var ex := {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.7, "haze": 1.0, "clip_k": 1.0, "clip_y": sea, "shadow_k": 0.0, "wline_k": 0.6}      # (she meets the water as the rocks do: solid to it, a fine line of light where she enters it; no mist eating her robe)
 	if ivr_shore.is_empty(): _ivw_rings(Vector3(hp.global_position.x, sea, hp.global_position.z), float(ob[3]) * 0.55)      # (else the sea's own small waves follow her outline)
 	ex.merge(rim)
@@ -4123,6 +4123,68 @@ func _ivw_ripple(at: Vector3, size: float) -> void:
 	var t := create_tween(); t.tween_method(func(v: float) -> void: m.set_shader_parameter("p", v), 0.0, 1.0, 2.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
 	t.tween_callback(mi.queue_free)
 
+## life in the waking's air and water, as Lara Croft GO keeps its places alive: motes of light drifting in the low sun,
+## birds far off over the sea gliding with now and then a few wingbeats, a ripple now and then in the open water
+var ivw_birds := []
+const IVW_BIRD_SH := """
+shader_type spatial;
+render_mode unshaded, cull_disabled, shadows_disabled;
+uniform vec3 col : source_color = vec3(0.5, 0.39, 0.55);      // (far off: paled by the haze)
+uniform float ph = 0.0;
+void vertex(){
+	float beat = smoothstep(0.55, 0.95, sin(TIME * 0.45 + ph));      // (mostly gliding; a few wingbeats now and then)
+	VERTEX.y += abs(VERTEX.x) * (0.25 + 0.55 * beat * sin(TIME * 9.0 + ph * 3.0));
+}
+void fragment(){ ALBEDO = col; ALPHA = 0.75; }
+"""
+func _ivw_life() -> void:
+	var sea := IV_O.y + ivr_sea_y
+	var ce: Array = ivr_eye.centre; var mid := IV_O + Vector3(float(ce[0]), 0.0, float(ce[2]))
+	var p := CPUParticles3D.new(); add_child(p)
+	p.global_position = Vector3(mid.x + 1.5, sea + 1.8, mid.z + 2.0)
+	p.amount = 44; p.lifetime = 9.0; p.preprocess = 9.0; p.local_coords = false
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX; p.emission_box_extents = Vector3(5.5, 1.8, 5.5)
+	p.direction = Vector3(0.25, 1.0, 0.1); p.spread = 45.0; p.gravity = Vector3(0, 0.015, 0); p.initial_velocity_min = 0.04; p.initial_velocity_max = 0.12
+	p.scale_amount_min = 0.5; p.scale_amount_max = 1.0
+	var q := QuadMesh.new(); q.size = Vector2(0.07, 0.07)
+	var m := StandardMaterial3D.new(); m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES; m.vertex_color_use_as_albedo = true; m.albedo_texture = load("res://goiv/glow.png")
+	q.material = m; p.mesh = q
+	var g := Gradient.new(); g.offsets = PackedFloat32Array([0.0, 0.2, 0.8, 1.0]); g.colors = PackedColorArray([Color(1, 0.95, 0.9, 0.0), Color(1, 0.95, 0.9, 0.75), Color(1, 0.93, 0.88, 0.6), Color(1, 1, 1, 0.0)])
+	p.color_ramp = g; p.emitting = true
+	# birds: a few small dark V shapes high over the sea, behind the island, drifting across
+	var b := _ivp_basis(); var bx := b.x; var by := b.y; var fwd := -b.z
+	var ref := IV_O + Vector3(float(ce[0]), float(ce[1]), float(ce[2])); var W := float(ivr_eye.width)
+	for i in 3:
+		var am := ArrayMesh.new(); var arr := []; arr.resize(Mesh.ARRAY_MAX)
+		var sp := 0.22 + 0.06 * float(i % 2)
+		arr[Mesh.ARRAY_VERTEX] = PackedVector3Array([Vector3(0, 0, -0.03), Vector3(-sp, 0, 0.05), Vector3(0, 0, 0.04), Vector3(0, 0, -0.03), Vector3(0, 0, 0.04), Vector3(sp, 0, 0.05)])
+		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+		var bm := ShaderMaterial.new(); var sh := Shader.new(); sh.code = IVW_BIRD_SH; bm.shader = sh; bm.set_shader_parameter("ph", float(i) * 1.7)
+		var bd := MeshInstance3D.new(); bd.mesh = am; bd.material_override = bm; bd.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(bd)
+		var u0: float = [0.15, 0.55, 0.9][i]; var v0: float = [0.12, 0.2, 0.16][i]      # (spread, never in a line)
+		ivw_birds.append({"n": bd, "u": u0, "v": v0, "sp": randf_range(0.006, 0.012) * (1.0 if i % 2 == 0 else -1.0), "ph": float(i) * 2.3,
+			"bx": bx, "by": by, "fwd": fwd, "ref": ref, "W": W})
+		bd.rotation.y = PI * 0.25      # (its wings across the eye: a V seen from it, as birds are drawn)
+	# a ripple now and then in the open water
+	var spots := []
+	for uv: Vector2 in [Vector2(0.06, 0.72), Vector2(0.14, 0.82), Vector2(0.72, 0.86), Vector2(0.86, 0.73), Vector2(0.62, 0.95), Vector2(0.9, 0.62), Vector2(0.05, 0.92), Vector2(0.95, 0.9)]:
+		var sx: float = (uv.x - 0.5) * W; var sy: float = (0.5 - uv.y) * W * 16.0 / 9.0
+		var q2: Vector3 = ref + bx * sx + by * sy
+		spots.append(q2 + fwd * ((sea - q2.y) / fwd.y))
+	var tmr := Timer.new(); add_child(tmr); tmr.wait_time = 2.5; tmr.autostart = true
+	tmr.timeout.connect(func() -> void:
+		_ivw_ripple(spots[randi() % spots.size()] as Vector3, randf_range(0.5, 0.8)); tmr.wait_time = randf_range(2.8, 5.5))
+
+func _ivw_birds_tick(dt: float) -> void:
+	for bdd in ivw_birds:
+		var bd: Dictionary = bdd
+		bd.u = fposmod(float(bd.u) + float(bd.sp) * dt, 1.3)
+		var t := Time.get_ticks_msec() * 0.001
+		var sx := (float(bd.u) - 0.65) * float(bd.W) * 1.3; var sy := (0.5 - float(bd.v)) * float(bd.W) * 16.0 / 9.0 + sin(t * 0.7 + float(bd.ph)) * 0.12
+		var q: Vector3 = (bd.ref as Vector3) + (bd.bx as Vector3) * sx + (bd.by as Vector3) * sy
+		(bd.n as MeshInstance3D).global_position = q + (bd.fwd as Vector3) * 14.0      # (far off over the sea: behind all the island, before the painted sky)
+
 func _ivw_hand_make(cl: CanvasLayer) -> void:
 	if not FileAccess.file_exists(go_dir + "hand.png"): return
 	var k := get_viewport().get_visible_rect().size.x / 720.0
@@ -4144,6 +4206,7 @@ func _ivw_next() -> String:      # the next node of the way from where she stand
 	return ""
 
 func _ivw_tick(dt: float) -> void:
+	_ivw_birds_tick(dt)
 	if ivw_veil_m != null: ivw_veil_m.set_shader_parameter("t", Time.get_ticks_msec() / 1000.0)
 	if palm_on and not ivw_awake:      # (her palms on the stone before her knees, wherever she is turned)
 		var fw := Vector3(sin(yaw), 0, cos(yaw)); var sd := Vector3(fw.z, 0, -fw.x)
@@ -5006,9 +5069,15 @@ func _ivr_build() -> void:
 	vr.set_anchors_preset(Control.PRESET_FULL_RECT); vr.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(vr)
 	iv_leaves = _iv_overlay(cl, "res://goiv/leaves_tl.png", Vector2(-70, -90) * k, Vector2(470, 470) * k)
 	var lr := _iv_overlay(cl, "res://goiv/leaves_tl.png", Vector2(720 * k + 60 * k, -150 * k), Vector2(440, 440) * k); lr.flip_h = true; lr.position.x -= 440 * k; lr.rotation = 0.18
-	if go_wake:      # (the first dawn: the sky open above, nothing before the eye)
-		iv_leaves.visible = false; lr.visible = false
+	if go_wake:      # (the first dawn: dark shapes before the eye at the corners, a branch above at the left, as Lara Croft GO frames its places)
+		lr.visible = false
+		var plum := Color(0.78, 0.62, 0.86, 0.88)
+		iv_leaves.modulate = plum; iv_leaves.size = Vector2(420, 420) * k; iv_leaves.position = Vector2(-80, -100) * k
+		var rb := _iv_overlay(cl, "res://goiv/rock_br.png", Vector2(720 * k - 345 * k, vh - 400 * k), Vector2(400, 400) * k); rb.modulate = plum      # (a rock before the eye at the lower right: off the way, the sea there is open)
+		var rbl := _iv_overlay(cl, "res://goiv/rock_bl.png", Vector2(-80 * k, vh - 360 * k), Vector2(360, 360) * k); rbl.modulate = plum      # (and one at the lower left, short of the threshold)
+		vg.colors = PackedColorArray([Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0.05), Color(0.26, 0.16, 0.3, 0.2)])      # (a soft darkening at the edges: the eye drawn in)
 		_ivw_hand_make(cl)
+		_ivw_life()
 	elif go_drown:      # (at sea: the leaves above, cool in the dusk; no rocks before the eye, the mist is open)
 		for ov in [iv_leaves, lr]: (ov as CanvasItem).modulate = Color(0.62, 0.66, 0.8)
 	elif go_quarry:      # (the quarry: the leaves above at the left, warm; dust in the air; the pit open below)
