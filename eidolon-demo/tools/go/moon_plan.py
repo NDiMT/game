@@ -72,7 +72,7 @@ def plan():
         'wanderers': [{'route': list(M['route'])}],
         'plinths': True, 'intro': [intro[0], intro[1]],
         'solution': ['11', '10', '21', '31', '32', '31', '21', '11', '10', '21', '31', '32', '22', '23', '13', '14', '24', '25', '35', 'R'],
-        'lines': ['The moon keeps two faces.', 'Turn it, and they turn with it.'],
+        'lines': ['The moon keeps two faces.', 'Turn it, and they turn with it.'], 'end': 'Neither of them saw her go.',
     }
     pl = {
         'scene': 'moon', 'heights': {'H0': H0, 'HM': HM, 'HT': HT, 'HR': HR}, 'floors': floors, 'flights': flights,

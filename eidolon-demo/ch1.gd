@@ -2927,7 +2927,7 @@ func _iv_win() -> void:
 	f.tween_property(iv_glow, "scale", Vector3.ONE * 3.2, 1.6).set_trans(Tween.TRANS_SINE)
 	f.tween_property(iv_fade, "color:a", 1.0, 2.2).set_delay(0.9)
 	await wait(1.0)
-	_go_write("None of them would breathe.", 3.0)
+	_go_write(String(ivg.get("end", "None of them would breathe.")) if ivg_on else "None of them would breathe.", 3.0)      # (each level its own last line)
 	await wait(2.6)
 	gm.albedo_color.a = 0.0
 	_end()
