@@ -119,6 +119,16 @@ The levels are many, in one system. A new level is made in this order (the secon
   - **The ring is set whole before a gate, never in its opening**: the opening is narrower than its glow, and the gate's depth hides her from the eye.
   - **The way's line stops at the ring's rim** (`_ivr_way`): a line running into the ring "looks ugly".
   - **The gate holds light** (`_ivw_gate_light`): a soft warm light fills its opening, brightest low in the middle and stirring. Around it: a glow, its light lying on the stone before it, motes rising. At the end it flares as she stands on the ring.
+- **The start of the game** (`_ivw_menu_make`, `_ivw_intro`, `_ivw_play`):
+  - **The intro film first**: the amphora film, graded into the first level's dawn by a 3D LUT (`tools/intro_grade_lut.py`). The LUT carries each key colour of the black-figure palette to the dawn's: clay to rose-peach, the black to deep plum, the sea to muted violet, the sky to lilac, the white to pearl. Everything between moves with its nearest keys (Gaussian weights in Lab), so the shading holds.
+    - The game plays it as Theora (`intro/intro.ogv`, 720x1280, about 1.1 Mb/s, 23 MB) in a `VideoStreamPlayer`. A tap skips it.
+    - The autoplay skips it unless `IV_INTRO=1`; `IV_NO_INTRO=1` skips it always.
+  - **Then the start screen**: the first level faded far back under the dawn's own gradient (the user: "more subdued, the focus on the gradient"). The name high in the sky and PLAY under it, both in black. PLAY breathes slowly.
+    - The eye holds the whole level here. PLAY takes the eye down to her where she lies (`ivw_close` 0 to 1), and only then does she wake.
+  - **The logo**: from the image model, a very thin wordmark, black on white. The user chose the ultra-thin geometric one, with a hairline and a small diamond under it (`design/logo/`, its prompts beside it). Have the model set PLAY in the same typeface, with the logo as its reference.
+    - Key both to alpha (alpha from darkness, crop, resize; `ui/logo.png`, `ui/play.png`), so the game can colour them.
+    - Check the spelling of every variant: one wrote a word that was never asked for under the name.
+  - **Mist held to the world** (`mist_world` in IV_SH): what fades into the mist samples the painting as the sea does (`world_uv`), not by its place on the screen. Otherwise an eye moved off the level's own frame (the close-up at the waking) shows faded images in the water as pale blots.
 - **The words** (titles and the lines of the story): white letters with a soft black shadow all round them, made of the old haze in many thin black outline steps. No offset shadow, no warm glow, no red rule or lozenge over them.
 - **Check what the eye sees of a thing before blaming the renderer**: a chain laid "up the screen" from a winch hid wholly behind its drum. Paint the thing plain red with an unshaded material to see where it is, and route it on the eye's side.
 - **A hero prop from an image** (the Observer, a colossal veiled bust): paint it alone on a plain background, `tripo make <png> --for game-mobile` (it returns FBX), then decimate to about 7k triangles with flat faces and export GLB to `props/` (`tools/go/fbx2glb.py`). Keep the FBX: decimate again from it, never from a decimated GLB. Place it by its foot, height and turn, give it a palette of its own and haze, clip it at the water, and mirror it.

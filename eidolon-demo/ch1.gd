@@ -2158,6 +2158,7 @@ uniform float clip_k = 0.0; uniform float clip_y = -1e9;      // (a level at sea
 uniform float under_k = 0.0;      // (a thing that is under the water, or goes under it: drawn, fading into the sea by its depth under clip_y)
 uniform float smooth_k = 0.0;      // (a statue: soft marble shaded by its own smooth normals, not in the facets' bands)
 uniform float mirror_fade = 0.0; uniform float mirror_wob = 0.0;      // (an image in the water: gone into the sea by this depth; wavering by this much)
+uniform float mist_world = 0.0; uniform vec3 mw_c; uniform vec3 mw_bx; uniform vec3 mw_by; uniform float mw_w = 11.0;      // (the mist held to the world as the sea is, so what fades into it fades into the sea's own colour under any eye)
 uniform float rim_k = 0.0; uniform vec3 rim_col : source_color = vec3(1.0, 0.86, 0.62); uniform vec3 rim_dir = vec3(-0.6, 0.3, -0.6);      // (the low sun behind it: its edges catch the light)
 uniform float wline_k = 0.0;      // (where a thing meets the still water: a fine line of light)
 uniform float wet_k = 0.0; uniform float dry_y = -100.0;      // (a stone come up out of the water: wet below a line that sinks as it drains)
@@ -2298,7 +2299,11 @@ void fragment(){
 	if (wline_k > 0.0) { float hw = wp.y - clip_y; c = mix(c, vec3(1.0, 0.97, 0.93), wline_k * (1.0 - smoothstep(0.0, 0.05, hw)) * step(-0.002, hw)); }
 	ALBEDO = c * (1.0 - fk);
 	vec3 mist = bgc(sy);
-	if (bg_tex_k > 0.5) mist = texture(bg_tex, vec2(0.5 + (SCREEN_UV.x - 0.5) * bg_scale.x, 0.5 + (sy - 0.5) * bg_scale.y)).rgb;
+	if (bg_tex_k > 0.5) {
+		vec2 muv = vec2(0.5 + (SCREEN_UV.x - 0.5) * bg_scale.x, 0.5 + (sy - 0.5) * bg_scale.y);
+		if (mist_world > 0.5) { vec3 r = wp - mw_c; muv = vec2(0.5 + dot(r, mw_bx) / mw_w, 0.5 - dot(r, mw_by) / (mw_w * 16.0 / 9.0)); }      // (the eye has no perspective: every point along a ray gives the same place in the painting)
+		mist = texture(bg_tex, clamp(muv, vec2(0.001), vec2(0.999))).rgb;
+	}
 	if (sea_k > 0.0) mist = mix(mist, sea_c, smoothstep(0.21, 0.38, sy) * (1.0 - smoothstep(0.5, 0.92, sy)) * 0.9 * sea_k);
 	EMISSION = mist * fk + c_top * emit;
 	if (dbg > 0.5) { ALBEDO = vec3(0.0); EMISSION = dbg > 3.5 ? vec3(fk) : (dbg > 2.5 ? c : (dbg > 1.5 ? vec3(d * 0.5 + 0.5) : fn * 0.5 + 0.5)); }
@@ -2406,6 +2411,10 @@ func _iv_mat(kind: String, far_k := 0.0, extra := {}) -> ShaderMaterial:
 		m.set_shader_parameter("shade_tint", Color(0.68, 0.6, 0.78)); m.set_shader_parameter("ao_tint", Color(0.86, 0.78, 0.86)); m.set_shader_parameter("vein_tint", Color(0.93, 0.88, 0.9))      # (cast shadows that read, a deep lilac: the way Lara Croft GO gives its places depth)
 		m.set_shader_parameter("clip_k", 1.0); m.set_shader_parameter("clip_y", IV_O.y + ivr_sea_y); m.set_shader_parameter("sea_c", Color("ead2cf"))      # (an image in the water dims toward the pearl of the sea, not toward blue)
 		m.set_shader_parameter("wline_k", 0.6); m.set_shader_parameter("mirror_fade", 2.0); m.set_shader_parameter("mirror_wob", 0.035)
+		if not ivr_eye.is_empty():      # (its mist held to the world, as the sea is: the eye close on her shows no pale shapes where images fade)
+			var eb := _ivp_basis(); var ec: Array = ivr_eye.centre
+			m.set_shader_parameter("mist_world", 1.0); m.set_shader_parameter("mw_c", IV_O + Vector3(float(ec[0]), float(ec[1]), float(ec[2])))
+			m.set_shader_parameter("mw_bx", eb.x); m.set_shader_parameter("mw_by", eb.y); m.set_shader_parameter("mw_w", float(ivr_eye.width))
 		if kind == "rock2": m.set_shader_parameter("rich_k", 0.0)      # (the rock one even colour, each face one clean tone: no beds, no lichen, no speckle; the user's ask)
 	if go_quarry:      # (the afternoon: shadows a cool lilac on the warm marble)
 		m.set_shader_parameter("shade_tint", Color(0.76, 0.74, 0.84)); m.set_shader_parameter("ao_tint", Color(0.9, 0.85, 0.86)); m.set_shader_parameter("vein_tint", Color(0.93, 0.9, 0.87))
@@ -3559,6 +3568,7 @@ func _play_ivp() -> void:
 	await get_tree().create_timer(2.2).timeout
 	await snap.call("p0_title")
 	tap(Vector2(360, 640)); await wait(1.0)
+	while go_wake and not ivw_awake and not ended: await get_tree().process_frame      # (PLAY takes the eye down to her first: then she wakes)
 	await idle.call(); await wait(0.6)
 	if OS.get_environment("IV_CLEAN") != "": await wait(7.0)      # (for the look alone: after the line has gone)
 	if OS.get_environment("IV_BG_ONLY") != "":
@@ -4244,6 +4254,67 @@ func _ivw_life() -> void:
 	var tmr := Timer.new(); add_child(tmr); tmr.wait_time = 2.5; tmr.autostart = true
 	tmr.timeout.connect(func() -> void:
 		_ivw_ripple(spots[randi() % spots.size()] as Vector3, randf_range(0.5, 0.8)); tmr.wait_time = randf_range(2.8, 5.5))
+
+## the start: the intro film (the amphora, in the dawn's colours), then the first level faded behind the name and
+## PLAY; PLAY takes the eye down to her where she lies, and she wakes
+var ivw_menu: Control
+var ivw_menu_on := false
+var ivw_intro_box: Control
+var ivw_video: VideoStreamPlayer
+var ivw_intro_on := false
+func _ivw_menu_make() -> void:
+	if not FileAccess.file_exists("res://ui/logo.png"): return
+	var vp := get_viewport().get_visible_rect().size
+	var cl := CanvasLayer.new(); cl.layer = 4; add_child(cl)
+	ivw_menu = Control.new(); ivw_menu.set_anchors_preset(Control.PRESET_FULL_RECT); ivw_menu.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(ivw_menu)
+	var vg := Gradient.new(); vg.offsets = PackedFloat32Array([0.0, 0.3, 0.55, 0.8, 1.0])      # (the dawn's own gradient over all, the level only a ghost under it; the user: "more subdued, the focus on the gradient")
+	vg.colors = PackedColorArray([Color("e3d2e6", 0.93), Color("f8e3dc", 0.86), Color("f6d9d6", 0.8), Color("ecd3df", 0.82), Color("dcc8e0", 0.88)])
+	var vt := GradientTexture2D.new(); vt.gradient = vg; vt.fill_from = Vector2(0.5, 0.0); vt.fill_to = Vector2(0.5, 1.0); vt.width = 4; vt.height = 256
+	var veil := TextureRect.new(); veil.texture = vt; veil.stretch_mode = TextureRect.STRETCH_SCALE; veil.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	veil.set_anchors_preset(Control.PRESET_FULL_RECT); veil.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_menu.add_child(veil)
+	var put := func(file: String, w: float, cy: float, col: Color) -> TextureRect:
+		var tr := TextureRect.new(); tr.texture = load(file); tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		var ts := (tr.texture as Texture2D).get_size(); var h := w * ts.y / ts.x
+		tr.size = Vector2(w, h); tr.position = Vector2((vp.x - w) * 0.5, cy - h * 0.5); tr.modulate = col; tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		ivw_menu.add_child(tr); return tr
+	var lw := vp.x * 0.8
+	put.call("res://ui/logo.png", lw, vp.y * 0.155, Color(0.07, 0.05, 0.08, 1))      # (the name high in the sky, in black: the user's ask)
+	var pw := vp.x * 0.3
+	var pl: TextureRect = put.call("res://ui/play.png", pw, vp.y * 0.27, Color(0.07, 0.05, 0.08, 1))      # (PLAY under it, in black)
+	var pt := create_tween().set_loops()      # (PLAY breathes, slowly)
+	pt.tween_property(pl, "modulate:a", 0.55, 1.4).set_trans(Tween.TRANS_SINE); pt.tween_property(pl, "modulate:a", 1.0, 1.4).set_trans(Tween.TRANS_SINE)
+	title_box.hide()
+	ivw_close = 0.0      # (the whole level behind the name)
+	ivw_menu_on = true
+	var auto := OS.get_cmdline_user_args().has("godemo")
+	if FileAccess.file_exists("res://intro/intro.ogv") and OS.get_environment("IV_NO_INTRO") == "" and (not auto or OS.get_environment("IV_INTRO") != ""): _ivw_intro()
+
+func _ivw_intro() -> void:
+	var cl := CanvasLayer.new(); cl.layer = 9; add_child(cl)
+	ivw_intro_box = Control.new(); ivw_intro_box.set_anchors_preset(Control.PRESET_FULL_RECT); ivw_intro_box.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(ivw_intro_box)
+	var bg := ColorRect.new(); bg.color = Color(0.13, 0.08, 0.13); bg.set_anchors_preset(Control.PRESET_FULL_RECT); bg.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_intro_box.add_child(bg)
+	ivw_video = VideoStreamPlayer.new(); ivw_video.stream = load("res://intro/intro.ogv"); ivw_video.expand = true
+	ivw_video.set_anchors_preset(Control.PRESET_FULL_RECT); ivw_video.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_intro_box.add_child(ivw_video)
+	ivw_video.finished.connect(_ivw_intro_end)
+	ivw_intro_on = true
+	ivw_video.play()
+
+func _ivw_intro_end() -> void:      # (at its end, or at a tap: the film fades into the faded level, the name, PLAY)
+	if not ivw_intro_on: return
+	ivw_intro_on = false
+	var t := create_tween(); t.tween_property(ivw_intro_box, "modulate:a", 0.0, 1.3).set_trans(Tween.TRANS_SINE)
+	if ivw_video.is_playing(): t.parallel().tween_property(ivw_video, "volume_db", -40.0, 1.2)
+	await t.finished
+	ivw_video.stop(); ivw_intro_box.get_parent().queue_free(); ivw_intro_box = null; ivw_video = null
+
+func _ivw_play() -> void:      # (PLAY: the name and the haze go, the eye goes down to her where she lies, and she wakes)
+	ivw_menu_on = false
+	var t := create_tween().set_parallel()
+	t.tween_property(ivw_menu, "modulate:a", 0.0, 1.0).set_trans(Tween.TRANS_SINE)
+	if OS.get_environment("IVW_SKIP") == "": t.tween_property(self, "ivw_close", 1.0, 2.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await t.finished
+	ivw_menu.get_parent().queue_free(); ivw_menu = null
+	started = true; ivw_line_at = iv_t + 1.2
 
 func _ivw_birds_tick(dt: float) -> void:
 	for bdd in ivw_birds:
@@ -5147,6 +5218,7 @@ func _ivr_build() -> void:
 		vg.colors = PackedColorArray([Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0.05), Color(0.26, 0.16, 0.3, 0.2)])      # (a soft darkening at the edges: the eye drawn in)
 		_ivw_hand_make(cl)
 		_ivw_life()
+		_ivw_menu_make()
 	elif go_drown:      # (at sea: the leaves above, cool in the dusk; no rocks before the eye, the mist is open)
 		for ov in [iv_leaves, lr]: (ov as CanvasItem).modulate = Color(0.62, 0.66, 0.8)
 	elif go_quarry:      # (the quarry: the leaves above at the left, warm; dust in the air; the pit open below)
@@ -7471,6 +7543,10 @@ func _self() -> void:
 
 # ---------------------------------------------------------------- I.1
 func tap(sp: Vector2) -> void:
+	if go_demo and not started and go_wake and ivw_intro_on: _ivw_intro_end(); return      # (a tap during the film: on to the start)
+	if go_demo and not started and go_wake and ivw_menu != null:
+		if ivw_menu_on: _ivw_play()
+		return
 	if go_demo and not started:      # (the trial played a step at a time: the eye draws back to hold the board)
 		started = true
 		var tg2 := create_tween(); tg2.tween_property(title_box, "modulate:a", 0.0, 0.7); tg2.tween_callback(title_box.hide)
