@@ -85,15 +85,17 @@ The levels are many, in one system. A new level is made in this order (the secon
     - Turn its face to the eye and the light: check with `tools/go/prop_yaw.py`, which frames each turn a metre tall under the game's key light.
     - Place it from where it should stand on the screen: solve its foot onto the sea plane along the eye.
     - Its foot is under the water and its lower part is lost in a short mist band. It has its image in the water, and the shore waves follow its outline.
-  - **The light of the low sun on the stone** (`sun_k` in IV_SH; the user: "can our rocks be lit by yellow, in a gradient where the light is?"):
-    - The faces the key light falls on take the sun's colour, warmest high up and toward the sun on the screen (`sun_scr`).
-    - Lilac, and soft: gold was "too strong".
+  - **Coloured sunlight on the stone** (`sun_k` in IV_SH, off by default): the faces the key light falls on take the sun's colour, warmest high up and toward the sun on the screen (`sun_scr`).
+    - The user tried gold ("too strong"), lilac, then pinkish yellow, and in the end had it taken off: the stone keeps its own light.
   - **Small waves where the water meets the stone** (the user: "a light ripple where the rocks meet the water"):
     - With `'shore': True` in the plan, the builder writes `<level>/shore.png` and its rect and reach (`shore`) into level.json.
     - It cuts every body at the sea level, island by island. Weld split vertices first: a flat-shaded GLB has every face its own island. It fills each outline even-odd; an open body is filled by its outline, closed and hole-filled. The colossus is imported as the game places it (foot, height, turn).
     - A distance transform, out to 1.6 m: red for what stands for good, green for the stones that rise.
     - The sea's surface draws a faint lip hugging each stone, and two faint rings drifting out, in drifting patches: discreet and scattered (the user: strong ones were "too intense"). The rising stones' waves come in as their tops break the water (`riser_up`, set in `_ivw_risers_set`).
-  - **The sea**: the painted sea's colour, held to the world (`world_uv`), and still. No ripple lines across it: the user first asked for slanted ones, then called them "those stupid slanted lines"; the foam along the stones is enough. A few points of light twinkle in the sun's path, and a fine line of light runs where stone meets the water (`wline_k`).
+  - **The sea**: the painted sea's colour, held to the world (`world_uv`).
+    - Never long lines across it: the user called those "stupid slanted lines".
+    - Instead, small soft waves aslant, here and there: short white strokes that come and go slowly (`wave_k`). They are on the surface only, never near the horizon, and white with no dark line ("white, the little wave").
+    - A few points of light twinkle in the sun's path, and a fine line of light runs where stone meets the water (`wline_k`).
   - **Images in the water** fade into the sea as they go down (`mirror_fade`, about 2 m for rocks) and waver a little (`mirror_wob`, a vertex sway that grows with depth).
   - **Rock that is richer** (`rich_k`): each break its own tone, beds across the upright faces, lichen on what faces the sky, a fine speckle.
 - **The words** (titles and the lines of the story): white letters with a soft black shadow all round them, made of the old haze in many thin black outline steps. No offset shadow, no warm glow, no red rule or lozenge over them.

@@ -2395,10 +2395,6 @@ func _iv_mat(kind: String, far_k := 0.0, extra := {}) -> ShaderMaterial:
 		m.set_shader_parameter("clip_k", 1.0); m.set_shader_parameter("clip_y", IV_O.y + ivr_sea_y); m.set_shader_parameter("sea_c", Color("ead2cf"))      # (an image in the water dims toward the pearl of the sea, not toward blue)
 		m.set_shader_parameter("wline_k", 0.6); m.set_shader_parameter("mirror_fade", 2.0); m.set_shader_parameter("mirror_wob", 0.035)
 		if kind == "rock2": m.set_shader_parameter("rich_k", 1.0)
-		if kind in ["rock", "rock2", "marble", "marble2", "groove", "observer"]:      # (the low sun's light on the stone, lilac, in a gradient toward it: the user's ask)
-			m.set_shader_parameter("sun_k", 0.45 if kind.begins_with("rock") else 0.3); m.set_shader_parameter("sun_col", Color(0.9, 0.74, 1.0))
-			m.set_shader_parameter("sun_scr", ivw_sun_scr); m.set_shader_parameter("sun_rad", 0.85)
-			m.set_shader_parameter("sun_lo", IV_O.y + ivr_sea_y); m.set_shader_parameter("sun_hi", IV_O.y + 2.9)
 	if go_quarry:      # (the afternoon: shadows a cool lilac on the warm marble)
 		m.set_shader_parameter("shade_tint", Color(0.76, 0.74, 0.84)); m.set_shader_parameter("ao_tint", Color(0.9, 0.85, 0.86)); m.set_shader_parameter("vein_tint", Color(0.93, 0.9, 0.87))
 		if kind == "quarry": m.set_shader_parameter("drill", 1.0)
@@ -4167,6 +4163,7 @@ uniform sampler2D shore_tex : filter_linear, repeat_disable;      // (how far ea
 uniform vec4 shore_rect = vec4(0.0, 0.0, 1.0, 1.0); uniform float shore_k = 0.0; uniform float shore_d = 1.6; uniform float riser_up = 0.0;
 uniform vec3 foam_c : source_color = vec3(1.0, 0.98, 0.96);
 uniform float hz_v = -1.0;      // (where the sea melts into the sky, on the screen: nothing is drawn on the water near it)
+uniform float wave_k = 0.0;      // (small soft waves aslant, here and there, each coming and going: the surface only)
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 vec3 bgc(float s){
@@ -4184,6 +4181,20 @@ void fragment(){
 		c = texture(bg_tex, clamp(suv, vec2(0.001), vec2(0.999))).rgb;
 		float far_w = smoothstep(hz_v + 0.005, hz_v + 0.09, SCREEN_UV.y);
 		c = mix(c, c * 1.04 + vec3(0.01), smoothstep(0.55, 0.95, rip) * 0.5 * far_w);      // (the faintest swell; no lines across the water: the user wants it still, the small waves along the stones are enough)
+		if (wave_k > 0.0) {
+			vec2 dA = normalize(vec2(-0.35, 0.85)); vec2 dC = vec2(dA.y, -dA.x);      // (along each wave, aslant on the screen; and across the waves)
+			float al = dot(wp.xz, dA) + TIME * 0.05; float ac = dot(wp.xz, dC);
+			float row = floor(ac / 0.22); float acf = ac - (row + 0.5) * 0.22;
+			float hr = fract(sin(row * 91.7) * 4375.85);
+			float alr = al + hr * 3.7; float cell = floor(alr / 1.3); float alf = fract(alr / 1.3);
+			float h = fract(sin(dot(vec2(row, cell), vec2(127.1, 311.7))) * 43758.5453);
+			float len = 0.35 + 0.4 * fract(h * 13.1); float st = fract(h * 7.7) * (1.0 - len);
+			float along_m = smoothstep(st, st + len * 0.3, alf) * (1.0 - smoothstep(st + len * 0.7, st + len, alf));
+			float life = smoothstep(0.55, 1.0, sin(TIME * (0.35 + h * 0.4) + h * 40.0));      // (each comes and goes, slowly)
+			float on = step(0.55, fract(h * 3.3)) * life * along_m * far_w;
+			float crest = 1.0 - smoothstep(0.006, 0.03, abs(acf));
+			c = mix(c, vec3(1.0), crest * on * 0.34 * wave_k);      // (white, soft: the user's "white, the little wave")
+		}
 		float lum = dot(c, vec3(0.3333));
 		vec2 gq = wp.xz * vec2(9.0, 4.0); vec2 gi = floor(gq); vec2 gf = fract(gq) - 0.5;
 		float rr = fract(sin(dot(gi, vec2(127.1, 311.7))) * 43758.5453);
@@ -4240,6 +4251,7 @@ func _ivs_sea(sea_y: float) -> void:
 		m.set_shader_parameter("world_uv", 1.0); m.set_shader_parameter("eye_c", ref); m.set_shader_parameter("eye_bx", bx); m.set_shader_parameter("eye_by", by); m.set_shader_parameter("eye_w", float(ivr_eye.width))
 	var mf := m.duplicate() as ShaderMaterial
 	m.set_shader_parameter("sea_a", 0.5 if go_wake else 0.7)
+	if go_wake: m.set_shader_parameter("wave_k", 1.0)      # (the small waves aslant: on the surface, not on the floor under it)
 	if go_wake: m.set_shader_parameter("hz_v", ivr_hz); mf.set_shader_parameter("hz_v", ivr_hz)
 	if not ivr_shore.is_empty():      # (small waves along every stone standing in the water: the surface only)
 		var rc: Array = ivr_shore.rect
