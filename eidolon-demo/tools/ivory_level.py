@@ -9,7 +9,7 @@ With a plan (made by tools/ivory/trace.py from a concept picture) the floors, fl
 picture shows them; without one, the built-in plan below is used.
 """
 import bpy, bmesh, math, random, sys, json
-from mathutils import Vector
+from mathutils import Vector, Matrix
 
 a = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 OUT = a[0] if len(a) > 0 else 'goiv/level.glb'
@@ -740,7 +740,7 @@ STAIR_GROOVE = 0.03      # (how deep the channel down the middle of a flight: th
 STEPS = []      # (each flight's nosings as cut, in order: the game draws the way down its channel by them)
 
 
-def flight(foot, head, w, n=None, step=0.12):
+def flight(foot, head, w, n=None, step=0.12, solid=False):
     """a flight of steps as one body of marble, carved by hand: each step a little higher or lower, deeper or shallower,
     each tread a hair out of level, each nosing rounded its own way; a channel cut down its middle (through every
     nosing and riser) where the way runs; a deep stringer under the line of the nosings; its last tread flush with the
@@ -752,6 +752,7 @@ def flight(foot, head, w, n=None, step=0.12):
     n = int(n or max(1, round((hy - fy) / step))); rise = (hy - fy) / n; run = L / n
     D = 0.42      # the stringer: how deep under the line of the nosings (and under the upper floor, past the head): a chunk of marble
     under = lambda t: min(fy + rise * (1.0 + t / run), hy) - D
+    if solid: under = lambda t: fy - 0.004      # (cut in the quarry's rock: the flight one block down to the bench it rises from)
     end = L + 0.34
     # carved by hand, one piece: each step its own rise and run, a little more or less (all still summing to the
     # flight, the last flush with the floor above), each tread a hair out of level, each nosing rounded its own way
@@ -797,6 +798,7 @@ def flight(foot, head, w, n=None, step=0.12):
             except Exception: pass
     m = [finish(bm, 'flight')]
     STEPS.append([[round(ts[k], 4), round(ys[k], 4)] for k in range(n)])
+    if solid: return m, []
     # the rock under it: the blocks of the mountain go on along both its sides, flush with the ends of its steps, their
     # tops along the stringer; they meet in the middle under it
     tt = lambda x, z: under((Vector((x, 0.0, z)) - base).dot(d)) + 0.02
@@ -913,8 +915,107 @@ def cypress(x, y, z, h=2.6):
     return leaves, bark
 
 
+
+# ------------------------------------------------------------------ the quarry (scene 'quarry'): benches cut square
+QC = 0.45      # (the lattice the quarry is cut on: every floor's edge lies on it)
+def quarry_terrain(P):
+    """the quarry as one field of square benches. Where the way is, its floors at their heights; about them benches
+    stepping down into the pit (where two meet, none rises within a hand of the lower floor); the trench a look
+    crosses cut deep; behind, the quarry's faces rising in steps; a door cut in the west face, its lintel over it.
+    Each bench a block with its top edges eased; where blocks of one height meet, the joint shows as a cut."""
+    rs = random.Random(11)
+    def rng_(a, b): return range(int(round(a / QC)), int(round(b / QC)))
+    floors = {}
+    def fill(x0, x1, z0, z1, h):
+        for i in rng_(x0, x1):
+            for j in rng_(z0, z1):
+                if (i, j) not in floors or h > floors[(i, j)]: floors[(i, j)] = h
+    for (x0, x1, z0, z1, h) in P['cells'] + P['links']: fill(x0, x1, z0, z1, h)
+    for fl in P['flights']:      # (under a flight: the bench it rises from; its own body stands on that)
+        f, hd, w = fl[0], fl[1], fl[2]
+        if abs(hd[0] - f[0]) > abs(hd[2] - f[2]): fill(min(f[0], hd[0]), max(f[0], hd[0]), f[2] - w / 2, f[2] + w / 2, f[1])
+        else: fill(f[0] - w / 2, f[0] + w / 2, min(f[2], hd[2]), max(f[2], hd[2]), f[1])
+    door = P.get('door'); HT = P['heights']['HT']
+    if door:      # (the way on into the rock: the corridor's floor runs in under the lintel)
+        fill(door[0] - 0.9, door[0] + 0.45, door[2] - 0.45, door[2] + 0.45, door[1])
+    trench = set()
+    for (x0, x1, z0, z1) in P.get('trench', []):
+        for i in rng_(x0, x1):
+            for j in rng_(z0, z1): trench.add((i, j))
+    Wx, Nz, top = P['walls']['west'], P['walls']['north'], P['walls']['top']
+    I0, I1, J0, J1 = int(-12.5 / QC), int(3.6 / QC), int(-12.0 / QC), int(3.6 / QC)
+    T, REF = {}, {}
+    near = {}
+    for (fi, fj), h in floors.items():
+        for di in range(-7, 8):
+            for dj in range(-7, 8):
+                c = (fi + di, fj + dj)
+                if c in floors or c in trench: continue
+                d = max(abs(di), abs(dj))
+                drop = 1.0 if d <= 2 else (2.3 if d <= 4 else 3.9)
+                hi, cap = near.get(c, (-1e9, 1e9))
+                hi = max(hi, h - drop)
+                if d <= 2: cap = min(cap, h - 0.35)
+                near[c] = (hi, cap)
+    for i in range(I0, I1):
+        for j in range(J0, J1):
+            c = (i, j); x, z = (i + 0.5) * QC, (j + 0.5) * QC
+            if c in floors: T[c] = floors[c]; REF[c] = floors[c]; continue
+            if c in trench: continue
+            dw = max((Wx - x) / QC, (Nz - z) / QC)
+            lf = P['walls'].get('low_front')
+            if lf and x < Wx and x > lf[0] and z > lf[1] and z < lf[1] + 2.2 and (Nz - z) <= 0:      # (before the door the face is cut low: the door seen whole, square to her way)
+                T[c] = HT - 0.35; REF[c] = HT; continue
+            if dw > 0:      # (the quarry's faces behind: a step up every two cells back)
+                k = int(dw // 2)
+                T[c] = min(top, HT + 1.05 + 1.25 * k); REF[c] = T[c]; continue
+            if c in near:
+                hi, cap = near[c]; T[c] = round(min(hi, cap), 3); REF[c] = T[c] + 1.0
+    # one block a run of equal benches (greedy: along j, then the same runs down i)
+    runs = {}
+    for i in range(I0, I1):
+        j = J0
+        while j < J1:
+            if (i, j) not in T: j += 1; continue
+            h = T[(i, j)]; j2 = j
+            while j2 + 1 < J1 and T.get((i, j2 + 1)) == h and rs.random() > 0.08: j2 += 1      # (now and then a joint, as the blocks were cut)
+            runs[(i, j)] = (j2, h); j = j2 + 1
+    used = set(); obs = []
+    for (i, j), (j2, h) in sorted(runs.items()):
+        if (i, j) in used: continue
+        i2 = i
+        while runs.get((i2 + 1, j)) == (j2, h) and (i2 + 1, j) not in used and rs.random() > 0.06: i2 += 1; used.add((i2, j))
+        used.add((i, j))
+        x0, x1, z0, z1 = i * QC, (i2 + 1) * QC, j * QC, (j2 + 1) * QC
+        bm = bmesh.new(); box(bm, (x0, -14.0, z0), (x1, h, z1))
+        tops = [e for e in bm.edges if all(abs(v.co.z - h) < 1e-4 for v in e.verts)]
+        try: bmesh.ops.bevel(bm, geom=tops, offset=rs.uniform(0.018, 0.035), segments=1, affect='EDGES', clamp_overlap=True)
+        except Exception: pass
+        ob = finish(bm, 'quarry_%d_%d' % (i, j), fine=1.6)
+        ref = REF[(i, j)]; set_depth(ob, lambda x_, z_, r=ref: r)
+        obs.append(ob)
+    if door:      # (the lintel over the door, and the face of rock above it)
+        bm = bmesh.new(); box(bm, (door[0] - 0.9, door[1] + 2.05, door[2] - 0.75), (door[0] + 0.45, top, door[2] + 0.75))
+        e = [e for e in bm.edges]
+        try: bmesh.ops.bevel(bm, geom=e, offset=0.03, segments=1, affect='EDGES', clamp_overlap=True)
+        except Exception: pass
+        ob = finish(bm, 'quarry_lintel', fine=1.6); set_depth(ob, lambda x_, z_: top); obs.append(ob)
+    for b in P.get('blocks', []):      # (cut blocks lying about, off the way)
+        x, y, z, w, h, d, rot = b
+        cw = clear_of_way(x, y, z, max(w, d) * 0.55)
+        if cw is None: print('BLOCK at', b[:3], 'dropped: no room off the way'); continue
+        x, z = cw
+        bm = bmesh.new(); box(bm, (-w / 2, y - 0.02, -d / 2), (w / 2, y + h, d / 2))
+        try: bmesh.ops.bevel(bm, geom=list(bm.edges), offset=rs.uniform(0.025, 0.05), segments=1, affect='EDGES', clamp_overlap=True)
+        except Exception: pass
+        bmesh.ops.rotate(bm, verts=bm.verts, cent=(0, 0, 0), matrix=Matrix.Rotation(rot, 3, 'Z'))
+        bmesh.ops.translate(bm, verts=bm.verts, vec=(x, -z, 0.0))
+        ob = finish(bm, 'quarry_block', fine=1.6); set_depth(ob, lambda x_, z_, r=y + h: r); obs.append(ob)
+    print('QUARRY', len(obs), 'blocks')
+    return obs
+
 # ------------------------------------------------------------------ the level
-marble, rock, olive, barks = [], [], [], []
+marble, rock, olive, barks, quarries = [], [], [], [], []
 if PLAN is None:
     for nm, (x0, x1, z0, z1, h, ch) in FLOORS.items():
         m, r = floor(nm, x0, x1, z0, z1, h, ch); marble += m; rock += r
@@ -931,10 +1032,11 @@ if PLAN is None:
     lv, bk = cypress(-4.45, H2 - 0.3, -2.8); olive += lv; barks += bk
     bm = bmesh.new(); box(bm, (-2.2, H1 - 1.55, 1.62), (-1.7, H1 - 1.0, 2.05)); chisel(bm, 2, depth=(0.02, 0.06)); marble.append(finish(bm, 'relief'))      # a carved block in the face of the rock
 else:
+    QUARRY_ON = PLAN.get('scene') == 'quarry'
     for nm, fl in PLAN['floors'].items():
         m, r = floor(nm, 0, 0, 0, 0, fl['h'], 0, poly=[tuple(p) for p in fl['xz']]); marble += m; rock += r
     for fl in PLAN['flights']:
-        m, r = flight(tuple(fl[0]), tuple(fl[1]), fl[2], fl[3] if len(fl) > 3 else None); marble += m; rock += r
+        m, r = flight(tuple(fl[0]), tuple(fl[1]), fl[2], fl[3] if len(fl) > 3 else None, solid=QUARRY_ON); marble += m; rock += r
         while len(fl) < 4: fl.append(len(STEPS[-1]))
         fl[4:] = [STEPS[-1]]
     for (c, r_, top) in PLAN.get('rocks', []):      # rock that binds the floors into one mountain
@@ -953,6 +1055,7 @@ else:
         cw = clear_of_way(x_, cp[1], z_, 0.3)
         if cw is None: print('CYPRESS dropped: no room off the way')
         else: lv, bk = cypress(cw[0], cp[1], cw[1], ch_); olive += lv; barks += bk
+    if QUARRY_ON: quarries += quarry_terrain(PLAN)
     U = Vector((0.7071, 0.0, -0.7071)); W = Vector((0.7071, 0.0, 0.7071)); Y = Vector((0.0, 1.0, 0.0))
     if PLAN.get('relief'): PLAN['relief'] = list(Vector(PLAN['relief']) + W * 0.32)      # (a small carved stone set in the face of the rock: the game puts it there)
     RELIEF_W = W
@@ -967,7 +1070,8 @@ def join(obs, name):
     return o
 
 
-M = join(marble, 'marble'); R = join(rock, 'rock'); O = join(olive, 'olive') if olive else None; B = join(barks, 'bark') if barks else None
+M = join(marble, 'marble'); R = join(rock, 'rock') if rock else None; O = join(olive, 'olive') if olive else None; B = join(barks, 'bark') if barks else None
+QU = join(quarries, 'quarry') if quarries else None
 SN = join(SNOWS, 'snow') if SNOWS else None
 if PLAN is not None and PLAN.get('relief'):      # (the small carved stone: on the face of the rock toward the eye, half sunk in it)
     rp = Vector(PLAN['relief']); Wd = RELIEF_W
@@ -977,7 +1081,7 @@ if PLAN is not None and PLAN.get('relief'):      # (the small carved stone: on t
         if hit:
             PLAN['relief'] = [loc.x, loc.z - 0.17, -loc.y]; PLAN['relief'] = list(Vector(PLAN['relief']) + Wd * 0.05)
             print('RELIEF on the rock at', [round(v, 2) for v in PLAN['relief']]); break
-print('TRIS', sum(len(o.data.polygons) for o in (M, R, O, B, SN) if o is not None))
+print('TRIS', sum(len(o.data.polygons) for o in (M, R, O, B, SN, QU) if o is not None))
 
 # ------------------------------------------------------------------ the shade of corners and clefts, into the vertices
 scene.render.engine = 'CYCLES'
@@ -985,7 +1089,7 @@ scene.cycles.device = 'CPU'
 scene.cycles.samples = SAMPLES
 w = bpy.data.worlds.new('w'); scene.world = w; w.light_settings.distance = 0.55      # (only the close corners and clefts darken)
 scene.render.bake.target = 'VERTEX_COLORS'
-for o in (M, R, O, B, SN):
+for o in (M, R, O, B, SN, QU):
     if o is None: continue
     mat = bpy.data.materials.new(o.name); o.data.materials.append(mat)
     ca = o.data.color_attributes.new('ao', 'BYTE_COLOR', 'CORNER')
@@ -1010,7 +1114,7 @@ for extra in (dict(export_vertex_color='ACTIVE'), dict(export_colors=True), {}):
 
 # ------------------------------------------------------------------ the way, for the game
 if PLAN is not None:
-    way = {k: PLAN.get(k) for k in ('heights', 'nodes', 'edges', 'volute', 'head', 'ring', 'eye', 'flights', 'floors', 'relief', 'faces', 'stone', 'scene', 'sea_y', 'arches', 'braziers')}
+    way = {k: PLAN.get(k) for k in ('heights', 'nodes', 'edges', 'volute', 'head', 'ring', 'eye', 'flights', 'floors', 'relief', 'faces', 'stone', 'scene', 'sea_y', 'arches', 'braziers', 'dial', 'mirrors', 'door', 'walls', 'trench')}
     way['stair_groove'] = STAIR_GROOVE
     with open(OUTJ, 'w') as f: json.dump(way, f, indent=1)
     print('DONE'); sys.exit(0)

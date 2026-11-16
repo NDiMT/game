@@ -61,3 +61,22 @@ def lure():      # the lure: wake the hunter that sleeps on the way, and lead it
     B = Board(cells, (2, 3), (4, 5), flights=fl)
     t = Trial(B, faces=[((0, 1), E, E)], hunters=[((1, 3), S_)])
     return report('the lure', t)
+
+QUARRY = dict(      # aim, then fire, laid in the quarry: its cells, their heights, the flights between benches, the trench a look crosses
+    H={(0, 0): 0.0, (1, 0): 0.0, (2, 0): 0.0, (3, 0): 0.0, (3, 1): 0.0, (3, 2): 0.0, (2, 1): 0.0,
+       (0, 1): 0.65, (0, 2): 0.65,
+       (0, 3): 1.3, (0, 4): 1.3, (1, 1): 1.3, (1, 2): 1.3, (1, 3): 1.3, (1, 4): 1.3, (2, 4): 1.3, (3, 4): 1.3,
+       (4, 0): 1.3, (4, 1): 1.3, (4, 2): 1.3, (4, 3): 1.3, (4, 4): 1.3, (4, 5): 1.3},
+    level=[((1, 0), (0, 0)), ((1, 0), (2, 0)), ((2, 0), (3, 0)), ((3, 0), (3, 1)), ((3, 1), (3, 2)), ((3, 1), (2, 1)), ((0, 1), (0, 2)), ((0, 3), (0, 4)),
+           ((0, 4), (1, 4)), ((1, 1), (1, 2)), ((1, 2), (1, 3)), ((1, 3), (1, 4)), ((1, 4), (2, 4)), ((2, 4), (3, 4)),
+           ((4, 0), (4, 1)), ((4, 1), (4, 2)), ((4, 2), (4, 3)), ((4, 3), (4, 4)), ((4, 4), (4, 5))],
+    flights=[((0, 0), (0, 1)), ((0, 2), (0, 3)), ((3, 0), (4, 0))],
+    gaps=[((3, 4), (4, 4))],
+    start=(0, 0), ring=(4, 5), faces=[((1, 1), E, N), ((4, 4), S_, S_)], dial=(2, 1), mirrors=[((1, 4), 1)])      # (the capstan beside the bench, off the eye's middle line)
+
+@design
+def quarry():      # the quarry: aim, then fire, on benches of cut marble at three heights
+    Q = QUARRY; cells = list(Q['H'])
+    B = Board(cells, Q['start'], Q['ring'], cut=grid_cut(cells, Q['level'] + Q['flights']), flights=Q['flights'], gaps=Q['gaps'])
+    t = Trial(B, faces=Q['faces'], dial=Q['dial'], mirrors=Q['mirrors'], faces_break=True)
+    return report('the quarry (aim, then fire)', t)

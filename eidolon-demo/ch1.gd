@@ -132,6 +132,7 @@ func _init() -> void:
 	if go_iv: title_sub = "the fallen faces  ·  a trial\ntap to begin"; sea_c = Color("dcbd9c"); mist_c = Color("f1d6b1"); bg_c = Color("f1d6b1"); shadow_c = Vector3(0.84, 0.74, 0.68)
 	if go_drown: title_sub = "the drowned sanctuary  ·  a trial\ntap to begin"; sea_c = Color("5f8199"); mist_c = Color("7f9cb2"); bg_c = Color("9a9fc2"); shadow_c = Vector3(0.72, 0.77, 0.88)
 	if go_moon: title_sub = "the moon dial  ·  a trial\ntap to begin"; sea_c = Color("8aabd3"); mist_c = Color("8eafd8"); bg_c = Color("4f6c9e"); shadow_c = Vector3(0.6, 0.67, 0.84)
+	if go_quarry: title_sub = "the quarry  ·  a trial\ntap to begin"; sea_c = Color("d9cbb6"); mist_c = Color("eadfcd"); bg_c = Color("efe3cf"); shadow_c = Vector3(0.78, 0.75, 0.82)
 	if geo_demo: sea_c = Color("2b6880"); mist_c = Color("7f8fb4"); bg_c = Color("1c4a5e"); shadow_c = Vector3(0.5, 0.52, 0.8)      # (this trial: the same sea toward evening)
 
 func _hollows() -> Array:
@@ -257,7 +258,7 @@ void fragment(){
 	}
 }"""
 var flip_test := OS.get_environment("FLIP") == "1"      # every water turns the picture
-var go_demo := OS.has_feature("godemo") or OS.get_environment("FLIP") == "go" or OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or OS.get_environment("FLIP") == "gosea" or OS.has_feature("gosea") or OS.get_environment("FLIP") == "gomoon" or OS.has_feature("gomoon")      # the trial played a step at a time (Eidolon GO)
+var go_demo := OS.has_feature("godemo") or OS.get_environment("FLIP") == "go" or OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or OS.get_environment("FLIP") == "gosea" or OS.has_feature("gosea") or OS.get_environment("FLIP") == "gomoon" or OS.has_feature("gomoon") or OS.get_environment("FLIP") == "goquarry" or OS.has_feature("goquarry")      # the trial played a step at a time (Eidolon GO)
 var geo_demo := OS.has_feature("geodemo") or OS.get_environment("FLIP") == "geo"      # the trial of the hall of images: ways that join where their pictures join
 var figure_demo := OS.has_feature("figuredemo") or OS.get_environment("FLIP") == "figure"      # the trial of the face in the water: three courts where a picture is made whole in the water
 var match_demo := OS.has_feature("matchdemo") or OS.get_environment("FLIP") == "match"      # the trial of the still water: one new court, where the world and what its water shows are to be made to agree
@@ -2008,8 +2009,9 @@ func _play_go() -> void:
 ## stair, and walks up into the ring of light. The fallen face beside the way is one of the thousand he carved.
 var go_drown := OS.get_environment("FLIP") == "gosea" or OS.has_feature("gosea")      # the second level: the drowned sanctuary (gosea/), in the same system
 var go_moon := OS.get_environment("FLIP") == "gomoon" or OS.has_feature("gomoon")      # the third level: the moon dial (gomoon/), a sanctuary in the snow at night
-var go_iv := OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or go_drown or go_moon
-var go_dir := "res://gosea/" if go_drown else ("res://gomoon/" if go_moon else "res://goiv/")      # the level's own folder: its level.glb, level.json, puzzle.json
+var go_quarry := OS.get_environment("FLIP") == "goquarry" or OS.has_feature("goquarry")      # the fourth level: the quarry (goquarry/), where the faces were cut
+var go_iv := OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or go_drown or go_moon or go_quarry
+var go_dir := "res://gosea/" if go_drown else ("res://gomoon/" if go_moon else ("res://goquarry/" if go_quarry else "res://goiv/"))      # the level's own folder: its level.glb, level.json, puzzle.json
 const IV_O := Vector3(460.0, 0.0, 0.0)      # (far from the world, and from the courts of the other trial)
 const IV_T := 2.0      # from one node of the way to the next
 const IV_PITCH := 37.0
@@ -2067,11 +2069,29 @@ const IV_MOON_PAL := {      # the moon dial: a night in the snow under the moon.
 }
 const IV_MOON_BG := ["3a5486", "7e9ecb", "8eadd6", "86a7cf"]      # the night sky: high, low over the peaks, the haze under it, the mist at the bottom
 const IV_MOON_SKY_S := Vector3(0.24, 0.46, 0.9)
+const IV_QUARRY_PAL := {      # the quarry in the afternoon: marble cut white and warm, its shade a cool lilac; wood; bronze
+	"quarry": ["f8f1e4", "ede1cc", "d2c4b0", "aaa0a4"],
+	"marble2": ["f8f1e4", "ede1cc", "d2c4b0", "aaa0a4"],
+	"phead": ["fdf8f0", "f2e8d8", "d6cab9", "afa4a4"],
+	"wood": ["bd8f62", "9f734b", "7c5637", "573b27"],
+	"bronze": ["ecc985", "cd9e55", "966a3b", "64462c"],
+	"silver": ["f4f7fb", "e2e9f2", "b8c5d8", "8e9db6"],
+	"groove": ["ded2be", "ded2be", "ded2be", "ded2be"],
+	"line": ["fffaf0", "fffaf0", "fffaf0", "fffaf0"],
+	"ring": ["ffd884", "ffd884", "ffd884", "ffd884"],
+}
+const IV_QUARRY_BG := ["a9bdd2", "f2dcbc", "ecdcc4", "e6d6c0"]      # the sky over the quarry: high, low, the dust in the air, the haze in the pit
+const IV_QUARRY_SKY_S := Vector3(0.22, 0.46, 0.9)
 func _iv_pal(kind: String) -> Array:
+	if go_quarry and IV_QUARRY_PAL.has(kind): return IV_QUARRY_PAL[kind] as Array
 	if go_moon and IV_MOON_PAL.has(kind): return IV_MOON_PAL[kind] as Array
 	return (IV_SEA_PAL[kind] if (go_drown and IV_SEA_PAL.has(kind)) else IV_PAL[kind]) as Array
 func _iv_sky(m: ShaderMaterial) -> void:      # the sky's colours (and the mist's, which is the sky at that height on the screen)
-	if go_moon:
+	if go_quarry:
+		m.set_shader_parameter("bg_top", Color(String(IV_QUARRY_BG[0]))); m.set_shader_parameter("bg_hz", Color(String(IV_QUARRY_BG[1])))
+		m.set_shader_parameter("bg_mid", Color(String(IV_QUARRY_BG[2]))); m.set_shader_parameter("bg_bot", Color(String(IV_QUARRY_BG[3])))
+		m.set_shader_parameter("sky4", 1.0); m.set_shader_parameter("sky_s", IV_QUARRY_SKY_S)
+	elif go_moon:
 		m.set_shader_parameter("bg_top", Color(String(IV_MOON_BG[0]))); m.set_shader_parameter("bg_hz", Color(String(IV_MOON_BG[1])))
 		m.set_shader_parameter("bg_mid", Color(String(IV_MOON_BG[2]))); m.set_shader_parameter("bg_bot", Color(String(IV_MOON_BG[3])))
 		m.set_shader_parameter("sky4", 1.0); m.set_shader_parameter("sky_s", IV_MOON_SKY_S)
@@ -2121,6 +2141,7 @@ uniform vec3 ao_tint : source_color = vec3(0.93, 0.83, 0.78);      // (the colou
 uniform sampler2D bg_tex : source_color, filter_linear, repeat_disable;      // (a painted backdrop: the mist is its colour at that place on the screen)
 uniform float bg_tex_k = 0.0; uniform vec2 bg_scale = vec2(1.0);
 uniform vec3 vein_tint : source_color = vec3(0.9, 0.86, 0.83);
+uniform float drill = 0.0;      // (a face sawn in the quarry: the drill's grooves down it, the beds across it)
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 uniform float sky4 = 0.0; uniform vec3 bg_hz : source_color = vec3(1.0); uniform vec3 sky_s = vec3(0.19, 0.36, 0.84);
@@ -2153,6 +2174,15 @@ void fragment(){
 		float v2 = 1.0 - smoothstep(0.0, 0.016 + px * 0.6, abs(fbm(q * 2.3 + 20.0) - 0.47));
 		c = mix(c, c * vein_tint, veins * (0.6 * v1 + 0.3 * v2));
 		c *= 1.0 + veins * (w - 0.5) * 0.05;
+	}
+	if (drill > 0.0 && abs(fn.y) < 0.35) {
+		vec2 tg = normalize(vec2(-fn.z, fn.x));
+		float u = dot(wp.xz, tg); float px = max(length(dFdx(wp)), length(dFdy(wp)));
+		float g = abs(fract(u / 0.34 + 0.5) - 0.5) * 2.0;
+		float lv = 1.0 - smoothstep(0.06, 0.06 + px / 0.34 * 1.5 + 0.08, g);
+		float gh = abs(fract(wy / 1.15 + 0.5) - 0.5) * 2.0;
+		float lh = 1.0 - smoothstep(0.015, 0.015 + px / 1.15 * 1.5 + 0.025, gh);
+		c *= 1.0 - drill * (0.075 * lv + 0.06 * lh);
 	}
 	if (ao_k > 0.0) { float ao = max(pow(clamp(COLOR.r, 0.0, 1.0), 0.3), 0.22); c *= mix(1.0, ao, ao_k); c = mix(c, c * ao_tint, (1.0 - ao) * ao_k * 0.6); }
 	float ld = COLOR.g * 4.0;
@@ -2273,6 +2303,9 @@ func _iv_mat(kind: String, far_k := 0.0, extra := {}) -> ShaderMaterial:
 	if iv_bgtex != null: m.set_shader_parameter("bg_tex", iv_bgtex); m.set_shader_parameter("bg_tex_k", 1.0); m.set_shader_parameter("bg_scale", _iv_bg_scale())
 	if go_drown:
 		m.set_shader_parameter("shade_tint", Color(0.74, 0.79, 0.9)); m.set_shader_parameter("clip_k", 1.0); m.set_shader_parameter("clip_y", IV_O.y + ivr_sea_y)
+	if go_quarry:      # (the afternoon: shadows a cool lilac on the warm marble)
+		m.set_shader_parameter("shade_tint", Color(0.76, 0.74, 0.84)); m.set_shader_parameter("ao_tint", Color(0.9, 0.85, 0.86)); m.set_shader_parameter("vein_tint", Color(0.93, 0.9, 0.87))
+		if kind == "quarry": m.set_shader_parameter("drill", 1.0)
 	if go_moon:      # (a shadow on the snow is blue; so are its close corners and the veins of its marble)
 		m.set_shader_parameter("shade_tint", Color(0.6, 0.68, 0.84)); m.set_shader_parameter("ao_tint", Color(0.82, 0.87, 0.97)); m.set_shader_parameter("vein_tint", Color(0.87, 0.91, 0.98))
 	m.set_shader_parameter("key_dir", iv_key); m.set_shader_parameter("far_k", far_k)
@@ -3498,7 +3531,7 @@ func _ivr_cam() -> void:
 	var vp := get_viewport().get_visible_rect().size
 	cam.keep_aspect = Camera3D.KEEP_WIDTH; cam.size = w * maxf(1.0, (vp.x / vp.y) / 0.5625)
 
-func _ivr_mat(kind: String, ao := 1.0, local := false) -> ShaderMaterial: return _iv_mat(kind, 0.0, {"lfog": 1.0 if (local and not go_drown) else 0.0, "fog_hi": (ivr_sea_y + 1.5) if go_drown else (-1.4 if go_moon else -3.6), "fog_lo": (ivr_sea_y - 0.15) if go_drown else (-5.4 if go_moon else -7.5), "ao_k": ao * ({"marble2": 0.4, "olive2": 0.2, "bark": 0.3, "rock2": 0.0} as Dictionary).get(kind, 1.0), "veins": (0.35 if go_moon else 0.6) if kind == "marble2" else 0.0, "dk": 0.0, "bounce": 0.0, "haze": 1.0, "shadow_k": 0.0 if kind == "rock2" else 1.0, "lf_hi": 1.0 if go_drown else (1.0 if go_moon else 0.5), "lf_len": 2.6 if go_drown else (2.8 if go_moon else 1.9)})
+func _ivr_mat(kind: String, ao := 1.0, local := false) -> ShaderMaterial: return _iv_mat(kind, 0.0, {"lfog": 1.0 if (local and not go_drown) else 0.0, "fog_hi": (ivr_sea_y + 1.5) if go_drown else (-1.4 if go_moon else (-1.6 if go_quarry else -3.6)), "fog_lo": (ivr_sea_y - 0.15) if go_drown else (-5.4 if go_moon else (-6.0 if go_quarry else -7.5)), "ao_k": ao * ({"marble2": 0.4, "olive2": 0.2, "bark": 0.3, "rock2": 0.0, "quarry": 0.55} as Dictionary).get(kind, 1.0), "veins": (0.35 if go_moon else (0.25 if go_quarry else 0.6)) if (kind == "marble2" or kind == "quarry") else 0.0, "dk": 0.17 if kind == "quarry" else 0.0, "bounce": 0.0, "haze": 1.0, "shadow_k": 0.0 if kind == "rock2" else 1.0, "lf_hi": 1.0 if go_drown else (1.0 if go_moon else (1.4 if go_quarry else 0.5)), "lf_len": 2.6 if go_drown else (2.8 if go_moon else (3.2 if go_quarry else 1.9))})
 
 ## the way drawn on the stone: a pale line, and at each node a pale disc in a darker ring
 func _ivr_way() -> void:
@@ -3746,6 +3779,195 @@ func _ivs_far() -> void:
 	var rs := _iv_st()
 	_ivr_colonnade(rs, spot_y, S2.call(1330, 640), Vector2(9.0, 4.6), r0.y, 4, 0.85, 0.34, 4, rng)
 	_iv_commit(rs, "farsil", self, 0.16, {"sil": 1.0, "fog_hi": r0.y - 0.2, "fog_lo": sea_y + 0.05}, false)
+
+# ---------------------------------------------------------------- the quarry (goquarry/): looks along the board, bronze mirrors, the capstan
+## A face may look a way rather than at a node: straight on along the board's level ways (and over a chasm), turned a
+## quarter by a bronze mirror as light is, until the dial, the stone or another face stops it; and a face that another
+## face's look reaches breaks (tools/go/trials.py: the same rules, proven first).
+var ivg_mir := {}      # the bronze mirrors: node -> {turn (0 '/', 1 '\'), turn0, n (what turns), mark (on the floor)}
+var ivg_gaps := []      # (chasms a look goes over and nobody walks)
+var ivg_fbreak := false
+var ivg_dirv := {}      # the board's ways in the world: "E", "S", "W", "N"
+const IVQ_MIRROR := [{"E": "N", "N": "E", "W": "S", "S": "W"}, {"E": "S", "S": "E", "W": "N", "N": "W"}]
+
+func _ivg_dname(d: Vector3) -> String:
+	var best := "E"; var bc := -2.0
+	for k in ivg_dirv:
+		var c := (ivg_dirv[k] as Vector3).dot(d)
+		if c > bc: bc = c; best = String(k)
+	return best
+
+## the node a look goes on to from c the way d: along a level way, or over a chasm
+func _ivg_look_next(c: String, d: Vector3) -> String:
+	var best := ""; var bc := 0.9
+	var pc: Vector3 = ivp_nodes[c]
+	for e in ivp_edges:
+		var o := ""
+		if e[0] == c: o = String(e[1])
+		elif e[1] == c: o = String(e[0])
+		else: continue
+		if not (e[2] as Array).is_empty() or o == "s": continue
+		var v: Vector3 = (ivp_nodes[o] as Vector3) - pc; v.y = 0.0
+		if v.length() < 0.01: continue
+		var k := v.normalized().dot(d)
+		if k > bc: bc = k; best = o
+	for g in ivg_gaps:
+		var o2 := String(g[1]) if String(g[0]) == c else (String(g[0]) if String(g[1]) == c else "")
+		if o2 == "": continue
+		var v2: Vector3 = (ivp_nodes[o2] as Vector3) - pc; v2.y = 0.0
+		var k2 := v2.normalized().dot(d)
+		if k2 > bc: bc = k2; best = o2
+	return best
+
+## a face's look along the board: the nodes it strikes, the points it passes (to draw it), the face it ends on
+func _ivg_dlook(f: Dictionary) -> Dictionary:
+	var d: Vector3 = ivg_dirv[String(f.dirs[ivg_v])]
+	var c := String(f.node); var out := []; var pts := [ivp_nodes[c]]; var hit := -1; var seen := {}
+	for _i in 60:
+		var n := _ivg_look_next(c, d)
+		if n == "" or n == iv_block or n == ivg_vol: break
+		var fi := _ivg_face_on(n)
+		if fi >= 0: hit = fi; pts.append(ivp_nodes[n]); break
+		if ivg_mir.has(n):
+			var key := n + _ivg_dname(d)
+			if seen.has(key): break
+			seen[key] = true
+			d = ivg_dirv[String(IVQ_MIRROR[int(ivg_mir[n].turn)][_ivg_dname(d)])]
+			pts.append(ivp_nodes[n]); c = n; continue
+		out.append(n); pts.append(ivp_nodes[n]); c = n
+	if hit < 0 and pts.size() >= 2:      # (a look that runs off the board: drawn a little way on)
+		pts.append((pts[pts.size() - 1] as Vector3) + d * 0.7)
+	return {"nodes": out, "pts": pts, "hit": hit}
+
+## a face whose look another's reaches breaks; then the looks are looked again, until none does
+func _ivg_settle() -> void:
+	if not ivg_fbreak: return
+	for _k in 8:
+		var hit := []
+		for f in ivg_faces:
+			if not f.alive or not f.has("dirs"): continue
+			var h := int(_ivg_dlook(f).hit)
+			if h >= 0 and not hit.has(h): hit.append(h)
+		if hit.is_empty(): return
+		await wait(0.25)
+		for i in hit:
+			print("IV a look breaks the face at ", ivg_faces[i].node)
+			_ivg_face_break(int(i))
+		_ivg_gaze_all()
+		await wait(0.6)
+
+## a look drawn: a red line along the floor round every corner a mirror turns, a ring on each node it strikes
+func _ivg_dgaze_draw(f: Dictionary) -> void:
+	if not f.has("segs"):
+		var gm := (f.gaze[0] as MeshInstance3D).material_override
+		var segs := []
+		for _s in 6:
+			var lm := BoxMesh.new(); lm.size = Vector3(1.0, 0.004, 0.05)
+			var ln := MeshInstance3D.new(); ln.mesh = lm; ln.material_override = gm; ln.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; iv_root.add_child(ln)
+			segs.append(ln)
+		f["segs"] = segs; (f.gaze[0] as Node3D).visible = false
+	var L := _ivg_dlook(f) if f.alive else {"nodes": [], "pts": [], "hit": -1}
+	var pts: Array = L.pts; var segs2: Array = f.segs
+	for i in segs2.size():
+		var ln2: MeshInstance3D = segs2[i]
+		ln2.visible = f.alive and i + 1 < pts.size()
+		if not ln2.visible: continue
+		var a: Vector3 = pts[i]; var b: Vector3 = pts[i + 1]
+		var a2 := Vector3(a.x, a.y, a.z); var b2 := Vector3(b.x, b.y, b.z)
+		if i == 0: a2 = a + (b - a).normalized() * 0.3
+		var dv := Vector3(b2.x - a2.x, 0, b2.z - a2.z); var LL := maxf(dv.length(), 0.01); dv = dv / LL
+		ln2.global_position = (a2 + b2) * 0.5 + Vector3(0, 0.03, 0)
+		ln2.basis = Basis(dv * LL, Vector3.UP, dv.cross(Vector3.UP))
+	var g: Array = f.gaze
+	(g[0] as Node3D).visible = false
+	for i in range(1, g.size()):
+		var rg: MeshInstance3D = g[i]
+		rg.visible = f.alive and i - 1 < (L.nodes as Array).size()
+		if rg.visible: rg.global_position = (ivp_nodes[L.nodes[i - 1]] as Vector3) + Vector3(0, 0.04, 0)
+
+## a bronze mirror on its stand: a disc in a ring of bronze, turned to send a look on a quarter round; a bar of bronze
+## let into the floor under it shows the way it turns a look, from wherever it is seen
+func _ivq_mirror(nd: String, turn: int) -> void:
+	var p: Vector3 = ivp_nodes[nd]
+	var root := Node3D.new(); iv_root.add_child(root); root.global_position = p
+	var bs := _iv_st()
+	_iv_box(bs, Vector3(-0.3, 0.0, -0.3), Vector3(0.3, 0.12, 0.3)); _iv_box(bs, Vector3(-0.22, 0.12, -0.22), Vector3(0.22, 0.2, 0.22))
+	var bmi := MeshInstance3D.new(); bmi.mesh = bs.commit(); bmi.material_override = _ivr_mat("marble2", 0.0); root.add_child(bmi)
+	var head := Node3D.new(); root.add_child(head)
+	var post := CylinderMesh.new(); post.top_radius = 0.035; post.bottom_radius = 0.05; post.height = 0.5; post.radial_segments = 10; post.rings = 1
+	var pmi := MeshInstance3D.new(); pmi.mesh = post; pmi.material_override = _ivr_mat("bronze", 0.0); pmi.position = Vector3(0, 0.45, 0); head.add_child(pmi)
+	var disc := CylinderMesh.new(); disc.top_radius = 0.34; disc.bottom_radius = 0.34; disc.height = 0.04; disc.radial_segments = 36; disc.rings = 1
+	var dmi := MeshInstance3D.new(); dmi.mesh = disc; dmi.material_override = _ivr_mat("silver", 0.0); dmi.position = Vector3(0, 1.02, 0); dmi.rotation.x = PI * 0.5; head.add_child(dmi)
+	var rim := TorusMesh.new(); rim.inner_radius = 0.33; rim.outer_radius = 0.39; rim.rings = 36; rim.ring_segments = 8
+	var rmi := MeshInstance3D.new(); rmi.mesh = rim; rmi.material_override = _ivr_mat("bronze", 0.0); rmi.position = Vector3(0, 1.02, 0); rmi.rotation.x = PI * 0.5; rmi.scale = Vector3(1, 1.6, 1); head.add_child(rmi)
+	var bar := BoxMesh.new(); bar.size = Vector3(0.95, 0.012, 0.06)
+	var mk := MeshInstance3D.new(); mk.mesh = bar; mk.material_override = _ivr_mat("bronze", 0.0); mk.position = Vector3(0, 0.205, 0); head.add_child(mk)
+	for m in [bmi, pmi, dmi, rmi]: (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	ivg_mir[nd] = {"turn": turn, "turn0": turn, "n": head}
+	_ivq_mirror_pose(nd, 0.0)
+
+## where a mirror's face lies: along the diagonal between the two ways it joins ('/' joins E and N, '\' E and S)
+func _ivq_mirror_basis(turn: int) -> Basis:
+	var dg: Vector3 = ((ivg_dirv["E"] as Vector3) + (ivg_dirv["N"] if turn == 0 else ivg_dirv["S"])).normalized()
+	return Basis(dg, Vector3.UP, dg.cross(Vector3.UP))
+func _ivq_mirror_pose(nd: String, t: float) -> void:
+	var head: Node3D = ivg_mir[nd].n; var b := _ivq_mirror_basis(int(ivg_mir[nd].turn))
+	if t <= 0.0: head.basis = b; return
+	var q0 := head.quaternion; var q1 := b.get_rotation_quaternion()
+	if q0.dot(q1) < 0.0: q1 = -q1
+	var tw2 := create_tween(); tw2.tween_method(func(k: float) -> void: head.quaternion = q0.slerp(q1, k), 0.0, 1.0, t).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await tw2.finished
+
+## she turns a mirror a quarter round, her hands on its rim
+func _ivq_mirror_turn(nd: String) -> void:
+	iv_busy = true
+	var wp: Vector3 = (ivp_nodes[nd] as Vector3) + Vector3(0, 0.9, 0)
+	face_to = wp
+	var n := 0
+	while face_to != null and n < 90: await get_tree().process_frame; n += 1
+	var to_her := Vector3(pos.x - wp.x, 0, pos.z - wp.z).normalized()
+	var fr := wp + to_her * 0.3
+	tgtL = fr + Vector3(0, 0.15, 0) + to_her.cross(Vector3.UP) * 0.16; tgtR = fr + Vector3(0, -0.05, 0) - to_her.cross(Vector3.UP) * 0.16
+	var up := tw(); up.set_parallel(); up.tween_property(self, "a_wL", 1.0, 0.3); up.tween_property(self, "a_wR", 1.0, 0.3); up.tween_property(self, "a_lean", 0.14, 0.3)
+	await up.finished
+	ivg_mir[nd].turn = 1 - int(ivg_mir[nd].turn)
+	print("IV the mirror at ", nd, " turns: ", ivg_mir[nd].turn)
+	await _ivq_mirror_pose(nd, 0.8)
+	_ivg_gaze_all()
+	var dn := tw(); dn.set_parallel(); dn.tween_property(self, "a_wL", 0.0, 0.35); dn.tween_property(self, "a_wR", 0.0, 0.35); dn.tween_property(self, "a_lean", 0.0, 0.35)
+	await dn.finished
+	iv_busy = false
+
+## the capstan of the quarry: a drum of wood with its bars; turned, it turns the face on its turntable
+func _ivq_capstan(p: Vector3) -> void:
+	var base := Node3D.new(); iv_root.add_child(base); base.global_position = p
+	var ring := CylinderMesh.new(); ring.top_radius = 0.42; ring.bottom_radius = 0.46; ring.height = 0.1; ring.radial_segments = 20; ring.rings = 1
+	var rmi := MeshInstance3D.new(); rmi.mesh = ring; rmi.material_override = _ivr_mat("marble2", 0.0); rmi.position = Vector3(0, 0.05, 0); base.add_child(rmi)
+	iv_wheel = Node3D.new(); iv_root.add_child(iv_wheel); iv_wheel.global_position = p + Vector3(0, 0.55, 0); iv_wheel.rotation = Vector3(-PI * 0.5, 0, 0)
+	var drum := CylinderMesh.new(); drum.top_radius = 0.17; drum.bottom_radius = 0.2; drum.height = 0.62; drum.radial_segments = 14; drum.rings = 1
+	var dmi := MeshInstance3D.new(); dmi.mesh = drum; dmi.material_override = _ivr_mat("wood", 0.0); dmi.rotation.x = PI * 0.5; dmi.position = Vector3(0, 0, -0.2); iv_wheel.add_child(dmi)
+	var cap := CylinderMesh.new(); cap.top_radius = 0.21; cap.bottom_radius = 0.21; cap.height = 0.06; cap.radial_segments = 14; cap.rings = 1
+	var cmi := MeshInstance3D.new(); cmi.mesh = cap; cmi.material_override = _ivr_mat("bronze", 0.0); cmi.rotation.x = PI * 0.5; cmi.position = Vector3(0, 0, 0.1); iv_wheel.add_child(cmi)
+	for k in 4:      # (the bars)
+		var bx := BoxMesh.new(); bx.size = Vector3(0.62, 0.055, 0.055)
+		var bmi := MeshInstance3D.new(); bmi.mesh = bx; bmi.material_override = _ivr_mat("wood", 0.0); bmi.position = Vector3(cos(TAU * k / 4.0) * 0.48, sin(TAU * k / 4.0) * 0.48, 0.02); bmi.rotation.z = TAU * k / 4.0; iv_wheel.add_child(bmi)
+	for m in [rmi, dmi, cmi]: (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+
+## the dust of the quarry in the light: motes drifting slowly
+func _ivq_dust(cl: CanvasLayer) -> void:
+	var vs := get_viewport().get_visible_rect().size
+	var k := vs.x / 720.0
+	var pt := CPUParticles2D.new(); cl.add_child(pt)
+	pt.amount = 46; pt.lifetime = 16.0; pt.preprocess = 16.0
+	pt.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE; pt.emission_rect_extents = Vector2(vs.x * 0.55, vs.y * 0.5)
+	pt.position = vs * 0.5
+	pt.direction = Vector2(0.4, -1.0); pt.spread = 70.0; pt.gravity = Vector2.ZERO
+	pt.initial_velocity_min = 4.0 * k; pt.initial_velocity_max = 14.0 * k
+	pt.texture = load("res://goiv/glow.png")
+	pt.scale_amount_min = 0.012 * k; pt.scale_amount_max = 0.03 * k
+	var gr := Gradient.new(); gr.offsets = PackedFloat32Array([0.0, 0.2, 0.8, 1.0])
+	gr.colors = PackedColorArray([Color(1, 0.96, 0.86, 0.0), Color(1, 0.96, 0.86, 0.55), Color(1, 0.96, 0.86, 0.55), Color(1, 0.96, 0.86, 0.0)])
+	pt.color_ramp = gr
 
 # ---------------------------------------------------------------- the moon dial (gomoon/): its own things
 const IVM_MOON := Vector2(0.7, 0.15)      # (the moon on the screen: where its middle is, and how wide it is across the screen)
@@ -4033,7 +4255,7 @@ func _ivr_build() -> void:
 	iv_root = Node3D.new(); iv_root.position = IV_O; add_child(iv_root)
 	var j0 = JSON.parse_string(FileAccess.get_file_as_string(go_dir + "level.json"))
 	if j0 is Dictionary and (j0 as Dictionary).get("sea_y") != null: ivr_sea_y = float(j0.sea_y)
-	if go_moon and OS.get_environment("IV_NO_BACKDROP") == "" and FileAccess.file_exists(go_dir + "backdrop.jpg"): iv_bgtex = load(go_dir + "backdrop.jpg")
+	if (go_moon or go_quarry) and OS.get_environment("IV_NO_BACKDROP") == "" and FileAccess.file_exists(go_dir + "backdrop.jpg"): iv_bgtex = load(go_dir + "backdrop.jpg")
 	var bm := ShaderMaterial.new(); var bs := Shader.new(); bs.code = IV_BG_SH if iv_bgtex == null else IV_BGTEX_SH; bm.shader = bs
 	_iv_sky(bm)
 	if iv_bgtex != null: bm.set_shader_parameter("bg_tex", iv_bgtex); bm.set_shader_parameter("bg_scale", _iv_bg_scale()); bm.set_shader_parameter("uv_flip", iv_uvf)
@@ -4049,7 +4271,7 @@ func _ivr_build() -> void:
 	for m in lv.find_children("*", "MeshInstance3D", true, false):
 		var mi := m as MeshInstance3D
 		var nm := String(mi.name).to_lower() + "|" + String(mi.get_parent().name).to_lower()
-		var kind := "rock2" if nm.contains("rock") else ("olive2" if nm.contains("olive") else ("bark" if nm.contains("bark") else ("snow" if nm.contains("snow") else "marble2")))
+		var kind := "rock2" if nm.contains("rock") else ("olive2" if nm.contains("olive") else ("bark" if nm.contains("bark") else ("snow" if nm.contains("snow") else ("quarry" if nm.contains("quarry") else "marble2"))))
 		mi.material_override = _ivr_mat(kind, 1.0, true); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	if go_drown:      # (the level's image in the still water, faint)
 		_ivs_mirror(lv, func(mi: MeshInstance3D) -> Array:
@@ -4080,14 +4302,23 @@ func _ivr_build() -> void:
 		var it: Array = ivg.intro
 		ivp_nodes["s"] = V.call(it[0]); ivp_edges.append(["s", String(ivg.start), [V.call(it[0]), V.call(it[1])]])
 		ivg_vol = String(ivg.volute.node) if ivg.get("volute") != null else ""; ivg_exit = String(ivg.exit)
+		ivg_gaps = ivg.get("gaps", []) as Array; ivg_fbreak = bool(ivg.get("faces_break", false))
+		var gd: Dictionary = ivg.get("grid", {"E": [0, 0, -1], "S": [1, 0, 0], "W": [0, 0, 1], "N": [-1, 0, 0]})
+		for gk in gd: ivg_dirv[gk] = Vector3(float(gd[gk][0]), float(gd[gk][1]), float(gd[gk][2]))
 	_ivr_way()
 	iv_me = "s"; iv_block = String(ivg.block) if ivg_on else "b0"
-	iv_block_n = _ivr_block(); iv_block_n.global_position = ivp_nodes[iv_block]
+	iv_block_n = _ivr_block()
+	if ivp_nodes.has(iv_block): iv_block_n.global_position = ivp_nodes[iv_block]
+	else: iv_block_n.visible = false; iv_block_n.global_position = IV_O + Vector3(0, -60, 0)      # (a trial without the stone)
 	if ivg_vol != "":
-		if go_moon: _ivm_dial(ivp_nodes[ivg_vol])
+		if go_quarry: _ivq_capstan(ivp_nodes[ivg_vol])
+		elif go_moon: _ivm_dial(ivp_nodes[ivg_vol])
 		else: _ivp_volute(ivp_nodes[ivg_vol])
 	elif not ivg_on and j.get("volute") != null: _ivp_volute(V.call(j.volute))
 	if ivg_on: _ivg_build()
+	if ivg_on and ivg.get("mirrors") != null:
+		for mm in (ivg.mirrors as Array): _ivq_mirror(String(mm.node), int(mm.turn))
+		_ivg_gaze_all()
 	if j.get("relief") != null:
 		var rs := _ivr_block(); rs.global_position = V.call(j.relief); rs.scale = Vector3.ONE * 0.42; rs.rotation = Vector3(0.12, 0.6, -0.08)
 	# the fallen face: one of the thousand, on its cheek in the rock, looking up at the eye
@@ -4148,6 +4379,9 @@ func _ivr_build() -> void:
 	var lr := _iv_overlay(cl, "res://goiv/leaves_tl.png", Vector2(720 * k + 60 * k, -150 * k), Vector2(440, 440) * k); lr.flip_h = true; lr.position.x -= 440 * k; lr.rotation = 0.18
 	if go_drown:      # (at sea: the leaves above, cool in the dusk; no rocks before the eye, the mist is open)
 		for ov in [iv_leaves, lr]: (ov as CanvasItem).modulate = Color(0.62, 0.66, 0.8)
+	elif go_quarry:      # (the quarry: the leaves above at the left, warm; dust in the air; the pit open below)
+		lr.visible = false; iv_leaves.modulate = Color(0.92, 0.86, 0.8)
+		_ivq_dust(cl)
 	elif go_moon:      # (in the snow at night: snowy pine above at the left, the snow falling; the mist open below)
 		lr.visible = false
 		if FileAccess.file_exists("res://gomoon/pine_tl.png"): iv_leaves.texture = load("res://gomoon/pine_tl.png")
@@ -4194,13 +4428,14 @@ func _ivg_line() -> String:
 
 func _ivg_build() -> void:
 	var tog: Dictionary = {}
-	if ivg.get("volute") != null and (ivg.volute as Dictionary).has("toggles"): tog = ivg.volute.toggles.watchers
+	if ivg.get("volute") != null and (ivg.volute as Dictionary).has("toggles"): tog = (ivg.volute.toggles as Dictionary).get("watchers", {})
 	var gm := StandardMaterial3D.new(); gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	gm.albedo_color = Color(0.72, 0.3, 0.2, 0.55); gm.cull_mode = BaseMaterial3D.CULL_DISABLED
 	for w in (ivg.watchers as Array):
 		var nd := String(w.node)
-		var lk: Array = tog.get(nd, [String(w.facing), String(w.facing)])
+		var lk: Array = tog.get(nd, [String(w.get("facing", "")), String(w.get("facing", ""))])
 		var f := {"node": nd, "look": [String(lk[0]), String(lk[1])], "alive": true, "line": bool(w.get("gaze", false))}
+		if w.get("dirs") != null: f["dirs"] = [String(w.dirs[0]), String(w.dirs[1])]      # (it looks a way, not at a node: on along the board, bent by mirrors)
 		# the face: a head of hers in stone on a low stand, turned to the node it watches
 		var st := Node3D.new(); iv_root.add_child(st); st.global_position = ivp_nodes[nd]
 		var ph := 0.08 if f.line else 0.16      # (a face that looks along a line: on a low plinth, which stays when it falls)
@@ -4236,10 +4471,13 @@ func _ivg_build() -> void:
 		_ivg_w_aim(0.0)
 
 ## which way a face looks just now, and what it watches
-func _ivg_watched(f: Dictionary) -> String: return String(f.look[ivg_v])
+func _ivg_watched(f: Dictionary) -> String:
+	if f.has("dirs"): return _ivg_look_next(String(f.node), ivg_dirv[String(f.dirs[ivg_v])])
+	return String(f.look[ivg_v])
 ## the nodes a face's look strikes now: the one it looks at, and (a face that looks along a line) on straight along
 ## level ways until the stone or another face stands in the way (behind the stone is shade)
 func _ivg_seen(f: Dictionary) -> Array:
+	if f.has("dirs"): return _ivg_dlook(f).nodes
 	var k := _ivg_watched(f)
 	if not f.get("line", false): return [k]
 	var out := []
@@ -4261,6 +4499,7 @@ func _ivg_plinth(n: String) -> bool:      # a face's plinth there, the face on i
 	return false
 ## a look along a line, drawn: a red line on the floor from the face to the end of its look, a ring on each node of it
 func _ivg_gaze_draw(f: Dictionary) -> void:
+	if f.has("dirs"): _ivg_dgaze_draw(f); return
 	if not f.get("line", false): return
 	var g: Array = f.gaze
 	var sn := _ivg_seen(f) if f.alive else []
@@ -4304,6 +4543,15 @@ func _ivg_w_behind(me: String) -> bool:
 	return fd.dot(_ivg_dir(w, me)) <= IVG_BEHIND_COS
 
 func _ivg_face_aim(f: Dictionary, t := 0.6) -> void:
+	if f.has("dirs"):
+		var dd: Vector3 = ivg_dirv[String(f.dirs[ivg_v])]
+		var hb := Basis(dd, Vector3.UP, dd.cross(Vector3.UP)); var hn0: Node3D = f.head
+		if t <= 0.0: hn0.basis = hb
+		else:
+			var q0d := hn0.quaternion; var q1d := hb.get_rotation_quaternion()
+			create_tween().tween_method(func(k: float) -> void: hn0.quaternion = q0d.slerp(q1d, k), 0.0, 1.0, t).set_trans(Tween.TRANS_SINE)
+		_ivg_gaze_draw(f)
+		return
 	if f.get("line", false):
 		var a0: Vector3 = ivp_nodes[f.node]; var l0: Vector3 = ivp_nodes[_ivg_watched(f)]
 		var d0 := Vector3(l0.x - a0.x, 0, l0.z - a0.z).normalized()
@@ -4342,9 +4590,18 @@ func _ivg_turn(nb: String) -> void:
 	var me := iv_me
 	var wn := _ivg_w_node()
 	if OS.get_environment("IV_TRACE") != "": print("IV turn ", me, " -> ", nb, "  block ", iv_block, " volute ", ivg_v, " statue ", wn)
+	if ivg_mir.has(nb):      # she turns a bronze mirror: the looks that reach it go on the other way
+		iv_moves += 1
+		await _ivq_mirror_turn(nb)
+		await _ivg_settle()
+		if _ivg_looked_at(me): await _ivg_fail("struck", me); return
+		if wn != "" and _ivg_looked_at(wn): await _ivg_w_break()
+		await _ivg_w_step()
+		return
 	if nb == ivg_vol:      # she turns the volute: the faces on their stands turn with it
 		iv_moves += 1
 		await _ivg_turn_volute()
+		await _ivg_settle()
 		if _ivg_looked_at(me): await _ivg_fail("struck", me); return
 		if wn != "" and _ivg_looked_at(wn): await _ivg_w_break()
 	else:
@@ -4372,6 +4629,7 @@ func _ivg_turn(nb: String) -> void:
 				iv_moves += 1
 				await _ivp_walk([nb])
 		if iv_won: return
+		await _ivg_settle()
 		if _ivg_looked_at(iv_me): await _ivg_fail("struck", iv_me); return
 	await _ivg_w_step()
 
@@ -4446,6 +4704,7 @@ func _ivg_face_break(i: int) -> void:
 	print("IV a face breaks at ", f.node)
 	var st: Node3D = f.n
 	for g in (f.gaze as Array): (g as Node3D).visible = false
+	for g in (f.get("segs", []) as Array): (g as Node3D).visible = false
 	var hn: Node3D = f.head
 	var k := create_tween().set_parallel()
 	k.tween_property(hn, "rotation:z", hn.rotation.z + 1.4, 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
@@ -4487,13 +4746,17 @@ func _ivg_fail(why: String, at: String, fi := -1) -> void:
 func _ivg_reset() -> void:
 	route.clear(); iv_push = {}
 	iv_me = String(ivg.start); pos = ivp_nodes[iv_me]; ivp_wp_cur = pos; ivp_wp_prev = pos
-	iv_block = String(ivg.block); iv_block_n.global_position = ivp_nodes[iv_block]
+	iv_block = String(ivg.block)
+	if ivp_nodes.has(iv_block): iv_block_n.global_position = ivp_nodes[iv_block]
 	ivg_v = 0
 	if iv_wheel != null: iv_wheel.rotation.z = 0.0
+	for mk in ivg_mir:      # (the mirrors as they were)
+		ivg_mir[mk].turn = int(ivg_mir[mk].turn0); _ivq_mirror_pose(String(mk), 0.0)
 	for f in ivg_faces:
 		f.alive = true; (f.n as Node3D).visible = true; (f.n as Node3D).scale = Vector3.ONE; (f.head as Node3D).rotation = Vector3.ZERO
 		(f.head as Node3D).scale = Vector3.ONE; (f.head as Node3D).visible = true
 		for g in (f.gaze as Array): (g as Node3D).visible = true
+		for g in (f.get("segs", []) as Array): (g as Node3D).visible = true
 		_ivg_face_aim(f, 0.0)
 	if not ivg_route.is_empty():
 		ivg_wi = 0; ivg_wd = 1; ivg_w.visible = true; ivg_w.scale = Vector3.ONE; (ivg_w.get_node("body") as Node3D).rotation = Vector3.ZERO
