@@ -2094,8 +2094,6 @@ const IV_WAKE_PAL := {      # the waking: dawn over a still sea. Pearl and rose 
 	"line": ["fff4ee", "fff4ee", "fff4ee", "fff4ee"],
 	"ring": ["fff3e2", "fff3e2", "fff3e2", "fff3e2"],
 	"bronze": ["f2d398", "d7a660", "9c6e40", "6b4a30"],
-	"far": ["e2d0dc", "d8c5d6", "cdbbd0", "c2b0c9"],      # (far off: shapes in the haze, paler the farther)
-	"far1": ["eadbe3", "e1d2df", "d8c9da", "cfc0d4"],
 	"wood": ["b88d68", "96714f", "74533b", "533b2b"],
 	"iron": ["6c5f6a", "554a55", "40373f", "2c262d"],
 }
@@ -3749,7 +3747,6 @@ var ivw_veil_m: ShaderMaterial
 
 func _ivw_scene(j: Dictionary) -> void:
 	if j.get("observer") != null: _ivw_observer(j)
-	_ivw_far()
 	_ivw_scene2(j)
 
 func _ivw_observer(j: Dictionary) -> void:
@@ -3767,41 +3764,6 @@ func _ivw_observer(j: Dictionary) -> void:
 		(m as MeshInstance3D).material_override = _iv_mat("observer", float(j.get("observer_haze", 0.28)), ex); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_ivs_mirror(hp, func(_mi: MeshInstance3D) -> Array:
 		var mx := {"fog_hi": ivr_sea_y + 1.7, "fog_lo": ivr_sea_y - 0.1, "haze": 1.0, "mirror_fade": 4.0, "mirror_wob": 0.07}; mx.merge(rim); return ["observer", float(j.get("observer_haze", 0.28)), mx])
-
-## far off, as the other levels have it: low crags and ruined colonnades standing in the haze, seen by the level's own
-## eye, so they lie along the same diagonals as the way; no detail; each layer paler the farther it lies, each fading
-## into the mist from a little under its top down to the sea
-func _ivw_far() -> void:
-	var b := _ivp_basis(); var bx := b.x; var by := b.y; var fwd := -b.z
-	var ce: Array = ivr_eye.centre; var ref := IV_O + Vector3(float(ce[0]), float(ce[1]), float(ce[2]))
-	var W := float(ivr_eye.width); var Hh := W * 16.0 / 9.0
-	var sea := IV_O.y + ivr_sea_y
-	var at := func(u: float, v: float) -> Vector3:      # (the point of the sea the eye sees at (u, v) of the screen)
-		var sx := (u - 0.5) * W; var sy := (0.5 - v) * Hh
-		return ref + bx * sx + by * sy + fwd * ((sea - ref.y - by.y * sy) / fwd.y)
-	var rng := RandomNumberGenerator.new(); rng.seed = 7
-	# [u, v of its foot on the screen, crag width, crag height, columns, their height, along x or z, haze]
-	for g in [[0.9, 0.448, 2.0, 0.75, 5, 1.35, "z", 0.24], [0.5, 0.422, 1.5, 0.5, 4, 1.0, "x", 0.4],
-			[0.12, 0.425, 2.6, 0.85, 3, 1.15, "z", 0.5], [0.7, 0.414, 1.3, 0.42, 3, 0.8, "x", 0.6], [0.32, 0.41, 2.4, 0.45, 0, 0.0, "x", 0.66]]:
-		var foot: Vector3 = at.call(float(g[0]), float(g[1]))
-		var top := foot + Vector3(0, float(g[3]), 0)
-		var st := _iv_st()
-		_ivr_crag(st, top, float(g[2]) * 0.5, rng, false, 0.62, true, false)
-		var n := int(g[4]); var hh := float(g[5])
-		if n > 0:
-			var ax := Vector3(0, 0, -1) if String(g[6]) == "z" else Vector3(-1, 0, 0)
-			var r := hh * 0.075; var sp := hh * 0.55
-			var c0 := top - ax * sp * (float(n) - 1.0) * 0.5
-			for k in n:
-				var p := c0 + ax * sp * float(k)
-				var h2 := hh * (0.55 if (k == n - 1 and n > 2) else 1.0)      # (the last one broken)
-				var oct := []
-				for m in 8: oct.append(Vector2(p.x + cos(TAU * float(m) / 8.0) * r, p.z + sin(TAU * float(m) / 8.0) * r))
-				_iv_prism(st, oct, p.y + h2, p.y, rng, 0.0, true)
-			var a := c0 + Vector3(0, hh, 0); var c := c0 + ax * sp * float(maxi(n - 2, 1)) + Vector3(0, hh, 0)      # (a lintel over all but the broken end)
-			_iv_box(st, Vector3(minf(a.x, c.x) - r * 1.5, a.y, minf(a.z, c.z) - r * 1.5), Vector3(maxf(a.x, c.x) + r * 1.5, a.y + r * 1.7, maxf(a.z, c.z) + r * 1.5))
-		var tall := top.y + hh - sea
-		_iv_commit(st, "far" if float(g[7]) < 0.45 else "far1", self, float(g[7]), {"sil": 1.0, "fog_hi": top.y + hh - tall * 0.3, "fog_lo": sea + 0.02}, false)
 
 ## rings of ripples spreading slowly about a thing standing in the still water, one after another, fading
 const IVW_RINGS_SH := """

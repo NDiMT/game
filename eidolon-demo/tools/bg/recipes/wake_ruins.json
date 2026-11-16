@@ -1,0 +1,8 @@
+{"eye": {"centre": [-5.32, 1.3, -7.58], "width": 9.6, "pitch": 35}, "sea_y": -0.3, "horizon": 0.414,
+ "groups": [
+  {"u": 0.92, "v": 0.432, "rock_w": 2.6, "rock_h": 0.9, "cols": 5, "col_h": 2.3, "axis": "z", "broken": [4], "lintel": true, "shade": 0.3, "seed": 3},
+  {"u": 0.47, "v": 0.418, "rock_w": 1.9, "rock_h": 0.35, "cols": 4, "col_h": 1.25, "axis": "x", "broken": [], "lintel": true, "pediment": true, "shade": 0.55, "seed": 5},
+  {"u": 0.39, "v": 0.446, "rock_w": 1.5, "rock_h": 0.35, "cols": 3, "col_h": 1.0, "axis": "z", "broken": [2], "lintel": true, "shade": 0.42, "seed": 8},
+  {"u": 0.06, "v": 0.416, "rock_w": 1.6, "rock_h": 0.5, "cols": 3, "col_h": 1.6, "axis": "x", "broken": [0], "lintel": true, "shade": 0.6, "seed": 11},
+  {"u": 0.58, "v": 0.411, "rock_w": 3.2, "rock_h": 0.3, "cols": 0, "shade": 0.75, "seed": 13}
+ ]}
