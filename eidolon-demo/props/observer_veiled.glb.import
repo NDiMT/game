@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://m0e5jrdvrw46"
-path="res://.godot/imported/observer_mid_lp.glb-16c2636f34d8611b23e9b08adcd3ff8f.scn"
+uid="uid://b4txeeb1eceyl"
+path="res://.godot/imported/observer_veiled.glb-88b79c32f5b126ea216fb6277586c6f7.scn"
 
 [deps]
 
-source_file="res://props/observer_mid_lp.glb"
-dest_files=["res://.godot/imported/observer_mid_lp.glb-16c2636f34d8611b23e9b08adcd3ff8f.scn"]
+source_file="res://props/observer_veiled.glb"
+dest_files=["res://.godot/imported/observer_veiled.glb-88b79c32f5b126ea216fb6277586c6f7.scn"]
 
 [params]
 

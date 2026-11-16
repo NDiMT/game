@@ -67,27 +67,32 @@ The levels are many, in one system. A new level is made in this order (the secon
   - The painted sea must be held to the world (`world_uv` in the sea shader: the backdrop's place under the level's own eye), or a moving eye shows the painted sky on the water.
   - An image in the water dims toward the sea's own colour (`sea_c`): left at its default it dims toward blue and muddies a warm sea.
 - **The look of a level at sea** (`gowake/`, after the user's notes):
-  - **The painted backdrop**: the sky (low-poly faceted clouds, a smooth sun with soft broad rays: "the sun need not be low-poly"), far ruins, and a plain sea up to the horizon. Painted, it is far richer than one composed from the kit or built in 3D ("you had made such nice backgrounds before"; 3D far ruins looked thin and ghostly).
-    - **Paint the far ruins from a perspective guide, never freehand.** The image model paints in perspective, and its colonnades never match the iso map unless shown how ("the background looks out of place in perspective").
-      - `tools/bg/iso_guide.py <spec> <sky> <out>` draws grey blockouts of the ruins over the sky, projected exactly by the game's eye: islets, rows of columns along the world's x or z, lintels. Spec: `tools/bg/recipes/wake_ruins.json`.
-      - Give the model the guide as image 1. Add the four early game concepts as the style reference: far ruins as soft silhouettes in the haze, paler the farther (what the user means by "like the other backgrounds"). Add a game screenshot as the camera reference, and say not to paint its foreground.
-      - The model keeps colonnades and lintels on the diagonals. It draws a temple front (pediment) frontally even when told not to, so use colonnades, lintels and broken columns instead.
-      - Ask for plain shafts with block capitals, no fluting ("not so much detail on the columns").
-    - Fix a detail by editing the chosen image ("keep everything exactly, change only ..."), not by generating anew.
-    - Place the ruins where the level and the colossus leave the backdrop in view: overlay the guide on a game frame first.
-    - Nothing in the foreground is painted: the colossus is 3D ("the statue looks fake where it meets the water, all one piece").
-    - Blur the lower sea a little to wipe the ghosts the model leaves. Resize to 1080x1920.
-    - Keep the horizon where the level's sea ends (`horizon` in the plan, a fraction from the top). Measure where it landed.
-    - Ask for a plain sea under the horizon (no streaks or sparkles): the game draws its own.
-  - **The colossus in the water is 3D and faceted** (`props/observer_mid_lp.glb`, about 7k triangles; a name ending `_lp` shades it in flat facets).
-    - At 1.6k triangles her face was mush ("a melted blob"). The smooth 14k one looked waxy ("tragic").
-    - Check which way it faces through the game's eye before placing it (`tools/go/prop_yaw.py`; aim the preview camera with `to_track_quat('-Z', 'Y')`, or the preview is rolled). The eye must see her face.
-    - Its foot is under the water and its lower part is lost in the mist band. The shore waves follow its outline (no round rings).
+  - **The painted backdrop** (what the user finally liked, after many tries):
+    - **Gradients only, no clouds** ("forget the clouds, only gradients, and far off rocks and columns"). A soft sun low near the horizon.
+    - **Sky and sea in one**: no horizon line ("can we make the sky one with the horizon?"). The sea melts into the sky through a bright haze, and the far stacks rise out of it.
+    - **Far things small and far**: sea stacks and a colonnade islet at the horizon. Big columns in front read as "far too close". Nothing near the level.
+    - **The camera reference is our own map**: a game frame with a neutral sky (`IV_NO_BACKDROP=1`, and no statue), its horizon where the sea should end. The style reference is the sea concept (`gosea/concept.jpg`) next to the rose one: far scenery as soft silhouettes in haze, paler the farther. Three variants at once; keep the one whose horizon lands where asked. Then fix by editing ("keep everything exactly, change only ...").
+    - **What failed**:
+      - Clouds the user disliked.
+      - Ruins painted from a grey blockout guide (`tools/bg/iso_guide.py`): the model still drew lintels converging to a point, at eye level ("doesn't match the perspective at all").
+      - A backdrop drawn in code (gradients and flat iso silhouettes): "bad".
+      - 3D far ruins: thin and ghostly.
+    - Measure the horizon and the sun on the chosen image and put them in the plan (`horizon`, `sun`). Nothing is drawn on the sea near the horizon (`hz_v` in the sea shader), so its far edge never shows as a seam.
+  - **The colossus in the water: 3D, standing, smooth marble in clean bands** (`props/observer_veiled.glb`):
+    - Have the image model paint the statue alone: whole figure, simple large folds, plain grey background. Then `tripo make <png> --for game-mobile` (if the download fails, `tripo task get <id> --download`), and `fbx2glb.py ... 16000 smooth`.
+    - Shade it with smooth normals in a few crisp bands (`smooth_k` 2), with soft shade tones so the face under the veil never falls into a dark hole.
+    - What failed: busts. Faceted at 1.6k was "a melted blob", at 7k "crumpled paper"; the soft smooth one looked "waxy, tragic".
+    - Turn its face to the eye and the light: check with `tools/go/prop_yaw.py`, which frames each turn a metre tall under the game's key light.
+    - Place it from where it should stand on the screen: solve its foot onto the sea plane along the eye.
+    - Its foot is under the water and its lower part is lost in a short mist band. It has its image in the water, and the shore waves follow its outline.
+  - **The light of the low sun on the stone** (`sun_k` in IV_SH; the user: "can our rocks be lit by yellow, in a gradient where the light is?"):
+    - The faces the key light falls on take the sun's colour, warmest high up and toward the sun on the screen (`sun_scr`).
+    - Lilac, and soft: gold was "too strong".
   - **Small waves where the water meets the stone** (the user: "a light ripple where the rocks meet the water"):
     - With `'shore': True` in the plan, the builder writes `<level>/shore.png` and its rect and reach (`shore`) into level.json.
     - It cuts every body at the sea level, island by island. Weld split vertices first: a flat-shaded GLB has every face its own island. It fills each outline even-odd; an open body is filled by its outline, closed and hole-filled. The colossus is imported as the game places it (foot, height, turn).
     - A distance transform, out to 1.6 m: red for what stands for good, green for the stones that rise.
-    - The sea's surface draws a thin bright lip hugging each stone, and three faint rings drifting out over about 8 s, broken here and there. The rising stones' waves come in as their tops break the water (`riser_up`, set in `_ivw_risers_set`).
+    - The sea's surface draws a faint lip hugging each stone, and two faint rings drifting out, in drifting patches: discreet and scattered (the user: strong ones were "too intense"). The rising stones' waves come in as their tops break the water (`riser_up`, set in `_ivw_risers_set`).
   - **The sea**: the painted sea's colour, held to the world (`world_uv`), and still. No ripple lines across it: the user first asked for slanted ones, then called them "those stupid slanted lines"; the foam along the stones is enough. A few points of light twinkle in the sun's path, and a fine line of light runs where stone meets the water (`wline_k`).
   - **Images in the water** fade into the sea as they go down (`mirror_fade`, about 2 m for rocks) and waver a little (`mirror_wob`, a vertex sway that grows with depth).
   - **Rock that is richer** (`rich_k`): each break its own tone, beds across the upright faces, lichen on what faces the sky, a fine speckle.

@@ -17,6 +17,13 @@ for i, yw in enumerate(yaws):
     root = bpy.data.objects.new('r%d' % i, None); sc.collection.objects.link(root)
     for o in obs:
         if o.parent is None: o.parent = root
+    bpy.context.view_layer.update()
+    ms = [o for o in obs if o.type == 'MESH']
+    vs = [o.matrix_world @ v.co for o in ms for v in o.data.vertices]
+    lo = Vector((min(v.x for v in vs), min(v.y for v in vs), min(v.z for v in vs))); hi = Vector((max(v.x for v in vs), max(v.y for v in vs), max(v.z for v in vs)))
+    k = 1.0 / max(hi.z - lo.z, 1e-6)      # (each one a metre tall, its foot-middle at its place: as the game sets a prop by its height)
+    for o in obs:
+        if o.parent is root: o.location = (o.location - Vector(((lo.x + hi.x) / 2, (lo.y + hi.y) / 2, lo.z))) * k; o.scale = o.scale * k
     root.rotation_euler = Euler((0, 0, yw), 'XYZ')      # (a turn about the game's up)
     root.location = right * (i * 1.3)
 mat = bpy.data.materials.new('m'); mat.diffuse_color = (0.92, 0.88, 0.86, 1)
@@ -29,7 +36,8 @@ mid = right * (1.3 * (len(yaws) - 1) / 2) + G(0, 0.5, 0)
 cam.location = mid - f * 20
 cam.rotation_euler = f.to_track_quat('-Z', 'Y').to_euler()
 sun = bpy.data.objects.new('sun', bpy.data.lights.new('sun', 'SUN')); sc.collection.objects.link(sun)
-sun.rotation_euler = G(0.56, -0.72, -0.41).to_track_quat('-Z', 'Z').to_euler()
+sun.rotation_euler = G(-0.45, -0.7, -0.55).to_track_quat('-Z', 'Y').to_euler()      # (the game's key light: from above, front and left)
+sun.data.energy = 3.0
 sc.render.engine = 'CYCLES'; sc.cycles.samples = 16; sc.cycles.device = 'CPU'; sc.render.resolution_x = 300 * len(yaws); sc.render.resolution_y = 360
 w = bpy.data.worlds.new('w'); sc.world = w; w.color = (0.6, 0.6, 0.65)
 sc.render.filepath = out; bpy.ops.render.render(write_still=True); print('SAVED')

@@ -60,8 +60,8 @@ def plan():
         'lines': ['Her face lies at the bottom of the sea.', 'To pass over, she must see it once more.'],
         'end': 'Somewhere above, the water was still.',
     }
-    pl = {      # (horizon: the sea's rim in the painted backdrop, gowake/backdrop.jpg, painted by the image model)
-        'scene': 'wake', 'sea_y': SEA, 'risers': ['A', 'B', 'C'], 'horizon': 0.414, 'heights': {'H0': H0, 'H1': H1, 'H2': H2}, 'floors': floors, 'flights': [fl1, fl2],
+    pl = {      # (horizon: the sea's rim in the backdrop, gowake/backdrop.jpg, made by tools/bg/iso_backdrop.py from tools/bg/recipes/wake_far.json)
+        'scene': 'wake', 'sea_y': SEA, 'risers': ['A', 'B', 'C'], 'horizon': 0.3714, 'sun': [0.5, 0.341], 'heights': {'H0': H0, 'H1': H1, 'H2': H2}, 'floors': floors, 'flights': [fl1, fl2],
         'nodes': N, 'edges': edges, 'ring': N['R'], 'stone': None, 'faces': [],
         'arches': [[[-4.2, H2, -9.45], 'x']],      # (the gate: square to the way, she walks through it to the ring)
         'rocks': [[[-1.6, H0 - 0.35, -6.9], 1.0, H0 - 0.25],       # (the pillar's shoulders, under the stair, the terrace and the landing:
@@ -81,9 +81,9 @@ def plan():
         'columns': [], 'volute': None,
         'head': None, 'relief': None, 'cypress': None,
         'eye': {'pitch': 35.0, 'centre': [-5.32, 1.3, -7.58], 'width': 9.6},      # (the island large; the sun above the gate)
-        # (the Observer, the veiled colossus: a faceted bust standing in the sea, seen by the level's own eye as everything
-        # else is, so the perspective holds; the sun and the sky are painted in the backdrop, the far ruins are 3D, _ivw_far)
-        'observer': [-7.93, SEA - 1.5, -6.12, 6.2, -0.6], 'observer_haze': 0.12, 'observer_model': 'observer_mid_lp',      # (lower on the screen: its foot in the water left of the terrace; faceted, but fine enough that her face reads)
+        # (the Observer, the veiled colossus: a standing veiled figure in smooth marble, lit in clean bands; a bust,
+        # faceted or soft, looked bad)
+        'observer': [-10.23, SEA - 0.8, -8.01, 5.6, -0.75], 'observer_haze': 0.03, 'observer_model': 'observer_veiled',      # (where the painted one stood: her head at 22% of the screen; her face to the eye and the light)
         'shore': True,      # (a map of the water's distance from every stone in it: the sea draws small waves along each shore)
     }
     return pl, puzzle

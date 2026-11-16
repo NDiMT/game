@@ -2088,7 +2088,7 @@ const IV_QUARRY_SKY_S := Vector3(0.22, 0.46, 0.9)
 const IV_WAKE_PAL := {      # the waking: dawn over a still sea. Pearl and rose marble, its shade lilac; warm mauve rock; the Observer pale in the haze
 	"marble2": ["f3e2dc", "f6e6e1", "cdb7c2", "9d8599"],
 	"rock2": ["c39f98", "93727c", "684a57", "4a3140"],
-	"observer": ["fbf3f0", "efe0dd", "c9b1c0", "93799a"],
+	"observer": ["fbf3f0", "f0e2e0", "d9c6d1", "b29dba"],      # (her shade soft: the face under the veil must never fall into a dark hole)
 	"phead": ["f3e4df", "dcc4c4", "b9a0ad", "917b93"],
 	"groove": ["e2cac6", "e2cac6", "e2cac6", "e2cac6"],
 	"line": ["fff4ee", "fff4ee", "fff4ee", "fff4ee"],
@@ -2160,6 +2160,8 @@ uniform float smooth_k = 0.0;      // (a statue: soft marble shaded by its own s
 uniform float mirror_fade = 0.0; uniform float mirror_wob = 0.0;      // (an image in the water: gone into the sea by this depth; wavering by this much)
 uniform float rim_k = 0.0; uniform vec3 rim_col : source_color = vec3(1.0, 0.86, 0.62); uniform vec3 rim_dir = vec3(-0.6, 0.3, -0.6);      // (the low sun behind it: its edges catch the light)
 uniform float wline_k = 0.0;      // (where a thing meets the still water: a fine line of light)
+uniform float sun_k = 0.0; uniform vec3 sun_col : source_color = vec3(1.0, 0.8, 0.45);      // (the low sun's warm light on the faces it falls on, in a gradient:
+uniform vec2 sun_scr = vec2(0.5, 0.3); uniform float sun_rad = 0.8; uniform float sun_lo = 0.0; uniform float sun_hi = 3.0;      //  warmest high up and toward the sun, fading into the stone's own colour)
 uniform float rich_k = 0.0; uniform vec3 lichen_col : source_color = vec3(0.77, 0.73, 0.57);      // (rock as it weathers: each break its own tone, beds across its faces, lichen on what faces the sky)
 varying vec3 wn;
 uniform float mirror_k = 0.0; uniform float mirror_y = 0.0;      // (a thing's image in the water: drawn below it, shaded as the thing itself is)
@@ -2207,9 +2209,15 @@ void fragment(){
 		vec3 vd = normalize(INV_VIEW_MATRIX[2].xyz);
 		if (dot(sn, vd) < 0.0) sn = -sn;
 		float sd = dot(sn, normalize(key_dir));
+		if (smooth_k > 1.5) {      // (marble carved smooth, its light in a few clean bands, as the concepts' statues: no facet noise, no wax)
+			c = mix(c_dark, c_mid, smoothstep(-0.46, -0.22, sd));
+			c = mix(c, c_lit, smoothstep(0.02, 0.24, sd));
+			c = mix(c, c_top, smoothstep(0.6, 0.78, sn.y) * 0.85);
+		} else {
 		c = mix(c_dark, c_mid, smoothstep(-0.95, -0.05, sd));
 		c = mix(c, c_lit, smoothstep(-0.2, 0.85, sd));
 		c = mix(c, c_top, smoothstep(0.25, 0.95, sn.y) * 0.7);
+		}
 		float fr = pow(1.0 - clamp(dot(sn, vd), 0.0, 1.0), 2.2);
 		c += rim_col * rim_k * fr * (0.35 + 0.65 * smoothstep(-0.4, 0.7, dot(sn, normalize(rim_dir))));
 		fn = sn;
@@ -2219,6 +2227,14 @@ void fragment(){
 		c += rim_col * rim_k * fr2 * (0.3 + 0.7 * smoothstep(-0.3, 0.7, dot(fn, normalize(rim_dir))));
 	}
 	c *= 1.0 + bounce * vec3(0.16, 0.07, -0.02) * smoothstep(0.15, -0.55, d);      // (warm light thrown back from the mist into the shade)
+	if (sun_k > 0.0 && sil < 0.5) {
+		float lit = smoothstep(-0.05, 0.45, d);      // (the faces the light falls on)
+		float up = smoothstep(sun_lo, sun_hi, wy);      // (higher, warmer: the light lies on the tops and the upper faces)
+		float toward = 1.0 - smoothstep(0.0, sun_rad, length((SCREEN_UV - sun_scr) * vec2(9.0 / 16.0, 1.0)));      // (and toward the sun)
+		float g = sun_k * (0.12 + 0.88 * lit) * (0.3 + 0.7 * up) * (0.35 + 0.65 * toward);
+		c = mix(c, c * sun_col * 1.32, g);
+		c += sun_col * g * 0.05;
+	}
 	if (sil > 0.5) c = c_mid * mix(0.95, 1.03, smoothstep(-0.3, 0.7, d));
 	if (veins > 0.0) {      // (veins as marble has them: thin, wandering, now and then two together; a cloud in the stone)
 		vec3 q = wp * 0.9;
@@ -2379,6 +2395,10 @@ func _iv_mat(kind: String, far_k := 0.0, extra := {}) -> ShaderMaterial:
 		m.set_shader_parameter("clip_k", 1.0); m.set_shader_parameter("clip_y", IV_O.y + ivr_sea_y); m.set_shader_parameter("sea_c", Color("ead2cf"))      # (an image in the water dims toward the pearl of the sea, not toward blue)
 		m.set_shader_parameter("wline_k", 0.6); m.set_shader_parameter("mirror_fade", 2.0); m.set_shader_parameter("mirror_wob", 0.035)
 		if kind == "rock2": m.set_shader_parameter("rich_k", 1.0)
+		if kind in ["rock", "rock2", "marble", "marble2", "groove", "observer"]:      # (the low sun's light on the stone, lilac, in a gradient toward it: the user's ask)
+			m.set_shader_parameter("sun_k", 0.45 if kind.begins_with("rock") else 0.3); m.set_shader_parameter("sun_col", Color(0.9, 0.74, 1.0))
+			m.set_shader_parameter("sun_scr", ivw_sun_scr); m.set_shader_parameter("sun_rad", 0.85)
+			m.set_shader_parameter("sun_lo", IV_O.y + ivr_sea_y); m.set_shader_parameter("sun_hi", IV_O.y + 2.9)
 	if go_quarry:      # (the afternoon: shadows a cool lilac on the warm marble)
 		m.set_shader_parameter("shade_tint", Color(0.76, 0.74, 0.84)); m.set_shader_parameter("ao_tint", Color(0.9, 0.85, 0.86)); m.set_shader_parameter("vein_tint", Color(0.93, 0.9, 0.87))
 		if kind == "quarry": m.set_shader_parameter("drill", 1.0)
@@ -3582,6 +3602,7 @@ var ivr_hz := 0.215      # (where the sea meets the sky in the level's backdrop,
 const IVS_HORIZON := 520.0      # (where the sea meets the sky in its concept, in the concept's pixels from the top)
 var ivs_horizon := Vector3.ZERO
 var ivr_shore := {}      # (the level's shore map, <level>/shore.png: its rect over the water and its reach)
+var ivw_sun_scr := Vector2(0.5, 0.3)      # (where the sun stands in the waking's backdrop, on the screen: its light on the stone grows toward it)
 var ivs_sea_mat: ShaderMaterial      # (the sea's surface: its small waves along the stones that rise come with them)
 var ivr_stepl := {}      # each flight's steps as cut (along it from its foot, and height), by its foot and head
 
@@ -3756,8 +3777,8 @@ func _ivw_observer(j: Dictionary) -> void:
 	var hd := prop_model(String(j.get("observer_model", "observer")), hp, float(ob[3]))
 	var sea := IV_O.y + ivr_sea_y
 	var lowp := String(j.get("observer_model", "observer")).ends_with("_lp")      # (a low-poly one: faceted as everything else is)
-	var rim := {"smooth_k": 0.0 if lowp else 1.0, "rim_k": 0.45 if lowp else 0.55, "rim_col": Color(1.0, 0.84, 0.6), "rim_dir": Vector3(-0.62, 0.3, -0.62)}      # (the sun low behind it gilds its edges)
-	var ex := {"fog_hi": ivr_sea_y + 1.7, "fog_lo": ivr_sea_y - 0.1, "haze": 1.0, "clip_k": 1.0, "clip_y": sea, "shadow_k": 0.0, "wline_k": 0.0}      # (its foot lost in the mist on the water: no hard line where it meets it)
+	var rim := {"smooth_k": 0.0 if lowp else 2.0, "rim_k": 0.45 if lowp else 0.4, "rim_col": Color(1.0, 0.84, 0.6), "rim_dir": Vector3(-0.62, 0.3, -0.62)}      # (the sun low behind it gilds its edges)
+	var ex := {"fog_hi": ivr_sea_y + 1.0, "fog_lo": ivr_sea_y - 0.1, "haze": 1.0, "clip_k": 1.0, "clip_y": sea, "shadow_k": 0.0, "wline_k": 0.0}      # (its foot lost in the mist on the water: no hard line where it meets it)
 	if ivr_shore.is_empty(): _ivw_rings(Vector3(hp.global_position.x, sea, hp.global_position.z), float(ob[3]) * 0.55)      # (else the sea's own small waves follow her outline)
 	ex.merge(rim)
 	for m in hd.find_children("*", "MeshInstance3D", true, false):
@@ -4145,6 +4166,7 @@ uniform float world_uv = 0.0; uniform vec3 eye_c; uniform vec3 eye_bx; uniform v
 uniform sampler2D shore_tex : filter_linear, repeat_disable;      // (how far each spot of the water lies from the stone in it: red what stands for good, green the stones that rise)
 uniform vec4 shore_rect = vec4(0.0, 0.0, 1.0, 1.0); uniform float shore_k = 0.0; uniform float shore_d = 1.6; uniform float riser_up = 0.0;
 uniform vec3 foam_c : source_color = vec3(1.0, 0.98, 0.96);
+uniform float hz_v = -1.0;      // (where the sea melts into the sky, on the screen: nothing is drawn on the water near it)
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 vec3 bgc(float s){
@@ -4160,13 +4182,14 @@ void fragment(){
 		vec2 suv = vec2(0.5 + (SCREEN_UV.x - 0.5) * bg_scale.x, 0.5 + (sy - 0.5) * bg_scale.y);
 		if (world_uv > 0.5) { vec3 r = wp - eye_c; suv = vec2(0.5 + dot(r, eye_bx) / eye_w, 0.5 - dot(r, eye_by) / (eye_w * 16.0 / 9.0)); }
 		c = texture(bg_tex, clamp(suv, vec2(0.001), vec2(0.999))).rgb;
-		c = mix(c, c * 1.04 + vec3(0.01), smoothstep(0.55, 0.95, rip) * 0.5);      // (the faintest swell; no lines across the water: the user wants it still, the small waves along the stones are enough)
+		float far_w = smoothstep(hz_v + 0.005, hz_v + 0.09, SCREEN_UV.y);
+		c = mix(c, c * 1.04 + vec3(0.01), smoothstep(0.55, 0.95, rip) * 0.5 * far_w);      // (the faintest swell; no lines across the water: the user wants it still, the small waves along the stones are enough)
 		float lum = dot(c, vec3(0.3333));
 		vec2 gq = wp.xz * vec2(9.0, 4.0); vec2 gi = floor(gq); vec2 gf = fract(gq) - 0.5;
 		float rr = fract(sin(dot(gi, vec2(127.1, 311.7))) * 43758.5453);
 		float tw = 0.5 + 0.5 * sin(TIME * (1.4 + rr * 3.2) + rr * 40.0);
 		float spark = (1.0 - smoothstep(0.0, 0.16, length(gf * vec2(1.0, 0.45)))) * step(0.8, rr) * tw * tw;
-		c += vec3(1.0, 0.95, 0.86) * spark * smoothstep(0.72, 0.88, lum) * 0.85;      // (the sun's path on the water: points of light coming and going)
+		c += vec3(1.0, 0.95, 0.86) * spark * smoothstep(0.72, 0.88, lum) * 0.85 * far_w;      // (the sun's path on the water: points of light coming and going)
 	} else {
 	float path = exp(-pow((SCREEN_UV.x - sun.x) * 5.0, 2.0)) * (1.0 - smoothstep(0.19, 0.55, s));
 	c = mix(c, glint_c, path * 0.35 * smoothstep(0.1, 0.9, rip));
@@ -4180,15 +4203,17 @@ void fragment(){
 		d = mix(shore_d, d, inb);
 		float nz = sin(wp.x * 3.7 + wp.z * 2.9 + TIME * 0.4) * 0.5 + sin(wp.z * 5.3 - wp.x * 1.9 - TIME * 0.3) * 0.5;      // (a little unevenness: no line drawn with a compass)
 		float dd = d + nz * 0.03;
-		float lip = 1.0 - smoothstep(0.02, 0.1, dd);
+		float patch = sin(wp.x * 1.7 + TIME * 0.13) * sin(wp.z * 1.3 - TIME * 0.11) + 0.5 * sin((wp.x + wp.z) * 2.9 + TIME * 0.2);
+		float gate = smoothstep(0.2, 0.9, patch);      // (here and there, drifting slowly: scattered, never a ring round everything; the user: "more discreet and scattered")
+		float lip = (1.0 - smoothstep(0.02, 0.08, dd)) * (0.3 + 0.7 * gate);
 		float wv = 0.0;
-		for (int i = 0; i < 3; i++) {
-			float p = fract(TIME * 0.12 + float(i) / 3.0);
-			float r = 0.06 + p * 0.62;
-			wv += (1.0 - smoothstep(0.0, 0.035 + p * 0.035, abs(dd - r))) * (1.0 - p) * smoothstep(0.0, 0.08, p);
+		for (int i = 0; i < 2; i++) {
+			float p = fract(TIME * 0.1 + float(i) * 0.5);
+			float r = 0.06 + p * 0.5;
+			wv += (1.0 - smoothstep(0.0, 0.03 + p * 0.03, abs(dd - r))) * (1.0 - p) * smoothstep(0.0, 0.1, p);
 		}
-		float brk = smoothstep(-0.4, 0.7, sin(wp.x * 2.1 - wp.z * 3.3 + TIME * 0.25) + nz * 0.7);      // (each wave broken here and there)
-		fo = clamp(lip * 0.7 + wv * 0.7 * brk, 0.0, 1.0) * shore_k;
+		float brk = smoothstep(-0.2, 0.8, sin(wp.x * 2.1 - wp.z * 3.3 + TIME * 0.25) + nz * 0.7);
+		fo = clamp(lip * 0.32 + wv * 0.3 * brk * gate, 0.0, 1.0) * shore_k;
 	}
 	ALBEDO = mix(c, foam_c, fo);
 	if (sea_a < 0.999) ALPHA = mix(sea_a, 1.0, fo);
@@ -4215,6 +4240,7 @@ func _ivs_sea(sea_y: float) -> void:
 		m.set_shader_parameter("world_uv", 1.0); m.set_shader_parameter("eye_c", ref); m.set_shader_parameter("eye_bx", bx); m.set_shader_parameter("eye_by", by); m.set_shader_parameter("eye_w", float(ivr_eye.width))
 	var mf := m.duplicate() as ShaderMaterial
 	m.set_shader_parameter("sea_a", 0.5 if go_wake else 0.7)
+	if go_wake: m.set_shader_parameter("hz_v", ivr_hz); mf.set_shader_parameter("hz_v", ivr_hz)
 	if not ivr_shore.is_empty():      # (small waves along every stone standing in the water: the surface only)
 		var rc: Array = ivr_shore.rect
 		m.set_shader_parameter("shore_tex", load(go_dir + "shore.png")); m.set_shader_parameter("shore_k", 1.0); m.set_shader_parameter("shore_d", float(ivr_shore.get("D", 1.6)))
@@ -4839,6 +4865,7 @@ func _ivr_build() -> void:
 	ivr_sea_y = float(j.get("sea_y", -1.6)) if j.get("sea_y") != null else -1.6
 	ivr_hz = float(j.get("horizon", 0.215)) if j.get("horizon") != null else 0.215
 	ivr_shore = j.shore if (j.get("shore") is Dictionary and ResourceLoader.exists(go_dir + "shore.png")) else {}
+	if j.get("sun") is Array: ivw_sun_scr = Vector2(float(j.sun[0]), float(j.sun[1]))      # (where the backdrop's sun stands on the screen)
 	var V := func(a: Array) -> Vector3: return IV_O + Vector3(float(a[0]), float(a[1]), float(a[2]))
 	ivg_on = _ivg_load()      # the trial played as Lara Croft GO is (goiv/puzzle.json); else the first trial's way
 	var src: Dictionary = ivg if ivg_on else j
