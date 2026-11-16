@@ -89,17 +89,7 @@ The levels are many, in one system. A new level is made in this order (the secon
   - **The colossus in the water: 3D, smooth, in soft clean bands of light.**
     - The user settled on the standing veiled figure (`props/observer_veiled.glb`), after trying the veiled head and shoulders (`props/observer.glb`) again.
     - Its hues are the lighter stone's (the white marble's palette).
-    - It casts a shadow on the water (`_ivw_shadow`). The sea takes no light, so its outline is cast onto the water plane along the light: a soft convex shape, feathered at the edge, darkest at its foot.
-      - Cast it from the backdrop's low sun, behind the scene, so it falls toward the eye and is seen. Cast from the key light, it fell behind the statue and under the rocks.
-      - Give it a higher `render_priority` than the sea: the sea's clear surface drawn over it veiled it by half.
-    - Have the image model paint the statue alone: whole figure, simple large folds, plain grey background. Then `tripo make <png> --for game-mobile` (if the download fails, `tripo task get <id> --download`), and `fbx2glb.py ... 16000 smooth`.
-    - Shade it with smooth normals in a few crisp bands (`smooth_k` 2).
-    - Colour: keep the shade light enough that the face under the veil never falls into a dark hole.
-    - Turn: her face to the eye, a little toward the island, so the key light falls on it.
-    - What failed was the shading, not the bust. Faceted at 1.6k it was "a melted blob", at 7k "crumpled paper". Smooth with a soft gradient and heavy haze it looked "waxy, tragic". Banded too crisply, its folds look smeared: keep the bands soft.
-    - Turn its face to the eye and the light: check with `tools/go/prop_yaw.py`, which frames each turn a metre tall under the game's key light.
-    - Place it from where it should stand on the screen: solve its foot onto the sea plane along the eye, and keep its footprint clear of every rock (about 1.8 m from the nearest edge). The user wanted it near: lower on the screen and larger, with only a short mist at its foot.
-    - Its foot is under the water and its lower part is lost in a short mist band. It has its image in the water, and the shore waves follow its outline.
+    - No shadow on the water: a soft cast shadow was tried and the user had it taken off.
   - **White marble is lit from above**: the top tone is the brightest, and the sides that face the light are a step darker. Never let the lit side be the brightest: the user saw "the lower left of the whites burnt out; it should be darker, as if lit from above". The key light for the waking is high (`iv_key` -0.45, 0.8, 0.38).
   - **Coloured sunlight on the stone** (`sun_k` in IV_SH, off by default): the faces the key light falls on take the sun's colour, warmest high up and toward the sun on the screen (`sun_scr`).
     - The user tried gold ("too strong"), lilac, then pinkish yellow, and in the end had it taken off: the stone keeps its own light.
