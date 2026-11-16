@@ -23,6 +23,9 @@ PALETTES = {      # the sky (four stops: top, the horizon's band, the haze, the 
                 far=['e6cba9', 'efd7b8', 'f8e8d0'], mid=['caa680', 'e0c19c', 'f6e2c6'], near=['a9845f', 'cfa983', 'f6e0c2'], mist='f1d6b1', stars=0),
     'dusk': dict(sky=['8a8db3', 'ebb3a2', 'a2a8c4', '7093a8'], stops=[0.0, 0.3, 0.5, 1.0], orb=dict(kind='sun', color='fff0dc', glow='ffb898'),
                  far=['8f93b6', '9da1c2', 'b9b6cc'], mid=['6f7aa0', '9195b8', 'd9b9b3'], near=['4f5f86', '7d86ab', 'e3c2b8'], mist='8fa4bd', stars=0),
+    'wake': dict(sky=['cdb6d3', 'f8d5c2', 'f1cfc6', 'e6b9ad'], stops=[0.0, 0.215, 0.33, 1.0], orb=dict(kind='sun', color='fff7e8', glow='ffd6ad'),      # (the first level's dawn: lilac above, peach at the sea's rim)
+                 far=['cdb2c0', 'dcc0c7', 'f0d8d5'], mid=['a68da2', 'c4a6b4', 'ecd2d0'], near=['7d6682', 'a78aa1', 'f2dad6'], mist='e8bdb1', stars=0,
+                 sea=['eecfca', 'd9b5b6', 'c7a3ad', 'e2b7ab'], glint='fff1dc'),
     'storm': dict(sky=['4b5560', '7d8790', '939ba2', '8b949b'], stops=[0.0, 0.3, 0.55, 1.0], orb=None,
                   far=['8c959c', '9fa7ad', 'b9c0c4'], mid=['67717a', '8b949b', 'c3c9cc'], near=['48525b', '717b84', 'cfd4d6'], mist='959da3', stars=0),
 }
@@ -77,6 +80,11 @@ def compose(rc, pal_name=None):
         w = int(L.get('w', 1.0) * W); h = max(1, int(el.height * w / el.width))
         el = np.asarray(el.resize((w, h), Image.LANCZOS)).astype(float) / 255.0
         g = el[..., 0]; a = el[..., 3]
+        ef = L.get('edge', 0.14)      # (its sides and top feathered: an element cut off at its picture's edge never shows a line)
+        if ef > 0:
+            u = np.arange(w)[None, :] / max(1, w - 1); v = np.arange(h)[:, None] / max(1, h - 1)
+            sx_ = np.clip(np.minimum(u, 1.0 - u) / ef, 0, 1); sy_ = np.clip(v / ef, 0, 1)
+            a = a * (sx_ * sx_ * (3 - 2 * sx_)) * (sy_ * sy_ * (3 - 2 * sy_))
         fd = L.get('fade', 0.3)
         if fd > 0:      # (its foot into the mist)
             t = np.clip((np.arange(h)[:, None] / h - (1.0 - fd)) / fd, 0, 1); a = a * (1.0 - t * t * (3 - 2 * t))
@@ -94,6 +102,31 @@ def compose(rc, pal_name=None):
         c2 = col[sub] * (1 - hz) + skyband * hz
         aa = a[sub][..., None]
         img[Y0:Y1, X0:X1] = sk * (1 - aa) + c2 * aa
+    sea = rc.get('sea')
+    if sea is not None and P.get('sea'):      # (a still sea under the horizon: pale at its rim, deeper toward the eye, the sun's path on it in broken streaks)
+        hy = sea.get('y', 0.22); cs = [hexc(c) for c in P['sea']]
+        y0 = int(hy * H)
+        t = np.clip((ys[y0:] - hy) / (1.0 - hy), 0, 1)
+        st = sea.get('stops', [0.0, 0.18, 0.55, 1.0])
+        col = np.zeros((len(t), 3))
+        for i in range(len(t)):
+            tt = t[i]
+            for k in range(len(st) - 1):
+                if tt <= st[k + 1]:
+                    u = (tt - st[k]) / max(1e-6, st[k + 1] - st[k]); u = u * u * (3 - 2 * u); col[i] = cs[k] * (1 - u) + cs[k + 1] * u; break
+        img[y0:] = col[:, None, :] * np.ones((1, W, 1))
+        orbp = rc.get('orb') or {}
+        sx = orbp.get('x', 0.6) * W
+        rnd2 = np.random.RandomState(rc.get('seed', 3) + 11)
+        xx = np.arange(W)[None, :]
+        for i in range(y0, H):
+            d = (i - y0) / max(1.0, H - y0)
+            wdt = W * (0.025 + 0.11 * d)      # (wider toward the eye)
+            k_ = np.exp(-((xx - sx) / wdt) ** 2) * (1.0 - np.clip(d / sea.get('path_len', 0.6), 0, 1)) ** 1.5
+            if (i // max(1, int(2 + d * 9))) % 2 == 0: k_ = k_ * rnd2.uniform(0.35, 1.0)      # (broken into streaks)
+            img[i] = img[i] * (1 - k_.T * sea.get('glint_k', 0.55)) + hexc(P['glint'])[None, :] * (k_.T * sea.get('glint_k', 0.55))
+        rim = np.exp(-((ys - hy) * H / 3.0) ** 2)[:, None, None]      # (a fine bright line where the sea meets the sky)
+        img = img * (1 - rim * 0.35) + hexc(P['glint'])[None, None, :] * rim * 0.35
     m = rc.get('mist', {})
     if m is not None:
         f0, f1 = m.get('from', 0.5), m.get('to', 0.9)

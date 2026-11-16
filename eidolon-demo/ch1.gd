@@ -132,6 +132,7 @@ func _init() -> void:
 	if go_iv: title_sub = "the fallen faces  ·  a trial\ntap to begin"; sea_c = Color("dcbd9c"); mist_c = Color("f1d6b1"); bg_c = Color("f1d6b1"); shadow_c = Vector3(0.84, 0.74, 0.68)
 	if go_drown: title_sub = "the drowned sanctuary  ·  a trial\ntap to begin"; sea_c = Color("5f8199"); mist_c = Color("7f9cb2"); bg_c = Color("9a9fc2"); shadow_c = Vector3(0.72, 0.77, 0.88)
 	if go_moon: title_sub = "the moon dial  ·  a trial\ntap to begin"; sea_c = Color("8aabd3"); mist_c = Color("8eafd8"); bg_c = Color("4f6c9e"); shadow_c = Vector3(0.6, 0.67, 0.84)
+	if go_wake: title_sub = "1  ·  The Waking\ntap to begin"; sea_c = Color("d9b5b6"); mist_c = Color("e8bdb1"); bg_c = Color("efd3c8"); shadow_c = Vector3(0.82, 0.74, 0.84)
 	if go_quarry: title_sub = "the quarry  ·  a trial\ntap to begin"; sea_c = Color("d9cbb6"); mist_c = Color("eadfcd"); bg_c = Color("efe3cf"); shadow_c = Vector3(0.78, 0.75, 0.82)
 	if geo_demo: sea_c = Color("2b6880"); mist_c = Color("7f8fb4"); bg_c = Color("1c4a5e"); shadow_c = Vector3(0.5, 0.52, 0.8)      # (this trial: the same sea toward evening)
 
@@ -258,7 +259,7 @@ void fragment(){
 	}
 }"""
 var flip_test := OS.get_environment("FLIP") == "1"      # every water turns the picture
-var go_demo := OS.has_feature("godemo") or OS.get_environment("FLIP") == "go" or OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or OS.get_environment("FLIP") == "gosea" or OS.has_feature("gosea") or OS.get_environment("FLIP") == "gomoon" or OS.has_feature("gomoon") or OS.get_environment("FLIP") == "goquarry" or OS.has_feature("goquarry")      # the trial played a step at a time (Eidolon GO)
+var go_demo := OS.has_feature("godemo") or OS.get_environment("FLIP") == "go" or OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or OS.get_environment("FLIP") == "gosea" or OS.has_feature("gosea") or OS.get_environment("FLIP") == "gomoon" or OS.has_feature("gomoon") or OS.get_environment("FLIP") == "goquarry" or OS.has_feature("goquarry") or OS.get_environment("FLIP") == "gowake" or OS.has_feature("gowake")      # the trial played a step at a time (Eidolon GO)
 var geo_demo := OS.has_feature("geodemo") or OS.get_environment("FLIP") == "geo"      # the trial of the hall of images: ways that join where their pictures join
 var figure_demo := OS.has_feature("figuredemo") or OS.get_environment("FLIP") == "figure"      # the trial of the face in the water: three courts where a picture is made whole in the water
 var match_demo := OS.has_feature("matchdemo") or OS.get_environment("FLIP") == "match"      # the trial of the still water: one new court, where the world and what its water shows are to be made to agree
@@ -2010,8 +2011,10 @@ func _play_go() -> void:
 var go_drown := OS.get_environment("FLIP") == "gosea" or OS.has_feature("gosea")      # the second level: the drowned sanctuary (gosea/), in the same system
 var go_moon := OS.get_environment("FLIP") == "gomoon" or OS.has_feature("gomoon")      # the third level: the moon dial (gomoon/), a sanctuary in the snow at night
 var go_quarry := OS.get_environment("FLIP") == "goquarry" or OS.has_feature("goquarry")      # the fourth level: the quarry (goquarry/), where the faces were cut
-var go_iv := OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or go_drown or go_moon or go_quarry
-var go_dir := "res://gosea/" if go_drown else ("res://gomoon/" if go_moon else ("res://goquarry/" if go_quarry else "res://goiv/"))      # the level's own folder: its level.glb, level.json, puzzle.json
+var go_wake := OS.get_environment("FLIP") == "gowake" or OS.has_feature("gowake")      # the first level: the waking (gowake/), dawn over a still sea
+var iv_at_sea := go_drown or go_wake      # (a level standing in still water: the sea, the level's image in it)
+var go_iv := OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or go_drown or go_moon or go_quarry or go_wake
+var go_dir := "res://gowake/" if go_wake else ("res://gosea/" if go_drown else ("res://gomoon/" if go_moon else ("res://goquarry/" if go_quarry else "res://goiv/")))      # the level's own folder: its level.glb, level.json, puzzle.json
 const IV_O := Vector3(460.0, 0.0, 0.0)      # (far from the world, and from the courts of the other trial)
 const IV_T := 2.0      # from one node of the way to the next
 const IV_PITCH := 37.0
@@ -2082,12 +2085,28 @@ const IV_QUARRY_PAL := {      # the quarry in the afternoon: marble cut white an
 }
 const IV_QUARRY_BG := ["a9bdd2", "f2dcbc", "ecdcc4", "e6d6c0"]      # the sky over the quarry: high, low, the dust in the air, the haze in the pit
 const IV_QUARRY_SKY_S := Vector3(0.22, 0.46, 0.9)
+const IV_WAKE_PAL := {      # the waking: dawn over a still sea. Pearl and rose marble, its shade lilac; warm mauve rock; the Observer pale in the haze
+	"marble2": ["f3e2dc", "f6e6e1", "cdb7c2", "9d8599"],
+	"rock2": ["c39f98", "93727c", "684a57", "4a3140"],
+	"observer": ["f4e8e4", "e2cdcb", "bfa7b3", "947f97"],
+	"phead": ["f3e4df", "dcc4c4", "b9a0ad", "917b93"],
+	"groove": ["e2cac6", "e2cac6", "e2cac6", "e2cac6"],
+	"line": ["fff4ee", "fff4ee", "fff4ee", "fff4ee"],
+	"ring": ["fff3e2", "fff3e2", "fff3e2", "fff3e2"],
+}
+const IV_WAKE_BG := ["cdb6d3", "f8d5c2", "f1cfc6", "e6b9ad"]      # the dawn: lilac above, peach at the sea's rim, the rose haze, the mist at the bottom
+const IV_WAKE_SKY_S := Vector3(0.2, 0.33, 0.95)
 func _iv_pal(kind: String) -> Array:
+	if go_wake and IV_WAKE_PAL.has(kind): return IV_WAKE_PAL[kind] as Array
 	if go_quarry and IV_QUARRY_PAL.has(kind): return IV_QUARRY_PAL[kind] as Array
 	if go_moon and IV_MOON_PAL.has(kind): return IV_MOON_PAL[kind] as Array
 	return (IV_SEA_PAL[kind] if (go_drown and IV_SEA_PAL.has(kind)) else IV_PAL[kind]) as Array
 func _iv_sky(m: ShaderMaterial) -> void:      # the sky's colours (and the mist's, which is the sky at that height on the screen)
-	if go_quarry:
+	if go_wake:
+		m.set_shader_parameter("bg_top", Color(String(IV_WAKE_BG[0]))); m.set_shader_parameter("bg_hz", Color(String(IV_WAKE_BG[1])))
+		m.set_shader_parameter("bg_mid", Color(String(IV_WAKE_BG[2]))); m.set_shader_parameter("bg_bot", Color(String(IV_WAKE_BG[3])))
+		m.set_shader_parameter("sky4", 1.0); m.set_shader_parameter("sky_s", IV_WAKE_SKY_S)
+	elif go_quarry:
 		m.set_shader_parameter("bg_top", Color(String(IV_QUARRY_BG[0]))); m.set_shader_parameter("bg_hz", Color(String(IV_QUARRY_BG[1])))
 		m.set_shader_parameter("bg_mid", Color(String(IV_QUARRY_BG[2]))); m.set_shader_parameter("bg_bot", Color(String(IV_QUARRY_BG[3])))
 		m.set_shader_parameter("sky4", 1.0); m.set_shader_parameter("sky_s", IV_QUARRY_SKY_S)
@@ -2303,6 +2322,9 @@ func _iv_mat(kind: String, far_k := 0.0, extra := {}) -> ShaderMaterial:
 	if iv_bgtex != null: m.set_shader_parameter("bg_tex", iv_bgtex); m.set_shader_parameter("bg_tex_k", 1.0); m.set_shader_parameter("bg_scale", _iv_bg_scale())
 	if go_drown:
 		m.set_shader_parameter("shade_tint", Color(0.74, 0.79, 0.9)); m.set_shader_parameter("clip_k", 1.0); m.set_shader_parameter("clip_y", IV_O.y + ivr_sea_y)
+	if go_wake:      # (dawn: the shade lilac; what lies under the still water is not drawn, its image is)
+		m.set_shader_parameter("shade_tint", Color(0.85, 0.79, 0.9)); m.set_shader_parameter("ao_tint", Color(0.9, 0.83, 0.88)); m.set_shader_parameter("vein_tint", Color(0.93, 0.88, 0.9))
+		m.set_shader_parameter("clip_k", 1.0); m.set_shader_parameter("clip_y", IV_O.y + ivr_sea_y)
 	if go_quarry:      # (the afternoon: shadows a cool lilac on the warm marble)
 		m.set_shader_parameter("shade_tint", Color(0.76, 0.74, 0.84)); m.set_shader_parameter("ao_tint", Color(0.9, 0.85, 0.86)); m.set_shader_parameter("vein_tint", Color(0.93, 0.9, 0.87))
 		if kind == "quarry": m.set_shader_parameter("drill", 1.0)
@@ -2845,7 +2867,6 @@ func _iv_card_warm(box: Control) -> void:
 			g.colors = cs
 			var gt := GradientTexture2D.new(); gt.gradient = g; gt.fill_from = Vector2(0.5, 0.0); gt.fill_to = Vector2(0.5, 1.0); gt.width = 8; gt.height = 256
 			(ch as TextureRect).texture = gt
-		elif ch is Label and (ch as Label).text == "EIDOLON": (ch as Label).text = "EIDOLON GO"
 
 func _iv_pre(_dt: float) -> void:
 	if ivp_on: _ivp_pre(_dt); return
@@ -3215,7 +3236,7 @@ func _ivp_begin() -> void:
 			sm.set_shader_parameter("iv_look", 1.0); sm.set_shader_parameter("iv_key", iv_key)
 			sm.set_shader_parameter("iv_skin_lt", Color("f7eadc")); sm.set_shader_parameter("iv_skin_dk", Color("bc9f87"))
 			if OS.get_environment("IV_HDBG") != "": sm.set_shader_parameter("iv_skin_lt", Color(1, 0, 0)); sm.set_shader_parameter("iv_skin_dk", Color(0, 0, 1))
-			sm.set_shader_parameter("iv_cloth_lt", Color("b45d3b")); sm.set_shader_parameter("iv_cloth_dk", Color("6a2c1f")); sm.set_shader_parameter("iv_shade", Color(0.74, 0.78, 0.9) if go_drown else (Color(0.66, 0.72, 0.9) if go_moon else Color(0.86, 0.79, 0.74)))
+			sm.set_shader_parameter("iv_cloth_lt", Color("b45d3b")); sm.set_shader_parameter("iv_cloth_dk", Color("6a2c1f")); sm.set_shader_parameter("iv_shade", Color(0.74, 0.78, 0.9) if go_drown else (Color(0.66, 0.72, 0.9) if go_moon else (Color(0.84, 0.76, 0.86) if go_wake else Color(0.86, 0.79, 0.74))))
 	if ivr_on:
 		get_viewport().msaa_3d = Viewport.MSAA_4X      # (its edges smooth, as the picture's are)
 		_ivr_build()
@@ -3255,8 +3276,11 @@ func _ivp_post(dt: float) -> void:
 		var sd := Vector3(-dv.z, 0, dv.x) * 0.2
 		tgtL = face + sd; tgtR = face - sd
 	if ivp_shadow != null: ivp_shadow.global_position = Vector3(pos.x, pos.y + 0.01, pos.z) + Vector3(0.3, 0.0, -0.14)
+	if go_wake: _ivw_tick(dt)
 	if started and not ivp_intro:      # she comes up out of the mist to the first floor
-		ivp_intro = true; _ivp_walk([String(ivg.start) if ivg_on else "n0"])
+		ivp_intro = true
+		if go_wake: _ivw_rise()      # (the first level: she wakes where she lies, and rises)
+		else: _ivp_walk([String(ivg.start) if ivg_on else "n0"])
 
 func _ivp_nbrs(k: String) -> Array:
 	var out := []
@@ -3531,7 +3555,7 @@ func _ivr_cam() -> void:
 	var vp := get_viewport().get_visible_rect().size
 	cam.keep_aspect = Camera3D.KEEP_WIDTH; cam.size = w * maxf(1.0, (vp.x / vp.y) / 0.5625)
 
-func _ivr_mat(kind: String, ao := 1.0, local := false) -> ShaderMaterial: return _iv_mat(kind, 0.0, {"lfog": 1.0 if (local and not go_drown) else 0.0, "fog_hi": (ivr_sea_y + 1.5) if go_drown else (-1.4 if go_moon else (-1.6 if go_quarry else -3.6)), "fog_lo": (ivr_sea_y - 0.15) if go_drown else (-5.4 if go_moon else (-6.0 if go_quarry else -7.5)), "ao_k": ao * ({"marble2": 0.4, "olive2": 0.2, "bark": 0.3, "rock2": 0.0, "quarry": 0.55} as Dictionary).get(kind, 1.0), "veins": (0.35 if go_moon else (0.25 if go_quarry else 0.6)) if (kind == "marble2" or kind == "quarry") else 0.0, "dk": 0.17 if kind == "quarry" else 0.0, "bounce": 0.0, "haze": 1.0, "shadow_k": 0.0 if kind == "rock2" else 1.0, "lf_hi": 1.0 if go_drown else (1.0 if go_moon else (1.4 if go_quarry else 0.5)), "lf_len": 2.6 if go_drown else (2.8 if go_moon else (3.2 if go_quarry else 1.9))})
+func _ivr_mat(kind: String, ao := 1.0, local := false) -> ShaderMaterial: return _iv_mat(kind, 0.0, {"lfog": 1.0 if (local and not iv_at_sea) else 0.0, "fog_hi": (ivr_sea_y + (0.75 if go_wake else 1.5)) if iv_at_sea else (-1.4 if go_moon else (-1.6 if go_quarry else -3.6)), "fog_lo": (ivr_sea_y - 0.15) if iv_at_sea else (-5.4 if go_moon else (-6.0 if go_quarry else -7.5)), "ao_k": ao * ({"marble2": 0.4, "olive2": 0.2, "bark": 0.3, "rock2": 0.0, "quarry": 0.55} as Dictionary).get(kind, 1.0), "veins": (0.35 if go_moon else (0.25 if go_quarry else (0.4 if go_wake else 0.6))) if (kind == "marble2" or kind == "quarry") else 0.0, "dk": 0.17 if kind == "quarry" else 0.0, "bounce": 0.0, "haze": 1.0, "shadow_k": 0.0 if kind == "rock2" else 1.0, "lf_hi": 1.0 if iv_at_sea else (1.0 if go_moon else (1.4 if go_quarry else 0.5)), "lf_len": 2.6 if iv_at_sea else (2.8 if go_moon else (3.2 if go_quarry else 1.9))})
 
 ## the way drawn on the stone: a pale line, and at each node a pale disc in a darker ring
 func _ivr_way() -> void:
@@ -3645,6 +3669,136 @@ func _ivs_mirror(src: Node3D, kind_of: Callable) -> Node3D:
 		mi.material_override = _iv_mat(String(kd[0]), float(kd[1]), ex); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mn
 
+
+# ---------------------------------------------------------------- the waking (gowake/): the Observer, the veil, her rising, the hand
+## The first level. Dawn; the sea still as glass. Far out in it stands the Observer, the first statue of her, veiled,
+## looking out to where she was lost; its image lies in the water under it. A torn veil hangs from the gate's lintel,
+## stirring. She kneels at the threshold until the level begins, then rises. While she waits, a hand shows the next swipe.
+var ivw_hand: TextureRect
+var ivw_trail: Line2D
+var ivw_idle := 0.0
+var ivw_veil_m: ShaderMaterial
+
+func _ivw_scene(j: Dictionary) -> void:
+	var ob: Array = j.get("observer", [-12.0, -2.2, -10.0, 9.0, -0.9]) as Array      # (x, the foot (under the water), z, its height, its turn)
+	var hp := Node3D.new(); iv_root.add_child(hp)
+	hp.position = Vector3(float(ob[0]), float(ob[1]), float(ob[2])); hp.rotation.y = float(ob[4])
+	var hd := prop_model("observer", hp, float(ob[3]))
+	var sea := IV_O.y + ivr_sea_y
+	var ex := {"fog_hi": ivr_sea_y + 0.6, "fog_lo": ivr_sea_y - 0.4, "haze": 1.0, "clip_k": 1.0, "clip_y": sea, "shadow_k": 0.0}
+	for m in hd.find_children("*", "MeshInstance3D", true, false):
+		(m as MeshInstance3D).material_override = _iv_mat("observer", float(j.get("observer_haze", 0.28)), ex); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_ivs_mirror(hp, func(_mi: MeshInstance3D) -> Array: return ["observer", float(j.get("observer_haze", 0.28)), {"fog_hi": ivr_sea_y + 0.6, "fog_lo": ivr_sea_y - 0.4, "haze": 1.0}])
+	for ar in (j.get("arches", []) as Array): _ivw_veil(Vector3(float(ar[0][0]), float(ar[0][1]), float(ar[0][2])), String(ar[1]))
+	a_drop = 0.5; a_headp = 0.3; a_lean = 0.3      # (she lies kneeling where she woke)
+
+const IVW_VEIL_SH := """
+shader_type spatial;
+render_mode cull_disabled, unshaded, shadows_disabled, depth_draw_always;
+uniform vec3 lit : source_color = vec3(1.0, 0.97, 0.95);
+uniform vec3 shade : source_color = vec3(0.9, 0.84, 0.88);
+uniform vec3 wind = vec3(0.0, 0.0, 1.0);
+uniform float t = 0.0;
+varying float vv; varying float uu;
+void vertex(){
+	uu = UV.x; vv = UV.y;      // (0 at the lintel, 1 at its torn end)
+	float hang = vv * vv;
+	float sway = 0.38 + 0.16 * sin(t * 1.3 + uu * 1.7) + 0.06 * sin(t * 3.7 + vv * 5.0);
+	VERTEX += wind * hang * sway * 1.1;
+	VERTEX.y += hang * 0.18 * sway;
+	VERTEX += vec3(0.0, 0.0, 0.0) + cross(wind, vec3(0.0, 1.0, 0.0)) * sin(t * 2.4 + vv * 6.0 + uu * 2.0) * 0.05 * vv;
+}
+float h(float x){ return fract(sin(x * 127.1) * 43758.5453); }
+void fragment(){
+	float edge = 0.78 + 0.16 * h(floor(uu * 9.0)) + 0.05 * sin(uu * 37.0);      // (its end torn ragged)
+	if (vv > edge) discard;
+	float f = 0.5 + 0.5 * sin(uu * 18.0 + vv * 3.0 + t * 0.9);      // (its folds)
+	ALBEDO = mix(shade, lit, 0.55 + 0.45 * f);
+	ALPHA = 0.78 * (1.0 - smoothstep(edge - 0.08, edge, vv) * 0.5);
+}
+"""
+
+func _ivw_veil(p: Vector3, ax: String) -> void:
+	# a strip of veil from the left of the lintel's underside, the wind off the sea taking it out to the side
+	var along := Vector3(1, 0, 0) if ax == "x" else Vector3(0, 0, 1)
+	var top := IV_O + p + Vector3(0, 2.02, 0) - along * 0.36
+	var st := SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var nu := 4; var nv := 14; var wdt := 0.34; var ln := 1.25
+	var pts := []
+	for iv in nv + 1:
+		var row := []
+		for iu in nu + 1:
+			var u := float(iu) / nu; var v := float(iv) / nv
+			row.append([top + along * ((u - 0.5) * wdt) + Vector3(0, -v * ln, 0), Vector2(u, v)])
+		pts.append(row)
+	for iv in nv:
+		for iu in nu:
+			for q in [[0, 0], [1, 0], [1, 1], [0, 0], [1, 1], [0, 1]]:
+				var c: Array = pts[iv + q[1]][iu + q[0]]
+				st.set_uv(c[1]); st.set_normal(Vector3(0, 0, 1)); st.add_vertex(c[0])
+	var mi := MeshInstance3D.new(); mi.mesh = st.commit()
+	ivw_veil_m = ShaderMaterial.new(); var sh := Shader.new(); sh.code = IVW_VEIL_SH; ivw_veil_m.shader = sh
+	ivw_veil_m.set_shader_parameter("wind", (-along * 0.55 + Vector3(0, 0, 0.75)).normalized() if ax == "x" else (-along * 0.55 + Vector3(0.75, 0, 0)).normalized())
+	mi.material_override = ivw_veil_m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+
+func _ivw_rise() -> void:
+	iv_busy = true
+	await get_tree().create_timer(0.6).timeout
+	var tw := create_tween(); tw.set_parallel(true)
+	tw.tween_property(self, "a_drop", 0.0, 1.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(self, "a_lean", 0.0, 1.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(self, "a_headp", 0.0, 2.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await tw.finished
+	iv_me = String(ivg.start) if ivg_on else iv_me
+	iv_busy = false
+
+func _ivw_hand_make(cl: CanvasLayer) -> void:
+	if not FileAccess.file_exists(go_dir + "hand.png"): return
+	var k := get_viewport().get_visible_rect().size.x / 720.0
+	ivw_trail = Line2D.new(); ivw_trail.width = 10.0 * k; ivw_trail.default_color = Color(1, 1, 1, 0.0)
+	var g := Gradient.new(); g.offsets = PackedFloat32Array([0.0, 1.0]); g.colors = PackedColorArray([Color(1, 1, 1, 0.0), Color(1, 0.98, 0.95, 0.75)])
+	ivw_trail.gradient = g; ivw_trail.begin_cap_mode = Line2D.LINE_CAP_ROUND; ivw_trail.end_cap_mode = Line2D.LINE_CAP_ROUND
+	cl.add_child(ivw_trail)
+	ivw_hand = TextureRect.new(); ivw_hand.texture = load(go_dir + "hand.png"); ivw_hand.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ivw_hand.size = Vector2(96, 96) * k; ivw_hand.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_hand.modulate.a = 0.0
+	cl.add_child(ivw_hand)
+
+func _ivw_next() -> String:      # the next node of the way from where she stands
+	if not ivg_on: return ""
+	var path: Array = [String(ivg.start)] + (ivg.solution as Array)
+	for i in path.size() - 1:
+		if String(path[i]) == iv_me: return String(path[i + 1])
+	return ""
+
+func _ivw_tick(dt: float) -> void:
+	if ivw_veil_m != null: ivw_veil_m.set_shader_parameter("t", Time.get_ticks_msec() / 1000.0)
+	if ivw_hand == null: return
+	var waiting := ivg_on and bool(ivg.get("tutorial", false)) and started and ivp_intro and not iv_busy and not iv_won and iv_me != "s"
+	if not waiting:
+		ivw_idle = 0.0; ivw_hand.modulate.a = move_toward(ivw_hand.modulate.a, 0.0, dt * 6.0); ivw_trail.clear_points(); return
+	ivw_idle += dt
+	var nx := _ivw_next()
+	if nx == "" or ivw_idle < 0.8: ivw_hand.modulate.a = 0.0; ivw_trail.clear_points(); return
+	var a3: Vector3 = ivp_nodes[iv_me]
+	var e := _ivp_edge(iv_me, nx)
+	var tgt: Vector3 = ivp_nodes[nx]
+	if not e.is_empty() and not (e[2] as Array).is_empty(): tgt = ((e[2] as Array)[0] if String(e[0]) == iv_me else (e[2] as Array)[(e[2] as Array).size() - 1])
+	var fd := Vector3(tgt.x - a3.x, 0, tgt.z - a3.z).normalized()
+	var p0 := cam.unproject_position(a3); var d2 := (cam.unproject_position(a3 + fd) - p0).normalized()
+	var k := get_viewport().get_visible_rect().size.x / 720.0
+	var tt := fmod(ivw_idle - 0.8, 1.7) / 1.7
+	var u := clampf((tt - 0.12) / 0.5, 0.0, 1.0); u = u * u * (3.0 - 2.0 * u)
+	var c0 := p0 + Vector2(0, 150) * k      # (below her, clear of her and of the way)
+	var tip := c0 + d2 * lerpf(-80.0, 80.0, u) * k
+	ivw_hand.position = tip - Vector2(0.33, 0.02) * ivw_hand.size      # (its fingertip on the stroke)
+	var al := smoothstep(0.0, 0.12, tt) * (1.0 - smoothstep(0.72, 0.95, tt))
+	ivw_hand.modulate.a = al
+	ivw_trail.clear_points()
+	if u > 0.02:
+		ivw_trail.add_point(c0 + d2 * -80.0 * k); ivw_trail.add_point(tip)
+		ivw_trail.modulate.a = al * 0.9
+
 ## the drowned sanctuary's sea: still water under the level, its own colour between the haze far off and the mist
 ## below, a warm path where the low sun lies on it, broken by ripples
 const IV_SEA_SH := """
@@ -3656,6 +3810,8 @@ uniform vec3 sea_c : source_color = vec3(0.3, 0.45, 0.56);
 uniform vec3 glint_c : source_color = vec3(0.99, 0.87, 0.76);
 uniform vec2 sun = vec2(0.305, 0.19);
 uniform float sea_a = 1.0;      // (the surface: how much of the sea's own colour; the rest is what lies under it, the images in the water)
+uniform sampler2D bg_tex : source_color, filter_linear, repeat_disable;      // (a painted sea: its colour, and the sun's path on it, are the backdrop's)
+uniform float bg_tex_k = 0.0; uniform vec2 bg_scale = vec2(1.0); uniform float uv_flip = 0.0;
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 vec3 bgc(float s){
@@ -3666,8 +3822,14 @@ void fragment(){
 	float k = smoothstep(0.21, 0.38, s) * (1.0 - smoothstep(0.5, 0.92, s));
 	vec3 c = mix(bgc(s), sea_c, k * 0.9);
 	float rip = sin(wp.x * 2.3 + wp.z * 1.7) * sin(wp.z * 3.1 - wp.x * 0.9);
+	if (bg_tex_k > 0.5) {
+		float sy = uv_flip > 0.5 ? 1.0 - s : s;
+		c = texture(bg_tex, clamp(vec2(0.5 + (SCREEN_UV.x - 0.5) * bg_scale.x, 0.5 + (sy - 0.5) * bg_scale.y), vec2(0.001), vec2(0.999))).rgb;
+		c = mix(c, c * 1.04 + vec3(0.01), smoothstep(0.55, 0.95, rip) * 0.5);      // (the faintest swell)
+	} else {
 	float path = exp(-pow((SCREEN_UV.x - sun.x) * 5.0, 2.0)) * (1.0 - smoothstep(0.19, 0.55, s));
 	c = mix(c, glint_c, path * 0.35 * smoothstep(0.1, 0.9, rip));
+	}
 	ALBEDO = c;
 	if (sea_a < 0.999) ALPHA = sea_a;
 }
@@ -3682,14 +3844,15 @@ func _ivs_sea(sea_y: float) -> void:
 	var ref := IV_O + Vector3(float(ce[0]), float(ce[1]), float(ce[2]))
 	var ppm := 1536.0 / float(ivr_eye.width)
 	var y := IV_O.y + sea_y
-	var sy_h := (1376.0 - IVS_HORIZON) / ppm
+	var sy_h := ((0.5 - 0.215) * float(ivr_eye.width) * 16.0 / 9.0) if go_wake else (1376.0 - IVS_HORIZON) / ppm      # (the waking: where its backdrop has the sea's rim)
 	var ph := ref + by * sy_h + fwd * ((y - ref.y - by.y * sy_h) / fwd.y)      # (the horizon, below the middle of the screen)
 	var hb := Vector3(-fwd.x, 0, -fwd.z).normalized()
 	var c := [ph - bx * 80.0, ph + bx * 80.0, ph + bx * 80.0 + hb * 120.0, ph - bx * 80.0 + hb * 120.0]
 	# (two sheets: the surface, a little clear; and deep under it, along the eye, a floor of the same colours over the
 	# same part of the screen: where nothing is in the water the sea looks as before, where an image is it shows)
+	if go_wake and iv_bgtex != null: m.set_shader_parameter("bg_tex", iv_bgtex); m.set_shader_parameter("bg_tex_k", 1.0); m.set_shader_parameter("bg_scale", _iv_bg_scale()); m.set_shader_parameter("uv_flip", iv_uvf)
 	var mf := m.duplicate() as ShaderMaterial
-	m.set_shader_parameter("sea_a", 0.7)
+	m.set_shader_parameter("sea_a", 0.5 if go_wake else 0.7)
 	for pass_i in 2:
 		var off := Vector3.ZERO if pass_i == 0 else fwd * 40.0
 		var st := SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -4277,7 +4440,7 @@ func _ivr_build() -> void:
 	iv_root = Node3D.new(); iv_root.position = IV_O; add_child(iv_root)
 	var j0 = JSON.parse_string(FileAccess.get_file_as_string(go_dir + "level.json"))
 	if j0 is Dictionary and (j0 as Dictionary).get("sea_y") != null: ivr_sea_y = float(j0.sea_y)
-	if (go_moon or go_quarry) and OS.get_environment("IV_NO_BACKDROP") == "" and FileAccess.file_exists(go_dir + "backdrop.jpg"): iv_bgtex = load(go_dir + "backdrop.jpg")
+	if (go_moon or go_quarry or go_wake) and OS.get_environment("IV_NO_BACKDROP") == "" and FileAccess.file_exists(go_dir + "backdrop.jpg"): iv_bgtex = load(go_dir + "backdrop.jpg")
 	var bm := ShaderMaterial.new(); var bs := Shader.new(); bs.code = IV_BG_SH if iv_bgtex == null else IV_BGTEX_SH; bm.shader = bs
 	_iv_sky(bm)
 	if iv_bgtex != null: bm.set_shader_parameter("bg_tex", iv_bgtex); bm.set_shader_parameter("bg_scale", _iv_bg_scale()); bm.set_shader_parameter("uv_flip", iv_uvf)
@@ -4295,11 +4458,11 @@ func _ivr_build() -> void:
 		var nm := String(mi.name).to_lower() + "|" + String(mi.get_parent().name).to_lower()
 		var kind := "rock2" if nm.contains("rock") else ("olive2" if nm.contains("olive") else ("bark" if nm.contains("bark") else ("snow" if nm.contains("snow") else ("quarry" if nm.contains("quarry") else "marble2"))))
 		mi.material_override = _ivr_mat(kind, 1.0, true); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-	if go_drown:      # (the level's image in the still water, faint)
+	if iv_at_sea:      # (the level's image in the still water: faint at dusk, clear at dawn)
 		_ivs_mirror(lv, func(mi: MeshInstance3D) -> Array:
 			var nm := String(mi.name).to_lower() + "|" + String(mi.get_parent().name).to_lower()
 			var kd := "rock2" if nm.contains("rock") else "marble2"
-			return [kd, 0.0, {"fog_hi": ivr_sea_y + 1.5, "fog_lo": ivr_sea_y - 0.15, "veins": 0.6 if kd == "marble2" else 0.0, "haze": 1.0}])
+			return [kd, 0.0, {"fog_hi": ivr_sea_y + (0.75 if go_wake else 1.5), "fog_lo": ivr_sea_y - 0.15, "veins": 0.6 if kd == "marble2" else 0.0, "haze": 1.0}])
 	# its way
 	var j: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(go_dir + "level.json"))
 	if j.has("eye"): ivr_eye = j.eye
@@ -4373,13 +4536,15 @@ func _ivr_build() -> void:
 	if go_moon:
 		if iv_bgtex == null: _ivm_far()      # (the far peaks are in the painted backdrop when there is one)
 		for bz in (j.get("braziers", []) as Array): _ivm_brazier(V.call(bz))
-	if go_drown or go_moon:
-		if go_drown: _ivs_sea(float(j.get("sea_y", -1.6))); _ivs_far()
+	if iv_at_sea or go_moon:
+		if iv_at_sea: _ivs_sea(float(j.get("sea_y", -1.6)))
+		if go_drown: _ivs_far()
+		if go_wake: _ivw_scene(j)
 		for ar in (j.get("arches", []) as Array):      # (a pale light standing in the arch over the ring: the way out)
 			var pq := QuadMesh.new(); pq.size = Vector2(1.1, 2.0)
 			var pmat := StandardMaterial3D.new(); pmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; pmat.albedo_texture = load("res://goiv/glow.png")
 			pmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; pmat.blend_mode = BaseMaterial3D.BLEND_MODE_MIX if go_moon else BaseMaterial3D.BLEND_MODE_ADD; pmat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-			pmat.albedo_color = Color(1.0, 0.8, 0.46, 0.34) if go_moon else Color(0.72, 0.88, 1.0, 0.42)
+			pmat.albedo_color = Color(1.0, 0.8, 0.46, 0.34) if go_moon else (Color(1.0, 0.9, 0.82, 0.36) if go_wake else Color(0.72, 0.88, 1.0, 0.42))
 			var pg := MeshInstance3D.new(); pg.mesh = pq; pg.material_override = pmat; pg.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			iv_root.add_child(pg); pg.global_position = V.call(ar[0]) + Vector3(0, 1.0, 0)
 	else: _ivr_far()
@@ -4400,7 +4565,10 @@ func _ivr_build() -> void:
 	vr.set_anchors_preset(Control.PRESET_FULL_RECT); vr.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(vr)
 	iv_leaves = _iv_overlay(cl, "res://goiv/leaves_tl.png", Vector2(-70, -90) * k, Vector2(470, 470) * k)
 	var lr := _iv_overlay(cl, "res://goiv/leaves_tl.png", Vector2(720 * k + 60 * k, -150 * k), Vector2(440, 440) * k); lr.flip_h = true; lr.position.x -= 440 * k; lr.rotation = 0.18
-	if go_drown:      # (at sea: the leaves above, cool in the dusk; no rocks before the eye, the mist is open)
+	if go_wake:      # (the first dawn: the sky open above, nothing before the eye)
+		iv_leaves.visible = false; lr.visible = false
+		_ivw_hand_make(cl)
+	elif go_drown:      # (at sea: the leaves above, cool in the dusk; no rocks before the eye, the mist is open)
 		for ov in [iv_leaves, lr]: (ov as CanvasItem).modulate = Color(0.62, 0.66, 0.8)
 	elif go_quarry:      # (the quarry: the leaves above at the left, warm; dust in the air; the pit open below)
 		lr.visible = false; iv_leaves.modulate = Color(0.92, 0.86, 0.8)
