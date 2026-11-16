@@ -3642,6 +3642,7 @@ func _ivr_cam() -> void:
 	if go_wake and ivw_close > 0.001:      # (the waking: the eye close on her, drawn back as she stands)
 		var u := ivw_close * ivw_close * (3.0 - 2.0 * ivw_close)
 		c = c.lerp(pos + Vector3(0, 0.5, 0), u); w = lerpf(w, 3.6, u)
+		for mm in ivw_obs_mirror: (mm as ShaderMaterial).set_shader_parameter("mirror_fade", lerpf(2.0, 0.02, u))      # (close on her, the statue's image would be a pale blot with no statue over it)
 	if OS.get_environment("IV_ZOOM") != "":      # (for judging her: the eye close on her)
 		c = pos + Vector3(0, 0.75, 0); w = float(OS.get_environment("IV_ZOOM"))
 		if OS.get_environment("IV_FACE") != "": yaw = atan2(b.z.x, b.z.z)
@@ -3791,8 +3792,9 @@ func _ivw_observer(j: Dictionary) -> void:
 	ex.merge(rim)
 	for m in hd.find_children("*", "MeshInstance3D", true, false):
 		(m as MeshInstance3D).material_override = _iv_mat("marble2", float(j.get("observer_haze", 0.28)), ex); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_ivs_mirror(hp, func(_mi: MeshInstance3D) -> Array:
+	var obs_mn := _ivs_mirror(hp, func(_mi: MeshInstance3D) -> Array:
 		var mx := {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.7, "haze": 1.0, "mirror_fade": 2.0, "mirror_wob": 0.05}; mx.merge(rim); return ["marble2", float(j.get("observer_haze", 0.28)), mx])      # (her image as the rocks' are: fading down over 2 m, not cut short)
+	for m2 in obs_mn.find_children("*", "MeshInstance3D", true, false): ivw_obs_mirror.append((m2 as MeshInstance3D).material_override)      # (kept short while the eye is close on the waking)
 
 ## rings of ripples spreading slowly about a thing standing in the still water, one after another, fading
 const IVW_RINGS_SH := """
@@ -3879,7 +3881,8 @@ func _ivw_veil(p: Vector3, ax: String) -> void:
 
 var ivw_close := 1.0      # (the eye close on her: 1 while she lies there, 0 when it holds the whole level)
 var ivw_awake := false
-var ivw_line_at := -1.0      # (when the waking's line may come: a moment after the title has gone)
+var ivw_line_at := -1.0
+var ivw_obs_mirror := []      # (the statue's image in the water: its materials, its length grown as the eye draws back)      # (when the waking's line may come: a moment after the title has gone)
 var ivw_risers := []      # [[mesh, its place up, its image or null]] the sunken stones
 var ivw_up := 0.0      # (how far up the stones are: 0 sunk, 1 risen)
 const IVW_SINK := 0.62      # (how deep the stones lie under their places: their tops a hand under the water, plain to see)
