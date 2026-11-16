@@ -420,8 +420,8 @@ def blocks(name, poly, top_y, keep=(), h=None):
     near = lambda q, extra: any(math.hypot(q[0] - k[0], q[1] - k[1]) < r + extra for (k, r) in keep)
     obs = []
     def one(nm_, c, th, hl, led, din, back=(-0.18, -0.06)):
-        if led == 'bind':      # (beside the floor, a step out, its top a little under the floor's: the marble set into the rock)
-            out = rnd.uniform(0.08, 0.28); yt = h - rnd.uniform(0.15, 0.38)
+        if led == 'bind':      # (beside the floor, broad, its top a little under the floor's: the marble set into the rock)
+            out = rnd.uniform(0.3, 0.9); yt = h - rnd.uniform(0.08, 0.3)
             lean = (rnd.uniform(-0.05, 0.05), -rnd.uniform(0.02, 0.08)); led = True
         elif led == 'flush':      # (right under the slab, its face in the slab's own plane: white above, brown below, no recess)
             out = rnd.uniform(-0.02, 0.04); yt = h - 0.56; lean = (0.0, 0.0); led = False
@@ -448,7 +448,7 @@ def blocks(name, poly, top_y, keep=(), h=None):
             if dk_ < r: hw = math.sqrt(r * r - dk_ * dk_); zones.append((tk - hw, tk + hw))
         t = 0.0
         while t < L - 0.2:
-            l = rnd.uniform(1.1, 2.0)
+            l = rnd.uniform(1.6, 2.8)      # (broad: a few great masses, never a row of pillars)
             for (z0, z1) in zones:      # (a length stops where a zone begins or ends: it is never thrown away whole)
                 for zb in (z0, z1):
                     if t + 0.35 < zb < t + l: l = zb - t
@@ -457,9 +457,9 @@ def blocks(name, poly, top_y, keep=(), h=None):
             tm = t + l * 0.5
             nr_ = any(z0 - 0.05 < tm < z1 + 0.05 or (t < z1 and t + l > z0) for (z0, z1) in zones)
             r_ = rnd.random(); seen = nm[0] + nm[1] > 0.3      # (a side the eye sees: there the rock binds the marble more often)
-            if h is not None and (nr_ or r_ < (0.45 if seen else 0.5)):      # (flush under the slab; where nothing may stand out, always)
+            if h is not None and (nr_ or r_ < (0.3 if seen else 0.5)):      # (flush under the slab; where nothing may stand out, always)
                 one('%s_fl%d_%d' % (name, i, int(t * 10)), mid, th + rnd.uniform(-0.04, 0.04), l * 0.5 - 0.02, 'flush', rnd.uniform(0.5, 0.9))
-            elif not nr_ and h is not None and r_ < (0.75 if seen else 0.65): one('%s_bnd%d_%d' % (name, i, int(t * 10)), mid, th + rnd.uniform(-0.15, 0.15), l * 0.5 + 0.04, 'bind', rnd.uniform(0.5, 0.9))
+            elif not nr_ and h is not None and r_ < (0.8 if seen else 0.65): one('%s_bnd%d_%d' % (name, i, int(t * 10)), mid, th + rnd.uniform(-0.15, 0.15), l * 0.5 + 0.04, 'bind', rnd.uniform(0.5, 0.9))
             elif not nr_: one('%s_blk%d_%d' % (name, i, int(t * 10)), mid, th + rnd.uniform(-0.38, 0.38), l * 0.5 + 0.06, True, rnd.uniform(0.5, 0.9))
             else:      # (set back under the slab, its top hidden in it: it must not come out through the slab's side)
                 hl = l * 0.5 - 0.1; out = rnd.uniform(-0.18, -0.06)
@@ -471,8 +471,8 @@ def blocks(name, poly, top_y, keep=(), h=None):
         if n1[0] * n2[1] - n1[1] * n2[0] < 0.2: continue
         mx, mz = n1[0] + n2[0], n1[1] + n2[1]; ml = math.hypot(mx, mz) or 1.0
         th = math.atan2(mz / ml, mx / ml) + rnd.uniform(-0.25, 0.25)
-        if near(P[i], 0.4) or rnd.random() < 0.25: continue      # (a corner block is always a ledge, below the slab)
-        one('%s_cor%d' % (name, i), P[i], th, rnd.uniform(0.4, 0.65), True, rnd.uniform(0.6, 0.9))
+        if near(P[i], 0.4) or rnd.random() < 0.25: continue      # (a corner block: a ledge below the slab, or up beside it)
+        one('%s_cor%d' % (name, i), P[i], th, rnd.uniform(0.4, 0.65), 'bind' if (h is not None and rnd.random() < 0.4) else True, rnd.uniform(0.6, 0.9))
     core = offset(P, -0.35)
     obs.append(block('%s_core' % name, core, top_y + 0.05, top_y - 16.0, ease=0.0))
     top_at = lambda x, z: top_y

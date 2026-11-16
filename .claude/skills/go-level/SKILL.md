@@ -33,8 +33,12 @@ Everything is in `eidolon-demo/`. The first level, ivory (`goiv/`), is the worke
 - **Flights**: one solid each, with a stringer under the line of nosings and eased nosings. Stairs stay square: no cut corners.
   - The last tread sits a few mm under the floor and runs on under it. Coplanar faces z-fight into grey hatching.
   - The rock under a flight is flush with its sides: the stair continues the rock.
+- **The marble is in thick chunks set into the brown rock** (the user: "the white parts are thicker chunks bound inside the brown stone").
+  - Under a slab the rock is mostly flush with its side: white above, brown below, no recess (a recess makes a floating table).
+  - Here and there a broad block of rock beside the floor, its top 0.1–0.3 m under the floor's, most often on the sides the eye sees.
+  - Beside each flight, chunks of rock (as broad as long, never planks) stepping up with it; a deep white band under its steps.
 - **Rock under a floor** (`blocks`): soft low-poly, as the picture's.
-  - A few broad blocks along each edge (1.1–2 m), each turned its own way (up to ±20°), so each takes the light its own way.
+  - A few broad blocks along each edge (1.6–2.8 m), each turned its own way (up to ±20°), so each takes the light its own way. Pieces stop where a flight's end or a hanging thing begins; they are never dropped whole.
   - Some are set back under the slab (a dark recess beneath it); some stand out a step lower with a lit top (ledges), their faces leaning back above the step.
   - Every block steps out partway down: never one straight pillar. Rows of upright prisms read as organ pipes, which the user hates.
   - Every edge is eased in two facets (bevel, 2 segments): soft, not sharp. Outer corners are cut off.
@@ -53,9 +57,9 @@ Everything is in `eidolon-demo/`. The first level, ivory (`goiv/`), is the worke
   - Rock is **brown**, not grey: about h 20–28°, s 0.3–0.4.
 - **Light is simple and sharp**: one tone per face, crisp edges between faces (the user: "the light in the original is much simpler and sharper").
   - A face-normal ramp with narrow smoothsteps; only the level's one sun (filter the other lights in `light()`); MSAA 4x.
-  - No AO, no darkening, no veil and no mist noise on rock: each of these made a "double fade".
+  - No AO, no darkening, no veil, no mist noise and no cast shadow on rock: soft shadows and wisps read as smudges (the user: "lit strangely, like smudges"). Shadows stay on the marble floors (her shadow, the cube's).
 - **The bottom dissolves into mist, in one smooth fade.** The user has said it a hundred times.
-  - Every rock fades under **its own** floor, by its depth under the slab (vertex colour G): smoothstep from about 0.8 m down over about 2.3 m, its edge broken by fbm wisps. Measure the fade on the picture (a column of pixels down a dark face) and match it.
+  - Every rock fades under **its own** floor, by its depth under the slab (vertex colour G): one clean smoothstep from about 0.5 m down over about 1.9 m. Measure the fade on the picture (a column of pixels down a dark face) and match it.
   - Fog colour is the sky gradient at that height on the screen. Hide sea-world vignettes, rays and any screen vignette: the picture's sky and mist are clear to the edges.
   - Keep the sun's glow on the sky warm; a bright glow clips to green-yellow.
 - **Palettes are sampled per thing from the picture** (the fallen face near white with grey-brown shade, the cypress a khaki olive, the far rock warm once the haze is over it), and checked with `vstats.py`.

@@ -2020,7 +2020,7 @@ const IV_PAL := {      # top, lit face, face half turned away, face in shade (sa
 	"pterra": ["c65a3e", "a84a33", "7f3a2a", "5c2b22"],
 	"marble2": ["ffefd2", "f6d8b3", "d9b28d", "ad8664"],
 	"phead": ["fff2dc", "f9e5c9", "e6ccb0", "bfa48c"],      # (the fallen face: as the picture's, near white, its shade a soft grey-brown)
-	"rock2": ["b39678", "a08268", "6e5244", "4c362c"],      # (as the picture's rock: lit faces a mid brown, shaded ones dark)
+	"rock2": ["aa8e76", "917460", "6b5244", "47342d"],      # (as the picture's rock: lit faces a mid brown, shaded ones dark)
 	"olive2": ["b8986e", "a38564", "8b6f53", "765e45"],      # (the cypress, as the picture's: a khaki olive, darker than the rock's lit faces)
 	"bark": ["9a5f48", "86513d", "6c4031", "4e2e24"],
 	"far": ["f4dcc0", "eccfae", "e8c4a2", "deb795"],      # (far rock in the haze: warm, as the picture's, once the haze is over it)
@@ -2058,9 +2058,9 @@ uniform float dk = 0.0;
 uniform float haze = 0.0;
 uniform float bounce = 0.0;
 uniform float sil = 0.0;      // (far off: a shape in the haze, its faces hardly told apart; no detail, only gradation)
-uniform float lf_len = 2.3;
+uniform float lf_len = 1.9;
 uniform float lfog = 0.0;      // (the level's own rock: its depth under the floor it bears is in COLOR.g, a quarter of a metre to one)
-uniform float lf_hi = 0.8;
+uniform float lf_hi = 0.5;
 uniform float shadow_k = 1.0;      // (how much cast shadow falls on it: none on the rock, whose faces are each one clean tone)
 uniform float lf_lo = 3.2;
 varying vec3 wp;
