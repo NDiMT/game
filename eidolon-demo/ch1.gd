@@ -3973,8 +3973,9 @@ const IVW_SINK := 0.62      # (how deep the stones lie under their places: their
 var go_text_styled := false
 func _go_restyle_text() -> void:
 	go_text_styled = true
+	var ink := Color(0.07, 0.05, 0.08) if go_wake else Color(1, 1, 1)      # (the waking: black letters on its light dawn, as its start screen has them; the user: "better black")
 	var white := func(l: Label) -> void:
-		l.add_theme_color_override("font_color", Color(1, 1, 1))
+		l.add_theme_color_override("font_color", ink)
 	for box in [quote_box, title_box]:
 		if box == null: continue
 		for n in (box as Node).find_children("*", "ColorRect", true, false):
@@ -3983,7 +3984,7 @@ func _go_restyle_text() -> void:
 		for n in (box as Node).find_children("*", "Label", true, false):
 			var lb := n as Label
 			if lb.get_theme_constant("outline_size") > 0 and lb.get_theme_color("font_color").a < 0.01:
-				if lb.material is CanvasItemMaterial: lb.visible = false      # (the warm glow: gone)
+				if lb.material is CanvasItemMaterial or go_wake: lb.visible = false      # (the warm glow: gone; at the waking no shadow behind the letters at all, the user: "take those stupid shadows away")
 				else:      # (the haze in thin steps: black now, a soft shadow all round the letters)
 					var oc := lb.get_theme_color("font_outline_color")
 					lb.add_theme_color_override("font_outline_color", Color(0, 0, 0, minf(oc.a * 1.9, 0.3)))
