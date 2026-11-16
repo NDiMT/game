@@ -319,35 +319,69 @@ for f in range(NK + 1):
 kn = {"rot": kr, "hips": kh}
 l, r = foot_lift(fk(kn)); print("BUILD kneel: feet off the floor at the end %.3f %.3f, hips end at %.3f, right knee at %.3f" % (l[-1], r[-1], kh[-1, 2], fk1(kr[-1], kh[-1])[B("RightLeg")][2]))
 clips["kneel"] = kn
-# ---- rise: from the kneel up to standing, as one rises from one knee (the kneel run backwards swung the back leg
-#      forward while she was still low, and her leg bent strangely). The weight comes forward over the front foot; the
-#      back knee lifts off the floor, its toes still on it; she comes up into a lunge as far as the back leg reaches;
-#      then the back foot steps up beside the front one and she stands. The game runs it forward (a_rise).
-NR = int(os.environ.get("RISE_FRAMES", "72"))
+# ---- rise: from one knee up to standing, as a person rises (the kneel run backwards swung the back leg forward while
+#      she was still low, and her leg bent strangely). She begins on one knee, her head bowed, both hands resting on the
+#      front knee, the top of the back foot flat on the floor behind her (no bent ankle, no bent toes). Her weight comes
+#      forward; the back foot rolls onto its toes as that knee lifts; she pushes up from the knee with her hands into a
+#      lunge as far as the back leg reaches, the back foot drawn in on its toes; her hands leave the knee; the back foot
+#      steps through and she stands, her head lifting last. The game runs it forward (a_rise).
+def arm_ik(rot, hips, side, wrist, pole):
+    up, lo, hd = B(side + "Arm"), B(side + "ForeArm"), B(side + "Hand")
+    pos = fk1(rot, hips); a_ = pos[up]; l1 = np.linalg.norm(pos[lo] - pos[up]); l2 = np.linalg.norm(pos[hd] - pos[lo])
+    to = wrist - a_; d = min(max(np.linalg.norm(to), abs(l1 - l2) + 1e-4), (l1 + l2) * 0.999); dirn = to / np.linalg.norm(to)
+    ca = min(max((l1 * l1 + d * d - l2 * l2) / (2.0 * l1 * d), -1.0), 1.0)
+    pl = np.array(pole, dtype=float); perp = pl - dirn * (pl @ dirn); perp /= np.linalg.norm(perp)
+    elbow = a_ + dirn * (l1 * ca) + perp * (l1 * math.sqrt(max(1.0 - ca * ca, 0.0)))
+    aim(rot, hips, up, lo, elbow - a_)
+    pos = fk1(rot, hips); aim(rot, hips, lo, hd, a_ + dirn * d - pos[lo])
+NR = int(os.environ.get("RISE_FRAMES", "84"))
 rr = np.zeros((NR + 1, NB, 3, 3)); rh = np.zeros((NR + 1, 3))
 upR = B("RightUpLeg"); reach = (thigh + shin) * 0.98
+v0 = p0[RA] - p0[RT]                                         # (the ankle from the ball of the foot, standing)
+FLAT, TUCK = float(os.environ.get("RISE_FLAT", "168")), float(os.environ.get("RISE_TUCK", "84"))
+ball0 = ra1 - roty(FLAT) @ v0; ball0[2] = TOE_REST           # (where the ball of the back foot lies, the foot flat behind her)
+ball1 = p0[RT].copy()                                        # (and where it stands)
+ARMS = [B(n) for n in bones if any(t in n for t in ("Shoulder", "Arm", "Hand"))]
+LEAN0 = float(os.environ.get("RISE_LEAN", "20"))
 for f in range(NR + 1):
-    u = f / NR; rot = stand.copy()
-    fw = ease(u / 0.35); sl = ease((u - 0.25) / 0.3); st = ease((u - 0.5) / 0.45)      # (weight forward; the back foot drawn in on its toes; the step through)
-    lean = 5.0 * (1.0 - ease(u / 0.35)) + 12.0 * math.sin(math.pi * min(u / 0.8, 1.0))
-    turn(rot, B("Spine"), roty(lean)); turn(rot, B("Head"), roty(6.0 * (1.0 - ease(u / 0.8))))
-    heel = 0.035 * ease(u / 0.35) * (1.0 - st)
-    pb = ra1 + (ra0 - ra1) * 0.4 * sl
-    ank = pb * (1.0 - st) + ra0 * st; ank = ank.copy(); ank[2] += heel + 0.04 * math.sin(math.pi * st)
-    pitch = (62.0 + 12.0 * ease(u / 0.35)) * (1.0 - st)
+    u = f / NR
+    fw = ease(u / 0.35); roll = ease(u / 0.3); sl = ease((u - 0.25) / 0.3); st = ease((u - 0.52) / 0.42)
+    lift = ease((u - 0.58) / 0.38)                           # (her head and her back come up last)
+    rel = ease((u - 0.38) / 0.24)                            # (her hands leave the knee)
+    pitch = (FLAT + (TUCK - FLAT) * roll) * (1.0 - st)
+    toe = -80.0 * min(max((FLAT - pitch) / (FLAT - TUCK), 0.0), 1.0) * (1.0 - st)
+    ball = ball0 + (ball1 - ball0) * 0.4 * sl; ball = ball * (1.0 - st) + ball1 * st; ball = ball.copy()
+    ball[2] = TOE_REST + 0.04 * math.sin(math.pi * st)
+    ank = ball + roty(pitch) @ v0
     hips = stand_h.copy()
     hips[0] = stand_h[0] - back_end * ((1.0 - fw) + 0.45 * fw) * (1.0 - st)
-    hips[2] = stand_h[2] - drop_end * (1.0 - ease((u - 0.04) / 0.9))
-    for _ in range(3):      # (no higher than the back leg reaches while its foot is still behind)
-        hj = fk1(rot, hips)[upR]; dxy = math.hypot(hj[0] - ank[0], hj[1] - ank[1])
-        zmax = ank[2] + math.sqrt(max(reach * reach - dxy * dxy, 0.0))
-        if hj[2] > zmax: hips[2] -= hj[2] - zmax
-    leg_ik(rot, hips, "Left", la0, 0.0)
-    leg_ik(rot, hips, "Right", ank, pitch)
-    turn(rot, RT, roty((-50.0 - 10.0 * ease(u / 0.35)) * (1.0 - st)))      # (the toes flat on the floor till the step)
-    rr[f] = rot; rh[f] = hips
+    hips[2] = stand_h[2] - drop_end * (1.0 - ease((u - 0.06) / 0.88))
+    lean = LEAN0 * (1.0 - lift) + 6.0 * math.sin(math.pi * min(u / 0.6, 1.0)) * (1.0 - lift)
+    poses = []
+    for with_hands in (True, False):
+        rot = stand.copy()
+        turn(rot, B("Spine"), roty(lean)); turn(rot, B("Neck"), roty(10.0 * (1.0 - lift))); turn(rot, B("Head"), roty(18.0 * (1.0 - lift)))
+        hh = hips.copy()
+        for _ in range(3):      # (no higher than the back leg reaches while its foot is still behind)
+            hj = fk1(rot, hh)[upR]; dxy = math.hypot(hj[0] - ank[0], hj[1] - ank[1])
+            zmax = ank[2] + math.sqrt(max(reach * reach - dxy * dxy, 0.0))
+            if hj[2] > zmax: hh[2] -= hj[2] - zmax
+        leg_ik(rot, hh, "Left", la0, 0.0)
+        leg_ik(rot, hh, "Right", ank, pitch)
+        turn(rot, RT, roty(toe))
+        if with_hands:      # (both hands on the front knee: the left at its outer side, the right over it)
+            kn_ = fk1(rot, hh)[B("LeftLeg")]
+            arm_ik(rot, hh, "Left", kn_ + np.array([-0.03, 0.03, 0.06]), (-0.4, 1.0, 0.0))
+            arm_ik(rot, hh, "Right", kn_ + np.array([-0.015, -0.012, 0.078]), (-0.4, -1.0, 0.0))
+            for sd in ("Left", "Right"): aim(rot, hh, B(sd + "Hand"), B(sd + "HandMiddle1"), np.array([0.55, 0.0, -0.83]))
+        poses.append((rot, hh))
+    rot, hh = poses[0]; free = poses[1][0]
+    for b in ARMS: rot[b] = slerp_rot(rot[b], free[b], rel)
+    rr[f] = rot; rh[f] = hh
 rz = {"rot": rr, "hips": rh}
-l, r = foot_lift(fk(rz)); print("BUILD rise: lowest foot lift %.3f %.3f, hips from %.3f to %.3f" % (l.min(), r.min(), rh[0, 2], rh[-1, 2]))
+l, r = foot_lift(fk(rz)); p_ = fk1(rr[0], rh[0])
+print("BUILD rise: lowest foot lift %.3f %.3f, hips from %.3f to %.3f; at the start wrists %.3f %.3f from the knee; ankle rest %.3f toe rest %.3f" % (
+    l.min(), r.min(), rh[0, 2], rh[-1, 2], np.linalg.norm(p_[B("LeftHand")] - p_[B("LeftLeg")]), np.linalg.norm(p_[B("RightHand")] - p_[B("LeftLeg")]), ANKLE_REST, TOE_REST))
 clips["rise"] = rz
 only = os.environ.get("CLIPS", "")
 if only: clips = {k: v for k, v in clips.items() if k in only.split(",")}

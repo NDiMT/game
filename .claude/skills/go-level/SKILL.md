@@ -70,9 +70,17 @@ The levels are many, in one system. A new level is made in this order (the secon
     - The shore foam around the stones comes in once the last is up.
   - To judge one moment without playing the whole level, take snapshots (`IVW_SNAPS=1`) and quit at a named one (`IVW_QUIT_AT=w8_risen`).
 - **Her waking** (a level that opens on her), as the user wants it:
-  - She starts on one knee: the front foot planted with its knee up, the back knee on the stone. That is the ione4 kneel clip's last frame, `a_drop = 0.5`. Her torso is upright (`a_lean` about 0.05) and her head bowed (`a_headp` about 0.34).
+  - She starts on one knee: the front foot planted with its knee up, the back knee on the stone. That is the `rise` clip's first frame, `a_rise = 0`.
+    - Her head is bowed and her torso leans a little forward (about 20°), as the user asked.
+    - Both hands rest on the front knee (`arm_ik` in the build, the elbows out).
+    - The top of the back foot lies flat on the floor (`RISE_FLAT` 145°): no bent ankle, no bent toes ("the ankle bends strangely").
   - After a short pause (about 1.5 s) she rises slowly with the `rise` clip (`a_rise` 0 to 1 over about 4.6 s, eased), her head lifting last (`a_headp`).
-    - The clip is made in `tools/ione4_build.py`: her weight forward over the front foot; the back knee lifts, its toes on the floor; a lunge as far as the back leg reaches (the hips are clamped to the leg's reach); the back foot drawn in on its toes, then stepped through; standing.
+    - The clip is made in `tools/ione4_build.py`, in this order:
+      1. Her weight comes forward over the front foot.
+      2. The back foot rolls from flat onto its toes as that knee lifts. The ball of the foot stays planted, and the ankle is placed from it.
+      3. She pushes up from the knee with her hands into a lunge as far as the back leg reaches; the hips are clamped to the leg's reach.
+      4. The back foot is drawn in on its toes, and her hands leave the knee (the arm bones are blended to a hands-free pose).
+      5. The back foot steps through and she stands, her head and back lifting last.
     - Never run the kneel clip backwards to rise: it swings the back leg forward while she is still low ("the leg bends strangely").
     - Rebuild her with the inputs of the installed model: the retarget model, `ione4_data4.png`, and the extra clips model. Check a clip in Blender from the side and the front before the game (`tools/go/clip_views.py`).
   - No turning to look about, and no lying curled with her palms on the stone ("it should not turn, just rise slowly").

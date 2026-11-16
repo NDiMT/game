@@ -3847,7 +3847,7 @@ func _ivw_scene2(j: Dictionary) -> void:
 	for ch in iv_root.get_children():
 		if ch is Node3D and not (ch as Node3D).find_children("riser_*", "MeshInstance3D", true, false).is_empty() and ch != ivw_mirror: lvn = ch; break
 	_ivw_risers_find(lvn, ivw_mirror)
-	a_drop = 0.0; a_rise = 0.0; a_headp = 0.3; a_lean = 0.0; palm_on = false; a_wL = 0.0; a_wR = 0.0      # (on one knee where she woke: the front foot planted, the back knee on the stone, her head bowed)
+	a_drop = 0.0; a_rise = 0.0; a_headp = 0.0; a_lean = 0.0; palm_on = false; a_wL = 0.0; a_wR = 0.0      # (on one knee where she woke, as the rise clip begins: her head bowed, both hands resting on the front knee)
 	if OS.get_environment("IVW_YAW") != "": yaw += float(OS.get_environment("IVW_YAW"))      # (to judge her pose from the side)
 	if OS.get_environment("IVW_SKIP") != "": a_drop = 0.0; a_rise = -1.0; a_headp = 0.0; a_lean = 0.0; palm_on = false; a_wL = 0.0; a_wR = 0.0; ivw_close = 0.0      # (to judge the look: awake already)
 
@@ -4003,8 +4003,7 @@ func _ivw_rise() -> void:      # (on one knee; a moment still; then she rises sl
 	await _ivw_snap("w0_kneel")
 	await get_tree().create_timer(1.5).timeout
 	var t := create_tween().set_parallel(true)
-	t.tween_property(self, "a_rise", 1.0, 4.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	t.tween_property(self, "a_headp", 0.0, 1.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT).set_delay(3.2)      # (her head lifts last: she looks out over the water)
+	t.tween_property(self, "a_rise", 1.0, 5.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)      # (the clip has it all: her hands push from the knee, her head lifts last)
 	await get_tree().create_timer(1.3).timeout; await _ivw_snap("w1_forward")
 	await get_tree().create_timer(1.2).timeout; await _ivw_snap("w2_lunge")
 	await get_tree().create_timer(1.2).timeout; await _ivw_snap("w3_step")
