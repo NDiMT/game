@@ -27,9 +27,9 @@ FLOORS = {
     # the causeway and its two arms, at the water's height: one floor (E-shaped)
     'C': {'h': H0, 'xz': [[2.1, -0.5], [2.1, 0.5], [0.5, 0.5], [0.5, 3.3], [-0.5, 3.3], [-0.5, 0.5], [-1.5, 0.5], [-1.5, 3.3],
                           [-2.5, 3.3], [-2.5, 0.5], [-5.5, 0.5], [-5.5, -0.5]]},
-    'LE': {'h': HL, 'xz': [[1.1, 1.15], [2.1, 1.15], [2.1, 3.3], [1.1, 3.3]]},      # the lower ledge, just over the sea
-    'WT': {'h': HU, 'xz': [[-3.3, 2.3], [-3.3, 3.3], [-5.5, 3.3], [-5.5, 1.25], [-4.5, 1.25], [-4.5, 2.3]]},      # the west terrace
-    'D': {'h': HU, 'xz': [[-6.2, -1.0], [-6.2, 1.0], [-7.7, 1.0], [-7.7, -1.0]]},      # the dais of the ring
+    'LE': {'h': HL, 'xz': [[1.1, 1.15], [2.85, 1.15], [2.85, 3.3], [1.1, 3.3]]},      # the lower ledge, just over the sea (room for a column off the way)
+    'WT': {'h': HU, 'xz': [[-3.3, 2.3], [-3.3, 4.1], [-5.5, 4.1], [-5.5, 1.25], [-4.5, 1.25], [-4.5, 2.3]]},      # the west terrace (a bay behind the way for its columns)
+    'D': {'h': HU, 'xz': [[-6.2, -1.3], [-6.2, 1.3], [-7.9, 1.3], [-7.9, -1.3]]},      # the dais of the ring
 }
 FLIGHTS = [      # foot, head, width, steps (each from one floor's edge to the next, square to the axes)
     [[1.1, HL, 2.8], [0.5, H0, 2.8], 0.9, 5],      # the start arm down to the ledge
@@ -64,7 +64,7 @@ def plan():
         'nodes': {k: list(v) for k, v in N.items()}, 'edges': edges,
         'start': 'S', 'ring': list(N['R']), 'stone': list(N['ST']),
         'faces': [[list(N['F']), [1.0, 0.0, 0.0]]],      # (where, the way it looks: down the causeway)
-        'columns': [[[-0.25, H0, 3.1], 0.9], [[-5.3, HU, 3.05], 1.25], [[-3.55, HU, 3.05], 0.7], [[1.85, HL, 3.05], 0.55]],
+        'columns': [[[2.42, HL, 2.5], 0.6], [[-4.3, HU, 3.66], 1.2], [[-5.1, HU, 3.66], 0.75], [[-6.62, HU, -0.88], 0.9]],      # (never on the way: tools/ivory_level.py moves or drops any that would be)
         'arches': [[[-7.25, HU, 0.0], 'z']],
         'rocks': [[[2.6, -0.9, 2.4], 0.9, -0.9], [[-1.0, -0.7, 2.2], 0.75, -0.45], [[-4.0, -0.5, -1.2], 1.0, -0.35], [[0.8, -0.8, -1.3], 0.9, -0.7],
                   [[-7.2, 0.0, 1.6], 1.0, 0.1], [[-6.0, 0.2, -1.6], 0.9, 0.2], [[-3.0, 0.1, 3.9], 0.9, 0.25]],

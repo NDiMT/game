@@ -608,6 +608,52 @@ def on_floor(x, y, z, r):
     return x, z
 
 
+def way_parts():
+    """the way she walks, as level segments and points (x, y, z): the plan's own and its trial's (puzzle.json beside the
+    plan), so that nothing is set where she goes"""
+    import os
+    segs = []
+    srcs = [PLAN or {}]
+    if len(a) > 4:
+        pz = os.path.join(os.path.dirname(a[4]), 'puzzle.json')
+        if os.path.exists(pz): srcs.append(json.load(open(pz)))
+    for src in srcs:
+        N = src.get('nodes') or {}
+        for e in src.get('edges') or []:
+            if e[0] in N and e[1] in N:
+                pts = [N[e[0]]] + [list(m) for m in (e[2] or [])] + [N[e[1]]]
+                for p_, q_ in zip(pts, pts[1:]): segs.append((tuple(p_), tuple(q_)))
+        for v in N.values(): segs.append((tuple(v), tuple(v)))
+    return segs
+
+
+def clear_of_way(x, y, z, r, clear=0.48):
+    """a thing that stands on a floor (a column, a tree): never where she walks. Moved off the way, square to it,
+    until its edge is `clear` from the way's line (her body and a margin), staying on its floor; None if it cannot be"""
+    segs = [(p_, q_) for (p_, q_) in way_parts() if min(p_[1], q_[1]) - 0.15 < y + 0.05 and max(p_[1], q_[1]) + 0.15 > y - 0.05]
+    need = r + clear
+    def near():
+        best = None
+        for (p_, q_) in segs:
+            d = seg_dist((x, z), (p_[0], p_[2]), (q_[0], q_[2]))
+            if best is None or d < best[0]: best = (d, p_, q_)
+        return best
+    for _ in range(40):
+        nb = near()
+        if nb is None or nb[0] >= need: break
+        d, p_, q_ = nb
+        dx, dz = q_[0] - p_[0], q_[2] - p_[2]; L2 = dx * dx + dz * dz
+        t = 0.0 if L2 < 1e-9 else max(0.0, min(1.0, ((x - p_[0]) * dx + (z - p_[2]) * dz) / L2))
+        cx_, cz_ = p_[0] + dx * t, p_[2] + dz * t
+        ox, oz = x - cx_, z - cz_; ol = math.hypot(ox, oz)
+        if ol < 1e-6: ox, oz = (-dz, dx) if L2 > 1e-9 else (1.0, 0.0); ol = math.hypot(ox, oz) or 1.0
+        x, z = cx_ + ox / ol * (need + 0.02), cz_ + oz / ol * (need + 0.02)
+        x, z = on_floor(x, y, z, r)
+    nb = near()
+    if nb is not None and nb[0] < need - 0.02: return None
+    return x, z
+
+
 def boulder(name, c, r, top, n=6, ease=0.06, tilt=(0.05, 0.16)):
     """a boulder of the rock, as the picture's: a prism of a few broad faces about c, its top a flat break leaning one
     way, its face stepping out partway down and wider far down (in the mist), every edge eased in two facets"""
@@ -867,13 +913,18 @@ else:
         rock += ledge('ledge', c, r_, top)
     for (p, h) in PLAN.get('columns', []):
         x_, z_ = on_floor(p[0], p[1], p[2], 0.42)
-        marble += column(x_, p[1], z_, h)
+        cw = clear_of_way(x_, p[1], z_, 0.26)
+        if cw is None: print('COLUMN at', p, 'dropped: no room off the way'); continue
+        if math.hypot(cw[0] - x_, cw[1] - z_) > 0.01: print('COLUMN at', p, 'moved off the way to', [round(cw[0], 2), round(cw[1], 2)])
+        marble += column(cw[0], p[1], cw[1], h)
     for (p, ax) in PLAN.get('arches', []):
         marble += arch(p[0], p[1], p[2], W=1.42, Hh=2.3, r=0.41, D=0.36, along_x=(ax == 'x'))
     if PLAN.get('cypress'):
         cp, ch_ = PLAN['cypress']
         x_, z_ = on_floor(cp[0], cp[1], cp[2], 0.32)
-        lv, bk = cypress(x_, cp[1], z_, ch_); olive += lv; barks += bk
+        cw = clear_of_way(x_, cp[1], z_, 0.3)
+        if cw is None: print('CYPRESS dropped: no room off the way')
+        else: lv, bk = cypress(cw[0], cp[1], cw[1], ch_); olive += lv; barks += bk
     U = Vector((0.7071, 0.0, -0.7071)); W = Vector((0.7071, 0.0, 0.7071)); Y = Vector((0.0, 1.0, 0.0))
     if PLAN.get('relief'): PLAN['relief'] = list(Vector(PLAN['relief']) + W * 0.32)      # (a small carved stone set in the face of the rock: the game puts it there)
     RELIEF_W = W

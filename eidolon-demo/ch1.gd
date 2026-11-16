@@ -3627,6 +3627,14 @@ func _ivs_far() -> void:
 	var fx := fy.cross(fz)
 	hp.basis = Basis(fz, fy, -fx)
 	_ivs_mirror(hp, func(_mi: MeshInstance3D) -> Array: return ["seaface", 0.0, {"fog_hi": -900.0, "fog_lo": -901.0}])
+	# its shadow on the water, away from the low sun: a soft dark pool beside it
+	var sdir := Vector3(-iv_key.x, 0, -iv_key.z).normalized()
+	var sq := QuadMesh.new(); sq.size = Vector2(4.2, 2.6); sq.orientation = PlaneMesh.FACE_Y
+	var smat := StandardMaterial3D.new(); smat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; smat.albedo_texture = load("res://goiv/shadow.png")
+	smat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; smat.albedo_color = Color(0.1, 0.17, 0.27, 0.5); smat.render_priority = 2; smat.no_depth_test = false
+	var shq := MeshInstance3D.new(); shq.mesh = sq; shq.material_override = smat; shq.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(shq)
+	shq.global_position = Vector3(fc.x, sea_y + 0.012, fc.z) + sdir * 1.1
+	shq.basis = Basis(Vector3.UP, atan2(sdir.x, sdir.z) + PI * 0.5)
 	# far off, as the concept has it: cliffs and stacks rising out of the haze. The eye has no perspective, so "far" is
 	# only paler and smaller; each stands just behind the level, set by its top in the concept and by where its body
 	# has gone wholly into the mist (its foot, below which the sea lies in front of it). It fades into the mist from a
