@@ -81,9 +81,9 @@ def plan():
         'columns': [], 'volute': None,
         'head': None, 'relief': None, 'cypress': None,
         'eye': {'pitch': 35.0, 'centre': [-5.32, 1.3, -7.58], 'width': 9.6},      # (the island large; the sun above the gate)
-        # (the Observer, the veiled colossus: her veiled head and shoulders rising out of the sea, smooth marble lit in
-        # clean bands, in the rock's hues; turned a little toward the island; her foot 1.5 m under the water, 2 m clear of the rocks)
-        'observer': [-8.61, SEA - 1.5, -5.84, 5.5, -0.5], 'observer_haze': 0.03, 'observer_model': 'observer',
+        # (the Observer, the veiled colossus: a standing veiled figure, smooth marble lit in soft clean bands, the lighter
+        # stone's hues; turned 30 degrees to her left, toward the island; her foot 0.8 m under the water, clear of the rocks)
+        'observer': [-8.26, SEA - 0.8, -5.77, 6.4, -0.23], 'observer_haze': 0.03, 'observer_model': 'observer_veiled',
         'shore': True,      # (a map of the water's distance from every stone in it: the sea draws small waves along each shore)
     }
     return pl, puzzle

@@ -86,10 +86,15 @@ The levels are many, in one system. A new level is made in this order (the secon
       - A backdrop drawn in code (gradients and flat iso silhouettes): "bad".
       - 3D far ruins: thin and ghostly.
     - Measure the horizon and the sun on the chosen image and put them in the plan (`horizon`, `sun`). Nothing is drawn on the sea near the horizon (`hz_v` in the sea shader), so its far edge never shows as a seam.
-  - **The colossus in the water: 3D, smooth, in soft clean bands of light.** The user went back to the veiled head and shoulders (`props/observer.glb`); a standing veiled figure (`props/observer_veiled.glb`) works with the same shading.
+  - **The colossus in the water: 3D, smooth, in soft clean bands of light.**
+    - The user settled on the standing veiled figure (`props/observer_veiled.glb`), after trying the veiled head and shoulders (`props/observer.glb`) again.
+    - Its hues are the lighter stone's (the white marble's palette).
+    - It casts a shadow on the water (`_ivw_shadow`). The sea takes no light, so its outline is cast onto the water plane along the light: a soft convex shape, feathered at the edge, darkest at its foot.
+      - Cast it from the backdrop's low sun, behind the scene, so it falls toward the eye and is seen. Cast from the key light, it fell behind the statue and under the rocks.
+      - Give it a higher `render_priority` than the sea: the sea's clear surface drawn over it veiled it by half.
     - Have the image model paint the statue alone: whole figure, simple large folds, plain grey background. Then `tripo make <png> --for game-mobile` (if the download fails, `tripo task get <id> --download`), and `fbx2glb.py ... 16000 smooth`.
     - Shade it with smooth normals in a few crisp bands (`smooth_k` 2).
-    - Colour: the rock's own hues (the user: "the same hues as the stone"), its shade a little lighter than the rock's so the face under the veil never falls into a dark hole.
+    - Colour: keep the shade light enough that the face under the veil never falls into a dark hole.
     - Turn: her face to the eye, a little toward the island, so the key light falls on it.
     - What failed was the shading, not the bust. Faceted at 1.6k it was "a melted blob", at 7k "crumpled paper". Smooth with a soft gradient and heavy haze it looked "waxy, tragic". Banded too crisply, its folds look smeared: keep the bands soft.
     - Turn its face to the eye and the light: check with `tools/go/prop_yaw.py`, which frames each turn a metre tall under the game's key light.

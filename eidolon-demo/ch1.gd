@@ -2088,7 +2088,7 @@ const IV_QUARRY_SKY_S := Vector3(0.22, 0.46, 0.9)
 const IV_WAKE_PAL := {      # the waking: dawn over a still sea. Pearl and rose marble, its shade lilac; warm mauve rock; the Observer pale in the haze
 	"marble2": ["f5e7e1", "decdd0", "c6b0bc", "9d8599"],      # (lit from above: the tops brightest, the sides that face the light a step darker, never burnt white)
 	"rock2": ["c39f98", "93727c", "684a57", "4a3140"],
-	"observer": ["d6b5ad", "bb9a9e", "9a7a88", "7a5f6f"],      # (the rock's own hues, its shade a little lighter so her face under the veil still reads)      # (her shade soft: the face under the veil must never fall into a dark hole)
+	"observer": ["f5e7e1", "decdd0", "c6b0bc", "9d8599"],      # (the lighter stone's own: the white marble of the slabs; the user's ask)      # (the rock's own hues, its shade a little lighter so her face under the veil still reads)      # (her shade soft: the face under the veil must never fall into a dark hole)
 	"phead": ["f3e4df", "dcc4c4", "b9a0ad", "917b93"],
 	"groove": ["e2cac6", "e2cac6", "e2cac6", "e2cac6"],
 	"line": ["fff4ee", "fff4ee", "fff4ee", "fff4ee"],
@@ -3783,12 +3783,68 @@ func _ivw_observer(j: Dictionary) -> void:
 	var lowp := String(j.get("observer_model", "observer")).ends_with("_lp")      # (a low-poly one: faceted as everything else is)
 	var rim := {"smooth_k": 0.0 if lowp else 2.0, "rim_k": 0.45 if lowp else 0.4, "rim_col": Color(1.0, 0.84, 0.6), "rim_dir": Vector3(-0.62, 0.3, -0.62)}      # (the sun low behind it gilds its edges)
 	var ex := {"fog_hi": ivr_sea_y + 0.6, "fog_lo": ivr_sea_y - 0.1, "haze": 1.0, "clip_k": 1.0, "clip_y": sea, "shadow_k": 0.0, "wline_k": 0.0}      # (its foot lost in the mist on the water: no hard line where it meets it)
-	if ivr_shore.is_empty(): _ivw_rings(Vector3(hp.global_position.x, sea, hp.global_position.z), float(ob[3]) * 0.55)      # (else the sea's own small waves follow her outline)
+	if ivr_shore.is_empty(): _ivw_rings(Vector3(hp.global_position.x, sea, hp.global_position.z), float(ob[3]) * 0.55)
+	_ivw_shadow(hd)      # (her shadow on the water)      # (else the sea's own small waves follow her outline)
 	ex.merge(rim)
 	for m in hd.find_children("*", "MeshInstance3D", true, false):
 		(m as MeshInstance3D).material_override = _iv_mat("observer", float(j.get("observer_haze", 0.28)), ex); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_ivs_mirror(hp, func(_mi: MeshInstance3D) -> Array:
 		var mx := {"fog_hi": ivr_sea_y + 1.7, "fog_lo": ivr_sea_y - 0.1, "haze": 1.0, "mirror_fade": 4.0, "mirror_wob": 0.07}; mx.merge(rim); return ["observer", float(j.get("observer_haze", 0.28)), mx])
+
+## a thing's shadow on the still water: the sea takes no light, so its outline is cast onto the water along the key
+## light (the light that shades the stone), soft at its edges, fading as it goes from it
+const IVW_SHADOW_SH := """
+shader_type spatial;
+render_mode unshaded, cull_disabled, depth_draw_never, shadows_disabled;
+uniform vec3 col : source_color = vec3(0.34, 0.25, 0.4);
+uniform float dbg = 0.0;
+void fragment(){ ALBEDO = mix(col, vec3(1.0, 0.0, 0.0), dbg); ALPHA = max(COLOR.a, dbg * step(0.001, COLOR.a)); }
+"""
+func _ivw_shadow(model: Node3D) -> void:
+	var sea := IV_O.y + ivr_sea_y
+	var fh := -_ivp_basis().z; fh.y = 0.0; fh = fh.normalized()      # (the sun of the backdrop stands far behind, low: the eye's own way in)
+	var el := 0.8
+	var L := Vector3(-fh.x * cos(el), -sin(el), -fh.z * cos(el)).normalized()      # (its light's way down, toward the eye: the shadow falls on the water before her)
+	var pts := PackedVector2Array()
+	for m in model.find_children("*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		if mi.mesh == null: continue
+		var xf := mi.global_transform
+		for si in mi.mesh.get_surface_count():
+			var va: PackedVector3Array = mi.mesh.surface_get_arrays(si)[Mesh.ARRAY_VERTEX]
+			for k in range(0, va.size(), 3):      # (every third point is plenty for an outline)
+				var p := xf * va[k]
+				p.y = maxf(p.y, sea)      # (what is under the water casts nothing)
+				var q := p + L * ((p.y - sea) / -L.y)
+				pts.append(Vector2(q.x, q.z))
+	var hull := Geometry2D.convex_hull(pts)
+	if hull.size() < 4: return
+	hull.remove_at(hull.size() - 1)
+	var cen := Vector2.ZERO
+	for v in hull: cen += v
+	cen /= float(hull.size())
+	var foot := Vector2(model.global_position.x, model.global_position.z)
+	var far := 0.01
+	for v in hull: far = maxf(far, v.distance_to(foot))
+	var a0 := 0.42; var fe := 0.55; var y := sea + 0.006
+	var A := func(v: Vector2) -> float: return a0 * (1.0 - 0.75 * clampf(v.distance_to(foot) / far, 0.0, 1.0))      # (darkest at her foot, fading toward its end)
+	var inner := []; var outer := []
+	for v in hull:
+		var dv := (v - cen).normalized()
+		inner.append(v - dv * fe * 0.45); outer.append(v + dv * fe * 0.55)
+	var st := SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var V := func(v: Vector2, a: float) -> void: st.set_color(Color(1, 1, 1, a)); st.add_vertex(Vector3(v.x, y, v.y))
+	for i in hull.size():
+		var j := (i + 1) % hull.size()
+		V.call(cen, A.call(cen)); V.call(inner[i], A.call(inner[i])); V.call(inner[j], A.call(inner[j]))
+		V.call(inner[i], A.call(inner[i])); V.call(outer[i], 0.0); V.call(outer[j], 0.0)      # (its soft edge)
+		V.call(inner[i], A.call(inner[i])); V.call(outer[j], 0.0); V.call(inner[j], A.call(inner[j]))
+	var sh := MeshInstance3D.new(); sh.mesh = st.commit(); sh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if OS.get_environment("IV_TRACE") != "": print("IVW shadow: ", hull.size(), " points, from ", foot, " centre ", cen, " reach ", far)
+	var sm := ShaderMaterial.new(); var sd := Shader.new(); sd.code = IVW_SHADOW_SH; sm.shader = sd; sh.material_override = sm
+	sm.render_priority = 2      # (drawn after the sea's clear surface, or the surface veils it by half)
+	if OS.get_environment("IVW_RED") != "": sm.set_shader_parameter("dbg", 1.0)
+	add_child(sh)
 
 ## rings of ripples spreading slowly about a thing standing in the still water, one after another, fading
 const IVW_RINGS_SH := """
