@@ -60,8 +60,8 @@ def plan():
         'lines': ['Her face lies at the bottom of the sea.', 'To pass over, she must see it once more.'],
         'end': 'Somewhere above, the water was still.',
     }
-    pl = {
-        'scene': 'wake', 'sea_y': SEA, 'risers': ['A', 'B', 'C'], 'heights': {'H0': H0, 'H1': H1, 'H2': H2}, 'floors': floors, 'flights': [fl1, fl2],
+    pl = {      # (horizon: the sea's rim in the painted backdrop, gowake/backdrop.jpg, painted by the image model)
+        'scene': 'wake', 'sea_y': SEA, 'risers': ['A', 'B', 'C'], 'horizon': 0.414, 'heights': {'H0': H0, 'H1': H1, 'H2': H2}, 'floors': floors, 'flights': [fl1, fl2],
         'nodes': N, 'edges': edges, 'ring': N['R'], 'stone': None, 'faces': [],
         'arches': [[[-4.2, H2, -9.45], 'x']],      # (the gate: square to the way, she walks through it to the ring)
         'rocks': [[[-1.6, H0 - 0.35, -6.9], 1.0, H0 - 0.25],       # (the pillar's shoulders, under the stair, the terrace and the landing:
@@ -69,10 +69,20 @@ def plan():
                   [[-5.55, H1 - 0.4, -7.6], 1.05, H1 - 0.15],
                   [[-5.5, H0 - 0.2, -5.3], 0.95, H0 + 0.3],
                   [[-2.7, H2 - 0.6, -10.2], 1.0, H2 - 0.5],
-                  [[-5.6, H2 - 0.5, -10.0], 0.95, H2 - 0.45]],
-        'columns': [], 'volute': None, 'head': None, 'relief': None, 'cypress': None,
-        'eye': {'pitch': 35.0, 'centre': [-5.32, 1.3, -7.58], 'width': 9.6},      # (the island large; the Observer whole at the upper left, the sun above the gate)
-        'observer': [-10.85, SEA - 1.5, -9.45, 7.2, -0.6], 'observer_haze': 0.4,      # (the Observer: x, its foot under the water, z, its height, its turn)
+                  [[-5.6, H2 - 0.5, -10.0], 0.95, H2 - 0.45],
+                  [[1.35, SEA, -6.75], 0.7, H0 - 0.12],      # (at the pillar's foot, beside the landing)
+                  [[-2.3, SEA, -4.55], 0.8, H0 + 0.2],       # (under the terrace's face toward the eye)
+                  [[-1.7, SEA, -11.4], 1.2, H2 - 0.9],       # (great rocks behind the landing: the pillar's back)
+                  [[-6.3, SEA, -11.2], 1.15, H2 - 0.6],
+                  [[-6.6, SEA, -7.9], 0.9, H1 - 0.35],
+                  [[1.45, SEA, -2.6], 0.42, SEA + 0.16],     # (small rocks in the still water, well clear of the stepping stones)
+                  [[-1.35, SEA, -3.7], 0.38, SEA + 0.12],
+                  [[-1.25, SEA, 0.75], 0.5, SEA + 0.2]],
+        'columns': [], 'volute': None,
+        'head': None, 'relief': None, 'cypress': None,
+        'eye': {'pitch': 35.0, 'centre': [-5.32, 1.3, -7.58], 'width': 9.6},      # (the island large; the sun above the gate)
+        # (the Observer, the veiled colossus, and the ruined colonnades are painted in the backdrop: one picture with the sun,
+        # made to fit the level; a plan may still stand a 3D one in the sea with 'observer': [x, foot y, z, height, turn])
     }
     return pl, puzzle
 

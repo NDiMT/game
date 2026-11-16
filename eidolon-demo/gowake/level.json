@@ -433,13 +433,8 @@
  "door": null,
  "walls": null,
  "trench": null,
- "observer": [
-  -10.85,
-  -1.8,
-  -9.45,
-  7.2,
-  -0.6
- ],
- "observer_haze": 0.4,
+ "observer": null,
+ "observer_haze": null,
+ "horizon": 0.414,
  "stair_groove": 0.03
 }

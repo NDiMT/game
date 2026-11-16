@@ -66,6 +66,16 @@ The levels are many, in one system. A new level is made in this order (the secon
   - The eye starts close on her (`ivw_close` in `_ivr_cam`) and draws back to the whole level once she stands.
   - The painted sea must be held to the world (`world_uv` in the sea shader: the backdrop's place under the level's own eye), or a moving eye shows the painted sky on the water.
   - An image in the water dims toward the sea's own colour (`sea_c`): left at its default it dims toward blue and muddies a warm sea.
+- **The look of a level at sea** (`gowake/`, after the user's notes):
+  - **One painted backdrop, made to fit**: sky, sun, far scenery (the colossus, ruined colonnades on islets, a sea stack with a temple) painted together by the image model in the game's own low-poly style (faceted clouds, faceted sun with broad rays), from a reference of the game's own frame. It is far richer than one composed from the kit ("you had made such nice backgrounds before").
+    - Keep the horizon where the level's sea ends (`horizon` in the plan, a fraction from the top). Give the model the old backdrop as the layout reference, and measure where the horizon landed.
+    - Ask for a plain sea under the horizon (no streaks or sparkles): the game draws its own.
+  - **Never a realistic 3D statue among low-poly things**: the Tripo bust, smooth or faceted, looked "tragic". Paint it into the backdrop in the same style, with its reflection.
+  - **The sea**: the painted sea's colour, held to the world (`world_uv`). Over it go ripples drawn aslant along the world's own lines (never across the screen: "I'd like them slanted"), a few points of light twinkling in the sun's path, and a fine line of light where stone meets the water (`wline_k`).
+  - **Images in the water** fade into the sea as they go down (`mirror_fade`, about 2 m for rocks) and waver a little (`mirror_wob`, a vertex sway that grows with depth).
+  - **Rock that is richer** (`rich_k`): each break its own tone, beds across the upright faces, lichen on what faces the sky, a fine speckle.
+- **The words** (titles and the lines of the story): white letters with a soft black shadow all round them, made of the old haze in many thin black outline steps. No offset shadow, no warm glow, no red rule or lozenge over them.
+- **Check what the eye sees of a thing before blaming the renderer**: a chain laid "up the screen" from a winch hid wholly behind its drum. Paint the thing plain red with an unshaded material to see where it is, and route it on the eye's side.
 - **A hero prop from an image** (the Observer, a colossal veiled bust): paint it alone on a plain background, `tripo make <png> --for game-mobile` (it returns FBX), then decimate to about 7k triangles with flat faces and export GLB to `props/` (`fbx2glb.py`). Place it by its foot, height and turn, give it a palette of its own and haze, clip it at the water, and mirror it.
 - **Rendering is slow** (about 1.5 s a frame at 720x1280 on the software renderer): iterate at 540x960; capture moments with your own snapshot hooks (`IVW_SNAPS`); skip the clean-frame wait (`IV_CLEAN`) when the line does not matter.
 - **Corner overlays** (pine, leaves): have the image model paint them on flat magenta, then key them out.

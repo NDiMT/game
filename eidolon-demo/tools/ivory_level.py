@@ -1050,6 +1050,8 @@ else:
         if cw is None: print('COLUMN at', p, 'dropped: no room off the way'); continue
         if math.hypot(cw[0] - x_, cw[1] - z_) > 0.01: print('COLUMN at', p, 'moved off the way to', [round(cw[0], 2), round(cw[1], 2)])
         marble += column(cw[0], p[1], cw[1], h)
+    for (cx_, cy_, cz_, ch_, cr_, cb_) in PLAN.get('sea_columns', []):      # (columns standing in the water, a ruin half sunk: off the way, scenery)
+        marble += column(cx_, cy_, cz_, ch_, cr_, cb_)
     for (p, ax) in PLAN.get('arches', []):
         marble += arch(p[0], p[1], p[2], W=1.42, Hh=2.3, r=0.41, D=0.36, along_x=(ax == 'x'))
     if PLAN.get('cypress'):
@@ -1121,7 +1123,7 @@ for extra in (dict(export_vertex_color='ACTIVE'), dict(export_colors=True), {}):
 
 # ------------------------------------------------------------------ the way, for the game
 if PLAN is not None:
-    way = {k: PLAN.get(k) for k in ('heights', 'nodes', 'edges', 'volute', 'head', 'ring', 'eye', 'flights', 'floors', 'relief', 'faces', 'stone', 'scene', 'sea_y', 'arches', 'braziers', 'dial', 'mirrors', 'door', 'walls', 'trench', 'observer', 'observer_haze')}
+    way = {k: PLAN.get(k) for k in ('heights', 'nodes', 'edges', 'volute', 'head', 'ring', 'eye', 'flights', 'floors', 'relief', 'faces', 'stone', 'scene', 'sea_y', 'arches', 'braziers', 'dial', 'mirrors', 'door', 'walls', 'trench', 'observer', 'observer_haze', 'horizon')}
     way['stair_groove'] = STAIR_GROOVE
     with open(OUTJ, 'w') as f: json.dump(way, f, indent=1)
     print('DONE'); sys.exit(0)
