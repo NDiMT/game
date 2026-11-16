@@ -3885,6 +3885,28 @@ func _ivg_dgaze_draw(f: Dictionary) -> void:
 		rg.visible = f.alive and i - 1 < (L.nodes as Array).size()
 		if rg.visible: rg.global_position = (ivp_nodes[L.nodes[i - 1]] as Vector3) + Vector3(0, 0.04, 0)
 
+## the quarry's own things: the colossal face the sculptor began in the north face and never finished, half out of the
+## rock above the corridor; scaffolding of wood on the steps of the faces, its planks and its ladder
+func _ivq_decor() -> void:
+	var hp := Node3D.new(); iv_root.add_child(hp); hp.global_position = IV_O + Vector3(-4.6, 3.25, -9.75)
+	var hd := prop_model("iv_head", hp, 3.1); hd.position = Vector3(0, -1.55, 0)
+	for m in hd.find_children("*", "MeshInstance3D", true, false):
+		(m as MeshInstance3D).material_override = _ivr_mat("phead", 0.0); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	var fz := Vector3(0.12, -0.18, 1.0).normalized()      # (it looks out of the rock, a little down, at the corridor)
+	hp.basis = Basis(fz, Vector3.UP, fz.cross(Vector3.UP)).orthonormalized()
+	var ws := _iv_st()      # (the scaffolding: posts, two floors of planks, a ladder)
+	var y0 := 2.35; var hgt := 2.3
+	for px in [-0.6, 0.6, 1.8]:
+		_iv_box(ws, Vector3(px - 0.05, y0, -9.0), Vector3(px + 0.05, y0 + hgt, -8.9))
+		_iv_box(ws, Vector3(px - 0.05, y0, -9.42), Vector3(px + 0.05, y0 + hgt, -9.32))
+	for py in [y0 + 1.05, y0 + 2.2]:
+		for k in 3: _iv_box(ws, Vector3(-0.75, py, -9.4 + float(k) * 0.16), Vector3(1.95, py + 0.035, -9.27 + float(k) * 0.16))
+		_iv_box(ws, Vector3(-0.75, py - 0.08, -9.12), Vector3(1.95, py, -9.04))
+	for ry in range(6): _iv_box(ws, Vector3(1.9, y0 + 0.15 + ry * 0.36, -9.12), Vector3(2.25, y0 + 0.19 + ry * 0.36, -9.06))
+	_iv_box(ws, Vector3(1.88, y0, -9.13), Vector3(1.92, y0 + 2.25, -9.05)); _iv_box(ws, Vector3(2.23, y0, -9.13), Vector3(2.27, y0 + 2.25, -9.05))
+	var wmi := MeshInstance3D.new(); wmi.mesh = ws.commit(); wmi.material_override = _ivr_mat("wood", 0.0); wmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	iv_root.add_child(wmi)
+
 ## a bronze mirror on its stand: a disc in a ring of bronze, turned to send a look on a quarter round; a bar of bronze
 ## let into the floor under it shows the way it turns a look, from wherever it is seen
 func _ivq_mirror(nd: String, turn: int) -> void:
@@ -4347,6 +4369,7 @@ func _ivr_build() -> void:
 	var gm := StandardMaterial3D.new(); gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm.albedo_texture = load("res://goiv/glow.png")
 	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm.blend_mode = BaseMaterial3D.BLEND_MODE_MIX if go_moon else BaseMaterial3D.BLEND_MODE_ADD; gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; gm.albedo_color = Color(1.0, 0.76, 0.36, 0.42) if go_moon else Color(1.0, 0.96, 0.86, 0.5)      # (on the snow a glow added burns white: drawn over it, golden)
 	iv_glow = MeshInstance3D.new(); iv_glow.mesh = gq; iv_glow.material_override = gm; iv_glow.position = Vector3(0, 0.4, 0); iv_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; iv_ring.add_child(iv_glow)
+	if go_quarry: _ivq_decor()
 	if go_moon:
 		if iv_bgtex == null: _ivm_far()      # (the far peaks are in the painted backdrop when there is one)
 		for bz in (j.get("braziers", []) as Array): _ivm_brazier(V.call(bz))

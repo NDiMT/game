@@ -25,7 +25,26 @@ The levels are many, in one system. A new level is made in this order (the secon
   - The width is the extent plus margins; the height is the width × 16/9.
   - Place the centre so the sky's great thing (the moon, the sun) has room above the level and the mist has room below. The centre is any point `sx·b.x + sy·b.y + t·b.z`; choose t so that y is about 0.5.
   - To fill the bottom, let the first stair come up out of the mist from low on the screen.
+- **A new level must be new in its architecture, not only in its colours.** The user's verdict on a reskin: "this map is the previous one just with snow".
+  - Change what the level is made of and how it stands, not only its palette: e.g. `goquarry/`, a marble quarry, is a heightfield of square benches (`quarry_terrain` in the builder) instead of slabs on rock pillars.
+  - Design it yourself first, with a blockout through the game's eye (`tools/go/preview.py`); the image model may only paint its look later.
+- **The quarry's lessons** (`goquarry/`, scene `quarry`):
+  - Every edge on one lattice (0.45 m), so the level is cut as blocks.
+    - Benches step down from the walkways into the pit; where two meet, none rises within a hand of the lower floor.
+    - The quarry's faces rise behind in steps, like an amphitheatre.
+    - Stairs are cut solid down to the bench they rise from (`flight(..., solid=True)`).
+  - Sawn faces carry the drill's vertical grooves and horizontal beds in the shader (`drill`), not in the mesh.
+  - Walkways must read apart from the benches beside them: darken the benches by their depth under the way (`dk`).
+- **The eye's middle line**: the camera looks along the grid's diagonal, so cells (g, g) stand one above another on the screen. Never put two things on that line (the dial behind a face, the start below both).
+- **Doors and gates face her way to them**, and must be seen whole.
+  - A gate she walks through stands square to the last stretch of her way. The user called a gate 90° off "wrong" three times.
+  - Cut low any rock between the eye and a door; a door half behind a face of rock reads as nothing.
 - **The builder's dice are its own**: never seed from Python's `hash()`. It is salted per run, so each build would be another level. Seed from the name's characters.
+- **Backdrops come from the kit** (`bgkit/`: twenty elements painted in greys and keyed to their own alpha).
+  - `tools/bg/compose.py <recipe> <out>` lays them on a sky by a palette (`night`, `dawn`, `day`, `dusk`, `storm`): each element coloured by its depth, hazed toward the sky behind it, its foot fading into the mist.
+  - The same recipe in another palette is another place. Write a recipe per level (`tools/bg/recipes/`), and save its output as `<level>/backdrop.jpg`.
+  - The level's mist samples the backdrop at each point of the screen (`bg_tex`), so nothing ends on a line.
+  - Feather each element's edges widely (12% of its size): clouds painted to the picture's border otherwise end on a straight cut.
 - **Corner overlays** (pine, leaves): have the image model paint them on flat magenta, then key them out.
   - The key is the magenta-ness, `min(R, B) − G`. Despill with the key's alpha, then fade with a separate mask, and fade out before anything the model bled in below.
   - Run `godot --headless --path . --import` before the game can `load()` a new PNG.
@@ -145,6 +164,13 @@ The levels are many, in one system. A new level is made in this order (the secon
 - **Autoplay** plays the solution as real swipes and snaps every step.
   - The log's `IV step` lines must equal the solver's trace.
   - Then record a video: `--write-movie`, then ffmpeg to mp4.
+
+- **New things in the game's trial** (as `tools/go/trials.py` proves them; `goquarry/puzzle.json`):
+  - Faces that look a way (`dirs`) rather than at a node, along the board's ways (`grid`: E, S, W, N in the world), over chasms (`gaps`).
+  - Bronze mirrors (`mirrors`) turn a look a quarter, and a swipe into one turns it.
+  - `faces_break`: a face that another face's look reaches breaks (`_ivg_settle`, after each move of hers).
+  - A trial may have no stone (`block: ""`), and its dial may be a capstan.
+  - A mirror at 45° is seen edge on by this eye in one of its two states, so a bronze bar on its floor shows the way it turns a look.
 
 ## 5. Review loop (before showing anything)
 
