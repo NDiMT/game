@@ -3782,13 +3782,13 @@ func _ivw_observer(j: Dictionary) -> void:
 	var sea := IV_O.y + ivr_sea_y
 	var lowp := String(j.get("observer_model", "observer")).ends_with("_lp")      # (a low-poly one: faceted as everything else is)
 	var rim := {"smooth_k": 0.0 if lowp else 2.0, "rim_k": 0.45 if lowp else 0.4, "rim_col": Color(1.0, 0.84, 0.6), "rim_dir": Vector3(-0.62, 0.3, -0.62)}      # (the sun low behind it gilds its edges)
-	var ex := {"fog_hi": ivr_sea_y + 0.6, "fog_lo": ivr_sea_y - 0.1, "haze": 1.0, "clip_k": 1.0, "clip_y": sea, "shadow_k": 0.0, "wline_k": 0.0}      # (its foot lost in the mist on the water: no hard line where it meets it)
+	var ex := {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.7, "haze": 1.0, "clip_k": 1.0, "clip_y": sea, "shadow_k": 0.0, "wline_k": 0.6}      # (she meets the water as the rocks do: solid to it, a fine line of light where she enters it; no mist eating her robe)
 	if ivr_shore.is_empty(): _ivw_rings(Vector3(hp.global_position.x, sea, hp.global_position.z), float(ob[3]) * 0.55)      # (else the sea's own small waves follow her outline)
 	ex.merge(rim)
 	for m in hd.find_children("*", "MeshInstance3D", true, false):
 		(m as MeshInstance3D).material_override = _iv_mat("observer", float(j.get("observer_haze", 0.28)), ex); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_ivs_mirror(hp, func(_mi: MeshInstance3D) -> Array:
-		var mx := {"fog_hi": ivr_sea_y + 1.7, "fog_lo": ivr_sea_y - 0.1, "haze": 1.0, "mirror_fade": 1.4, "mirror_wob": 0.07}; mx.merge(rim); return ["observer", float(j.get("observer_haze", 0.28)), mx])
+		var mx := {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.7, "haze": 1.0, "mirror_fade": 2.0, "mirror_wob": 0.05}; mx.merge(rim); return ["observer", float(j.get("observer_haze", 0.28)), mx])      # (her image as the rocks' are: fading down over 2 m, not cut short)
 
 ## rings of ripples spreading slowly about a thing standing in the still water, one after another, fading
 const IVW_RINGS_SH := """
