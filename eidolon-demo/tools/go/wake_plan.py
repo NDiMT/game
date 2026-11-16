@@ -77,7 +77,9 @@ def plan():
                   [[-6.6, SEA, -7.9], 0.9, H1 - 0.35],
                   [[1.45, SEA, -2.6], 0.42, SEA + 0.16],     # (small rocks in the still water, well clear of the stepping stones)
                   [[-1.35, SEA, -3.7], 0.38, SEA + 0.12],
-                  [[-1.25, SEA, 0.75], 0.5, SEA + 0.2]],
+                  [[-1.25, SEA, 0.75], 0.5, SEA + 0.2],
+                  [[-7.91, SEA, -4.36], 0.55, SEA + 0.34],   # (two rocks at the statue's foot, before her: one to her left,
+                  [[-6.95, SEA, -5.24], 0.4, SEA + 0.2]],    #  one toward the island, half a metre clear of its rock)
         'columns': [], 'volute': None,
         'head': None, 'relief': None, 'cypress': None,
         'eye': {'pitch': 35.0, 'centre': [-5.32, 1.3, -7.58], 'width': 9.6},      # (the island large; the sun above the gate)
