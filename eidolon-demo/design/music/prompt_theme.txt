@@ -1,14 +1,12 @@
-Create a 2 minute 30 second piece of original instrumental music: the main theme of a poetic puzzle game about a marble statue of a woman who came alive, whose face was hidden under a veil, and who was lost to a sea as still as a mirror. It plays on the game's start screen and must be beautiful, emotional and memorable, yet restrained.
+Create a 2 minute 30 second piece of original orchestral music: the main title theme of a dark fantasy game about a marble statue of a woman who came alive, whose face was hidden under a veil, and who was lost to a sea as still as a mirror. It must be solemn, sorrowful and majestic, dark and beautiful, with a sense of tragedy and of a great age that has fallen; never cheerful.
 
-Style: an intimate, melancholic contemporary film and television drama score. A felt piano carries a simple, memorable melody; strings (cellos, violas, violins) grow under it with long, aching phrases; soft ambient textures and a low drone give depth; now and then a very soft heartbeat-like pulse of low strings. Minor mode, slow tempo, a quiet ancient Mediterranean colour (a lyre or harp playing a few notes).
+Instruments: a slow, mournful main melody on solo cello, answered by the violins; a harp in slow broken chords; low strings and basses; low brass (horns, trombones) swelling in dark chords; a choir singing a wordless "ah" at the climax; a solo female voice singing the melody without words (only "ah", no lyrics) once, in the middle; a few deep, soft timpani strokes at the climax only. Absolutely no piano. No drum kit, no beat, no synthesizer, no guitar.
 
-The female voice: a solo female voice singing without words (only "ah", no lyrics) takes the melody for one passage in the middle of the piece and once again briefly near the end; the rest of the piece has no voice.
+Harmony and feel: slow tempo, a dark minor mode, wide and reverberant like a cathedral, long phrases, one continuous piece that grows and falls with no sudden changes, ending softly and unresolved.
 
-No drums, no percussion beats, no guitar, no synthesizer beat, no choir singing words. One continuous piece that grows and falls, with no sudden changes, ending softly.
-
-[0:00 - 0:25] Piano alone: the melody, slow, with space.
-[0:25 - 0:55] Cellos and violas enter; the melody again, warmer.
-[0:55 - 1:30] The wordless female voice sings the melody over full, soft strings: the emotional heart.
-[1:30 - 1:55] The voice falls silent; the strings swell once, longing, then settle.
-[1:55 - 2:15] The voice returns for one short, distant phrase.
-[2:15 - 2:30] Piano alone ends the melody, unresolved, into silence.
+[0:00 - 0:25] Low strings and harp alone: dark and still.
+[0:25 - 0:55] The solo cello sings the main melody, slowly.
+[0:55 - 1:25] The wordless female voice takes the melody over sustained strings and a low choir hum.
+[1:25 - 1:55] Climax: the full strings, the low brass and the choir swell with a few timpani strokes: grief and grandeur.
+[1:55 - 2:15] It falls back; the violins alone, high and sad.
+[2:15 - 2:30] The cello's last phrase over a low drone, into silence.

@@ -69,9 +69,11 @@ The levels are many, in one system. A new level is made in this order (the secon
     - It comes up wet: darker and cooler, with water running down its sides. A dry line sinks down it as it drains (`wet_k`, `dry_y` in IV_SH; its slab and its rock alike).
     - The shore foam around the stones comes in once the last is up.
   - To judge one moment without playing the whole level, take snapshots (`IVW_SNAPS=1`) and quit at a named one (`IVW_QUIT_AT=w8_risen`).
-- **Her waking** (a level that opens on her): with the rig there is no lying clip, so she lies curled: the kneel clip held by `a_drop = 0.5`, the spine bent by `a_lean`, her palms laid on the stone (`palm_on`, `tgtL/tgtR`, `palm_nL/palm_nR`).
-  - She stirs, pushes herself up (the palms lift late), looks out to sea and back (`yaw`), and rises with a halt halfway, unsure of her joints.
-  - The eye starts close on her (`ivw_close` in `_ivr_cam`) and draws back to the whole level once she stands.
+- **Her waking** (a level that opens on her), as the user wants it:
+  - She starts on one knee: the front foot planted with its knee up, the back knee on the stone. That is the ione4 kneel clip's last frame, `a_drop = 0.5`. Her torso is upright (`a_lean` about 0.05) and her head bowed (`a_headp` about 0.34).
+  - After a short pause (about 1.5 s) she rises slowly, straight up: her weight forward over the front foot (`a_lean` 0.17), then the clip run back (`a_drop` 0.5 to 0 over about 3.8 s, eased), upright again, her head lifting last.
+  - No turning to look about, and no lying curled with her palms on the stone ("it should not turn, just rise slowly").
+  - The eye does not move: no close-up and no draw-back ("no stupid zoom"). It holds the whole level from the start screen on (`ivw_close` stays 0).
   - The painted sea must be held to the world (`world_uv` in the sea shader: the backdrop's place under the level's own eye), or a moving eye shows the painted sky on the water.
   - An image in the water dims toward the sea's own colour (`sea_c`): left at its default it dims toward blue and muddies a warm sea.
 - **The look of a level at sea** (`gowake/`, after the user's notes):
@@ -120,7 +122,9 @@ The levels are many, in one system. A new level is made in this order (the secon
   - **The way's line stops at the ring's rim** (`_ivr_way`): a line running into the ring "looks ugly".
   - **The gate holds light** (`_ivw_gate_light`): a soft warm light fills its opening, brightest low in the middle and stirring. Around it: a glow, its light lying on the stone before it, motes rising. At the end it flares as she stands on the ring.
 - **The start of the game** (`_ivw_menu_make`, `_ivw_intro`, `_ivw_play`):
-  - **The intro film first**: the amphora film, graded into the first level's dawn by a 3D LUT (`tools/intro_grade_lut.py`). The LUT carries each key colour of the black-figure palette to the dawn's: clay to rose-peach, the black to deep plum, the sea to muted violet, the sky to lilac, the white to pearl. Everything between moves with its nearest keys (Gaussian weights in Lab), so the shading holds.
+  - **The intro film first**: the amphora film, graded into the first level's dawn by a 3D LUT (`tools/intro_grade_lut.py`).
+    - Its background, the light at the top corners behind the vase, is then repainted with the first level's sky, lilac-pink down to peach (`tools/intro_peach_bg.py`).
+    - That region is the same in every frame. Each pixel moves by how much of the old background is in it, so the vase's edge keeps no fringe. The LUT carries each key colour of the black-figure palette to the dawn's: clay to rose-peach, the black to deep plum, the sea to muted violet, the sky to lilac, the white to pearl. Everything between moves with its nearest keys (Gaussian weights in Lab), so the shading holds.
     - The game plays it as Theora (`intro/intro.ogv`, 720x1280, about 1.1 Mb/s, 23 MB) in a `VideoStreamPlayer`. A tap skips it.
     - The autoplay skips it unless `IV_INTRO=1`; `IV_NO_INTRO=1` skips it always.
   - **Then the start screen**: the first level faded far back under the dawn's own gradient (the user: "more subdued, the focus on the gradient"). The name high in the sky and PLAY under it, both in black. PLAY breathes slowly.
@@ -128,11 +132,12 @@ The levels are many, in one system. A new level is made in this order (the secon
   - **The logo**: from the image model, a very thin wordmark, black on white. The user chose the ultra-thin geometric one, with a hairline and a small diamond under it (`design/logo/`, its prompts beside it). Have the model set PLAY in the same typeface, with the logo as its reference.
     - Key both to alpha (alpha from darkness, crop, resize; `ui/logo.png`, `ui/play.png`), so the game can colour them.
     - Check the spelling of every variant: one wrote a word that was never asked for under the name.
-  - **Music** (`music/`, `_ivw_music`): made with the music model (`lyria-3.5`, the intro's own `eidolon-world/dev/intro/amphora/tools/genmus.py <prompt> <out>`) from written descriptions (`design/music/`). The user's reference was a cinematic, minimal, melancholic TV score. Never name the artist; describe the style:
-    - felt piano, strings and drones, a few lyre notes;
-    - a wordless female voice only at a few moments, as in the intro;
-    - no drums;
-    - a line of the form for each stretch of the piece.
+  - **Music** (`music/`, `_ivw_music`): made with the music model (`lyria-3.5`, the intro's own `eidolon-world/dev/intro/amphora/tools/genmus.py <prompt> <out>`) from written descriptions (`design/music/`).
+    - **Never piano**, and nothing that could sound cheerful. The user found the first, piano-led pieces "almost happy" and wants the field music of a dark fantasy game ("more like Elden Ring in game").
+    - Ask for: dark, sorrowful, solemn, grand orchestral music; solo cello and violin in long mournful phrases; a harp; low strings; deep horns; a distant wordless choir hum; at most one or two soft timpani rolls; a dark minor or Phrygian mode; a vast reverberant space.
+    - A wordless female voice comes in only at a few moments, as in the intro.
+    - Give a line of the form for each stretch of the piece.
+    - Never name an artist or a game. A request can be blocked as "recitation": reword the description and try again.
     - Loudness-normalize to -18 LUFS, encode to Ogg Vorbis, and set `loop=true` in the `.import`.
     - The theme plays under the start screen. PLAY crossfades into the level's piece, quieter (-5 dB), which loops; it fades out at the end.
     - Check the recording (`--write-movie` takes the sound too): measure it with ebur128 (about -24 LUFS in the game).

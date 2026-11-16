@@ -1,13 +1,11 @@
-Create a 2 minute 30 second piece of original ambient instrumental music for a calm puzzle game set on small islands of marble and rock in a still pink dawn sea. It plays quietly in the background while the player thinks, so it must be sparse, airy and peaceful, with a gentle mystery.
+Create a 2 minute 30 second original piece of slow, haunting orchestral ambience for a video game about an abandoned island of white marble ruins in a still sea at dawn. Mood: desolate, ghostly, mournful and quiet; a place where something sorrowful happened long ago.
 
-Style: a minimal, atmospheric contemporary drama score. Slow evolving pads, a soft low drone, very sparse felt piano notes and harp or lyre notes that ring out with long reverb, high violins held almost silently, occasional soft swells of low strings. Calm, contemplative, a little sad, like light on still water. Very slow, free tempo, in a modal minor with an ancient Greek colour.
+Instruments: a held low drone of cellos and basses; slow, sparse harp notes and harmonics; very soft, high violin harmonics like a cold wind over the water; a muted French horn playing a short falling call, twice; a soft, low wordless hum of voices; one solo female voice singing three or four long wordless notes (only "ah", no lyrics) a single time, far away. No piano at all, no drums, no beat, no synthesizer, no guitar.
 
-The female voice: a solo female voice singing a few long notes without words (only "ah", no lyrics) appears only twice, very far away and soft; most of the piece has no voice.
+Slow, free and spacious, in a dark modal minor, in a vast reverberant space, with long silences. One continuous piece without sudden changes, ending softly so it can loop.
 
-No drums, no percussion beats, no guitar, no electronic beat, no choir singing words. One continuous, gently flowing piece with no sudden changes, ending softly so it can loop.
-
-[0:00 - 0:40] Pad and drone, sparse piano and harp notes, much space.
-[0:40 - 1:05] A soft swell of low strings; the distant female voice, a few long notes.
-[1:05 - 1:45] Only pad, piano and harp, like light moving on water.
-[1:45 - 2:05] The voice once more, very faint, over high violins.
-[2:05 - 2:30] Everything thins to the drone and a last piano note.
+[0:00 - 0:35] The low drone alone, with a few harp harmonics.
+[0:35 - 1:00] The muted horn call, over the low hum of voices.
+[1:00 - 1:35] The distant female voice, a few long notes; harp notes beneath.
+[1:35 - 2:00] The horn call once more, quieter; the high strings darken.
+[2:00 - 2:30] The drone alone, fading into silence.

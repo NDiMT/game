@@ -1,14 +1,12 @@
-Create a 2 minute 40 second piece of original instrumental music for the first level of a quiet, beautiful puzzle game: a woman wakes at dawn on a marble threshold at the edge of a sea as still as glass. The music plays under the game while the player thinks, so it must be calm, spacious and never busy.
+Create a 2 minute 40 second piece of original orchestral music: the exploration music of a dark fantasy game, heard while the player crosses the ruins of a fallen, ancient world at a grey-rose dawn, on islands of broken marble in a sea as still as glass. It must feel sorrowful, solemn, lonely and grand, like the memory of a lost age; dark, never cheerful, never hopeful in a light way.
 
-Style: intimate, melancholic contemporary film and television drama score. Minimal and atmospheric: a soft felt piano playing a simple, haunting motif of a few notes with long pauses, warm low cellos and quiet violins holding long notes, a gentle ambient pad and low drone underneath, a very soft, slow pulse now and then. Mysterious and tender, with a sense of grief and of something hidden under the surface. Slow tempo, minor mode, a little ancient Greek colour (a few plain notes of a lyre or harp).
+Instruments: a solo cello and a solo violin singing slow, mournful, long phrases; a harp playing slow, sparse broken chords; low strings and double basses holding dark chords; a deep, soft French horn now and then; a quiet, distant wordless choir humming low; a solo female voice singing a wordless lament (only "ah", no lyrics) at only two moments, far away. Absolutely no piano. No drums and no beat, only one soft, distant timpani roll late in the piece. No synthesizer, no guitar.
 
-The female voice: a solo female voice singing a gentle melody without words (only "ah" and "oo", no lyrics) appears only at a few moments, not through the whole piece, far away and soft, like a memory. Most of the piece has no voice.
+Harmony and feel: very slow, free tempo; a dark minor mode with a Phrygian colour; wide, reverberant space like an empty cathedral; long silences between phrases. One continuous piece that breathes, with no sudden changes, ending softly so that it can loop.
 
-No drums, no percussion beats, no guitar, no electronic dance beat, no choir singing words. One continuous piece that breathes, with no sudden changes, ending softly so it can loop.
-
-[0:00 - 0:30] Low drone and pad, a few single piano notes of the motif, silence between them.
-[0:30 - 1:00] Soft cellos enter under the piano; the motif returns, a little warmer.
-[1:00 - 1:20] The wordless female voice sings the melody once, far away, over held strings.
-[1:20 - 1:55] The voice falls silent; piano and quiet violins, slow and still, like glass water.
-[1:55 - 2:15] The voice returns briefly, softer, and fades.
-[2:15 - 2:40] Piano motif alone over the drone, fading to near silence.
+[0:00 - 0:30] Low string drone and a few harp notes; a cold, empty space.
+[0:30 - 1:00] The solo cello begins a slow, mournful melody over dark low strings.
+[1:00 - 1:20] The wordless female voice sings a short lament, far away, over the choir's low hum.
+[1:20 - 1:55] The solo violin answers the cello; a soft horn holds a sad chord; grief and fallen grandeur.
+[1:55 - 2:15] A distant timpani roll; the strings swell once, then fall; the female voice returns briefly.
+[2:15 - 2:40] Only the low drone and the harp remain, fading to near silence.

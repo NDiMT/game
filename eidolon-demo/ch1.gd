@@ -3847,7 +3847,7 @@ func _ivw_scene2(j: Dictionary) -> void:
 	for ch in iv_root.get_children():
 		if ch is Node3D and not (ch as Node3D).find_children("riser_*", "MeshInstance3D", true, false).is_empty() and ch != ivw_mirror: lvn = ch; break
 	_ivw_risers_find(lvn, ivw_mirror)
-	a_drop = 0.5; a_headp = 0.3; a_lean = 0.86; palm_on = true; a_wL = 1.0; a_wR = 1.0; palm_nL = Vector3.UP; palm_nR = Vector3.UP      # (she lies curled where she woke, her palms on the stone)
+	a_drop = 0.5; a_headp = 0.34; a_lean = 0.05; palm_on = false; a_wL = 0.0; a_wR = 0.0      # (on one knee where she woke: the front foot planted, the back knee on the stone, her head bowed)
 	if OS.get_environment("IVW_SKIP") != "": a_drop = 0.0; a_headp = 0.0; a_lean = 0.0; palm_on = false; a_wL = 0.0; a_wR = 0.0; ivw_close = 0.0      # (to judge the look: awake already)
 
 ## light in the gate (the user: "maybe the gate should glow, have light inside it"): a soft warm light filling its
@@ -3959,7 +3959,7 @@ func _ivw_veil(p: Vector3, ax: String) -> void:
 	mi.material_override = ivw_veil_m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
 
-var ivw_close := 1.0      # (the eye close on her: 1 while she lies there, 0 when it holds the whole level)
+var ivw_close := 0.0      # (the eye close on her: kept at 0, the whole level held, the user: "no stupid zoom")
 var ivw_awake := false
 var ivw_line_at := -1.0
 var ivw_obs_mirror := []      # (the statue's image in the water: its materials, its length grown as the eye draws back)      # (when the waking's line may come: a moment after the title has gone)
@@ -3997,41 +3997,21 @@ func _ivw_snap(nm: String) -> void:      # (to judge the waking: a frame at each
 	await RenderingServer.frame_post_draw; get_viewport().get_texture().get_image().save_png("%s/%s.png" % [d, nm])
 	if OS.get_environment("IVW_QUIT_AT") == nm: get_tree().quit()
 
-func _ivw_rise() -> void:
+func _ivw_rise() -> void:      # (on one knee; a moment still; then she rises, slowly, straight up, without turning; the eye does not move)
 	iv_busy = true
-	await _ivw_snap("w0_lying")
-	await get_tree().create_timer(0.7).timeout
-	var t0 := create_tween(); t0.tween_property(self, "a_lean", 0.74, 0.35).set_trans(Tween.TRANS_SINE); t0.tween_property(self, "a_lean", 0.86, 0.45).set_trans(Tween.TRANS_SINE)
-	await t0.finished
-	_ivw_ripple(pos, 1.1)
-	await get_tree().create_timer(0.4).timeout
-	var t1 := create_tween(); t1.set_parallel(true)
-	t1.tween_property(self, "a_lean", 0.3, 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	t1.tween_property(self, "a_wL", 0.0, 0.7).set_delay(0.95); t1.tween_property(self, "a_wR", 0.0, 0.7).set_delay(0.8)
-	await t1.finished
-	await _ivw_snap("w1_up")
-	palm_on = false
-	var y0 := yaw
-	var t2 := create_tween(); t2.tween_property(self, "yaw", y0 + 0.6, 0.9).set_trans(Tween.TRANS_SINE); t2.tween_interval(0.7); t2.tween_property(self, "yaw", y0, 0.8).set_trans(Tween.TRANS_SINE)
-	await get_tree().create_timer(1.2).timeout
-	await _ivw_snap("w2_look")
-	if t2.is_running(): await t2.finished
-	var t3 := create_tween()
-	t3.tween_property(self, "a_drop", 0.27, 0.7).set_trans(Tween.TRANS_SINE)
-	t3.parallel().tween_property(self, "a_lean", 0.16, 0.7)
-	t3.tween_interval(0.35)
-	t3.tween_property(self, "a_drop", 0.0, 0.95).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	t3.parallel().tween_property(self, "a_lean", 0.0, 0.95)
-	await get_tree().create_timer(0.75).timeout
-	await _ivw_snap("w3_halfway")
-	if t3.is_running(): await t3.finished
+	await _ivw_snap("w0_kneel")
+	await get_tree().create_timer(1.5).timeout
+	var t := create_tween().set_parallel(true)
+	t.tween_property(self, "a_lean", 0.17, 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)      # (her weight comes forward over the front foot)
+	t.tween_property(self, "a_drop", 0.0, 3.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT).set_delay(0.55)      # (and she pushes up from it, slowly)
+	t.tween_property(self, "a_lean", 0.0, 2.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT).set_delay(2.4)      # (upright as she comes up)
+	t.tween_property(self, "a_headp", 0.0, 2.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT).set_delay(2.9)      # (her head lifts last: she looks out over the water)
+	await get_tree().create_timer(1.4).timeout; await _ivw_snap("w1_push")
+	await get_tree().create_timer(1.3).timeout; await _ivw_snap("w2_rising")
+	await get_tree().create_timer(1.3).timeout; await _ivw_snap("w3_almost")
+	if t.is_running(): await t.finished
+	_ivw_ripple(pos, 1.3)
 	await _ivw_snap("w4_stand")
-	_ivw_ripple(pos, 1.5)
-	var t4 := create_tween(); t4.tween_property(self, "ivw_close", 0.0, 2.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	await get_tree().create_timer(1.3).timeout
-	await _ivw_snap("w5_pull")
-	if t4.is_running(): await t4.finished
-	await _ivw_snap("w6_full")
 	ivw_awake = true
 	iv_me = String(ivg.start) if ivg_on else iv_me
 	iv_busy = false
@@ -4335,7 +4315,6 @@ func _ivw_play() -> void:      # (PLAY: the name and the haze go, the eye goes d
 	_ivw_music("res://music/still_sea.ogg", 3.5, -5.0)      # (the theme gives way to the still sea, quieter: it plays while she thinks)
 	var t := create_tween().set_parallel()
 	t.tween_property(ivw_menu, "modulate:a", 0.0, 1.0).set_trans(Tween.TRANS_SINE)
-	if OS.get_environment("IVW_SKIP") == "": t.tween_property(self, "ivw_close", 1.0, 2.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await t.finished
 	ivw_menu.get_parent().queue_free(); ivw_menu = null
 	started = true; ivw_line_at = iv_t + 1.2
