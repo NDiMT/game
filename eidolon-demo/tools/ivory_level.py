@@ -1016,6 +1016,7 @@ def quarry_terrain(P):
 
 # ------------------------------------------------------------------ the level
 marble, rock, olive, barks, quarries = [], [], [], [], []
+RISERS = {}      # (floors that rise and sink in the game: each its own two objects, riser_<name>_marble and riser_<name>_rock)
 if PLAN is None:
     for nm, (x0, x1, z0, z1, h, ch) in FLOORS.items():
         m, r = floor(nm, x0, x1, z0, z1, h, ch); marble += m; rock += r
@@ -1034,7 +1035,9 @@ if PLAN is None:
 else:
     QUARRY_ON = PLAN.get('scene') == 'quarry'
     for nm, fl in PLAN['floors'].items():
-        m, r = floor(nm, 0, 0, 0, 0, fl['h'], 0, poly=[tuple(p) for p in fl['xz']]); marble += m; rock += r
+        m, r = floor(nm, 0, 0, 0, 0, fl['h'], 0, poly=[tuple(p) for p in fl['xz']])
+        if nm in PLAN.get('risers', []): RISERS[nm] = (m, r); continue      # (a floor that moves in the game: its slab and its rock kept apart)
+        marble += m; rock += r
     for fl in PLAN['flights']:
         m, r = flight(tuple(fl[0]), tuple(fl[1]), fl[2], fl[3] if len(fl) > 3 else None, solid=QUARRY_ON); marble += m; rock += r
         while len(fl) < 4: fl.append(len(STEPS[-1]))
@@ -1073,6 +1076,10 @@ def join(obs, name):
 M = join(marble, 'marble'); R = join(rock, 'rock') if rock else None; O = join(olive, 'olive') if olive else None; B = join(barks, 'bark') if barks else None
 QU = join(quarries, 'quarry') if quarries else None
 SN = join(SNOWS, 'snow') if SNOWS else None
+RS = []
+for nm_, (m_, r_) in RISERS.items():
+    RS.append(join(m_, 'riser_%s_marble' % nm_))
+    if r_: RS.append(join(r_, 'riser_%s_rock' % nm_))
 if PLAN is not None and PLAN.get('relief'):      # (the small carved stone: on the face of the rock toward the eye, half sunk in it)
     rp = Vector(PLAN['relief']); Wd = RELIEF_W
     for lift in (0.0, 0.25, -0.25, 0.5):
@@ -1089,7 +1096,7 @@ scene.cycles.device = 'CPU'
 scene.cycles.samples = SAMPLES
 w = bpy.data.worlds.new('w'); scene.world = w; w.light_settings.distance = 0.55      # (only the close corners and clefts darken)
 scene.render.bake.target = 'VERTEX_COLORS'
-for o in (M, R, O, B, SN, QU):
+for o in (M, R, O, B, SN, QU, *RS):
     if o is None: continue
     mat = bpy.data.materials.new(o.name); o.data.materials.append(mat)
     ca = o.data.color_attributes.new('ao', 'BYTE_COLOR', 'CORNER')

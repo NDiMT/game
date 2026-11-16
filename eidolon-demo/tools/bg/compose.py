@@ -23,9 +23,9 @@ PALETTES = {      # the sky (four stops: top, the horizon's band, the haze, the 
                 far=['e6cba9', 'efd7b8', 'f8e8d0'], mid=['caa680', 'e0c19c', 'f6e2c6'], near=['a9845f', 'cfa983', 'f6e0c2'], mist='f1d6b1', stars=0),
     'dusk': dict(sky=['8a8db3', 'ebb3a2', 'a2a8c4', '7093a8'], stops=[0.0, 0.3, 0.5, 1.0], orb=dict(kind='sun', color='fff0dc', glow='ffb898'),
                  far=['8f93b6', '9da1c2', 'b9b6cc'], mid=['6f7aa0', '9195b8', 'd9b9b3'], near=['4f5f86', '7d86ab', 'e3c2b8'], mist='8fa4bd', stars=0),
-    'wake': dict(sky=['cdb6d3', 'f8d5c2', 'f1cfc6', 'e6b9ad'], stops=[0.0, 0.215, 0.33, 1.0], orb=dict(kind='sun', color='fff7e8', glow='ffd6ad'),      # (the first level's dawn: lilac above, peach at the sea's rim)
-                 far=['cdb2c0', 'dcc0c7', 'f0d8d5'], mid=['a68da2', 'c4a6b4', 'ecd2d0'], near=['7d6682', 'a78aa1', 'f2dad6'], mist='e8bdb1', stars=0,
-                 sea=['eecfca', 'd9b5b6', 'c7a3ad', 'e2b7ab'], glint='fff1dc'),
+    'wake': dict(sky=['d7c3dd', 'fbdcc8', 'f5d8ce', 'efcfc3'], stops=[0.0, 0.215, 0.33, 1.0], orb=dict(kind='sun', color='fff8ec', glow='ffdcb6'),      # (the first level's dawn: lilac above, peach at the sea's rim)
+                 far=['d8bfcb', 'e4cbd0', 'f4e0dc'], mid=['b49cb0', 'cfb4c0', 'f1dbd8'], near=['8f7893', 'b39aaf', 'f5e1dd'], mist='f2d6cb', stars=0,
+                 sea=['f7e3dc', 'efd6d2', 'e5cacb', 'f3d9cd'], glint='fff6e8'),
     'storm': dict(sky=['4b5560', '7d8790', '939ba2', '8b949b'], stops=[0.0, 0.3, 0.55, 1.0], orb=None,
                   far=['8c959c', '9fa7ad', 'b9c0c4'], mid=['67717a', '8b949b', 'c3c9cc'], near=['48525b', '717b84', 'cfd4d6'], mist='959da3', stars=0),
 }

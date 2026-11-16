@@ -44,9 +44,19 @@
    -4.2,
    2.6,
    -10.2
+  ],
+  "W": [
+   1.25,
+   0.0,
+   0.0
   ]
  },
  "edges": [
+  [
+   "S",
+   "W",
+   []
+  ],
   [
    "S",
    "A",
@@ -116,6 +126,31 @@
  "watchers": [],
  "wanderers": [],
  "plinths": false,
+ "volute": {
+  "node": "W",
+  "kind": "winch",
+  "once": true,
+  "toggles": {
+   "bridge": [
+    [
+     "S",
+     "A"
+    ],
+    [
+     "A",
+     "B"
+    ],
+    [
+     "B",
+     "C"
+    ],
+    [
+     "C",
+     "D"
+    ]
+   ]
+  }
+ },
  "tutorial": true,
  "intro": [
   [
@@ -130,6 +165,7 @@
   ]
  ],
  "solution": [
+  "W",
   "A",
   "B",
   "C",

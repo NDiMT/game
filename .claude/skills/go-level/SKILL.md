@@ -25,8 +25,10 @@ The levels are many, in one system. A new level is made in this order (the secon
   - The width is the extent plus margins; the height is the width × 16/9.
   - Place the centre so the sky's great thing (the moon, the sun) has room above the level and the mist has room below. The centre is any point `sx·b.x + sy·b.y + t·b.z`; choose t so that y is about 0.5.
   - To fill the bottom, let the first stair come up out of the mist from low on the screen.
-- **A new level must be new in its architecture, not only in its colours.** The user's verdict on a reskin: "this map is the previous one just with snow".
-  - Change what the level is made of and how it stands, not only its palette: e.g. `goquarry/`, a marble quarry, is a heightfield of square benches (`quarry_terrain` in the builder) instead of slabs on rock pillars.
+- **A new level must be new in its layout and setting, never in its material language.**
+  - A reskin is rejected ("this map is the previous one just with snow"), and so is a new way of building: the quarry as a white heightfield of benches had "nothing to do visually with the other levels"; the user wants "the same bulky design" everywhere.
+  - Every level is thick carved slabs with chamfered, broken edges on chunky faceted rock, in mist. Colours may change freely (blue slabs are fine).
+  - What is new: the layout, the setting, the props, the light, the sky.
   - Design it yourself first, with a blockout through the game's eye (`tools/go/preview.py`); the image model may only paint its look later.
 - **The quarry's lessons** (`goquarry/`, scene `quarry`):
   - Every edge on one lattice (0.45 m), so the level is cut as blocks.
@@ -45,6 +47,27 @@ The levels are many, in one system. A new level is made in this order (the secon
   - The same recipe in another palette is another place. Write a recipe per level (`tools/bg/recipes/`), and save its output as `<level>/backdrop.jpg`.
   - The level's mist samples the backdrop at each point of the screen (`bg_tex`), so nothing ends on a line.
   - Feather each element's edges widely (12% of its size): clouds painted to the picture's border otherwise end on a straight cut.
+- **The campaign** (the ladder of levels, easy to hard):
+  - Know the story first: `eidolon-world/dev/EIDOLON_SCRIPT.md`. In these levels she is Ione's soul, faceless, in the real ruin, climbing to the still water where she can see her face again; Theron's carved faces watch for her, and being seen sends her back to the start.
+  - Each level opens with two lines of the story and ends with one (`lines`, `end` in its puzzle), telling the truth in order: the sculptor, the condition, the face life carved, the veil and the hidden mirrors, her secret life, the day without a wave, the thousand faces, the mirror, the Guardian. Her only spoken line is the last level's end.
+  - The first three levels teach. A mechanism appears first alone with a one-step solution, then at normal difficulty, then combined with others.
+  - Even a tutorial has one visible cause and effect, never only a walk: "how is the puzzle solved?" was the user's question to a level that was only a path.
+  - **Fully logical, nothing pointless in the way**: every column, rock and prop on or beside the way has a reason the player can read (a chain from a winch to the stones it lifts). Never a stray column she must walk round.
+  - An image model's concept is for light, colour and atmosphere only. Its layout and props are random (stones out of line, rings that lead nowhere, an exit beside the gate) and must never become the board.
+  - The tutorial hand (`<level>/hand.png`, `tutorial: true` in the puzzle): after a moment of waiting it strokes the next swipe below her, with a fading trail; a mechanism already worked is passed over.
+- **Things that move in a level** (the first level, `gowake/`, is the worked example):
+  - Floors named in the plan's `risers` are kept as their own objects (`riser_<name>_marble`, `riser_<name>_rock`); the game moves them and their images in the water together.
+  - A thing under still water is drawn and fades into the sea by its depth (`under_k`, the water at `clip_y`), so sunken stones show as pale shapes; the rest of the level is clipped at the water (`clip_k`).
+  - A volute may be a winch that raises them: kind `winch`, `once: true` (it turns no more), `toggles.bridge` (the ways over the sunken stones are no ways until they are up).
+  - The way's discs and lines over the sunken stones sink and rise with them (they are clipped at the water, so no way shows over the water until the stones are up).
+  - Never `await a_tween.finished` after other waits: if it has already ended, the signal never comes again and the level hangs (the autoplay stopped after the winch). Guard it: `if t.is_running(): await t.finished`.
+- **Her waking** (a level that opens on her): with the rig there is no lying clip, so she lies curled: the kneel clip held by `a_drop = 0.5`, the spine bent by `a_lean`, her palms laid on the stone (`palm_on`, `tgtL/tgtR`, `palm_nL/palm_nR`).
+  - She stirs, pushes herself up (the palms lift late), looks out to sea and back (`yaw`), and rises with a halt halfway, unsure of her joints.
+  - The eye starts close on her (`ivw_close` in `_ivr_cam`) and draws back to the whole level once she stands.
+  - The painted sea must be held to the world (`world_uv` in the sea shader: the backdrop's place under the level's own eye), or a moving eye shows the painted sky on the water.
+  - An image in the water dims toward the sea's own colour (`sea_c`): left at its default it dims toward blue and muddies a warm sea.
+- **A hero prop from an image** (the Observer, a colossal veiled bust): paint it alone on a plain background, `tripo make <png> --for game-mobile` (it returns FBX), then decimate to about 7k triangles with flat faces and export GLB to `props/` (`fbx2glb.py`). Place it by its foot, height and turn, give it a palette of its own and haze, clip it at the water, and mirror it.
+- **Rendering is slow** (about 1.5 s a frame at 720x1280 on the software renderer): iterate at 540x960; capture moments with your own snapshot hooks (`IVW_SNAPS`); skip the clean-frame wait (`IV_CLEAN`) when the line does not matter.
 - **Corner overlays** (pine, leaves): have the image model paint them on flat magenta, then key them out.
   - The key is the magenta-ness, `min(R, B) − G`. Despill with the key's alpha, then fade with a separate mask, and fade out before anything the model bled in below.
   - Run `godot --headless --path . --import` before the game can `load()` a new PNG.

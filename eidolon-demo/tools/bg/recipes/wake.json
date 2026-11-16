@@ -18,11 +18,11 @@
    "w": 0.7,
    "depth": "mid",
    "fade": 0.0,
-   "haze": 0.18,
+   "haze": 0.12,
    "tint": [
-    "bba6c8",
-    "d5c1d8",
-    "f6e0dc"
+    "cbb8d8",
+    "e2d2e4",
+    "fdf0ec"
    ]
   },
   {
@@ -33,11 +33,11 @@
    "flip": true,
    "depth": "mid",
    "fade": 0.0,
-   "haze": 0.22,
+   "haze": 0.12,
    "tint": [
-    "c1abcc",
-    "d8c3d9",
-    "f8e3dc"
+    "cbb8d8",
+    "e2d2e4",
+    "fdf0ec"
    ]
   },
   {
@@ -47,11 +47,11 @@
    "w": 0.36,
    "depth": "far",
    "fade": 0.0,
-   "haze": 0.4,
+   "haze": 0.12,
    "tint": [
-    "cab4d0",
-    "ddc8da",
-    "f9e5dd"
+    "cbb8d8",
+    "e2d2e4",
+    "fdf0ec"
    ]
   },
   {
@@ -79,7 +79,7 @@
   "path_len": 0.55
  },
  "mist": {
-  "from": 0.8,
+  "from": 0.82,
   "to": 1.0
  }
 }

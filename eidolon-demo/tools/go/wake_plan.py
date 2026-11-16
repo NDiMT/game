@@ -3,8 +3,9 @@ water's edge; three stepping stones cross the still water to a pillar of rock; a
 stair to the landing at its top, where a gate stands square to the way and the ring lies beyond it. Far out in the sea
 stands the Observer, the first statue of her, veiled, looking out to where she was lost.
 
-It teaches the game and asks nothing else: a swipe is a step; a flight is climbed by a swipe; the ring ends the level.
-One way, every step of it on the path; nothing stands in it.
+It teaches the game: a swipe is a step; a swipe into a thing works it; a flight is climbed by a swipe; the ring ends the
+level. Its one trial: the stepping stones lie sunk under the still water, and the winch on the threshold, its chains
+running down to them, raises them. One way, every step of it on the path; nothing stands in it.
 
 usage: python3 -I tools/go/wake_plan.py <out plan.json>      (writes puzzle.json beside it)
 """
@@ -23,6 +24,7 @@ N = {
     'F': [-4.2, H1, -6.0],     #   its far end, the foot of the second
     'G': [-4.2, H2, -8.7],     # the landing at the top
     'R': [-4.2, H2, -10.2],    # the ring, beyond the gate
+    'W': [1.25, H0, 0.0],      # the winch on the threshold: its chains raise the stones out of the water
 }
 WAY = ['S', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'R']
 
@@ -31,6 +33,7 @@ def plan():
     fl1 = [[-E, H0, -6.0], [N['E'][0] + E, H1, -6.0], 0.9, 10]      # (up the pillar's face, toward the eye's upper left)
     fl2 = [[-4.2, H1, -6.0 - E], [-4.2, H2, N['G'][2] + E], 0.9, 10]      # (up to the landing, toward the eye's upper right)
     edges = []
+    edges.append(['S', 'W', []])
     for a, b in zip(WAY, WAY[1:]):
         mid = []
         if (a, b) == ('D', 'E'): mid = [fl1[0], fl1[1]]
@@ -49,14 +52,16 @@ def plan():
     puzzle = {
         'nodes': N, 'edges': edges, 'start': 'S', 'exit': 'R', 'block': '',
         'watchers': [], 'wanderers': [], 'plinths': False,
+        'volute': {'node': 'W', 'kind': 'winch', 'once': True,      # (turned once, it raises the stepping stones; a way over them is no way till then)
+                   'toggles': {'bridge': [['S', 'A'], ['A', 'B'], ['B', 'C'], ['C', 'D']]}},
         'tutorial': True,      # (a hand shows each swipe while she waits)
         'intro': [[0.0, H0, 0.01], [0.0, H0, 0.0]],      # (no way in: she wakes where she lies, facing the stones)
-        'solution': WAY[1:],
+        'solution': ['W'] + WAY[1:],
         'lines': ['Her face lies at the bottom of the sea.', 'To pass over, she must see it once more.'],
         'end': 'Somewhere above, the water was still.',
     }
     pl = {
-        'scene': 'wake', 'sea_y': SEA, 'heights': {'H0': H0, 'H1': H1, 'H2': H2}, 'floors': floors, 'flights': [fl1, fl2],
+        'scene': 'wake', 'sea_y': SEA, 'risers': ['A', 'B', 'C'], 'heights': {'H0': H0, 'H1': H1, 'H2': H2}, 'floors': floors, 'flights': [fl1, fl2],
         'nodes': N, 'edges': edges, 'ring': N['R'], 'stone': None, 'faces': [],
         'arches': [[[-4.2, H2, -9.45], 'x']],      # (the gate: square to the way, she walks through it to the ring)
         'rocks': [[[-1.6, H0 - 0.35, -6.9], 1.0, H0 - 0.25],       # (the pillar's shoulders, under the stair, the terrace and the landing:
@@ -66,8 +71,8 @@ def plan():
                   [[-2.7, H2 - 0.6, -10.2], 1.0, H2 - 0.5],
                   [[-5.6, H2 - 0.5, -10.0], 0.95, H2 - 0.45]],
         'columns': [], 'volute': None, 'head': None, 'relief': None, 'cypress': None,
-        'eye': {'pitch': 35.0, 'centre': [-4.6, 1.3, -7.5], 'width': 11.0},
-        'observer': [-12.0, SEA - 2.2, -9.0, 9.0, -0.9], 'observer_haze': 0.28,      # (the Observer: x, its foot under the water, z, its height, its turn)
+        'eye': {'pitch': 35.0, 'centre': [-5.32, 1.3, -7.58], 'width': 9.6},      # (the island large; the Observer whole at the upper left, the sun above the gate)
+        'observer': [-10.85, SEA - 1.5, -9.45, 7.2, -0.6], 'observer_haze': 0.4,      # (the Observer: x, its foot under the water, z, its height, its turn)
     }
     return pl, puzzle
 

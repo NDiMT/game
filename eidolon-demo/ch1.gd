@@ -2088,13 +2088,16 @@ const IV_QUARRY_SKY_S := Vector3(0.22, 0.46, 0.9)
 const IV_WAKE_PAL := {      # the waking: dawn over a still sea. Pearl and rose marble, its shade lilac; warm mauve rock; the Observer pale in the haze
 	"marble2": ["f3e2dc", "f6e6e1", "cdb7c2", "9d8599"],
 	"rock2": ["c39f98", "93727c", "684a57", "4a3140"],
-	"observer": ["f4e8e4", "e2cdcb", "bfa7b3", "947f97"],
+	"observer": ["fbf2ef", "eddfdd", "d3bfc8", "ae99ad"],
 	"phead": ["f3e4df", "dcc4c4", "b9a0ad", "917b93"],
 	"groove": ["e2cac6", "e2cac6", "e2cac6", "e2cac6"],
 	"line": ["fff4ee", "fff4ee", "fff4ee", "fff4ee"],
 	"ring": ["fff3e2", "fff3e2", "fff3e2", "fff3e2"],
+	"bronze": ["f2d398", "d7a660", "9c6e40", "6b4a30"],
+	"wood": ["b88d68", "96714f", "74533b", "533b2b"],
+	"iron": ["8a7a86", "6e606d", "524753", "3a323d"],
 }
-const IV_WAKE_BG := ["cdb6d3", "f8d5c2", "f1cfc6", "e6b9ad"]      # the dawn: lilac above, peach at the sea's rim, the rose haze, the mist at the bottom
+const IV_WAKE_BG := ["d7c3dd", "fbdcc8", "f5d8ce", "efcfc3"]      # the dawn: lilac above, peach at the sea's rim, the rose haze, the mist at the bottom
 const IV_WAKE_SKY_S := Vector3(0.2, 0.33, 0.95)
 func _iv_pal(kind: String) -> Array:
 	if go_wake and IV_WAKE_PAL.has(kind): return IV_WAKE_PAL[kind] as Array
@@ -2152,6 +2155,7 @@ uniform float lfog = 0.0;      // (the level's own rock: its depth under the flo
 uniform float lf_hi = 0.5;
 uniform float sea_k = 0.0;      // (a level at sea: the mist is the sea's colour where the sea lies behind, so what sinks into it leaves no edge)
 uniform float clip_k = 0.0; uniform float clip_y = -1e9;      // (a level at sea: nothing under the water is drawn; the water shows a thing's image instead)
+uniform float under_k = 0.0;      // (a thing that is under the water, or goes under it: drawn, fading into the sea by its depth under clip_y)
 uniform float mirror_k = 0.0; uniform float mirror_y = 0.0;      // (a thing's image in the water: drawn below it, shaded as the thing itself is)
 uniform vec3 sea_c : source_color = vec3(0.3, 0.45, 0.56);
 uniform float shadow_k = 1.0;      // (how much cast shadow falls on it: none on the rock, whose faces are each one clean tone)
@@ -2216,6 +2220,7 @@ void fragment(){
 		fk = max(fk, lt * lt * (3.0 - 2.0 * lt));
 	}
 	if (mirror_k > 0.5) c = mix(c, sea_c, 0.28 + 0.5 * smoothstep(0.0, 3.2, mirror_y - wp.y));      // (the image dims as it goes down into the water)
+	if (under_k > 0.5) fk = max(fk, smoothstep(-0.02, 1.7, clip_y - wp.y) * 0.8);
 	ALBEDO = c * (1.0 - fk);
 	vec3 mist = bgc(sy);
 	if (bg_tex_k > 0.5) mist = texture(bg_tex, vec2(0.5 + (SCREEN_UV.x - 0.5) * bg_scale.x, 0.5 + (sy - 0.5) * bg_scale.y)).rgb;
@@ -2324,7 +2329,7 @@ func _iv_mat(kind: String, far_k := 0.0, extra := {}) -> ShaderMaterial:
 		m.set_shader_parameter("shade_tint", Color(0.74, 0.79, 0.9)); m.set_shader_parameter("clip_k", 1.0); m.set_shader_parameter("clip_y", IV_O.y + ivr_sea_y)
 	if go_wake:      # (dawn: the shade lilac; what lies under the still water is not drawn, its image is)
 		m.set_shader_parameter("shade_tint", Color(0.85, 0.79, 0.9)); m.set_shader_parameter("ao_tint", Color(0.9, 0.83, 0.88)); m.set_shader_parameter("vein_tint", Color(0.93, 0.88, 0.9))
-		m.set_shader_parameter("clip_k", 1.0); m.set_shader_parameter("clip_y", IV_O.y + ivr_sea_y)
+		m.set_shader_parameter("clip_k", 1.0); m.set_shader_parameter("clip_y", IV_O.y + ivr_sea_y); m.set_shader_parameter("sea_c", Color("ead2cf"))      # (an image in the water dims toward the pearl of the sea, not toward blue)
 	if go_quarry:      # (the afternoon: shadows a cool lilac on the warm marble)
 		m.set_shader_parameter("shade_tint", Color(0.76, 0.74, 0.84)); m.set_shader_parameter("ao_tint", Color(0.9, 0.85, 0.86)); m.set_shader_parameter("vein_tint", Color(0.93, 0.9, 0.87))
 		if kind == "quarry": m.set_shader_parameter("drill", 1.0)
@@ -2902,8 +2907,8 @@ func _iv_post(dt: float) -> void:
 	if started and ivp_on:
 		if not iv_said.has("line") and iv_t > 1.6: iv_said["line"] = true; _go_write(_ivg_line(), 4.5)
 	elif started:
-		if not iv_said.has("line") and iv_t > 1.2: iv_said["line"] = true; _go_write(_ivg_line(), 4.5)
-		if not iv_said.has("hint") and iv_t > 8.0 and iv_moves == 0: iv_said["hint"] = true; say("tap the way to walk")
+		if not iv_said.has("line") and iv_t > 1.2 and (not go_wake or ivw_awake): iv_said["line"] = true; _go_write(_ivg_line(), 4.5)
+		if not iv_said.has("hint") and iv_t > 8.0 and iv_moves == 0 and not go_wake: iv_said["hint"] = true; say("tap the way to walk")
 
 func _iv_scr(p: Vector3, sp: Vector2) -> float: return cam.unproject_position(p).distance_to(sp)
 
@@ -3368,6 +3373,7 @@ func _ivg_dir_nbr(k: String, dv: Vector2) -> String:
 	var best := ""; var bc := cos(deg_to_rad(50.0))
 	for n in _ivp_nbrs(k):
 		if n == "s": continue
+		if not _ivw_open(k, String(n)): continue
 		var sd := cam.unproject_position(ivp_nodes[n]) - sp0
 		if sd.length() < 1.0: continue
 		var c := sd.normalized().dot(dv.normalized())
@@ -3481,6 +3487,8 @@ func _play_ivp() -> void:
 		var sol: Array = ivg.solution
 		for i in sol.size():
 			var tgt := String(sol[i])
+			if go_wake and bool(ivg.get("tutorial", false)) and i < 2:      # (as a new player would: she waits, and the hand shows the swipe)
+				await wait(2.6); await _ivw_snap("w9_hand%d" % i)
 			var at: Vector3 = ivp_nodes[tgt]
 			var dv := cam.unproject_position(at) - cam.unproject_position(ivp_nodes[iv_me])
 			_ivg_swipe(dv); await get_tree().process_frame
@@ -3548,6 +3556,9 @@ func _ivr_cam() -> void:
 	if not ivr_eye.is_empty():
 		var ce: Array = ivr_eye.centre
 		c = IV_O + Vector3(float(ce[0]), float(ce[1]), float(ce[2])); w = float(ivr_eye.width)
+	if go_wake and ivw_close > 0.001:      # (the waking: the eye close on her, drawn back as she stands)
+		var u := ivw_close * ivw_close * (3.0 - 2.0 * ivw_close)
+		c = c.lerp(pos + Vector3(0, 0.5, 0), u); w = lerpf(w, 3.6, u)
 	if OS.get_environment("IV_ZOOM") != "":      # (for judging her: the eye close on her)
 		c = pos + Vector3(0, 0.75, 0); w = float(OS.get_environment("IV_ZOOM"))
 		if OS.get_environment("IV_FACE") != "": yaw = atan2(b.z.x, b.z.z)
@@ -3555,7 +3566,7 @@ func _ivr_cam() -> void:
 	var vp := get_viewport().get_visible_rect().size
 	cam.keep_aspect = Camera3D.KEEP_WIDTH; cam.size = w * maxf(1.0, (vp.x / vp.y) / 0.5625)
 
-func _ivr_mat(kind: String, ao := 1.0, local := false) -> ShaderMaterial: return _iv_mat(kind, 0.0, {"lfog": 1.0 if (local and not iv_at_sea) else 0.0, "fog_hi": (ivr_sea_y + (0.75 if go_wake else 1.5)) if iv_at_sea else (-1.4 if go_moon else (-1.6 if go_quarry else -3.6)), "fog_lo": (ivr_sea_y - 0.15) if iv_at_sea else (-5.4 if go_moon else (-6.0 if go_quarry else -7.5)), "ao_k": ao * ({"marble2": 0.4, "olive2": 0.2, "bark": 0.3, "rock2": 0.0, "quarry": 0.55} as Dictionary).get(kind, 1.0), "veins": (0.35 if go_moon else (0.25 if go_quarry else (0.4 if go_wake else 0.6))) if (kind == "marble2" or kind == "quarry") else 0.0, "dk": 0.17 if kind == "quarry" else 0.0, "bounce": 0.0, "haze": 1.0, "shadow_k": 0.0 if kind == "rock2" else 1.0, "lf_hi": 1.0 if iv_at_sea else (1.0 if go_moon else (1.4 if go_quarry else 0.5)), "lf_len": 2.6 if iv_at_sea else (2.8 if go_moon else (3.2 if go_quarry else 1.9))})
+func _ivr_mat(kind: String, ao := 1.0, local := false) -> ShaderMaterial: return _iv_mat(kind, 0.0, {"lfog": 1.0 if (local and not iv_at_sea) else 0.0, "fog_hi": (ivr_sea_y + (0.04 if go_wake else 1.5)) if iv_at_sea else (-1.4 if go_moon else (-1.6 if go_quarry else -3.6)), "fog_lo": (ivr_sea_y - (0.7 if go_wake else 0.15)) if iv_at_sea else (-5.4 if go_moon else (-6.0 if go_quarry else -7.5)), "ao_k": ao * ({"marble2": 0.4, "olive2": 0.2, "bark": 0.3, "rock2": 0.0, "quarry": 0.55} as Dictionary).get(kind, 1.0), "veins": (0.35 if go_moon else (0.25 if go_quarry else (0.4 if go_wake else 0.6))) if (kind == "marble2" or kind == "quarry") else 0.0, "dk": 0.17 if kind == "quarry" else 0.0, "bounce": 0.0, "haze": 1.0, "shadow_k": 0.0 if kind == "rock2" else 1.0, "lf_hi": 1.0 if iv_at_sea else (1.0 if go_moon else (1.4 if go_quarry else 0.5)), "lf_len": 2.6 if iv_at_sea else (2.8 if go_moon else (3.2 if go_quarry else 1.9))})
 
 ## the way drawn on the stone: a pale line, and at each node a pale disc in a darker ring
 func _ivr_way() -> void:
@@ -3675,6 +3686,7 @@ func _ivs_mirror(src: Node3D, kind_of: Callable) -> Node3D:
 ## looking out to where she was lost; its image lies in the water under it. A torn veil hangs from the gate's lintel,
 ## stirring. She kneels at the threshold until the level begins, then rises. While she waits, a hand shows the next swipe.
 var ivw_hand: TextureRect
+var ivw_mirror: Node3D
 var ivw_trail: Line2D
 var ivw_idle := 0.0
 var ivw_veil_m: ShaderMaterial
@@ -3690,7 +3702,11 @@ func _ivw_scene(j: Dictionary) -> void:
 		(m as MeshInstance3D).material_override = _iv_mat("observer", float(j.get("observer_haze", 0.28)), ex); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_ivs_mirror(hp, func(_mi: MeshInstance3D) -> Array: return ["observer", float(j.get("observer_haze", 0.28)), {"fog_hi": ivr_sea_y + 0.6, "fog_lo": ivr_sea_y - 0.4, "haze": 1.0}])
 	for ar in (j.get("arches", []) as Array): _ivw_veil(Vector3(float(ar[0][0]), float(ar[0][1]), float(ar[0][2])), String(ar[1]))
-	a_drop = 0.5; a_headp = 0.3; a_lean = 0.3      # (she lies kneeling where she woke)
+	var lvn := iv_root.get_child(0) as Node3D      # (the level as Blender made it: its sunken stones)
+	for ch in iv_root.get_children():
+		if ch is Node3D and not (ch as Node3D).find_children("riser_*", "MeshInstance3D", true, false).is_empty() and ch != ivw_mirror: lvn = ch; break
+	_ivw_risers_find(lvn, ivw_mirror)
+	a_drop = 0.5; a_headp = 0.3; a_lean = 0.86; palm_on = true; a_wL = 1.0; a_wR = 1.0; palm_nL = Vector3.UP; palm_nR = Vector3.UP      # (she lies curled where she woke, her palms on the stone)
 
 const IVW_VEIL_SH := """
 shader_type spatial;
@@ -3721,9 +3737,10 @@ void fragment(){
 func _ivw_veil(p: Vector3, ax: String) -> void:
 	# a strip of veil from the left of the lintel's underside, the wind off the sea taking it out to the side
 	var along := Vector3(1, 0, 0) if ax == "x" else Vector3(0, 0, 1)
-	var top := IV_O + p + Vector3(0, 2.02, 0) - along * 0.36
+	var front := Vector3(0, 0, 1) if ax == "x" else Vector3(1, 0, 0)      # (the face of the gate toward her way up)
+	var top := IV_O + p + Vector3(0, 1.98, 0) - along * 0.27 + front * 0.21
 	var st := SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var nu := 4; var nv := 14; var wdt := 0.34; var ln := 1.25
+	var nu := 4; var nv := 16; var wdt := 0.42; var ln := 1.45
 	var pts := []
 	for iv in nv + 1:
 		var row := []
@@ -3742,16 +3759,202 @@ func _ivw_veil(p: Vector3, ax: String) -> void:
 	mi.material_override = ivw_veil_m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
 
+var ivw_close := 1.0      # (the eye close on her: 1 while she lies there, 0 when it holds the whole level)
+var ivw_awake := false
+var ivw_risers := []      # [[mesh, its place up, its image or null]] the sunken stones
+var ivw_up := 0.0      # (how far up the stones are: 0 sunk, 1 risen)
+const IVW_SINK := 0.62      # (how deep the stones lie under their places: their tops a hand under the water, plain to see)
+var ivw_chain: MultiMeshInstance3D
+var ivw_chain_pts := []      # [[point, moves with the stones]]
+
+## the waking: she lies curled at the threshold, her palms on the stone. She stirs; she pushes herself up; she looks out
+## to sea, toward the Observer, and back; she rises, unsure of her joints, halting halfway. Then the eye draws back.
+func _ivw_snap(nm: String) -> void:      # (to judge the waking: a frame at each of its moments, when shots are asked for)
+	var d := OS.get_environment("SHOT_DIR")
+	if d == "" or OS.get_environment("IVW_SNAPS") == "": return
+	await RenderingServer.frame_post_draw; get_viewport().get_texture().get_image().save_png("%s/%s.png" % [d, nm])
+
 func _ivw_rise() -> void:
 	iv_busy = true
-	await get_tree().create_timer(0.6).timeout
-	var tw := create_tween(); tw.set_parallel(true)
-	tw.tween_property(self, "a_drop", 0.0, 1.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tw.tween_property(self, "a_lean", 0.0, 1.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tw.tween_property(self, "a_headp", 0.0, 2.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	await tw.finished
+	await _ivw_snap("w0_lying")
+	await get_tree().create_timer(0.7).timeout
+	var t0 := create_tween(); t0.tween_property(self, "a_lean", 0.74, 0.35).set_trans(Tween.TRANS_SINE); t0.tween_property(self, "a_lean", 0.86, 0.45).set_trans(Tween.TRANS_SINE)
+	await t0.finished
+	_ivw_ripple(pos, 1.1)
+	await get_tree().create_timer(0.4).timeout
+	var t1 := create_tween(); t1.set_parallel(true)
+	t1.tween_property(self, "a_lean", 0.3, 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	t1.tween_property(self, "a_wL", 0.0, 0.7).set_delay(0.95); t1.tween_property(self, "a_wR", 0.0, 0.7).set_delay(0.8)
+	await t1.finished
+	await _ivw_snap("w1_up")
+	palm_on = false
+	var y0 := yaw
+	var t2 := create_tween(); t2.tween_property(self, "yaw", y0 + 0.6, 0.9).set_trans(Tween.TRANS_SINE); t2.tween_interval(0.7); t2.tween_property(self, "yaw", y0, 0.8).set_trans(Tween.TRANS_SINE)
+	await get_tree().create_timer(1.2).timeout
+	await _ivw_snap("w2_look")
+	if t2.is_running(): await t2.finished
+	var t3 := create_tween()
+	t3.tween_property(self, "a_drop", 0.27, 0.7).set_trans(Tween.TRANS_SINE)
+	t3.parallel().tween_property(self, "a_lean", 0.16, 0.7)
+	t3.tween_interval(0.35)
+	t3.tween_property(self, "a_drop", 0.0, 0.95).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	t3.parallel().tween_property(self, "a_lean", 0.0, 0.95)
+	await get_tree().create_timer(0.75).timeout
+	await _ivw_snap("w3_halfway")
+	if t3.is_running(): await t3.finished
+	await _ivw_snap("w4_stand")
+	_ivw_ripple(pos, 1.5)
+	var t4 := create_tween(); t4.tween_property(self, "ivw_close", 0.0, 2.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await get_tree().create_timer(1.3).timeout
+	await _ivw_snap("w5_pull")
+	if t4.is_running(): await t4.finished
+	await _ivw_snap("w6_full")
+	ivw_awake = true
 	iv_me = String(ivg.start) if ivg_on else iv_me
 	iv_busy = false
+
+## a way over a sunken stone is no way until the stones are up
+func _ivw_open(a: String, b: String) -> bool:
+	if not go_wake or not ivg_on or ivg.get("volute") == null: return true
+	var br: Array = ((ivg.volute as Dictionary).get("toggles", {}) as Dictionary).get("bridge", []) as Array
+	for e in br:
+		if (String(e[0]) == a and String(e[1]) == b) or (String(e[0]) == b and String(e[1]) == a): return ivg_v == 1 and ivw_up > 0.99
+	return true
+
+## the winch: a drum of marble on a plinth, banded in bronze, its chain wound on it; four bars of wood through its head.
+## It turns about its upright (its own z, as the capstan's), and the chain runs from it over the threshold's edge into the
+## water, to the stones lying under it
+func _ivw_winch(p: Vector3) -> void:
+	var base := Node3D.new(); iv_root.add_child(base); base.global_position = p
+	var M := func(mesh: Mesh, kind: String, at: Vector3, par: Node3D, rot: Vector3) -> MeshInstance3D:
+		var mi := MeshInstance3D.new(); mi.mesh = mesh; mi.material_override = _ivr_mat(kind, 0.0); mi.position = at; mi.rotation = rot
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON; par.add_child(mi); return mi
+	var pl := BoxMesh.new(); pl.size = Vector3(0.6, 0.16, 0.6); M.call(pl, "marble2", Vector3(0, 0.08, 0), base, Vector3.ZERO)
+	var pl2 := BoxMesh.new(); pl2.size = Vector3(0.5, 0.05, 0.5); M.call(pl2, "marble2", Vector3(0, 0.185, 0), base, Vector3.ZERO)
+	iv_wheel = Node3D.new(); iv_root.add_child(iv_wheel); iv_wheel.global_position = p + Vector3(0, 0.21, 0); iv_wheel.rotation = Vector3(-PI * 0.5, 0, 0)
+	var X := Vector3(PI * 0.5, 0, 0)      # (a cylinder's axis laid along the wheel's own z: upright)
+	var cyl := func(r0: float, r1: float, h: float, seg: int) -> CylinderMesh:
+		var c := CylinderMesh.new(); c.top_radius = r0; c.bottom_radius = r1; c.height = h; c.radial_segments = seg; c.rings = 1; return c
+	M.call(cyl.call(0.17, 0.19, 0.5, 18), "marble2", Vector3(0, 0, 0.25), iv_wheel, X)
+	for zb in [0.035, 0.465]: M.call(cyl.call(0.205, 0.205, 0.045, 18), "bronze", Vector3(0, 0, zb), iv_wheel, X)
+	M.call(cyl.call(0.196, 0.2, 0.15, 24), "iron", Vector3(0, 0, 0.2), iv_wheel, X)      # (the chain wound on the drum)
+	M.call(cyl.call(0.2, 0.2, 0.05, 18), "bronze", Vector3(0, 0, 0.515), iv_wheel, X)
+	var kn := SphereMesh.new(); kn.radius = 0.06; kn.height = 0.1; kn.radial_segments = 10; kn.rings = 5; M.call(kn, "bronze", Vector3(0, 0, 0.56), iv_wheel, Vector3.ZERO)
+	for k in 2:      # (two bars through its head: four arms to push)
+		var bx := BoxMesh.new(); bx.size = Vector3(1.0, 0.055, 0.055)
+		M.call(bx, "wood", Vector3(0, 0, 0.42), iv_wheel, Vector3(0, 0, PI * 0.5 * k))
+		for sgn in [-1.0, 1.0]:
+			var tip := BoxMesh.new(); tip.size = Vector3(0.06, 0.07, 0.07)
+			var a := PI * 0.5 * k
+			M.call(tip, "bronze", Vector3(cos(a) * 0.5 * sgn, sin(a) * 0.5 * sgn, 0.42), iv_wheel, Vector3(0, 0, a))
+	# the chain: off the drum toward the stones, over the threshold's edge, down into the water, from stone to stone
+	var O := IV_O; var sy := ivr_sea_y
+	var pts := [[Vector3(1.25, 0.41, -0.18), false], [Vector3(1.12, 0.06, -0.63), false], [Vector3(0.95, sy - 0.4, -0.95), false],
+		[Vector3(0.56, -0.18, -1.5), true], [Vector3(0.62, -0.6, -2.25), true], [Vector3(0.56, -0.18, -3.0), true],
+		[Vector3(0.62, -0.6, -3.75), true], [Vector3(0.56, -0.18, -4.5), true]]
+	var off := p - (O + Vector3(1.25, 0.0, 0.0))      # (the chain is laid for the winch where the plan has it)
+	for q in pts: ivw_chain_pts.append([O + (q[0] as Vector3) + off * (0.0 if q[1] else 1.0), q[1]])
+	var lm := BoxMesh.new(); lm.size = Vector3(0.024, 0.03, 0.075)
+	var mm := MultiMesh.new(); mm.transform_format = MultiMesh.TRANSFORM_3D; mm.mesh = lm; mm.instance_count = 400
+	ivw_chain = MultiMeshInstance3D.new(); ivw_chain.multimesh = mm; add_child(ivw_chain)
+	ivw_chain.material_override = _iv_mat("iron", 0.0, {"under_k": 1.0, "clip_k": 0.0, "clip_y": IV_O.y + ivr_sea_y, "shadow_k": 0.0})
+	_ivw_chain_lay()
+
+func _ivw_chain_lay() -> void:
+	if ivw_chain == null: return
+	var dy := -IVW_SINK * (1.0 - ivw_up)
+	var P := []
+	for q in ivw_chain_pts: P.append((q[0] as Vector3) + Vector3(0, dy if q[1] else 0.0, 0))
+	var mm := ivw_chain.multimesh; var n := 0
+	for i in P.size() - 1:
+		var a: Vector3 = P[i]; var b: Vector3 = P[i + 1]
+		var L := a.distance_to(b); var cnt := maxi(1, int(L / 0.062))
+		var z := (b - a).normalized(); var x := z.cross(Vector3.UP).normalized() if absf(z.y) < 0.98 else Vector3.RIGHT
+		var y := z.cross(x)
+		for j in cnt:
+			if n >= mm.instance_count: break
+			var bs := Basis(x, y, z) if (n % 2 == 0) else Basis(y, -x, z)      # (each link turned a quarter to the last)
+			mm.set_instance_transform(n, Transform3D(bs, a.lerp(b, (j + 0.5) / cnt))); n += 1
+	mm.visible_instance_count = n
+
+## the stones of the plan's risers, sunk under their places; their images in the water with them
+func _ivw_risers_find(lv: Node3D, mn: Node3D) -> void:
+	for m in lv.find_children("riser_*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		var nm := String(mi.name).to_lower()
+		mi.material_override = _ivr_mat("rock2" if nm.contains("rock") else "marble2", 1.0, true).duplicate() as ShaderMaterial
+		(mi.material_override as ShaderMaterial).set_shader_parameter("clip_k", 0.0); (mi.material_override as ShaderMaterial).set_shader_parameter("under_k", 1.0)
+		var img: MeshInstance3D = null
+		if mn != null:
+			var f := mn.find_children(String(mi.name), "MeshInstance3D", true, false)
+			if not f.is_empty(): img = f[0] as MeshInstance3D
+		ivw_risers.append([mi, mi.position, img, img.position if img != null else Vector3.ZERO])
+	# the way's discs on the stones and its lines over the water: they sink and rise with them
+	var br: Array = ((ivg.volute as Dictionary).get("toggles", {}) as Dictionary).get("bridge", []) as Array if (ivg_on and ivg.get("volute") != null) else []
+	var rz := []      # (the stones' outlines, on the water)
+	for r in ivw_risers:
+		var rm := r[0] as MeshInstance3D
+		if String(rm.name).to_lower().contains("marble"): rz.append(rm.global_transform * rm.get_aabb())
+	for ch in iv_root.get_children():
+		if not (ch is MeshInstance3D) or (ch as MeshInstance3D).mesh == null: continue
+		var mi2 := ch as MeshInstance3D
+		var cc := mi2.global_transform * mi2.get_aabb().get_center()
+		var on := false
+		for e in br:
+			var a: Vector3 = ivp_nodes[String(e[0])]; var b: Vector3 = ivp_nodes[String(e[1])]
+			var ab := Vector2(b.x - a.x, b.z - a.z); var t := clampf(Vector2(cc.x - a.x, cc.z - a.z).dot(ab) / maxf(ab.length_squared(), 1e-4), 0.0, 1.0)
+			var q := Vector2(a.x, a.z) + ab * t
+			if q.distance_to(Vector2(cc.x, cc.z)) < 0.3 and absf(cc.y - lerpf(a.y, b.y, t)) < 0.25:
+				var at_node := t < 0.05 or t > 0.95
+				var on_stone := false
+				for bx in rz:
+					if (bx as AABB).grow(0.05).has_point(Vector3(cc.x, (bx as AABB).get_center().y, cc.z)): on_stone = true
+				if not at_node or on_stone: on = true
+		if on: ivw_risers.append([mi2, mi2.position, null, Vector3.ZERO])
+	_ivw_risers_set(0.0)
+
+func _ivw_risers_set(u: float) -> void:
+	ivw_up = u
+	var e := u * u * (3.0 - 2.0 * u)
+	for r in ivw_risers:
+		var d := Vector3(0, -IVW_SINK * (1.0 - e), 0)
+		(r[0] as MeshInstance3D).position = (r[1] as Vector3) + d
+		if r[2] != null: (r[2] as MeshInstance3D).position = (r[3] as Vector3) + d
+	_ivw_chain_lay()
+
+func _ivw_raise(up: bool) -> void:
+	if ivw_risers.is_empty(): ivw_up = 1.0 if up else 0.0; return
+	var t := create_tween(); t.tween_method(_ivw_risers_set, ivw_up, 1.0 if up else 0.0, 1.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await get_tree().create_timer(0.75).timeout
+	for r in ivw_risers:
+		var rm := r[0] as MeshInstance3D
+		if String(rm.name).to_lower().contains("marble"): _ivw_ripple(rm.global_transform * rm.get_aabb().get_center(), 1.6)
+	await get_tree().create_timer(0.3).timeout
+	await _ivw_snap("w7_rising")
+	if t.is_running(): await t.finished
+	await _ivw_snap("w8_risen")
+
+## a ring spreading on the still water
+const IVW_RIP_SH := """
+shader_type spatial;
+render_mode unshaded, cull_disabled, shadows_disabled, depth_draw_never;
+uniform float p = 0.0;
+uniform vec3 col : source_color = vec3(1.0, 0.97, 0.94);
+void fragment(){
+	float r = length(UV - 0.5) * 2.0;
+	float rr = mix(0.12, 1.0, p);
+	float a = (1.0 - smoothstep(0.0, 0.06 + 0.05 * p, abs(r - rr))) * (1.0 - p) * 0.55;
+	float a2 = (1.0 - smoothstep(0.0, 0.05, abs(r - rr * 0.62))) * (1.0 - p) * 0.3 * step(0.15, p);
+	ALBEDO = col; ALPHA = max(a, a2);
+}
+"""
+func _ivw_ripple(at: Vector3, size: float) -> void:
+	var q := QuadMesh.new(); q.size = Vector2(size, size) * 2.0; q.orientation = PlaneMesh.FACE_Y
+	var m := ShaderMaterial.new(); var sh := Shader.new(); sh.code = IVW_RIP_SH; m.shader = sh
+	var mi := MeshInstance3D.new(); mi.mesh = q; mi.material_override = m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi); mi.global_position = Vector3(at.x, IV_O.y + ivr_sea_y + 0.012, at.z)
+	var t := create_tween(); t.tween_method(func(v: float) -> void: m.set_shader_parameter("p", v), 0.0, 1.0, 2.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	t.tween_callback(mi.queue_free)
 
 func _ivw_hand_make(cl: CanvasLayer) -> void:
 	if not FileAccess.file_exists(go_dir + "hand.png"): return
@@ -3768,11 +3971,16 @@ func _ivw_next() -> String:      # the next node of the way from where she stand
 	if not ivg_on: return ""
 	var path: Array = [String(ivg.start)] + (ivg.solution as Array)
 	for i in path.size() - 1:
-		if String(path[i]) == iv_me: return String(path[i + 1])
+		if String(path[i]) == iv_me:
+			if String(path[i + 1]) == ivg_vol and ivg_v == 1 and i + 2 < path.size(): return String(path[i + 2])
+			return String(path[i + 1])
 	return ""
 
 func _ivw_tick(dt: float) -> void:
 	if ivw_veil_m != null: ivw_veil_m.set_shader_parameter("t", Time.get_ticks_msec() / 1000.0)
+	if palm_on and not ivw_awake:      # (her palms on the stone before her knees, wherever she is turned)
+		var fw := Vector3(sin(yaw), 0, cos(yaw)); var sd := Vector3(fw.z, 0, -fw.x)
+		tgtL = Vector3(pos.x, pos.y + 0.012, pos.z) + fw * 0.5 + sd * 0.17; tgtR = Vector3(pos.x, pos.y + 0.012, pos.z) + fw * 0.5 - sd * 0.17
 	if ivw_hand == null: return
 	var waiting := ivg_on and bool(ivg.get("tutorial", false)) and started and ivp_intro and not iv_busy and not iv_won and iv_me != "s"
 	if not waiting:
@@ -3812,6 +4020,7 @@ uniform vec2 sun = vec2(0.305, 0.19);
 uniform float sea_a = 1.0;      // (the surface: how much of the sea's own colour; the rest is what lies under it, the images in the water)
 uniform sampler2D bg_tex : source_color, filter_linear, repeat_disable;      // (a painted sea: its colour, and the sun's path on it, are the backdrop's)
 uniform float bg_tex_k = 0.0; uniform vec2 bg_scale = vec2(1.0); uniform float uv_flip = 0.0;
+uniform float world_uv = 0.0; uniform vec3 eye_c; uniform vec3 eye_bx; uniform vec3 eye_by; uniform float eye_w = 11.0;      // (where the painting lies under the level's own eye)
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 vec3 bgc(float s){
@@ -3824,7 +4033,9 @@ void fragment(){
 	float rip = sin(wp.x * 2.3 + wp.z * 1.7) * sin(wp.z * 3.1 - wp.x * 0.9);
 	if (bg_tex_k > 0.5) {
 		float sy = uv_flip > 0.5 ? 1.0 - s : s;
-		c = texture(bg_tex, clamp(vec2(0.5 + (SCREEN_UV.x - 0.5) * bg_scale.x, 0.5 + (sy - 0.5) * bg_scale.y), vec2(0.001), vec2(0.999))).rgb;
+		vec2 suv = vec2(0.5 + (SCREEN_UV.x - 0.5) * bg_scale.x, 0.5 + (sy - 0.5) * bg_scale.y);
+		if (world_uv > 0.5) { vec3 r = wp - eye_c; suv = vec2(0.5 + dot(r, eye_bx) / eye_w, 0.5 - dot(r, eye_by) / (eye_w * 16.0 / 9.0)); }
+		c = texture(bg_tex, clamp(suv, vec2(0.001), vec2(0.999))).rgb;
 		c = mix(c, c * 1.04 + vec3(0.01), smoothstep(0.55, 0.95, rip) * 0.5);      // (the faintest swell)
 	} else {
 	float path = exp(-pow((SCREEN_UV.x - sun.x) * 5.0, 2.0)) * (1.0 - smoothstep(0.19, 0.55, s));
@@ -3850,7 +4061,9 @@ func _ivs_sea(sea_y: float) -> void:
 	var c := [ph - bx * 80.0, ph + bx * 80.0, ph + bx * 80.0 + hb * 120.0, ph - bx * 80.0 + hb * 120.0]
 	# (two sheets: the surface, a little clear; and deep under it, along the eye, a floor of the same colours over the
 	# same part of the screen: where nothing is in the water the sea looks as before, where an image is it shows)
-	if go_wake and iv_bgtex != null: m.set_shader_parameter("bg_tex", iv_bgtex); m.set_shader_parameter("bg_tex_k", 1.0); m.set_shader_parameter("bg_scale", _iv_bg_scale()); m.set_shader_parameter("uv_flip", iv_uvf)
+	if go_wake and iv_bgtex != null:
+		m.set_shader_parameter("bg_tex", iv_bgtex); m.set_shader_parameter("bg_tex_k", 1.0); m.set_shader_parameter("bg_scale", _iv_bg_scale()); m.set_shader_parameter("uv_flip", iv_uvf)
+		m.set_shader_parameter("world_uv", 1.0); m.set_shader_parameter("eye_c", ref); m.set_shader_parameter("eye_bx", bx); m.set_shader_parameter("eye_by", by); m.set_shader_parameter("eye_w", float(ivr_eye.width))
 	var mf := m.duplicate() as ShaderMaterial
 	m.set_shader_parameter("sea_a", 0.5 if go_wake else 0.7)
 	for pass_i in 2:
@@ -4459,10 +4672,10 @@ func _ivr_build() -> void:
 		var kind := "rock2" if nm.contains("rock") else ("olive2" if nm.contains("olive") else ("bark" if nm.contains("bark") else ("snow" if nm.contains("snow") else ("quarry" if nm.contains("quarry") else "marble2"))))
 		mi.material_override = _ivr_mat(kind, 1.0, true); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	if iv_at_sea:      # (the level's image in the still water: faint at dusk, clear at dawn)
-		_ivs_mirror(lv, func(mi: MeshInstance3D) -> Array:
+		ivw_mirror = _ivs_mirror(lv, func(mi: MeshInstance3D) -> Array:
 			var nm := String(mi.name).to_lower() + "|" + String(mi.get_parent().name).to_lower()
 			var kd := "rock2" if nm.contains("rock") else "marble2"
-			return [kd, 0.0, {"fog_hi": ivr_sea_y + (0.75 if go_wake else 1.5), "fog_lo": ivr_sea_y - 0.15, "veins": 0.6 if kd == "marble2" else 0.0, "haze": 1.0}])
+			return [kd, 0.0, {"fog_hi": ivr_sea_y + (0.04 if go_wake else 1.5), "fog_lo": ivr_sea_y - 0.15, "veins": 0.6 if kd == "marble2" else 0.0, "haze": 1.0}])
 	# its way
 	var j: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(go_dir + "level.json"))
 	if j.has("eye"): ivr_eye = j.eye
@@ -4496,7 +4709,8 @@ func _ivr_build() -> void:
 	if ivp_nodes.has(iv_block): iv_block_n.global_position = ivp_nodes[iv_block]
 	else: iv_block_n.visible = false; iv_block_n.global_position = IV_O + Vector3(0, -60, 0)      # (a trial without the stone)
 	if ivg_vol != "":
-		if go_quarry: _ivq_capstan(ivp_nodes[ivg_vol])
+		if go_wake: _ivw_winch(ivp_nodes[ivg_vol])
+		elif go_quarry: _ivq_capstan(ivp_nodes[ivg_vol])
 		elif go_moon: _ivm_dial(ivp_nodes[ivg_vol])
 		else: _ivp_volute(ivp_nodes[ivg_vol])
 	elif not ivg_on and j.get("volute") != null: _ivp_volute(V.call(j.volute))
@@ -4790,6 +5004,7 @@ func _ivg_turn(nb: String) -> void:
 		await _ivg_w_step()
 		return
 	if nb == ivg_vol:      # she turns the volute: the faces on their stands turn with it
+		if ivg_v == 1 and bool((ivg.volute as Dictionary).get("once", false)): await _her_no(); return      # (it has done its work: it turns no more)
 		iv_moves += 1
 		await _ivg_turn_volute()
 		await _ivg_settle()
@@ -4880,10 +5095,11 @@ func _ivg_turn_volute() -> void:
 	await up.finished
 	ivg_v ^= 1
 	print("IV the volute turns: ", ivg_v)
-	var sp := create_tween(); sp.tween_property(iv_wheel, "rotation:z", iv_wheel.rotation.z - PI, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	var sp := create_tween(); sp.tween_property(iv_wheel, "rotation:z", iv_wheel.rotation.z - (TAU if go_wake else PI), 1.6 if go_wake else 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	for f in ivg_faces:
 		if f.alive: _ivg_face_aim(f, 1.0)
-	await sp.finished
+	if go_wake: await _ivw_raise(ivg_v == 1)      # (the chains draw the stones up out of the water)
+	if sp.is_running(): await sp.finished      # (a tween already done sends no signal again)
 	var dn := tw(); dn.set_parallel(); dn.tween_property(self, "a_wL", 0.0, 0.35); dn.tween_property(self, "a_wR", 0.0, 0.35); dn.tween_property(self, "a_lean", 0.0, 0.35)
 	await dn.finished
 	iv_busy = false
