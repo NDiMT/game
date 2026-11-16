@@ -30,9 +30,9 @@ Everything is in `eidolon-demo/`. The first level, ivory (`goiv/`), is the worke
   - Pieces hang lower under the edge here and there; chips take the edge only, never the top, which is dead level.
   - Fill the top with `bmesh.ops.triangle_fill`, never an inner ring (it folds at notches) or `EAR_CLIP` (it bridges an L's notch when the face runs the other way). The builder reports any cap triangle outside its outline: it must report none.
   - Where a flight meets a floor, the edge runs square across it (`square_to_flights`), with no chamfer and no chip.
-- **Flights**: the flight stays straight and square on the grid; only its stones are uneven (the user: "steps carved and slightly uneven").
-  - Each step is two hand-cut half-blocks, either side of a channel down the middle (0.07 m wide, 0.03 m deep) where the way is drawn (`stair_groove` in the level's JSON).
-  - Each half differs a little: rise ±1 cm, front ±1.2 cm, its outer end 0–3.5 cm out, a few mm of tilt; its nosing rounded (bevel 0.016–0.03 m, 2 segments); now and then a chip off its outer front corner.
+- **Flights**: one piece of marble each (the user: separate step blocks look like "separate pieces"; he wants the stair whole), carved by hand and slightly uneven, the flight itself straight and square on the grid.
+  - Each step a little higher or lower (±1 cm) and deeper or shallower (±1.6 cm), all still summing to the flight; each tread a few mm out of level; each nosing rounded its own way (bevel 0.016–0.03 m, 2 segments). The sides stay clean and continuous.
+  - A channel cut down the middle (0.07 m wide, 0.03 m deep) through every nosing and riser: the profile shifted in and down by its depth. The way is drawn in it by the steps as cut (`flights[i][4]` and `stair_groove` in the level's JSON).
   - The last step is flush with the floor above and runs on under it. Under the steps, the flight's body: a deep white band (0.42 m).
   - The last tread sits a few mm under the floor and runs on under it. Coplanar faces z-fight into grey hatching.
   - The rock under a flight is flush with its sides: the stair continues the rock.

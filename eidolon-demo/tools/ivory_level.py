@@ -662,13 +662,16 @@ def ledge(name, c, rad, top):
     return obs
 
 
-STAIR_GROOVE = 0.03      # (how deep the channel down the middle of a flight, between its carved halves: the way runs in it)
+STAIR_GROOVE = 0.03      # (how deep the channel down the middle of a flight: the way runs in it)
+STEPS = []      # (each flight's nosings as cut, in order: the game draws the way down its channel by them)
 
 
 def flight(foot, head, w, n=None, step=0.12):
-    """a flight of steps as one smooth body of marble: up each riser and over each tread, each nosing eased a little,
-    a stringer under the line of the nosings; its last tread a hair under the upper floor and on under it (so no two
-    faces lie in one plane); the rock under it, its top along the stringer, and a cut mass of rock under that"""
+    """a flight of steps as one body of marble, carved by hand: each step a little higher or lower, deeper or shallower,
+    each tread a hair out of level, each nosing rounded its own way; a channel cut down its middle (through every
+    nosing and riser) where the way runs; a deep stringer under the line of the nosings; its last tread flush with the
+    upper floor and on under it. The flight itself straight and square. The rock under it, its top along the stringer,
+    and chunks of rock up beside it."""
     fx, fy, fz = foot; hx, hy, hz = head
     d = Vector((hx - fx, 0.0, hz - fz)); L = d.length; d.normalize()
     s = Vector((-d.z, 0.0, d.x))
@@ -676,54 +679,50 @@ def flight(foot, head, w, n=None, step=0.12):
     D = 0.42      # the stringer: how deep under the line of the nosings (and under the upper floor, past the head): a chunk of marble
     under = lambda t: min(fy + rise * (1.0 + t / run), hy) - D
     end = L + 0.34
-    prof = [(-0.2, min(under(-0.2), fy - 0.25)), (-0.2, fy - 0.004), (0.0, fy - 0.004)]
+    # carved by hand, one piece: each step its own rise and run, a little more or less (all still summing to the
+    # flight, the last flush with the floor above), each tread a hair out of level, each nosing rounded its own way
+    jr = [rnd.uniform(-0.012, 0.012) for _ in range(n)]; jr = [x - sum(jr) / n for x in jr]
+    jt = [rnd.uniform(-0.016, 0.016) for _ in range(n)]; jt = [x - sum(jt) / n for x in jt]
+    ys, ts = [], []; y_, t_ = fy, 0.0
+    for k in range(n): y_ += rise + jr[k]; ys.append(y_); ts.append(t_); t_ += run + jt[k]
+    ys[-1] = hy
+    prof = [(-0.2, min(under(-0.2), fy - 0.25), None), (-0.2, fy - 0.004, None), (0.0, fy - 0.004, None)]
     noses = []
     for k in range(n):
-        y = fy + rise * (k + 1) - (0.004 if k == n - 1 else 0.0)
-        noses.append(len(prof)); prof.append((k * run, y))      # the nosing of step k
-        prof.append(((k + 1) * run if k < n - 1 else L + 0.12, y))      # the back of its tread
-    prof += [(end, hy - 0.004), (end, under(end))]
+        y = ys[k] - (0.004 if k == n - 1 else 0.0)
+        noses.append(len(prof)); prof.append((ts[k], y, k))      # the nosing of step k
+        prof.append((ts[k + 1] if k < n - 1 else L + 0.12, y, k))      # the back of its tread
+    prof += [(end, hy - 0.004, None), (end, under(end), None)]
+    tilt = [(0.0, 0.0) if k == n - 1 else (rnd.uniform(-0.005, 0.005), rnd.uniform(-0.005, 0.005)) for k in range(n)]
     base = Vector((fx, 0.0, fz))
-    # the body: the stair's chunk of marble, its steps a little lower than the carved ones set on it (the channel down
-    # its middle, where the way runs, is the body showing between them), its sides a hair inside theirs
-    prof = [(t, y - (STAIR_GROOVE if (k_ > 2 and k_ < len(prof) - 2) else 0.0)) for k_, (t, y) in enumerate(prof)]
+    GD, g = STAIR_GROOVE, 0.07      # (the channel down its middle: how deep, how wide; the way is drawn in it)
     bm = bmesh.new()
-    def V(t, y, side):
-        p = base + d * t + s * (side * (w * 0.5 - 0.012))
-        return bm.verts.new(G(p.x, y, p.z))
-    A = [V(t, y, -1.0) for (t, y) in prof]; B = [V(t, y, 1.0) for (t, y) in prof]
-    bm.faces.new(A); bm.faces.new(list(reversed(B)))
-    for i in range(len(prof)):
-        j = (i + 1) % len(prof)
-        bm.faces.new([A[i], A[j], B[j], B[i]])
+    def P(t, v, y):
+        q_ = base + d * t + s * v
+        return bm.verts.new(G(q_.x, y, q_.z))
+    rows = []
+    for (t, y, k) in prof:      # across the flight at each point of its profile: the left tread, the channel (lower and further in), the right tread
+        tl, tr = tilt[k] if k is not None else (0.0, 0.0)
+        rows.append([P(t, -w * 0.5, y + tl), P(t, -g * 0.5, y + tl), P(t + GD, -g * 0.5, y - GD), P(t + GD, g * 0.5, y - GD), P(t, g * 0.5, y + tr), P(t, w * 0.5, y + tr)])
+    N = len(rows)
+    for i in range(N):
+        a_, b_ = rows[i], rows[(i + 1) % N]
+        for c in range(5): bm.faces.new([a_[c], b_[c], b_[c + 1], a_[c + 1]])
+    for side in (0, 5):      # (its two sides: one face each, filled within the stepped outline)
+        es = [bm.edges.get((rows[i][side], rows[(i + 1) % N][side])) for i in range(N)]
+        bmesh.ops.triangle_fill(bm, use_beauty=True, use_dissolve=False, edges=[e for e in es if e is not None])
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
-    m = [finish(bm, 'flight')]
-    # the steps, carved by hand: each in two halves either side of the channel, each half its own block, a little
-    # higher or lower, further out or in, its nosing rounded, a chip off a corner here and there; the last flush with
-    # the floor above (the flight itself straight and square: only the stones are uneven)
-    for k in range(n):
-        last = k == n - 1
-        gap = 0.07 + rnd.uniform(-0.008, 0.008)
-        for sd in (-1.0, 1.0):
-            t0 = max(-0.01, k * run + rnd.uniform(-0.012, 0.012)); t1 = (L + 0.12) if last else (k + 1) * run + 0.04
-            yt = fy + rise * (k + 1) + (-0.004 if last else rnd.uniform(-0.01, 0.01))
-            vi = sd * gap * 0.5; vo = sd * (w * 0.5 + rnd.uniform(0.0, 0.035))
-            yb = yt - rise - 0.05
-            dropf = 0.0 if last else rnd.uniform(0.0, 0.008); dropo = 0.0 if last else rnd.uniform(-0.004, 0.008)
-            def Q(t, v, y): q_ = base + d * t + s * v; return (q_.x, y, q_.z)
-            pts = [Q(t0, vi, yb), Q(t0, vo, yb), Q(t1, vo, yb), Q(t1, vi, yb),
-                   Q(t0, vi, yt - dropf), Q(t0, vo, yt - dropf - dropo), Q(t1, vo, yt - dropo), Q(t1, vi, yt)]
-            bm = bmesh.new(); hexa(bm, pts); bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
-            if rnd.random() < 0.25 and not last:      # (a chip off its outer front corner)
-                cn = Vector(G(*Q(t0, vo, yt))); nrm = (Vector(G(*Q(t0 - 1.0, vo + sd * 1.0, yt + 1.2))) - cn).normalized()
-                cut = rnd.uniform(0.03, 0.06)
-                bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=cn - nrm * cut, plane_no=nrm, clear_outer=True)
-                bmesh.ops.holes_fill(bm, edges=bm.edges[:], sides=0); bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
-            top = max(v.co.z for v in bm.verts)
-            eds = [e for e in bm.edges if len(e.link_faces) == 2 and e.calc_face_angle(0) > 0.5 and min(v.co.z for v in e.verts) > top - rise - 0.02]
-            try: bmesh.ops.bevel(bm, geom=eds, offset=rnd.uniform(0.016, 0.03), segments=2, affect='EDGES', profile=0.5, clamp_overlap=True)
+    for k, i in enumerate(noses):      # (each nosing rounded, its own way; the channel's lip only eased)
+        r_ = rows[i]
+        eds = [bm.edges.get((r_[0], r_[1])), bm.edges.get((r_[4], r_[5]))]
+        try: bmesh.ops.bevel(bm, geom=[e for e in eds if e is not None and e.is_valid], offset=rnd.uniform(0.016, 0.03), segments=2, affect='EDGES', profile=0.5, clamp_overlap=True)
+        except Exception: pass
+        e2 = bm.edges.get((r_[2], r_[3]))
+        if e2 is not None and e2.is_valid:
+            try: bmesh.ops.bevel(bm, geom=[e2], offset=0.008, segments=1, affect='EDGES', profile=0.5, clamp_overlap=True)
             except Exception: pass
-            m.append(finish(bm, 'step'))
+    m = [finish(bm, 'flight')]
+    STEPS.append([[round(ts[k], 4), round(ys[k], 4)] for k in range(n)])
     # the rock under it: the blocks of the mountain go on along both its sides, flush with the ends of its steps, their
     # tops along the stringer; they meet in the middle under it
     tt = lambda x, z: under((Vector((x, 0.0, z)) - base).dot(d)) + 0.02
@@ -862,6 +861,8 @@ else:
         m, r = floor(nm, 0, 0, 0, 0, fl['h'], 0, poly=[tuple(p) for p in fl['xz']]); marble += m; rock += r
     for fl in PLAN['flights']:
         m, r = flight(tuple(fl[0]), tuple(fl[1]), fl[2], fl[3] if len(fl) > 3 else None); marble += m; rock += r
+        while len(fl) < 4: fl.append(len(STEPS[-1]))
+        fl[4:] = [STEPS[-1]]
     for (c, r_, top) in PLAN.get('rocks', []):      # rock that binds the floors into one mountain
         rock += ledge('ledge', c, r_, top)
     for (p, h) in PLAN['columns']:

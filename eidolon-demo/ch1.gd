@@ -3344,7 +3344,8 @@ var ivr_on := OS.get_environment("IV_MODE") != "plate" and OS.get_environment("I
 var ivr_eye := {}      # the eye of the picture the level was traced from: its middle (from the level's origin) and its width
 var ivr_steps := {}      # how many steps each flight has (as counted on the picture), by its foot and head
 var ivr_floors := {}      # the floors of the level: their heights and outlines (x, z), for what must lie on them or hang over their edges
-var ivr_groove := 0.0      # how deep the channel down the middle of each flight, between its carved halves: the way is drawn in it
+var ivr_groove := 0.0      # how deep the channel down the middle of each flight: the way is drawn in it
+var ivr_stepl := {}      # each flight's steps as cut (along it from its foot, and height), by its foot and head
 
 ## how far from p, going along d on the floor p is on, its edge is (or -1)
 func _ivr_edge_dist(p: Vector3, d: Vector3) -> float:
@@ -3395,11 +3396,24 @@ func _ivr_way() -> void:
 			var a0 := (pts[0] as Vector3) if f.y < h.y else (ivp_nodes[e[1]] as Vector3)
 			var a1 := (ivp_nodes[e[1]] as Vector3) if f.y < h.y else (pts[0] as Vector3)
 			_iv_line(iv_root, a0 - IV_O, lo_p - IV_O)
-			for k in n:
-				var foot_k := lo_p + dd * (run * float(k)) + Vector3(0, rz * float(k) - (ivr_groove if (ivr_on and k > 0) else 0.0), 0)
-				var up_k := lo_p + dd * (run * float(k)) + Vector3(0, rz * float(k + 1) - (ivr_groove if (ivr_on and k < n - 1) else 0.0), 0)
-				_iv_riser(iv_root, foot_k - IV_O - dd * 0.012, up_k - IV_O - dd * 0.012)
-				_iv_line(iv_root, up_k - IV_O, up_k + dd * run - IV_O)
+			var sl: Array = ivr_stepl.get(_ivr_fkey(lo_p, hi_p), [])
+			if ivr_on and not sl.is_empty():      # (the steps as they were cut, a little uneven: down the channel in their middle)
+				var g := ivr_groove; var ln := Vector3(hi_p.x - lo_p.x, 0, hi_p.z - lo_p.z).length()
+				var at := func(t: float, y: float) -> Vector3: var q := lo_p + dd * t; return Vector3(q.x, y, q.z) - IV_O
+				var y_prev := lo_p.y - g
+				for k in sl.size():
+					var tk := float(sl[k][0]) + g; var yk := IV_O.y + float(sl[k][1]) - g
+					var tn := (float(sl[k + 1][0]) + g) if k < sl.size() - 1 else ln
+					_iv_riser(iv_root, at.call(tk - 0.012, y_prev), at.call(tk - 0.012, yk))
+					_iv_line(iv_root, at.call(tk, yk), at.call(tn, yk))
+					y_prev = yk
+				_iv_riser(iv_root, at.call(ln - 0.012, y_prev), at.call(ln - 0.012, hi_p.y))
+			else:
+				for k in n:
+					var foot_k := lo_p + dd * (run * float(k)) + Vector3(0, rz * float(k), 0)
+					var up_k := foot_k + Vector3(0, rz, 0)
+					_iv_riser(iv_root, foot_k - IV_O - dd * 0.012, up_k - IV_O - dd * 0.012)
+					_iv_line(iv_root, up_k - IV_O, up_k + dd * run - IV_O)
 			_iv_line(iv_root, hi_p - IV_O, a1 - IV_O)
 		else: _iv_line(iv_root, (pts[0] as Vector3) - IV_O, (ivp_nodes[e[1]] as Vector3) - IV_O)
 	for k in ivp_nodes:
@@ -3609,6 +3623,7 @@ func _ivr_build() -> void:
 	if j.has("flights"):
 		for fl in (j.flights as Array):
 			ivr_steps[_ivr_fkey(V.call(fl[0]), V.call(fl[1]))] = int(fl[3]) if (fl as Array).size() > 3 else 0
+			if (fl as Array).size() > 4: ivr_stepl[_ivr_fkey(V.call(fl[0]), V.call(fl[1]))] = fl[4]
 	ivp_edges = []
 	for e in (src.edges as Array):
 		var mids := []
