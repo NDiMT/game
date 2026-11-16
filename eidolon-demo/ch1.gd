@@ -2118,6 +2118,8 @@ uniform vec3 sea_c : source_color = vec3(0.3, 0.45, 0.56);
 uniform float shadow_k = 1.0;      // (how much cast shadow falls on it: none on the rock, whose faces are each one clean tone)
 uniform float lf_lo = 3.2;
 uniform vec3 ao_tint : source_color = vec3(0.93, 0.83, 0.78);      // (the colour the close corners darken toward: warm in the sun, cool under the moon)
+uniform sampler2D bg_tex : source_color, filter_linear, repeat_disable;      // (a painted backdrop: the mist is its colour at that place on the screen)
+uniform float bg_tex_k = 0.0; uniform vec2 bg_scale = vec2(1.0);
 uniform vec3 vein_tint : source_color = vec3(0.9, 0.86, 0.83);
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
@@ -2167,6 +2169,7 @@ void fragment(){
 	if (mirror_k > 0.5) c = mix(c, sea_c, 0.28 + 0.5 * smoothstep(0.0, 3.2, mirror_y - wp.y));      // (the image dims as it goes down into the water)
 	ALBEDO = c * (1.0 - fk);
 	vec3 mist = bgc(sy);
+	if (bg_tex_k > 0.5) mist = texture(bg_tex, vec2(0.5 + (SCREEN_UV.x - 0.5) * bg_scale.x, 0.5 + (sy - 0.5) * bg_scale.y)).rgb;
 	if (sea_k > 0.0) mist = mix(mist, sea_c, smoothstep(0.21, 0.38, sy) * (1.0 - smoothstep(0.5, 0.92, sy)) * 0.9 * sea_k);
 	EMISSION = mist * fk + c_top * emit;
 	if (dbg > 0.5) { ALBEDO = vec3(0.0); EMISSION = dbg > 3.5 ? vec3(fk) : (dbg > 2.5 ? c : (dbg > 1.5 ? vec3(d * 0.5 + 0.5) : fn * 0.5 + 0.5)); }
@@ -2214,6 +2217,25 @@ void fragment(){
 }
 """
 var iv_shader: Shader
+const IV_BGTEX_SH := """
+shader_type spatial;
+render_mode unshaded, cull_disabled, shadows_disabled;
+uniform sampler2D bg_tex : source_color, filter_linear, repeat_disable;
+uniform vec2 bg_scale = vec2(1.0);
+uniform vec3 bg_top : source_color;
+uniform float uv_flip = 0.0;
+void fragment(){
+	float sy = uv_flip > 0.5 ? 1.0 - SCREEN_UV.y : SCREEN_UV.y;
+	vec2 uv = vec2(0.5 + (SCREEN_UV.x - 0.5) * bg_scale.x, 0.5 + (sy - 0.5) * bg_scale.y);
+	vec3 c = texture(bg_tex, clamp(uv, vec2(0.001), vec2(0.999))).rgb;
+	ALBEDO = mix(c, bg_top, smoothstep(0.0, -0.12, uv.y));      // (on a screen taller than the painting: above it, the sky's own colour)
+}
+"""
+var iv_bgtex: Texture2D      # (the level's painted backdrop, if it has one: <level>/backdrop.jpg)
+func _iv_bg_scale() -> Vector2:      # (the painting is 9:16; on a taller or a wider screen it keeps its shape, its middle at the screen's middle)
+	var vp := get_viewport().get_visible_rect().size
+	var r := vp.y / maxf(vp.x, 1.0); var rb := 16.0 / 9.0
+	return Vector2(1.0, r / rb) if r >= rb else Vector2(r / rb, 1.0)
 var iv_key := (Vector3(0.6, 0.66, -0.45) if go_drown else Vector3(-0.56, 0.72, 0.41)) if (OS.get_environment("IV_MODE") != "plate" and OS.get_environment("IV_MODE") != "3d") else IV_KEY      # (the sea: the low sun on the faces toward the eye's right)
 var iv_mats := {}
 var iv_uvf := float(OS.get_environment("IV_UVF")) if OS.get_environment("IV_UVF") != "" else 0.0
@@ -2248,6 +2270,7 @@ func _iv_mat(kind: String, far_k := 0.0, extra := {}) -> ShaderMaterial:
 	var p: Array = _iv_pal(kind)
 	for i in 4: m.set_shader_parameter(["c_top", "c_lit", "c_mid", "c_dark"][i], Color(String(p[i])))
 	_iv_sky(m)
+	if iv_bgtex != null: m.set_shader_parameter("bg_tex", iv_bgtex); m.set_shader_parameter("bg_tex_k", 1.0); m.set_shader_parameter("bg_scale", _iv_bg_scale())
 	if go_drown:
 		m.set_shader_parameter("shade_tint", Color(0.74, 0.79, 0.9)); m.set_shader_parameter("clip_k", 1.0); m.set_shader_parameter("clip_y", IV_O.y + ivr_sea_y)
 	if go_moon:      # (a shadow on the snow is blue; so are its close corners and the veins of its marble)
@@ -3392,6 +3415,9 @@ func _play_ivp() -> void:
 	tap(Vector2(360, 640)); await wait(1.0)
 	await idle.call(); await wait(0.6)
 	if OS.get_environment("IV_CLEAN") != "": await wait(7.0)      # (for the look alone: after the line has gone)
+	if OS.get_environment("IV_BG_ONLY") != "":
+		for n in [fig, wfig]:
+			if n != null: (n as Node3D).visible = false
 	await snap.call("p1_start")
 	if OS.get_environment("GH_ONLY") == "start": get_tree().quit(); return
 	if ivg_on:      # the trial played by swipes, as a player would: each a stroke from her toward the next node
@@ -4007,10 +4033,12 @@ func _ivr_build() -> void:
 	iv_root = Node3D.new(); iv_root.position = IV_O; add_child(iv_root)
 	var j0 = JSON.parse_string(FileAccess.get_file_as_string(go_dir + "level.json"))
 	if j0 is Dictionary and (j0 as Dictionary).get("sea_y") != null: ivr_sea_y = float(j0.sea_y)
-	var bm := ShaderMaterial.new(); var bs := Shader.new(); bs.code = IV_BG_SH; bm.shader = bs
+	if go_moon and OS.get_environment("IV_NO_BACKDROP") == "" and FileAccess.file_exists(go_dir + "backdrop.jpg"): iv_bgtex = load(go_dir + "backdrop.jpg")
+	var bm := ShaderMaterial.new(); var bs := Shader.new(); bs.code = IV_BG_SH if iv_bgtex == null else IV_BGTEX_SH; bm.shader = bs
 	_iv_sky(bm)
+	if iv_bgtex != null: bm.set_shader_parameter("bg_tex", iv_bgtex); bm.set_shader_parameter("bg_scale", _iv_bg_scale()); bm.set_shader_parameter("uv_flip", iv_uvf)
 	if go_drown: bm.set_shader_parameter("sun", Vector2(0.305, 0.19)); bm.set_shader_parameter("sun_k", 1.0)
-	if go_moon: bm.set_shader_parameter("sun", IVM_MOON); bm.set_shader_parameter("moon_k", 1.0); bm.set_shader_parameter("moon_r", IVM_MOON_R)
+	if go_moon and iv_bgtex == null: bm.set_shader_parameter("sun", IVM_MOON); bm.set_shader_parameter("moon_k", 1.0); bm.set_shader_parameter("moon_r", IVM_MOON_R)
 	var bq := QuadMesh.new(); bq.size = Vector2(900, 900)
 	var bgi := MeshInstance3D.new(); bgi.mesh = bq; bgi.material_override = bm; bgi.position = Vector3(0, 0, -140.0); bgi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; cam.add_child(bgi)
 	# the level, as Blender made it
@@ -4089,7 +4117,7 @@ func _ivr_build() -> void:
 	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm.blend_mode = BaseMaterial3D.BLEND_MODE_MIX if go_moon else BaseMaterial3D.BLEND_MODE_ADD; gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; gm.albedo_color = Color(1.0, 0.76, 0.36, 0.42) if go_moon else Color(1.0, 0.96, 0.86, 0.5)      # (on the snow a glow added burns white: drawn over it, golden)
 	iv_glow = MeshInstance3D.new(); iv_glow.mesh = gq; iv_glow.material_override = gm; iv_glow.position = Vector3(0, 0.4, 0); iv_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; iv_ring.add_child(iv_glow)
 	if go_moon:
-		_ivm_far()
+		if iv_bgtex == null: _ivm_far()      # (the far peaks are in the painted backdrop when there is one)
 		for bz in (j.get("braziers", []) as Array): _ivm_brazier(V.call(bz))
 	if go_drown or go_moon:
 		if go_drown: _ivs_sea(float(j.get("sea_y", -1.6))); _ivs_far()
@@ -4129,6 +4157,8 @@ func _ivr_build() -> void:
 		_iv_overlay(cl, "res://goiv/rock_bl.png", Vector2(-80 * k, vh - 360 * k), Vector2(400, 400) * k)
 		_iv_overlay(cl, "res://goiv/rock_br.png", Vector2(720 * k - 330 * k, vh - 330 * k), Vector2(400, 400) * k)
 		_iv_overlay(cl, "res://goiv/rock_r.png", Vector2(720 * k - 150 * k, vh * 0.36), Vector2(170 * k, vh * 0.66))
+	if OS.get_environment("IV_BG_ONLY") != "":      # (what lies behind the level alone: to be painted as its backdrop)
+		iv_root.visible = false; cl.visible = false
 
 
 # ---------------------------------------------------------------- Eidolon GO, ivory: the trial played as Lara Croft GO is

@@ -80,7 +80,7 @@ def plan():
         'faces': [[nodes['05'], [0, 0, 1]], [nodes['32'], [1, 0, 0]]],
         'columns': [[[-5.75, HM, -0.95], 0.8], [[-7.55, HT, -1.35], 1.25], [[-7.55, HT, -1.95], 0.7]],
         'braziers': [[-0.05, H0, -5.15], [1.68, H0, -1.48], [-8.15, HR, -2.25], [-8.15, HR, -3.75]],      # (warm lights: past the court, beside the dial (to the eye's right of its face), at the dais)
-        'arches': [[[-(ROW[6] + 0.55), HR, -3.0], 'x']],
+        'arches': [[[-(ROW[6] + 0.55), HR, -3.0], 'z']],      # (its way through along x: she comes up the last flight along x, through the light, into the gate)
         'rocks': [[[1.2, -0.7, -3.4], 1.0, -0.6], [[-2.4, -0.4, 0.6], 0.9, -0.3], [[-3.9, 0.1, -3.6], 1.1, 0.0], [[-6.2, 0.6, 1.5], 1.0, 0.7],
                   [[-8.3, 1.0, -0.6], 1.1, 1.1], [[-5.6, 0.3, -4.4], 1.0, 0.3], [[2.0, -1.0, 0.8], 0.9, -1.0]],
         'volute': None, 'head': None, 'relief': None, 'cypress': None,
