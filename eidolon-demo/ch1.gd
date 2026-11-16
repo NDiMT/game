@@ -3344,6 +3344,7 @@ var ivr_on := OS.get_environment("IV_MODE") != "plate" and OS.get_environment("I
 var ivr_eye := {}      # the eye of the picture the level was traced from: its middle (from the level's origin) and its width
 var ivr_steps := {}      # how many steps each flight has (as counted on the picture), by its foot and head
 var ivr_floors := {}      # the floors of the level: their heights and outlines (x, z), for what must lie on them or hang over their edges
+var ivr_groove := 0.0      # how deep the channel down the middle of each flight, between its carved halves: the way is drawn in it
 
 ## how far from p, going along d on the floor p is on, its edge is (or -1)
 func _ivr_edge_dist(p: Vector3, d: Vector3) -> float:
@@ -3395,8 +3396,8 @@ func _ivr_way() -> void:
 			var a1 := (ivp_nodes[e[1]] as Vector3) if f.y < h.y else (pts[0] as Vector3)
 			_iv_line(iv_root, a0 - IV_O, lo_p - IV_O)
 			for k in n:
-				var foot_k := lo_p + dd * (run * float(k)) + Vector3(0, rz * float(k), 0)
-				var up_k := foot_k + Vector3(0, rz, 0)
+				var foot_k := lo_p + dd * (run * float(k)) + Vector3(0, rz * float(k) - (ivr_groove if (ivr_on and k > 0) else 0.0), 0)
+				var up_k := lo_p + dd * (run * float(k)) + Vector3(0, rz * float(k + 1) - (ivr_groove if (ivr_on and k < n - 1) else 0.0), 0)
 				_iv_riser(iv_root, foot_k - IV_O - dd * 0.012, up_k - IV_O - dd * 0.012)
 				_iv_line(iv_root, up_k - IV_O, up_k + dd * run - IV_O)
 			_iv_line(iv_root, hi_p - IV_O, a1 - IV_O)
@@ -3599,6 +3600,7 @@ func _ivr_build() -> void:
 	var j: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://goiv/level.json"))
 	if j.has("eye"): ivr_eye = j.eye
 	if j.has("floors"): ivr_floors = j.floors
+	ivr_groove = float(j.get("stair_groove", 0.0))
 	var V := func(a: Array) -> Vector3: return IV_O + Vector3(float(a[0]), float(a[1]), float(a[2]))
 	ivg_on = _ivg_load()      # the trial played as Lara Croft GO is (goiv/puzzle.json); else the first trial's way
 	var src: Dictionary = ivg if ivg_on else j

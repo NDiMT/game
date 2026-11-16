@@ -662,6 +662,9 @@ def ledge(name, c, rad, top):
     return obs
 
 
+STAIR_GROOVE = 0.03      # (how deep the channel down the middle of a flight, between its carved halves: the way runs in it)
+
+
 def flight(foot, head, w, n=None, step=0.12):
     """a flight of steps as one smooth body of marble: up each riser and over each tread, each nosing eased a little,
     a stringer under the line of the nosings; its last tread a hair under the upper floor and on under it (so no two
@@ -681,9 +684,12 @@ def flight(foot, head, w, n=None, step=0.12):
         prof.append(((k + 1) * run if k < n - 1 else L + 0.12, y))      # the back of its tread
     prof += [(end, hy - 0.004), (end, under(end))]
     base = Vector((fx, 0.0, fz))
+    # the body: the stair's chunk of marble, its steps a little lower than the carved ones set on it (the channel down
+    # its middle, where the way runs, is the body showing between them), its sides a hair inside theirs
+    prof = [(t, y - (STAIR_GROOVE if (k_ > 2 and k_ < len(prof) - 2) else 0.0)) for k_, (t, y) in enumerate(prof)]
     bm = bmesh.new()
     def V(t, y, side):
-        p = base + d * t + s * (side * w * 0.5)
+        p = base + d * t + s * (side * (w * 0.5 - 0.012))
         return bm.verts.new(G(p.x, y, p.z))
     A = [V(t, y, -1.0) for (t, y) in prof]; B = [V(t, y, 1.0) for (t, y) in prof]
     bm.faces.new(A); bm.faces.new(list(reversed(B)))
@@ -691,9 +697,33 @@ def flight(foot, head, w, n=None, step=0.12):
         j = (i + 1) % len(prof)
         bm.faces.new([A[i], A[j], B[j], B[i]])
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
-    eds = [bm.edges.get([A[i], B[i]]) for i in noses]
-    bmesh.ops.bevel(bm, geom=[e for e in eds if e is not None], offset=0.014, segments=1, affect='EDGES', profile=0.5)      # (a line of light along each nosing)
     m = [finish(bm, 'flight')]
+    # the steps, carved by hand: each in two halves either side of the channel, each half its own block, a little
+    # higher or lower, further out or in, its nosing rounded, a chip off a corner here and there; the last flush with
+    # the floor above (the flight itself straight and square: only the stones are uneven)
+    for k in range(n):
+        last = k == n - 1
+        gap = 0.07 + rnd.uniform(-0.008, 0.008)
+        for sd in (-1.0, 1.0):
+            t0 = max(-0.01, k * run + rnd.uniform(-0.012, 0.012)); t1 = (L + 0.12) if last else (k + 1) * run + 0.04
+            yt = fy + rise * (k + 1) + (-0.004 if last else rnd.uniform(-0.01, 0.01))
+            vi = sd * gap * 0.5; vo = sd * (w * 0.5 + rnd.uniform(0.0, 0.035))
+            yb = yt - rise - 0.05
+            dropf = 0.0 if last else rnd.uniform(0.0, 0.008); dropo = 0.0 if last else rnd.uniform(-0.004, 0.008)
+            def Q(t, v, y): q_ = base + d * t + s * v; return (q_.x, y, q_.z)
+            pts = [Q(t0, vi, yb), Q(t0, vo, yb), Q(t1, vo, yb), Q(t1, vi, yb),
+                   Q(t0, vi, yt - dropf), Q(t0, vo, yt - dropf - dropo), Q(t1, vo, yt - dropo), Q(t1, vi, yt)]
+            bm = bmesh.new(); hexa(bm, pts); bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+            if rnd.random() < 0.25 and not last:      # (a chip off its outer front corner)
+                cn = Vector(G(*Q(t0, vo, yt))); nrm = (Vector(G(*Q(t0 - 1.0, vo + sd * 1.0, yt + 1.2))) - cn).normalized()
+                cut = rnd.uniform(0.03, 0.06)
+                bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=cn - nrm * cut, plane_no=nrm, clear_outer=True)
+                bmesh.ops.holes_fill(bm, edges=bm.edges[:], sides=0); bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+            top = max(v.co.z for v in bm.verts)
+            eds = [e for e in bm.edges if len(e.link_faces) == 2 and e.calc_face_angle(0) > 0.5 and min(v.co.z for v in e.verts) > top - rise - 0.02]
+            try: bmesh.ops.bevel(bm, geom=eds, offset=rnd.uniform(0.016, 0.03), segments=2, affect='EDGES', profile=0.5, clamp_overlap=True)
+            except Exception: pass
+            m.append(finish(bm, 'step'))
     # the rock under it: the blocks of the mountain go on along both its sides, flush with the ends of its steps, their
     # tops along the stringer; they meet in the middle under it
     tt = lambda x, z: under((Vector((x, 0.0, z)) - base).dot(d)) + 0.02
@@ -898,6 +928,7 @@ for extra in (dict(export_vertex_color='ACTIVE'), dict(export_colors=True), {}):
 # ------------------------------------------------------------------ the way, for the game
 if PLAN is not None:
     way = {k: PLAN[k] for k in ('heights', 'nodes', 'edges', 'volute', 'head', 'ring', 'eye', 'flights', 'floors', 'relief')}
+    way['stair_groove'] = STAIR_GROOVE
     with open(OUTJ, 'w') as f: json.dump(way, f, indent=1)
     print('DONE'); sys.exit(0)
 way = {
