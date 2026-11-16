@@ -3089,6 +3089,7 @@ func _iv_do_push(dest: String) -> void:
 
 func _iv_win() -> void:
 	iv_won = true
+	if go_wake: _ivw_music_out(3.5)
 	if go_wake and ivw_gate_m != null:      # (the gate's light flares as she stands in it)
 		var gf := create_tween().set_parallel()
 		gf.tween_method(func(v: float) -> void: ivw_gate_m.set_shader_parameter("k", v), 1.0, 2.6, 1.4).set_trans(Tween.TRANS_SINE)
@@ -4288,7 +4289,27 @@ func _ivw_menu_make() -> void:
 	ivw_close = 0.0      # (the whole level behind the name)
 	ivw_menu_on = true
 	var auto := OS.get_cmdline_user_args().has("godemo")
-	if FileAccess.file_exists("res://intro/intro.ogv") and OS.get_environment("IV_NO_INTRO") == "" and (not auto or OS.get_environment("IV_INTRO") != ""): _ivw_intro()
+	if ResourceLoader.exists("res://intro/intro.ogv") and OS.get_environment("IV_NO_INTRO") == "" and (not auto or OS.get_environment("IV_INTRO") != ""): _ivw_intro()
+	else: _ivw_music("res://music/theme.ogg", 2.0)
+
+## the music (music/: made with the music model from the written descriptions in design/music/): the theme under the
+## start screen, the still sea under the first level, each looping, one fading into the next
+var ivw_music_p: AudioStreamPlayer
+func _ivw_music(file: String, fade := 2.5, db := -2.0) -> void:
+	if OS.get_environment("IV_NO_MUSIC") != "" or not ResourceLoader.exists(file): return
+	var st := load(file) as AudioStream
+	if st is AudioStreamOggVorbis: (st as AudioStreamOggVorbis).loop = true
+	var old := ivw_music_p
+	var p := AudioStreamPlayer.new(); add_child(p); p.stream = st; p.volume_db = -40.0; p.play()
+	create_tween().tween_property(p, "volume_db", db, fade).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	if old != null:
+		var t := create_tween(); t.tween_property(old, "volume_db", -50.0, fade).set_trans(Tween.TRANS_SINE); t.tween_callback(old.queue_free)
+	ivw_music_p = p
+
+func _ivw_music_out(fade := 3.0) -> void:
+	if ivw_music_p == null: return
+	var old := ivw_music_p; ivw_music_p = null
+	var t := create_tween(); t.tween_property(old, "volume_db", -50.0, fade).set_trans(Tween.TRANS_SINE); t.tween_callback(old.queue_free)
 
 func _ivw_intro() -> void:
 	var cl := CanvasLayer.new(); cl.layer = 9; add_child(cl)
@@ -4307,9 +4328,11 @@ func _ivw_intro_end() -> void:      # (at its end, or at a tap: the film fades i
 	if ivw_video.is_playing(): t.parallel().tween_property(ivw_video, "volume_db", -40.0, 1.2)
 	await t.finished
 	ivw_video.stop(); ivw_intro_box.get_parent().queue_free(); ivw_intro_box = null; ivw_video = null
+	_ivw_music("res://music/theme.ogg", 2.5)
 
 func _ivw_play() -> void:      # (PLAY: the name and the haze go, the eye goes down to her where she lies, and she wakes)
 	ivw_menu_on = false
+	_ivw_music("res://music/still_sea.ogg", 3.5, -5.0)      # (the theme gives way to the still sea, quieter: it plays while she thinks)
 	var t := create_tween().set_parallel()
 	t.tween_property(ivw_menu, "modulate:a", 0.0, 1.0).set_trans(Tween.TRANS_SINE)
 	if OS.get_environment("IVW_SKIP") == "": t.tween_property(self, "ivw_close", 1.0, 2.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)

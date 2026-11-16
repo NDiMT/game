@@ -128,6 +128,14 @@ The levels are many, in one system. A new level is made in this order (the secon
   - **The logo**: from the image model, a very thin wordmark, black on white. The user chose the ultra-thin geometric one, with a hairline and a small diamond under it (`design/logo/`, its prompts beside it). Have the model set PLAY in the same typeface, with the logo as its reference.
     - Key both to alpha (alpha from darkness, crop, resize; `ui/logo.png`, `ui/play.png`), so the game can colour them.
     - Check the spelling of every variant: one wrote a word that was never asked for under the name.
+  - **Music** (`music/`, `_ivw_music`): made with the music model (`lyria-3.5`, the intro's own `eidolon-world/dev/intro/amphora/tools/genmus.py <prompt> <out>`) from written descriptions (`design/music/`). The user's reference was a cinematic, minimal, melancholic TV score. Never name the artist; describe the style:
+    - felt piano, strings and drones, a few lyre notes;
+    - a wordless female voice only at a few moments, as in the intro;
+    - no drums;
+    - a line of the form for each stretch of the piece.
+    - Loudness-normalize to -18 LUFS, encode to Ogg Vorbis, and set `loop=true` in the `.import`.
+    - The theme plays under the start screen. PLAY crossfades into the level's piece, quieter (-5 dB), which loops; it fades out at the end.
+    - Check the recording (`--write-movie` takes the sound too): measure it with ebur128 (about -24 LUFS in the game).
   - **Mist held to the world** (`mist_world` in IV_SH): what fades into the mist samples the painting as the sea does (`world_uv`), not by its place on the screen. Otherwise an eye moved off the level's own frame (the close-up at the waking) shows faded images in the water as pale blots.
 - **The words** (titles and the lines of the story): at the waking, and wherever the ground is light, black letters with no shadow at all (the user: "take those stupid shadows away, better black"), as the start screen has them. On a dark ground (the night of the moon level) they stay white, with a soft black shadow all round made of the old haze in thin black outline steps. Never an offset shadow, a warm glow, or a red rule or lozenge over them.
 - **Check what the eye sees of a thing before blaming the renderer**: a chain laid "up the screen" from a winch hid wholly behind its drum. Paint the thing plain red with an unshaded material to see where it is, and route it on the eye's side.
