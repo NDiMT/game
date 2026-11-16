@@ -1092,6 +1092,107 @@ if PLAN is not None and PLAN.get('relief'):      # (the small carved stone: on t
             print('RELIEF on the rock at', [round(v, 2) for v in PLAN['relief']]); break
 print('TRIS', sum(len(o.data.polygons) for o in (M, R, O, B, SN, QU) if o is not None))
 
+# ------------------------------------------------------------------ the shore: where the still water meets the stone
+# How far each spot of the water lies from the nearest stone standing in it, so the sea can draw a thin brightness
+# hugging every rock and small slow waves going out from it (the game reads <level>/shore.png over the rect in
+# level.json). Red: what stands in the water for good (the rock, the floors, the Observer); green: the stones that rise.
+SHORE = None
+if PLAN is not None and PLAN.get('shore') and PLAN.get('sea_y') is not None:
+    import os
+    import numpy as np
+    from scipy import ndimage
+    from scipy.sparse import coo_matrix
+    from scipy.sparse.csgraph import connected_components
+    from PIL import Image
+    SY = float(PLAN['sea_y']) + 0.015
+
+    def cut(ob):
+        """the body cut by the water's face: per island of it, its segments [x0, z0, x1, z1] in the game's x and z"""
+        mw = ob.matrix_world; me = ob.data; me.calc_loop_triangles()
+        V = np.array([tuple(mw @ v.co) for v in me.vertices], dtype=np.float64)
+        T = np.array([tuple(t.vertices) for t in me.loop_triangles], dtype=np.int64)
+        if len(T) == 0: return []
+        _, inv = np.unique(np.round(V, 5), axis=0, return_inverse=True); T = inv.reshape(-1)[T]      # (a vertex split at a hard edge is still one point of the body)
+        V = np.array([tuple(mw @ v.co) for v in me.vertices], dtype=np.float64)
+        Vu = np.zeros((int(inv.max()) + 1, 3)); Vu[inv.reshape(-1)] = V; V = Vu
+        n = len(V); e = np.concatenate([T[:, [0, 1]], T[:, [1, 2]], T[:, [2, 0]]])
+        _, lab = connected_components(coo_matrix((np.ones(len(e)), (e[:, 0], e[:, 1])), shape=(n, n)), directed=False)
+        h = V[:, 2] - SY; h[np.abs(h) < 1e-7] = 1e-7
+        sg = np.sign(h[T]); T = T[~(sg == sg[:, :1]).all(axis=1)]
+        if len(T) == 0: return []
+        P = []; C = []
+        for (a_, b_) in ((0, 1), (1, 2), (2, 0)):
+            ha = h[T[:, a_]]; hb = h[T[:, b_]]
+            C.append(ha * hb < 0)
+            P.append(V[T[:, a_]] + (V[T[:, b_]] - V[T[:, a_]]) * (ha / np.where(ha - hb == 0, 1e-9, ha - hb))[:, None])
+        P = np.stack(P, axis=1); C = np.stack(C, axis=1)
+        ix = np.argsort(~C, axis=1, kind='stable')[:, :2]; ar = np.arange(len(T))
+        p0 = P[ar, ix[:, 0]]; p1 = P[ar, ix[:, 1]]
+        sg2 = np.stack([p0[:, 0], -p0[:, 1], p1[:, 0], -p1[:, 1]], axis=1)
+        il = lab[T[:, 0]]
+        return [sg2[il == k] for k in np.unique(il)]
+
+    def fill(mask, sg, x0, z0, res):
+        """one body's outline filled into the mask: row by row, even-odd, if it is closed; if it is not (a model with a
+        hole in it), its outline drawn, its gaps closed, and all it rings filled"""
+        X0, Z0, X1, Z1 = sg[:, 0], sg[:, 1], sg[:, 2], sg[:, 3]
+        jlo = max(0, int((min(Z0.min(), Z1.min()) - z0) / res) - 1); jhi = min(mask.shape[0] - 1, int((max(Z0.max(), Z1.max()) - z0) / res) + 1)
+        xc = x0 + (np.arange(mask.shape[1]) + 0.5) * res
+        rows = []
+        for j in range(jlo, jhi + 1):
+            z = z0 + (j + 0.5) * res
+            c = (Z0 - z) * (Z1 - z) < 0
+            if not c.any(): continue
+            xs = np.sort(X0[c] + (X1[c] - X0[c]) * (z - Z0[c]) / (Z1[c] - Z0[c]))
+            if len(xs) % 2: rows = None; break
+            rows.append((j, np.searchsorted(xs, xc) % 2 == 1))
+        if rows is not None:
+            for (j, r) in rows: mask[j] |= r
+            return
+        ol = np.zeros(mask.shape, dtype=bool)
+        for (a0, b0, a1, b1) in sg:
+            n_ = max(2, int(math.hypot(a1 - a0, b1 - b0) / (res * 0.5)) + 1)
+            t = np.linspace(0.0, 1.0, n_)
+            ii = ((a0 + (a1 - a0) * t - x0) / res).astype(int); jj = ((b0 + (b1 - b0) * t - z0) / res).astype(int)
+            ok = (ii >= 0) & (ii < mask.shape[1]) & (jj >= 0) & (jj < mask.shape[0]); ol[jj[ok], ii[ok]] = True
+        ol = ndimage.binary_closing(ol, iterations=3)
+        mask |= ndimage.binary_fill_holes(ol)
+        print('SHORE an open body, filled by its outline:', len(sg), 'segments')
+
+    still = []
+    for o in (M, R):
+        if o is not None: still += cut(o)
+    rising = []
+    for o in RS: rising += cut(o)
+    ob_ = PLAN.get('observer')
+    if ob_:      # (the Observer, set as the game sets it: its box's foot-middle at its foot, its height the plan's, turned about the up)
+        fn = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'props', '%s.glb' % PLAN.get('observer_model', 'observer'))
+        before = set(bpy.data.objects); bpy.ops.import_scene.gltf(filepath=fn)
+        new = [o for o in bpy.data.objects if o not in before]; mesh_ = [o for o in new if o.type == 'MESH']
+        vs = [o.matrix_world @ v.co for o in mesh_ for v in o.data.vertices]
+        lo = Vector((min(v.x for v in vs), min(v.y for v in vs), min(v.z for v in vs))); hi = Vector((max(v.x for v in vs), max(v.y for v in vs), max(v.z for v in vs)))
+        k_ = float(ob_[3]) / (hi.z - lo.z)
+        Mx = Matrix.Translation(G(ob_[0], ob_[1], ob_[2])) @ Matrix.Rotation(float(ob_[4]), 4, 'Z') @ Matrix.Scale(k_, 4) @ Matrix.Translation(-Vector(((lo.x + hi.x) * 0.5, (lo.y + hi.y) * 0.5, lo.z)))
+        for o in mesh_: o.matrix_world = Mx @ o.matrix_world
+        bpy.context.view_layer.update()
+        for o in mesh_: still += cut(o)
+        for o in new: bpy.data.objects.remove(o, do_unlink=True)
+    allsg = np.concatenate(still + rising)
+    D = 1.6; res = 0.03
+    x0 = float(min(allsg[:, 0].min(), allsg[:, 2].min())) - D; x1 = float(max(allsg[:, 0].max(), allsg[:, 2].max())) + D
+    z0 = float(min(allsg[:, 1].min(), allsg[:, 3].min())) - D; z1 = float(max(allsg[:, 1].max(), allsg[:, 3].max())) + D
+    nx = int(math.ceil((x1 - x0) / res)); nz = int(math.ceil((z1 - z0) / res)); x1 = x0 + nx * res; z1 = z0 + nz * res
+    chans = []
+    for group in (still, rising):
+        mk = np.zeros((nz, nx), dtype=bool)
+        for sg in group: fill(mk, sg, x0, z0, res)
+        d = ndimage.distance_transform_edt(~mk) * res if mk.any() else np.full((nz, nx), D)
+        chans.append((np.clip(1.0 - d / D, 0.0, 1.0) * 255.0 + 0.5).astype(np.uint8))
+    chans.append(np.zeros((nz, nx), dtype=np.uint8))
+    Image.fromarray(np.stack(chans, axis=2), 'RGB').save(os.path.join(os.path.dirname(OUTJ) or '.', 'shore.png'))
+    SHORE = {'rect': [round(x0, 4), round(z0, 4), round(x1, 4), round(z1, 4)], 'D': D}
+    print('SHORE', nx, 'x', nz, 'islands', len(still), '+', len(rising))
+
 # ------------------------------------------------------------------ the shade of corners and clefts, into the vertices
 scene.render.engine = 'CYCLES'
 scene.cycles.device = 'CPU'
@@ -1123,8 +1224,9 @@ for extra in (dict(export_vertex_color='ACTIVE'), dict(export_colors=True), {}):
 
 # ------------------------------------------------------------------ the way, for the game
 if PLAN is not None:
-    way = {k: PLAN.get(k) for k in ('heights', 'nodes', 'edges', 'volute', 'head', 'ring', 'eye', 'flights', 'floors', 'relief', 'faces', 'stone', 'scene', 'sea_y', 'arches', 'braziers', 'dial', 'mirrors', 'door', 'walls', 'trench', 'observer', 'observer_haze', 'horizon')}
+    way = {k: PLAN.get(k) for k in ('heights', 'nodes', 'edges', 'volute', 'head', 'ring', 'eye', 'flights', 'floors', 'relief', 'faces', 'stone', 'scene', 'sea_y', 'arches', 'braziers', 'dial', 'mirrors', 'door', 'walls', 'trench', 'observer', 'observer_haze', 'observer_model', 'horizon')}
     way['stair_groove'] = STAIR_GROOVE
+    if SHORE is not None: way['shore'] = SHORE
     with open(OUTJ, 'w') as f: json.dump(way, f, indent=1)
     print('DONE'); sys.exit(0)
 way = {

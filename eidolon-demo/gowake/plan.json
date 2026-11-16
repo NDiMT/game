@@ -478,5 +478,15 @@
    -7.58
   ],
   "width": 9.6
- }
+ },
+ "observer": [
+  -7.93,
+  -1.8,
+  -6.12,
+  6.2,
+  -0.6
+ ],
+ "observer_haze": 0.12,
+ "observer_model": "observer_mid_lp",
+ "shore": true
 }

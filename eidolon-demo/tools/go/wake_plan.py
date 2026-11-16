@@ -81,8 +81,10 @@ def plan():
         'columns': [], 'volute': None,
         'head': None, 'relief': None, 'cypress': None,
         'eye': {'pitch': 35.0, 'centre': [-5.32, 1.3, -7.58], 'width': 9.6},      # (the island large; the sun above the gate)
-        # (the Observer, the veiled colossus, and the ruined colonnades are painted in the backdrop: one picture with the sun,
-        # made to fit the level; a plan may still stand a 3D one in the sea with 'observer': [x, foot y, z, height, turn])
+        # (the Observer, the veiled colossus: a faceted bust standing in the sea, seen by the level's own eye as everything
+        # else is, so the perspective holds; the sun and the sky are painted in the backdrop, the far ruins are 3D, _ivw_far)
+        'observer': [-7.93, SEA - 1.5, -6.12, 6.2, -0.6], 'observer_haze': 0.12, 'observer_model': 'observer_mid_lp',      # (lower on the screen: its foot in the water left of the terrace; faceted, but fine enough that her face reads)
+        'shore': True,      # (a map of the water's distance from every stone in it: the sea draws small waves along each shore)
     }
     return pl, puzzle
 
