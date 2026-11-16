@@ -83,8 +83,9 @@ The levels are many, in one system. A new level is made in this order (the secon
     - Shade it with smooth normals in a few crisp bands (`smooth_k` 2), with soft shade tones so the face under the veil never falls into a dark hole.
     - What failed: busts. Faceted at 1.6k was "a melted blob", at 7k "crumpled paper"; the soft smooth one looked "waxy, tragic".
     - Turn its face to the eye and the light: check with `tools/go/prop_yaw.py`, which frames each turn a metre tall under the game's key light.
-    - Place it from where it should stand on the screen: solve its foot onto the sea plane along the eye.
+    - Place it from where it should stand on the screen: solve its foot onto the sea plane along the eye, and keep its footprint clear of every rock (about 1.8 m from the nearest edge). The user wanted it near: lower on the screen and larger, with only a short mist at its foot.
     - Its foot is under the water and its lower part is lost in a short mist band. It has its image in the water, and the shore waves follow its outline.
+  - **White marble is lit from above**: the top tone is the brightest, and the sides that face the light are a step darker. Never let the lit side be the brightest: the user saw "the lower left of the whites burnt out; it should be darker, as if lit from above". The key light for the waking is high (`iv_key` -0.45, 0.8, 0.38).
   - **Coloured sunlight on the stone** (`sun_k` in IV_SH, off by default): the faces the key light falls on take the sun's colour, warmest high up and toward the sun on the screen (`sun_scr`).
     - The user tried gold ("too strong"), lilac, then pinkish yellow, and in the end had it taken off: the stone keeps its own light.
   - **Small waves where the water meets the stone** (the user: "a light ripple where the rocks meet the water"):

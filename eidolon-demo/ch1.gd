@@ -2086,9 +2086,9 @@ const IV_QUARRY_PAL := {      # the quarry in the afternoon: marble cut white an
 const IV_QUARRY_BG := ["a9bdd2", "f2dcbc", "ecdcc4", "e6d6c0"]      # the sky over the quarry: high, low, the dust in the air, the haze in the pit
 const IV_QUARRY_SKY_S := Vector3(0.22, 0.46, 0.9)
 const IV_WAKE_PAL := {      # the waking: dawn over a still sea. Pearl and rose marble, its shade lilac; warm mauve rock; the Observer pale in the haze
-	"marble2": ["f3e2dc", "f6e6e1", "cdb7c2", "9d8599"],
+	"marble2": ["f5e7e1", "decdd0", "c6b0bc", "9d8599"],      # (lit from above: the tops brightest, the sides that face the light a step darker, never burnt white)
 	"rock2": ["c39f98", "93727c", "684a57", "4a3140"],
-	"observer": ["fbf3f0", "f0e2e0", "d9c6d1", "b29dba"],      # (her shade soft: the face under the veil must never fall into a dark hole)
+	"observer": ["fbf3f0", "e6d7da", "d2bfcb", "b29dba"],      # (her shade soft: the face under the veil must never fall into a dark hole)
 	"phead": ["f3e4df", "dcc4c4", "b9a0ad", "917b93"],
 	"groove": ["e2cac6", "e2cac6", "e2cac6", "e2cac6"],
 	"line": ["fff4ee", "fff4ee", "fff4ee", "fff4ee"],
@@ -2353,7 +2353,7 @@ func _iv_bg_scale() -> Vector2:      # (the painting is 9:16; on a taller or a w
 	var vp := get_viewport().get_visible_rect().size
 	var r := vp.y / maxf(vp.x, 1.0); var rb := 16.0 / 9.0
 	return Vector2(1.0, r / rb) if r >= rb else Vector2(r / rb, 1.0)
-var iv_key := (Vector3(0.6, 0.66, -0.45) if go_drown else Vector3(-0.56, 0.72, 0.41)) if (OS.get_environment("IV_MODE") != "plate" and OS.get_environment("IV_MODE") != "3d") else IV_KEY      # (the sea: the low sun on the faces toward the eye's right)
+var iv_key := (Vector3(0.6, 0.66, -0.45) if go_drown else (Vector3(-0.45, 0.8, 0.38) if go_wake else Vector3(-0.56, 0.72, 0.41))) if (OS.get_environment("IV_MODE") != "plate" and OS.get_environment("IV_MODE") != "3d") else IV_KEY      # (the sea: the low sun on the faces toward the eye's right)
 var iv_mats := {}
 var iv_uvf := float(OS.get_environment("IV_UVF")) if OS.get_environment("IV_UVF") != "" else 0.0
 var iv_alb := float(OS.get_environment("IV_ALB")) if OS.get_environment("IV_ALB") != "" else 0.0
@@ -3774,7 +3774,7 @@ func _ivw_observer(j: Dictionary) -> void:
 	var sea := IV_O.y + ivr_sea_y
 	var lowp := String(j.get("observer_model", "observer")).ends_with("_lp")      # (a low-poly one: faceted as everything else is)
 	var rim := {"smooth_k": 0.0 if lowp else 2.0, "rim_k": 0.45 if lowp else 0.4, "rim_col": Color(1.0, 0.84, 0.6), "rim_dir": Vector3(-0.62, 0.3, -0.62)}      # (the sun low behind it gilds its edges)
-	var ex := {"fog_hi": ivr_sea_y + 1.0, "fog_lo": ivr_sea_y - 0.1, "haze": 1.0, "clip_k": 1.0, "clip_y": sea, "shadow_k": 0.0, "wline_k": 0.0}      # (its foot lost in the mist on the water: no hard line where it meets it)
+	var ex := {"fog_hi": ivr_sea_y + 0.6, "fog_lo": ivr_sea_y - 0.1, "haze": 1.0, "clip_k": 1.0, "clip_y": sea, "shadow_k": 0.0, "wline_k": 0.0}      # (its foot lost in the mist on the water: no hard line where it meets it)
 	if ivr_shore.is_empty(): _ivw_rings(Vector3(hp.global_position.x, sea, hp.global_position.z), float(ob[3]) * 0.55)      # (else the sea's own small waves follow her outline)
 	ex.merge(rim)
 	for m in hd.find_children("*", "MeshInstance3D", true, false):

@@ -83,7 +83,7 @@ def plan():
         'eye': {'pitch': 35.0, 'centre': [-5.32, 1.3, -7.58], 'width': 9.6},      # (the island large; the sun above the gate)
         # (the Observer, the veiled colossus: a standing veiled figure in smooth marble, lit in clean bands; a bust,
         # faceted or soft, looked bad)
-        'observer': [-10.23, SEA - 0.8, -8.01, 5.6, -0.75], 'observer_haze': 0.03, 'observer_model': 'observer_veiled',      # (where the painted one stood: her head at 22% of the screen; her face to the eye and the light)
+        'observer': [-8.26, SEA - 0.8, -5.77, 6.4, -0.75], 'observer_haze': 0.03, 'observer_model': 'observer_veiled',      # (near: her foot at 55% of the screen, her head at 28%, 1.8 m clear of the nearest rock; her face to the eye and the light)
         'shore': True,      # (a map of the water's distance from every stone in it: the sea draws small waves along each shore)
     }
     return pl, puzzle
