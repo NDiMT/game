@@ -17,6 +17,18 @@ The levels are many, in one system. A new level is made in this order (the secon
 - **Build it** with `tools/ivory_level.py` (it runs without trees, columns, arches or a relief).
 - **A concept from our own blockout**: render the built level through the game's eye (`tools/go/preview.py -- <glb> <json> <png> [px] [sea y]`, with placeholders for far scenery from the plan's `scenery`), and have the image model repaint it in our style with a new setting, keeping the layout. Then refine its light and sky in a second pass. Store it as `<level>/concept.jpg` (the model returns JPEG data even for .png names).
 - **The game loads the level's own folder** (`go_dir`, chosen by `FLIP=<level>`): its own palettes and sky sampled from its concept (tone bands and warm/cool balance by region, not single pixels), its own key light, its own far scenery.
+- **A level entirely of our own** (the third, `gomoon/`, "The Moon Dial", is the worked example):
+  - Search for the board (`tools/go/moon_search.py`, then `moon_local.py` about a hand-laid one), prove it (`moon_design.py`: unique, every element needed), and lay it out with `moon_plan.py`.
+  - The setting comes first in the prompt: a place, a time of day, one strong light, one warm accent, falling weather, a framing thing in a corner.
+  - The image model paints its own props (it turned the moon dial into the ivory scroll). Take the concept's light, palette, sky and atmosphere; the layout and the props stay ours.
+- **Frame the eye from the level's extent on the screen.** Put every node, floor corner, arch top and the stair's foot on the screen: `sx = p·b.x`, `sy = p·b.y` (b from `_ivp_basis()`: yaw 45°, pitch 35°).
+  - The width is the extent plus margins; the height is the width × 16/9.
+  - Place the centre so the sky's great thing (the moon, the sun) has room above the level and the mist has room below. The centre is any point `sx·b.x + sy·b.y + t·b.z`; choose t so that y is about 0.5.
+  - To fill the bottom, let the first stair come up out of the mist from low on the screen.
+- **The builder's dice are its own**: never seed from Python's `hash()`. It is salted per run, so each build would be another level. Seed from the name's characters.
+- **Corner overlays** (pine, leaves): have the image model paint them on flat magenta, then key them out.
+  - The key is the magenta-ness, `min(R, B) − G`. Despill with the key's alpha, then fade with a separate mask, and fade out before anything the model bled in below.
+  - Run `godot --headless --path . --import` before the game can `load()` a new PNG.
 
 ## 1. The plan: square on a grid, from the picture
 
@@ -93,6 +105,19 @@ The levels are many, in one system. A new level is made in this order (the secon
   - Nothing under the water is drawn. The surface lets a little through (alpha 0.7) over a deep floor of the same colours, and what stands in the water has its image there: a copy turned over about the sea level, shaded with its own faces' light, dimming as it goes down (`_ivs_mirror`).
   - A great thing in the water (the colossal face) is solid, with its own light and shade, a shadow and its image in the water; the user did not want it faded.
   - A sky with four stops (high, a warm band at the horizon, the haze under it, the mist at the bottom), and a low sun drawn on it.
+- **A level in the snow at night** (`gomoon/`):
+  - Snow is the top tone of everything outside, rock included.
+  - Each floor's edge carries a soft roll of snow (`snow_lip` in the builder, scene `moon`), with its own palette: white, its shade a soft blue.
+    - It stands a little proud of the top, rolls over the chamfer, and hangs lower here and there.
+    - It dies away where a flight meets the floor.
+  - Every warm tint must turn cool: the close corners' darkening (`ao_tint`), the marble's veins (`vein_tint`), and the cast shadow (`shade_tint`). A warm tint greys the snow.
+  - The moon is a disc on the sky shader (`moon_k`, `moon_r`, at `sun`), with soft seas and a halo.
+  - Far peaks are faceted pyramids (`_ivm_peak`), broader than high, their lit sides snow and their shaded sides blue. Each fades from about 40% of its height.
+  - Fire on snow is never added: added light burns white on a bright ground.
+    - The flame is an upright billboard (fixed Y) in `blend_mix`.
+    - Its glow and its pool of light on the floor are drawn over the snow, golden.
+  - Snow falls in two layers of `CPUParticles2D` on the overlay canvas: near flakes larger and slower, far ones small.
+  - Value classes: the concept's are about 11/20/32/25/12. A first pass has too much mid (sky and mist), so darken the rock and the top of the sky and brighten the snow.
 
 ## 4. The puzzle: Lara Croft GO rules, proven before it is built
 
@@ -124,6 +149,8 @@ The levels are many, in one system. A new level is made in this order (the secon
 ## 5. Review loop (before showing anything)
 
 - Render a clean frame: `tools/ivory/render.sh <dir>` (`RES=1080x1920 TMO=1700` for a large one; `IV_DBG=4` shows how much mist each pixel has).
+  - A 720×1280 frame takes 5–6 minutes on the software renderer, so use `TMO` 700 or more.
+  - Run one Godot at a time: there are 4 cores.
 - Compare large side-by-sides of top and bottom with the concept (`pair.py`), and the same region of both enlarged (`zoom.py <concept> <render> <out> x0 y0 x1 y1`). Also run `overlay.py`, and `vstats.py` (value classes; the concept's are about 25/28/17/16/14).
 - Zoom on every junction: stairs to floors, the feet of columns and arches, rock corners, the mist line, the far shapes, the heroine.
 - Hunt for these faults and fix each one:
