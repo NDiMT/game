@@ -46,6 +46,13 @@ if J.get('stone'):
 p = J['nodes'][J.get('start', 'S')] if isinstance(J['nodes'], dict) else None
 if p: prim('cyl', G(p[0], p[1] + 0.5, p[2]), 1.0, (0.7, 0.25, 0.15), 'ione')
 r = J['ring']; prim('torus', G(r[0], r[1] + 0.06, r[2]), 0.38, (1.0, 1.0, 0.95), 'ring')
+if J.get('dial'):      # (a lever: a great disc standing on its edge)
+    p = J['dial']; bpy.ops.mesh.primitive_cylinder_add(radius=0.42, depth=0.12, location=G(p[0], p[1] + 0.6, p[2])); o = bpy.context.active_object
+    o.rotation_euler = (math.radians(90), 0, math.radians(J.get('dial_yaw', 0.0))); o.data.materials.append(mat('dial', (0.72, 0.5, 0.25)))
+for p in (J.get('braziers') or []):
+    prim('cyl', G(p[0], p[1] + 0.35, p[2]), 0.7, (0.35, 0.3, 0.28), 'brazier'); prim('ball', G(p[0], p[1] + 0.78, p[2]), 0.14, (1.0, 0.6, 0.2), 'fire')
+if J.get('guardian'):
+    p = J['guardian']; prim('cyl', G(p[0], p[1] + 0.65, p[2]), 1.3, (0.75, 0.8, 0.9), 'guardian')
 if SEA is not None:
     bpy.ops.mesh.primitive_plane_add(size=80, location=G(-2.0, SEA, 1.0)); o = bpy.context.active_object; o.data.materials.append(mat('sea', (0.25, 0.45, 0.5)))
 for (kind, at, sz, rgb) in (J.get('scenery') or []):      # (placeholders for what the concept will paint: a colossal face, sea stacks, a far isle)
