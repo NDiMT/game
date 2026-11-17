@@ -25,7 +25,8 @@ sc.render.engine = 'CYCLES'; sc.cycles.samples = 8; sc.cycles.device = 'CPU'; sc
 import numpy as np
 from PIL import Image
 tiles = []
-VIEWS = {'side': Vector((1, 0, 0)), 'front': Vector((0, -1, 0)), 'game': Vector((-0.58, 0.58, 0.57)).normalized(), 'side2': Vector((-1, 0, 0))}
+VIEWS = {'side': Vector((1, 0, 0)), 'front': Vector((0, -1, 0)), 'game': Vector((-0.58, 0.58, 0.57)).normalized(), 'side2': Vector((-1, 0, 0)),
+         'game2': Vector((0.58, 0.58, 0.57)).normalized(), 'game3': Vector((0.58, -0.58, 0.57)).normalized(), 'game4': Vector((-0.58, -0.58, 0.57)).normalized()}      # (the same iso height from the other three quarters)
 import os
 for view in os.environ.get('VIEWS', 'side,front').split(','):
     d = VIEWS[view]

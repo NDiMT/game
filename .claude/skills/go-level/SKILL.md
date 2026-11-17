@@ -71,7 +71,7 @@ The levels are many, in one system. A new level is made in this order (the secon
   - To judge one moment without playing the whole level, take snapshots (`IVW_SNAPS=1`) and quit at a named one (`IVW_QUIT_AT=w8_risen`).
 - **Her waking** (a level that opens on her), as the user wants it:
   - She starts on one knee: the front foot planted with its knee up, the back knee on the stone. That is the `rise` clip's first frame, `a_rise = 0`.
-    - Her head is bowed and her torso leans a little forward (about 20°), as the user asked.
+    - Her head is bowed and her whole back is bowed over the knee (the user: "the body bowed too"). The game's eye sees her from behind and above, which hides a bow: 20–34° did not read at all. It takes about 54° spread down the spine (`RISE_LEAN`: 40/30/30% over Spine, Spine1, Spine2), the shoulders drawn in (`RISE_SHO` 14°), the neck 18° and the head 30° (`RISE_NECK`, `RISE_HEAD`), so the head drops to the line of the shoulders. Judge it from the game's own quarter (`clip_views.py` view `game4`), not only in profile.
     - Both hands rest on the front knee (`arm_ik` in the build, the elbows out).
     - The top of the back foot lies flat on the floor (`RISE_FLAT` 145°): no bent ankle, no bent toes ("the ankle bends strangely").
   - After a short pause (about 1.5 s) she rises slowly with the `rise` clip (`a_rise` 0 to 1 over about 4.6 s, eased), her head lifting last (`a_headp`).
@@ -136,6 +136,7 @@ The levels are many, in one system. A new level is made in this order (the secon
   - **The intro film first**: the amphora film, graded into the first level's dawn by a 3D LUT (`tools/intro_grade_lut.py`).
     - Its background, the light at the top corners behind the vase, is then repainted with the first level's sky, lilac-pink down to peach (`tools/intro_peach_bg.py`).
     - That region is the same in every frame. Each pixel moves by how much of the old background is in it, so the vase's edge keeps no fringe. The LUT carries each key colour of the black-figure palette to the dawn's: clay to rose-peach, the black to deep plum, the sea to muted violet, the sky to lilac, the white to pearl. Everything between moves with its nearest keys (Gaussian weights in Lab), so the shading holds.
+    - The film's own fades (to a light blue) are moved to the start screen's soft dawn, the same five stops as the start screen's gradient (`tools/intro_refade.py`): each faded frame by how far it is faded. It opens on, and closes into, the pure gradient, so it meets the start screen without a seam (the user: "a softer gradient, like the first level").
     - The game plays it as Theora (`intro/intro.ogv`, 720x1280, about 1.1 Mb/s, 23 MB) in a `VideoStreamPlayer`. A tap skips it.
     - The autoplay skips it unless `IV_INTRO=1`; `IV_NO_INTRO=1` skips it always.
   - **Then the start screen**: the first level faded far back under the dawn's own gradient (the user: "more subdued, the focus on the gradient"). The name high in the sky and PLAY under it, both in black. PLAY breathes slowly.
@@ -149,6 +150,7 @@ The levels are many, in one system. A new level is made in this order (the secon
     - A wordless female voice comes in only at a few moments, as in the intro.
     - Give a line of the form for each stretch of the piece.
     - Never name an artist or a game. A request can be blocked as "recitation": reword the description and try again.
+    - What the user liked most: the lament (`design/music/prompt_lament.txt`). A solo cello over a low drone, the strings and a harp joining, the wordless female voice once before the climax and once softly at the end, one great climax (full strings, horns, trombones, choir "ah", timpani rolls), falling back into silence, unresolved. Variations on it are in `design/music/prompt_l*.txt`.
     - Loudness-normalize to -18 LUFS, encode to Ogg Vorbis, and set `loop=true` in the `.import`.
     - The theme plays under the start screen. PLAY crossfades into the level's piece, quieter (-5 dB), which loops; it fades out at the end.
     - Check the recording (`--write-movie` takes the sound too): measure it with ebur128 (about -24 LUFS in the game).

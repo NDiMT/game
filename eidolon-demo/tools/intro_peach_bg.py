@@ -7,11 +7,11 @@ from scipy import ndimage
 src, out, mask_png = sys.argv[1], sys.argv[2], sys.argv[3]
 W, H = 720, 1280
 BG = np.array([218, 197, 224.0])
-lev = [(0.0, (219, 188, 222)), (0.05, (221, 190, 227)), (0.1, (231, 196, 223)), (0.15, (247, 208, 208)), (0.2, (254, 213, 196)), (0.25, (253, 214, 199)), (0.3, (252, 218, 209))]
+lev = [(0.0, (0xe3, 0xd2, 0xe6)), (0.3, (0xf8, 0xe3, 0xdc)), (0.55, (0xf6, 0xd9, 0xd6)), (0.8, (0xec, 0xd3, 0xdf)), (1.0, (0xdc, 0xc8, 0xe0))]      # (the soft dawn of the start screen)
 m0 = np.asarray(Image.open(mask_png)) > 127
 rows = np.nonzero(m0.any(axis=1))[0]; y1 = int(rows.max()) + 4
 region = ndimage.binary_dilation(m0, iterations=3)[:y1]
-vv = 0.13 + (np.arange(y1) / float(rows.max())) * 0.17      # (the level's sky from lilac-pink down to peach, over the visible corners)
+vv = np.arange(y1) / 1280.0      # (each row its place in the start screen's gradient)
 lv = np.array([v for v, _ in lev]); lc = np.array([c for _, c in lev], float)
 grad = np.stack([np.interp(vv, lv, lc[:, i]) for i in range(3)], -1)[:, None, :]
 dec = subprocess.Popen(['ffmpeg', '-loglevel', 'error', '-i', src, '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], stdout=subprocess.PIPE)

@@ -338,11 +338,11 @@ NR = int(os.environ.get("RISE_FRAMES", "84"))
 rr = np.zeros((NR + 1, NB, 3, 3)); rh = np.zeros((NR + 1, 3))
 upR = B("RightUpLeg"); reach = (thigh + shin) * 0.98
 v0 = p0[RA] - p0[RT]                                         # (the ankle from the ball of the foot, standing)
-FLAT, TUCK = float(os.environ.get("RISE_FLAT", "168")), float(os.environ.get("RISE_TUCK", "84"))
+FLAT, TUCK = float(os.environ.get("RISE_FLAT", "145")), float(os.environ.get("RISE_TUCK", "84"))
 ball0 = ra1 - roty(FLAT) @ v0; ball0[2] = TOE_REST           # (where the ball of the back foot lies, the foot flat behind her)
 ball1 = p0[RT].copy()                                        # (and where it stands)
 ARMS = [B(n) for n in bones if any(t in n for t in ("Shoulder", "Arm", "Hand"))]
-LEAN0 = float(os.environ.get("RISE_LEAN", "20"))
+LEAN0 = float(os.environ.get("RISE_LEAN", "54")); NECK0 = float(os.environ.get("RISE_NECK", "18")); HEAD0 = float(os.environ.get("RISE_HEAD", "30")); SHO0 = float(os.environ.get("RISE_SHO", "14"))      # (her back bowed over the knee: spread down the spine, so it curves)
 for f in range(NR + 1):
     u = f / NR
     fw = ease(u / 0.35); roll = ease(u / 0.3); sl = ease((u - 0.25) / 0.3); st = ease((u - 0.52) / 0.42)
@@ -360,7 +360,9 @@ for f in range(NR + 1):
     poses = []
     for with_hands in (True, False):
         rot = stand.copy()
-        turn(rot, B("Spine"), roty(lean)); turn(rot, B("Neck"), roty(10.0 * (1.0 - lift))); turn(rot, B("Head"), roty(18.0 * (1.0 - lift)))
+        turn(rot, B("Spine"), roty(lean * 0.4)); turn(rot, B("Spine1"), roty(lean * 0.3)); turn(rot, B("Spine2"), roty(lean * 0.3))
+        for sd in ("Left", "Right"): turn(rot, B(sd + "Shoulder"), roty(SHO0 * (1.0 - lift)))      # (her shoulders drawn in and down)
+        turn(rot, B("Neck"), roty(NECK0 * (1.0 - lift))); turn(rot, B("Head"), roty(HEAD0 * (1.0 - lift)))
         hh = hips.copy()
         for _ in range(3):      # (no higher than the back leg reaches while its foot is still behind)
             hj = fk1(rot, hh)[upR]; dxy = math.hypot(hj[0] - ank[0], hj[1] - ank[1])
