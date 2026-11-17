@@ -4285,6 +4285,16 @@ func _ivw_music(file: String, fade := 2.5, db := -2.0) -> void:
 		var t := create_tween(); t.tween_property(old, "volume_db", -50.0, fade).set_trans(Tween.TRANS_SINE); t.tween_callback(old.queue_free)
 	ivw_music_p = p
 
+## each level its own piece, all in the lament's manner (the user liked the lament best, then "I like those four too"):
+## the waking the lament itself, the drowned sanctuary the requiem (a low choir like the sea breathing), the moon the
+## elegy (a woman's voice alone, far off), the quarry the stone (two cellos: a statue that remembers being alive)
+func _go_level_music() -> String:
+	if go_wake: return "res://music/lament.ogg"
+	if go_drown: return "res://music/requiem.ogg"
+	if go_moon: return "res://music/elegy.ogg"
+	if go_quarry: return "res://music/stone.ogg"
+	return "res://music/lastlight.ogg"
+
 func _ivw_music_out(fade := 3.0) -> void:
 	if ivw_music_p == null: return
 	var old := ivw_music_p; ivw_music_p = null
@@ -4311,7 +4321,7 @@ func _ivw_intro_end() -> void:      # (at its end, or at a tap: the film fades i
 
 func _ivw_play() -> void:      # (PLAY: the name and the haze go, the eye goes down to her where she lies, and she wakes)
 	ivw_menu_on = false
-	_ivw_music("res://music/still_sea.ogg", 3.5, -5.0)      # (the theme gives way to the still sea, quieter: it plays while she thinks)
+	_ivw_music(_go_level_music(), 3.5, -5.0)      # (the theme gives way to the level's own piece, quieter: it plays while she thinks)
 	var t := create_tween().set_parallel()
 	t.tween_property(ivw_menu, "modulate:a", 0.0, 1.0).set_trans(Tween.TRANS_SINE)
 	await t.finished
@@ -7553,7 +7563,9 @@ func tap(sp: Vector2) -> void:
 		started = true
 		var tg2 := create_tween(); tg2.tween_property(title_box, "modulate:a", 0.0, 0.7); tg2.tween_callback(title_box.hide)
 		if go_wake: ivw_line_at = iv_t + 1.2      # (the waking holds the eye itself, close on her; its line after the title has gone)
-		else: create_tween().tween_property(cam, "size", IV_VIEW if go_iv else _mw_view(), 2.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		else:
+			create_tween().tween_property(cam, "size", IV_VIEW if go_iv else _mw_view(), 2.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			if go_iv: _ivw_music(_go_level_music(), 3.0, -5.0)      # (the other levels: their own piece from the first tap)
 		return
 	if go_demo and started and not ended and woke:
 		_go_tap(sp); return

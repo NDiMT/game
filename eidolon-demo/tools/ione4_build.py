@@ -338,27 +338,33 @@ NR = int(os.environ.get("RISE_FRAMES", "84"))
 rr = np.zeros((NR + 1, NB, 3, 3)); rh = np.zeros((NR + 1, 3))
 upR = B("RightUpLeg"); reach = (thigh + shin) * 0.98
 v0 = p0[RA] - p0[RT]                                         # (the ankle from the ball of the foot, standing)
-FLAT, TUCK = float(os.environ.get("RISE_FLAT", "145")), float(os.environ.get("RISE_TUCK", "84"))
-ball0 = ra1 - roty(FLAT) @ v0; ball0[2] = TOE_REST           # (where the ball of the back foot lies, the foot flat behind her)
+FLAT, TUCK = float(os.environ.get("RISE_FLAT", "84")), float(os.environ.get("RISE_TUCK", "84"))
+# (the back foot at the start: on its toes, the heel up, the sole to the back, as one kneels ready to rise. The top of
+#  the foot flat on the floor (RISE_FLAT 145) showed its sole to the game's eye and reached past the edge of her stone:
+#  "the leg behind still breaks". The knee goes down a little closer behind the front foot (RISE_BACK of a thigh).)
+back_r = thigh * float(os.environ.get("RISE_BACK", "0.8"))
+ra1r = np.array([p0[B("RightUpLeg")][0] - back_r - shin * float(os.environ.get("RISE_SHINX", "0.9")), ra0[1] - 0.01, ANKLE_REST + 0.032])
+ball0 = ra1r - roty(FLAT) @ v0; ball0[2] = TOE_REST          # (where the ball of the back foot lies at the start)
 ball1 = p0[RT].copy()                                        # (and where it stands)
 ARMS = [B(n) for n in bones if any(t in n for t in ("Shoulder", "Arm", "Hand"))]
-LEAN0 = float(os.environ.get("RISE_LEAN", "54")); NECK0 = float(os.environ.get("RISE_NECK", "18")); HEAD0 = float(os.environ.get("RISE_HEAD", "30")); SHO0 = float(os.environ.get("RISE_SHO", "14"))      # (her back bowed over the knee: spread down the spine, so it curves)
+LEAN0 = float(os.environ.get("RISE_LEAN", "62")); NECK0 = float(os.environ.get("RISE_NECK", "24")); HEAD0 = float(os.environ.get("RISE_HEAD", "34")); SHO0 = float(os.environ.get("RISE_SHO", "16"))      # (her back bowed over the knee: spread down the spine, so it curves)
 for f in range(NR + 1):
     u = f / NR
     fw = ease(u / 0.35); roll = ease(u / 0.3); sl = ease((u - 0.25) / 0.3); st = ease((u - 0.52) / 0.42)
     lift = ease((u - 0.58) / 0.38)                           # (her head and her back come up last)
     rel = ease((u - 0.38) / 0.24)                            # (her hands leave the knee)
+    unx = ease((u - 0.06) / 0.24)                            # (first her crossed arms open, her hands to the knee)
     pitch = (FLAT + (TUCK - FLAT) * roll) * (1.0 - st)
-    toe = -80.0 * min(max((FLAT - pitch) / (FLAT - TUCK), 0.0), 1.0) * (1.0 - st)
+    toe = -80.0 * (min(max((FLAT - pitch) / (FLAT - TUCK), 0.0), 1.0) if FLAT - TUCK > 1.0 else 1.0) * (1.0 - st)
     ball = ball0 + (ball1 - ball0) * 0.4 * sl; ball = ball * (1.0 - st) + ball1 * st; ball = ball.copy()
     ball[2] = TOE_REST + 0.04 * math.sin(math.pi * st)
     ank = ball + roty(pitch) @ v0
     hips = stand_h.copy()
-    hips[0] = stand_h[0] - back_end * ((1.0 - fw) + 0.45 * fw) * (1.0 - st)
+    hips[0] = stand_h[0] - back_r * ((1.0 - fw) + 0.45 * fw) * (1.0 - st)
     hips[2] = stand_h[2] - drop_end * (1.0 - ease((u - 0.06) / 0.88))
     lean = LEAN0 * (1.0 - lift) + 6.0 * math.sin(math.pi * min(u / 0.6, 1.0)) * (1.0 - lift)
     poses = []
-    for with_hands in (True, False):
+    for with_hands in (True, False, "crossed"):
         rot = stand.copy()
         turn(rot, B("Spine"), roty(lean * 0.4)); turn(rot, B("Spine1"), roty(lean * 0.3)); turn(rot, B("Spine2"), roty(lean * 0.3))
         for sd in ("Left", "Right"): turn(rot, B(sd + "Shoulder"), roty(SHO0 * (1.0 - lift)))      # (her shoulders drawn in and down)
@@ -371,17 +377,28 @@ for f in range(NR + 1):
         leg_ik(rot, hh, "Left", la0, 0.0)
         leg_ik(rot, hh, "Right", ank, pitch)
         turn(rot, RT, roty(toe))
-        if with_hands:      # (both hands on the front knee: the left at its outer side, the right over it)
+        if with_hands is True:      # (both hands on the front knee: the left at its outer side, the right over it)
             kn_ = fk1(rot, hh)[B("LeftLeg")]
             arm_ik(rot, hh, "Left", kn_ + np.array([-0.03, 0.03, 0.06]), (-0.4, 1.0, 0.0))
             arm_ik(rot, hh, "Right", kn_ + np.array([-0.015, -0.012, 0.078]), (-0.4, -1.0, 0.0))
             for sd in ("Left", "Right"): aim(rot, hh, B(sd + "Hand"), B(sd + "HandMiddle1"), np.array([0.55, 0.0, -0.83]))
+        elif with_hands == "crossed":      # (her forearms crossed over the front knee, each hand at its far side, close together; the elbows down on the thigh)
+            kn_ = fk1(rot, hh)[B("LeftLeg")]
+            XL = [float(v) for v in os.environ.get("RISE_XL", "0.0,-0.03,0.07").split(",")]; XR = [float(v) for v in os.environ.get("RISE_XR", "0.012,0.035,0.09").split(",")]
+            arm_ik(rot, hh, "Left", kn_ + np.array(XL), (-0.6, 0.75, -0.45))
+            arm_ik(rot, hh, "Right", kn_ + np.array(XR), (-0.6, -0.65, -0.45))
+            aim(rot, hh, B("LeftHand"), B("LeftHandMiddle1"), np.array([0.3, -0.28, -0.91]))      # (the hands hang loose over the sides of the knee)
+            aim(rot, hh, B("RightHand"), B("RightHandMiddle1"), np.array([0.3, 0.28, -0.91]))
         poses.append((rot, hh))
-    rot, hh = poses[0]; free = poses[1][0]
+    rot, hh = poses[0]; free = poses[1][0]; cross = poses[2][0]
+    for b in ARMS: rot[b] = slerp_rot(cross[b], rot[b], unx)
     for b in ARMS: rot[b] = slerp_rot(rot[b], free[b], rel)
     rr[f] = rot; rh[f] = hh
 rz = {"rot": rr, "hips": rh}
 l, r = foot_lift(fk(rz)); p_ = fk1(rr[0], rh[0])
+print("BUILD rise start: head %.3f, neck %.3f, front knee %s, back knee %s, back toe x %.3f (stands at %.3f); elbows L %s R %s; wrists L %s R %s" % (
+    p_[B("Head")][2], p_[B("Neck")][2], np.round(p_[B("LeftLeg")], 3), np.round(p_[B("RightLeg")], 3), p_[B("RightToeBase")][0], rh[-1][0],
+    np.round(p_[B("LeftForeArm")], 3), np.round(p_[B("RightForeArm")], 3), np.round(p_[B("LeftHand")], 3), np.round(p_[B("RightHand")], 3)))
 print("BUILD rise: lowest foot lift %.3f %.3f, hips from %.3f to %.3f; at the start wrists %.3f %.3f from the knee; ankle rest %.3f toe rest %.3f" % (
     l.min(), r.min(), rh[0, 2], rh[-1, 2], np.linalg.norm(p_[B("LeftHand")] - p_[B("LeftLeg")]), np.linalg.norm(p_[B("RightHand")] - p_[B("LeftLeg")]), ANKLE_REST, TOE_REST))
 clips["rise"] = rz
@@ -413,6 +430,31 @@ for cname, c in clips.items():
                 d = AWi @ (c["hips"][f] - AWt) - HEAD[b]
                 pb.location = Vector((RESTL[b].T @ d).tolist()); pb.keyframe_insert("location", frame=f)
     print("BUILD wrote clip %-12s %3d frames (%.2f s)" % (cname, nf, (nf - 1) / FPS))
+# ---- membranes: the generator left thin faces bridging parts that are not one cloth (across the slit of the wrap,
+#      between its layers). Standing they are too thin to see; when her legs part (the kneel, the rise) they stretch
+#      into long slivers ("the leg behind still breaks"). Each pose of the clips is measured, and a face that grows
+#      many times longer than it was, and long on the screen, is taken away (its points stay, so the data keeps its order).
+rest_co = np.empty(len(me.vertices) * 3); me.vertices.foreach_get("co", rest_co); rest_co = rest_co.reshape(-1, 3)
+ev_ = np.array([e.vertices[:] for e in me.edges]); L0e = np.linalg.norm(rest_co[ev_[:, 0]] - rest_co[ev_[:, 1]], axis=1)
+med = float(np.median(L0e)); STR, LONG = float(os.environ.get("MEMB_STRETCH", "6.0")), float(os.environ.get("MEMB_LONG", "5.0"))
+bad_e = np.zeros(len(L0e), bool)
+checks = [("rise", f) for f in range(0, NR + 1, 6)] + [("kneel", NK)] + [("walk", f) for f in range(0, 50, 5)]
+for cname, f in checks:
+    if cname not in bpy.data.actions: continue
+    ac = bpy.data.actions[cname]; arm.animation_data.action = ac
+    try:
+        if ac.slots: arm.animation_data.action_slot = ac.slots[0]
+    except Exception: pass
+    sc.frame_set(f); dg = bpy.context.evaluated_depsgraph_get(); ev = body.evaluated_get(dg); m2 = ev.to_mesh()
+    c2 = np.empty(len(m2.vertices) * 3); m2.vertices.foreach_get("co", c2); ev.to_mesh_clear(); c2 = c2.reshape(-1, 3)
+    L1e = np.linalg.norm(c2[ev_[:, 0]] - c2[ev_[:, 1]], axis=1)
+    bad_e |= (L1e > STR * np.maximum(L0e, 1e-6)) & (L1e > LONG * med)
+ekey = {tuple(sorted(e.vertices[:])): i for i, e in enumerate(me.edges)}
+bad_f = [p.index for p in me.polygons if any(bad_e[ekey[tuple(sorted(k))]] for k in p.edge_keys)]
+if bad_f and os.environ.get("MEMB_KEEP") != "1":
+    bm = bmesh.new(); bm.from_mesh(me); bm.faces.ensure_lookup_table()
+    bmesh.ops.delete(bm, geom=[bm.faces[i] for i in bad_f], context='FACES_ONLY'); bm.to_mesh(me); bm.free(); me.update()
+print("BUILD membranes: %d edges stretch past %.1fx and %.1f of the mean edge in some pose; %d faces taken away" % (int(bad_e.sum()), STR, LONG, len(bad_f)))
 arm.animation_data.action = None
 for b in arm.pose.bones: b.matrix_basis = Matrix.Identity(4)
 for ac in bpy.data.actions:
