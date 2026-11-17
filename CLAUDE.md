@@ -33,9 +33,13 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   rises in moments (8 s clip: breath, hands to the knee, weight forward, push, lunge, step, back up, head last).
   She turns the winch; the stones come up out of the water with foam on the water and on them; she climbs to the
   glowing gate, steps into its light, and is lost in it in a flash (the gate alone lights) and rising motes; the
-  last line holds, then the dark end screen (EIDOLON, "tap to play again"). The story: intro film (Theron, Ione's
-  smooth face, the veil, the sea takes her) → "The sea gave her back, as stone. / But it kept her face." → "She
-  stepped into the light, / to find the face the sea had kept." Letter: Cormorant Garamond italic.
+  last line holds, then the dark end screen (EIDOLON, "tap to play again"). **The story is in
+  `eidolon-world/dev/EIDOLON_SCRIPT.md`: read it before writing any line.** The player is one of the statues Theron
+  carved to make Ione's face again (not Ione). Lines: "Theron carved her a thousand times. / None of the faces was
+  hers." → (stones up) "Her own face lies at the bottom of the sea. / To pass over, she must see it once more." →
+  (gate) "One of the thousand went to find her." Letter: Cormorant Garamond italic.
+- **Start screen**: plum dark, cream EIDOLON and PLAY, a subdued veiled statue behind (`ui/start_statue.jpg`); the
+  film opens and closes in the same plum.
 - **Play it in a browser**: https://ndimt.github.io/game/eidolon-waking/ (the owner OK'd publishing there).
 - **The camera** holds the whole map and follows her a little, smoothly and a little behind; on larger maps it goes
   with her but shows little past the edges (`_ivr_follow` in `ch1.gd`).

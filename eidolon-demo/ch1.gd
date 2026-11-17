@@ -4425,6 +4425,8 @@ func _ivw_raise(up: bool) -> void:
 		await get_tree().create_timer(0.55).timeout
 		await _ivw_snap("w7_rising%d" % k)
 	if t.is_running(): await t.finished
+	if up and go_wake and ivg_on and ivg.has("mid") and not iv_said.has("mid"):      # (the stones up out of the sea: what she must do, said once; the script: Ione's own face lies on the sea floor, and the dead are known by their faces)
+		iv_said["mid"] = true; _go_write("\n".join(PackedStringArray(ivg.mid)), 4.8)
 	await _ivw_snap("w8_risen")
 
 ## a ring spreading on the still water
@@ -4514,20 +4516,22 @@ func _ivw_menu_make() -> void:
 	var vp := get_viewport().get_visible_rect().size
 	var cl := CanvasLayer.new(); cl.layer = 4; add_child(cl)
 	ivw_menu = Control.new(); ivw_menu.set_anchors_preset(Control.PRESET_FULL_RECT); ivw_menu.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(ivw_menu)
-	var vg := Gradient.new(); vg.offsets = PackedFloat32Array([0.0, 0.3, 0.55, 0.8, 1.0])      # (the dawn's own gradient over all, the level only a ghost under it; the user: "more subdued, the focus on the gradient")
-	vg.colors = PackedColorArray([Color("e3d2e6", 0.93), Color("f8e3dc", 0.86), Color("f6d9d6", 0.8), Color("ecd3df", 0.82), Color("dcc8e0", 0.88)])
-	var vt := GradientTexture2D.new(); vt.gradient = vg; vt.fill_from = Vector2(0.5, 0.0); vt.fill_to = Vector2(0.5, 1.0); vt.width = 4; vt.height = 256
-	var veil := TextureRect.new(); veil.texture = vt; veil.stretch_mode = TextureRect.STRETCH_SCALE; veil.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	veil.set_anchors_preset(Control.PRESET_FULL_RECT); veil.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_menu.add_child(veil)
+	# (the end screen's colours, the user's choice: the film's plum dark, the name and PLAY in pale cream, and behind them,
+	# subdued, the veiled statue of the sea: the level's own, rendered alone and sunk into the plum, ui/start_statue.jpg)
+	var ground := ColorRect.new(); ground.color = Color(0.13, 0.08, 0.13); ground.set_anchors_preset(Control.PRESET_FULL_RECT); ground.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_menu.add_child(ground)
+	if ResourceLoader.exists("res://ui/start_statue.jpg"):
+		var st := TextureRect.new(); st.texture = load("res://ui/start_statue.jpg"); st.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; st.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		st.set_anchors_preset(Control.PRESET_FULL_RECT); st.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_menu.add_child(st)
+	var cream := Color(0.93, 0.87, 0.9, 1)
 	var put := func(file: String, w: float, cy: float, col: Color) -> TextureRect:
 		var tr := TextureRect.new(); tr.texture = load(file); tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		var ts := (tr.texture as Texture2D).get_size(); var h := w * ts.y / ts.x
 		tr.size = Vector2(w, h); tr.position = Vector2((vp.x - w) * 0.5, cy - h * 0.5); tr.modulate = col; tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ivw_menu.add_child(tr); return tr
 	var lw := vp.x * 0.8
-	put.call("res://ui/logo.png", lw, vp.y * 0.155, Color(0.07, 0.05, 0.08, 1))      # (the name high in the sky, in black: the user's ask)
+	put.call("res://ui/logo.png", lw, vp.y * 0.155, cream)      # (the name high, in the end screen's pale cream)
 	var pw := vp.x * 0.3
-	var pl: TextureRect = put.call("res://ui/play.png", pw, vp.y * 0.27, Color(0.07, 0.05, 0.08, 1))      # (PLAY under it, in black)
+	var pl: TextureRect = put.call("res://ui/play.png", pw, vp.y * 0.27, cream)      # (PLAY under it, the same)
 	var pt := pl.create_tween().set_loops()      # (PLAY breathes, slowly; the tween is the word's own, so it ends with it, never spinning on a freed one)
 	pt.tween_property(pl, "modulate:a", 0.55, 1.4).set_trans(Tween.TRANS_SINE); pt.tween_property(pl, "modulate:a", 1.0, 1.4).set_trans(Tween.TRANS_SINE)
 	title_box.hide()

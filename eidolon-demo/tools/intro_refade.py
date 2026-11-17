@@ -2,7 +2,7 @@
 (lilac, peach, rose, lilac from top to bottom): each faded frame is moved by how far it is faded (measured against the
 clean frame next to the fade), from the blue toward the dawn at that row. The film opens on, and closes into, the
 pure dawn, so it meets the start screen without a seam.
-usage: python3 -I tools/intro_refade.py <in.mp4> <out.mp4> [unused]"""
+usage: python3 -I tools/intro_refade.py <in.mp4> <out.mp4> <"gradient" | "#rrggbb">"""
 import subprocess, sys, numpy as np
 from PIL import Image
 from scipy import ndimage
@@ -13,6 +13,8 @@ ST = [(0.0, (0xe3, 0xd2, 0xe6)), (0.3, (0xf8, 0xe3, 0xdc)), (0.55, (0xf6, 0xd9, 
 vv = np.arange(H) / float(H - 1); lv = np.array([v for v, _ in ST]); lc = np.array([c for _, c in ST], float)
 prof = np.stack([np.interp(vv, lv, lc[:, i]) for i in range(3)], -1)
 G = np.broadcast_to(prof[:, None, :], (H, W, 3)).astype(np.float32)
+if backdrop.startswith('#') and len(backdrop) == 7:      # (or one colour: the start screen's plum, the user: "the film at its end goes into this colour")
+    G = np.broadcast_to(np.array([int(backdrop[i:i + 2], 16) for i in (1, 3, 5)], np.float32)[None, None, :], (H, W, 3)).astype(np.float32)
 L = float(subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', src], capture_output=True, text=True).stdout)
 N = int(round(L * FPS))
 def frame_at(t):

@@ -176,8 +176,12 @@
   "R"
  ],
  "lines": [
-  "The sea gave her back, as stone.",
-  "But it kept her face."
+  "Theron carved her a thousand times.",
+  "None of the faces was hers."
  ],
- "end": "She stepped into the light,\nto find the face the sea had kept."
+ "end": "One of the thousand went to find her.",
+ "mid": [
+  "Her own face lies at the bottom of the sea.",
+  "To pass over, she must see it once more."
+ ]
 }
