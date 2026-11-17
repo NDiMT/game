@@ -54,6 +54,7 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
 ## Tools and where they are
 - Images: Gemini image model, 2K by default, 4K for hero art. Video: Gemini Omni Flash (image to video, 6–15 s).
   Music: Lyria 3.5 (prompts in `eidolon-demo/design/music/`; never name an artist or a game). Voice: Gemini TTS.
+  Sound effects: real recordings (the Sonniss GDC bundle), not Lyria: the owner did not like Lyria's (17/11/2026).
 - 3D: Tripo CLI `/opt/node22/bin/tripo` (multiview-to-model, `anim rig --spec mixamo`, `anim retarget`). Try
   parameters with `tripo make ... --dry-run` first: `-p` values are charged unchecked.
 - Blender 5.0 as a Python module (`python3.11 -I script.py -- args`) for builds, data pictures, review renders.
