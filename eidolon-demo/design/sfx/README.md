@@ -5,7 +5,7 @@ was run twice with `genmus.py` (MODEL=lyria-3.5). Lyria ignores silences and key
 each cue is a cut of one take, retuned with ffmpeg `rubberband` (pitch only) onto the notes the Lament shares with
 its D-minor turns (A C D E F G), so that a cue does not clash with the music wherever the player meets it.
 
-| cue | take, seconds | retune | what it is | where |
+| cue (`sfx/<cue>.ogg`) | take, seconds | retune | what it is | where |
 |---|---|---|---|---|
 | play_note | play_note_b 4.85-8.35 | +1 | low E minor pluck and cello, 3.5 s | PLAY, "tap to begin", "tap to play again" |
 | line_sigh | line_sigh_b 9.92-16.6 | +5 (formant kept) | solo voice F-E-D-C-D, a sigh | each story line (not the last: the gate cue carries it) |

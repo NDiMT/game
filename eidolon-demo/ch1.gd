@@ -1785,6 +1785,7 @@ func _go_begin() -> void:
 	cam_t = _mw_focus(); cam_focus = cam_t; cam_focus_on = true
 
 func _go_write(text: String, hold := 4.5) -> void:
+	if go_wake and not iv_won: _ivw_sfx("line_sigh", -11.9); _ivw_duck(4.9)      # (each line comes on a woman's sigh, the music a little lower under it)
 	for ql in quote_lbls: (ql as Label).text = text
 	var qt := create_tween(); qt.tween_property(quote_box, "modulate:a", 1.0, 0.5); qt.tween_interval(hold); qt.tween_property(quote_box, "modulate:a", 0.0, 0.7)
 	quote_glow.modulate.a = 1.0
@@ -3497,6 +3498,7 @@ func _ivg_swipe(dv: Vector2) -> void:
 	var n := _ivg_dir_nbr(iv_me, dv)
 	if OS.get_environment("IV_TRACE") != "": print("IV swipe ", dv, " from ", iv_me, " -> ", n)
 	ivg_turning = true
+	if n == "" and go_wake: _ivw_sfx("no_move", -14.0)      # (a soft low pluck: not that way)
 	if n == "": await _her_no()
 	else: await _ivg_step(n)
 	ivg_turning = false
@@ -3996,6 +3998,8 @@ func _ivw_her_set(v: float, k: String) -> void:
 	for hm in her_mats + flip_mir:
 		if hm is ShaderMaterial: (hm as ShaderMaterial).set_shader_parameter(k, v)
 
+const IVW_GATE_PEAK := 1.15      # (the gate's sound peaks this long after it begins)
+const IVW_GATE_WALK_EXTRA := 0.21      # (her slow walk's start and stop, beyond distance over pace)
 func _ivw_exit() -> void:
 	var gk := func(v: float) -> void: ivw_gate_m.set_shader_parameter("k", v)
 	var gf := create_tween().set_parallel()      # (the gate's light grows as she comes to it)
@@ -4004,6 +4008,9 @@ func _ivw_exit() -> void:
 	await wait(0.5)
 	var to := Vector3(ivw_gate_p.x, pos.y, ivw_gate_p.z) - ivw_gate_front * 0.04      # (into it: she stands in its doorway, its light behind and about her; deeper in, white in white, she was gone before the flash)
 	var full := maxf(Vector2(pos.x, pos.z).distance_to(Vector2(to.x, to.z)), 0.05)
+	var gp_in := full / (PLAY_WALK * 0.33) + IVW_GATE_WALK_EXTRA + 0.4 - IVW_GATE_PEAK      # (when its sound must begin: the walk, the breath in the light, less the time to its peak)
+	if gp_in <= 0.0: _ivw_sfx("gate_pass", -4.3, -gp_in)
+	else: get_tree().create_timer(gp_in, false).timeout.connect(func() -> void: _ivw_sfx("gate_pass", -4.3))
 	speed_cap = PLAY_WALK * 0.33; face_to = null      # (slow steps: the step into the gate must be seen)
 	route.append({"p": to})
 	var snapped := false
@@ -4016,6 +4023,7 @@ func _ivw_exit() -> void:
 	await wait(0.4)
 	await _ivw_snap("x1_in")
 	_ivw_her_set(pos.y, "iv_gone_y")
+	if OS.get_environment("IV_SFX_LOG") != "": print("FLASH at ", snappedf(iv_t, 0.01))
 	_ivw_flash(ivw_gate_p + Vector3(0, 0.95, 0))
 	_ivw_motes(pos)
 	if ivg_on and ivg.has("end"): _go_write(String(ivg.end), 5.6)      # (the last line as she goes into the light, and it stays a while: the user)
@@ -4030,25 +4038,19 @@ func _ivw_exit() -> void:
 	await wait(0.2); await _ivw_snap("x3_gone")
 	await wait(0.8)
 
-func _ivw_end_screen() -> void:      # (the waking's end: the picture goes down into the dark of the film's first frame, and the name comes over it; a touch begins it again)
+func _ivw_end_screen() -> void:      # (the waking's end: the picture goes down into the dark of the film's first frame, and the name comes over it, alone; a touch begins it again)
 	if iv_fade != null:
 		iv_fade.color = Color(0.13, 0.08, 0.13, 0.0)
 		var t := create_tween(); t.tween_property(iv_fade, "color:a", 1.0, 2.6).set_trans(Tween.TRANS_SINE)
 		await t.finished
 	var cl := CanvasLayer.new(); cl.layer = 6; add_child(cl)
 	var box := Control.new(); box.set_anchors_preset(Control.PRESET_FULL_RECT); box.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.modulate.a = 0.0; cl.add_child(box)
-	var vp := get_viewport().get_visible_rect().size; var k := vp.x / 720.0
+	var vp := get_viewport().get_visible_rect().size
 	var cream := Color(0.93, 0.87, 0.9)
 	if ResourceLoader.exists("res://ui/logo.png"):
 		var tr := TextureRect.new(); tr.texture = load("res://ui/logo.png"); tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		var ts := (tr.texture as Texture2D).get_size(); var w := vp.x * 0.62; var h := w * ts.y / ts.x
 		tr.size = Vector2(w, h); tr.position = Vector2((vp.x - w) * 0.5, vp.y * 0.42 - h * 0.5); tr.modulate = cream; tr.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(tr)
-	var lb := Label.new(); lb.text = "tap to play again"; lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	var f := _ivw_font(false)
-	if f != null: lb.add_theme_font_override("font", f)
-	lb.add_theme_font_size_override("font_size", int(32 * k)); lb.add_theme_color_override("font_color", Color(cream.r, cream.g, cream.b, 0.8))
-	lb.anchor_left = 0.0; lb.anchor_right = 1.0; lb.anchor_top = 0.55; lb.anchor_bottom = 0.55; lb.offset_top = -30 * k; lb.offset_bottom = 30 * k; lb.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(lb)
-	var tl := lb.create_tween().set_loops(); tl.tween_property(lb, "modulate:a", 0.45, 1.6).set_trans(Tween.TRANS_SINE); tl.tween_property(lb, "modulate:a", 1.0, 1.6).set_trans(Tween.TRANS_SINE)
 	var tb := box.create_tween(); tb.tween_property(box, "modulate:a", 1.0, 1.6).set_trans(Tween.TRANS_SINE)
 	await tb.finished
 	await _ivw_snap("x5_end")
@@ -4447,6 +4449,7 @@ func _ivw_splash(at: Vector3, rad: float) -> void:      # (drops thrown up from 
 
 func _ivw_raise(up: bool) -> void:
 	if ivw_risers.is_empty(): ivw_up = 1.0 if up else 0.0; return
+	if up and go_wake: _ivw_sfx("stones_rise", -12.6); _ivw_duck(3.0)      # (the stones come up on a slow swell of strings and voices)
 	var t := create_tween(); t.tween_method(_ivw_risers_set, ivw_up, 1.0 if up else 0.0, 3.2)      # (each stone eases by itself, in its turn)
 	for k in 4:
 		await get_tree().create_timer(0.55).timeout
@@ -4578,7 +4581,7 @@ func _ivw_music(file: String, fade := 2.5, db := -2.0) -> void:
 	var st := load(file) as AudioStream
 	if st is AudioStreamOggVorbis: (st as AudioStreamOggVorbis).loop = true
 	var old := ivw_music_p
-	var p := AudioStreamPlayer.new(); add_child(p); p.stream = st; p.volume_db = -40.0; p.play()
+	var p := AudioStreamPlayer.new(); p.bus = _ivw_music_bus(); add_child(p); p.stream = st; p.volume_db = -40.0; p.play()
 	create_tween().tween_property(p, "volume_db", db, fade).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	if old != null:
 		var t := create_tween(); t.tween_property(old, "volume_db", -50.0, fade).set_trans(Tween.TRANS_SINE); t.tween_callback(old.queue_free)
@@ -4593,6 +4596,32 @@ func _go_level_music() -> String:
 	if go_moon: return "res://music/elegy.ogg"
 	if go_quarry: return "res://music/stone.ogg"
 	return "res://music/lastlight.ogg"
+
+## the waking's sounds (sfx/: cut from the music model's pieces made from design/sfx/, each retuned onto the notes the
+## lament shares with its D-minor turns, so none of them strikes against the music wherever the player meets it):
+## PLAY a low note, each line of the story a woman's sigh, the stones a swell, the gate its passing, a step that cannot be a low pluck
+func _ivw_sfx(name: String, db := -8.0, from := 0.0) -> AudioStreamPlayer:
+	if OS.get_environment("IV_NO_MUSIC") != "" or OS.get_environment("IV_NO_SFX") != "" or not ResourceLoader.exists("res://sfx/%s.ogg" % name): return null
+	if OS.get_environment("IV_SFX_LOG") != "": print("SFX ", name, " at ", snappedf(iv_t, 0.01))
+	var p := AudioStreamPlayer.new(); p.stream = load("res://sfx/%s.ogg" % name); p.volume_db = db; add_child(p); p.play(from)
+	p.finished.connect(p.queue_free)
+	return p
+
+## the music goes through its own bus, so that it can dip a little under a sound (4 dB, as in the sound reel the user approved)
+var ivw_duck_until := -1.0; var ivw_duck_db := 0.0
+func _ivw_music_bus() -> String:
+	if AudioServer.get_bus_index("Music") == -1:
+		AudioServer.add_bus(); var i := AudioServer.bus_count - 1
+		AudioServer.set_bus_name(i, "Music"); AudioServer.set_bus_send(i, "Master")
+	return "Music"
+func _ivw_duck(hold: float) -> void:
+	ivw_duck_until = maxf(ivw_duck_until, iv_t + hold)
+func _ivw_duck_tick(dt: float) -> void:
+	var to := -4.0 if iv_t < ivw_duck_until else 0.0
+	if is_equal_approx(to, ivw_duck_db): return
+	ivw_duck_db = move_toward(ivw_duck_db, to, dt * 10.0)      # (4 dB in 0.4 s, down and back up)
+	var bi := AudioServer.get_bus_index("Music")
+	if bi != -1: AudioServer.set_bus_volume_db(bi, ivw_duck_db)
 
 func _ivw_music_out(fade := 3.0) -> void:
 	if ivw_music_p == null: return
@@ -4621,17 +4650,15 @@ func _ivw_text_style() -> void:      # (the lines over the dawn: deep plum lette
 		else: l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0))
 
 var ivw_begin: Control
-func _ivw_begin() -> void:      # (the browser's first screen: the film's own dark, and a line asking for the touch that lets its sound play)
+func _ivw_begin() -> void:      # (the browser's first screen: the film's own dark alone, no words (the user); the first touch lets the sound play and the film begins)
+	if _ivw_web_sound_ok(): _ivw_intro(); return
 	var cl := CanvasLayer.new(); cl.layer = 10; add_child(cl)
 	ivw_begin = Control.new(); ivw_begin.set_anchors_preset(Control.PRESET_FULL_RECT); ivw_begin.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(ivw_begin)
 	var bg := ColorRect.new(); bg.color = Color(0.13, 0.08, 0.13); bg.set_anchors_preset(Control.PRESET_FULL_RECT); bg.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_begin.add_child(bg)
-	var vp := get_viewport().get_visible_rect().size; var k := vp.x / 720.0
-	var lb := Label.new(); lb.text = "tap to begin"; lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	var bf := _ivw_font(false)      # (the story's own letter)
-	if bf != null: lb.add_theme_font_override("font", bf)
-	lb.add_theme_font_size_override("font_size", int(34 * k)); lb.add_theme_color_override("font_color", Color(0.93, 0.87, 0.9))
-	lb.set_anchors_preset(Control.PRESET_FULL_RECT); lb.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_begin.add_child(lb)
-	var t := lb.create_tween().set_loops(); t.tween_property(lb, "modulate:a", 0.35, 1.6).set_trans(Tween.TRANS_SINE); t.tween_property(lb, "modulate:a", 1.0, 1.6).set_trans(Tween.TRANS_SINE)
+
+func _ivw_web_sound_ok() -> bool:      # (does this browser already let sound play, before any touch? A new audio context starts running only then)
+	var r: Variant = JavaScriptBridge.eval("(function(){try{var C=window.AudioContext||window.webkitAudioContext;if(!C)return false;var c=new C();var ok=c.state==='running';c.close();return ok;}catch(e){return false;}})()", true)
+	return r is bool and r
 
 func _ivw_begin_go() -> void:
 	if ivw_begin == null: return
@@ -4661,6 +4688,7 @@ func _ivw_intro_end() -> void:      # (at its end, or at a tap: the film fades i
 
 func _ivw_play() -> void:      # (PLAY: the name and the haze go, the eye goes down to her where she lies, and she wakes)
 	ivw_menu_on = false
+	_ivw_sfx("play_note", -8.3)
 	_ivw_music(_go_level_music(), 5.0, -5.0)      # (the theme gives way to the level's own piece, slowly, quieter: it plays while she thinks)
 	var t := create_tween().set_parallel()
 	t.tween_property(ivw_menu, "modulate:a", 0.0, 1.0).set_trans(Tween.TRANS_SINE)
@@ -4705,6 +4733,7 @@ func _ivw_tick(dt: float) -> void:
 		if fl > 1.0 and ivw_video.stream_position >= fl - IVW_THEME_AT:
 			ivw_theme_on = true; _ivw_music("res://music/theme.ogg", IVW_THEME_AT - 0.5)
 	_ivw_birds_tick(dt)
+	_ivw_duck_tick(dt)
 	if ivw_veil_m != null: ivw_veil_m.set_shader_parameter("t", iv_t)      # (the game's own time: on the wall clock the cloth in the gate flapped many times too fast in a recording)
 	if palm_on and not ivw_awake:      # (her palms on the stone before her knees, wherever she is turned)
 		var fw := Vector3(sin(yaw), 0, cos(yaw)); var sd := Vector3(fw.z, 0, -fw.x)

@@ -33,7 +33,7 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   rises in moments (8 s clip: breath, hands to the knee, weight forward, push, lunge, step, back up, head last).
   She turns the winch; the stones come up out of the water with foam on the water and on them; she climbs to the
   glowing gate, steps into its light, and is lost in it in a flash (the gate alone lights) and rising motes; the
-  last line holds, then the dark end screen (EIDOLON, "tap to play again"). **The story is in
+  last line holds, then the dark end screen (EIDOLON alone: no "tap to ..." words anywhere, the owner). **The story is in
   `eidolon-world/dev/EIDOLON_SCRIPT.md`: read it before writing any line.** The player is one of the statues Theron
   carved to make Ione's face again (not Ione). Lines: "Theron went looking for her face in stone. / A thousand times he carved
   it, / and a thousand times it was not hers." (clear, a little poetic: the owner) → (stones up) "Her own face lies at the bottom of the sea. / To pass over, she must see it once more." →
@@ -41,6 +41,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
 - **Start screen**: plum dark, cream EIDOLON and PLAY, a subdued veiled statue behind (`ui/start_statue.jpg`); the
   film opens and closes in the same plum.
 - **Play it in a browser**: https://ndimt.github.io/game/eidolon-waking/ (the owner OK'd publishing there).
+- **Sounds** (`sfx/`, `_ivw_sfx`, the owner approved them in a preview on the level video): PLAY a low note, each story
+  line a woman's sigh (not the last), the stones a swell, the gate's sound peaking on the flash, a blocked swipe a low
+  pluck; the music dips 4 dB under them (its own bus). `IV_SFX_LOG=1` logs their moments.
 - **The camera** holds the whole map and follows her a little, smoothly and a little behind; on larger maps it goes
   with her but shows little past the edges (`_ivr_follow` in `ch1.gd`).
 - **Music per level** (`_go_level_music` in `ch1.gd`): waking Lament, sanctuary Requiem, moon Elegy, quarry Stone,
@@ -66,7 +69,7 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   `IV_NO_MUSIC=1`, `HAND=1` tutorial hand; `--quit-after <frames>` for a short check clip.
 - Browser build: export preset `WebWake` (feature `gowake`; other levels and unused music left out) →
   `godot --headless --path eidolon-demo --export-release "WebWake" build/webwake/index.html` (~120 MB). On the web a
-  first tap ("tap to begin") lets the sound play. Code that reads a file raw (`FileAccess`, the `.glb` levels and props)
+  first touch lets the sound play: a plain plum screen waits for it (no words), skipped when the browser already allows sound. Code that reads a file raw (`FileAccess`, the `.glb` levels and props)
   needs it kept raw in the pack (`importer="keep"` or the preset's include filter); for imported pictures check with
   `ResourceLoader.exists`, never `FileAccess.file_exists`. Earlier demos were published to GitHub Pages from the branch
   `claude/solo-game-ideas-balatro-yj6hqw` (`site/<name>/` → https://ndimt.github.io/game/<name>/); pushing there needs
