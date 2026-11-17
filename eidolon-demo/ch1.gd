@@ -663,6 +663,9 @@ func say(s: String) -> void:
 var ivg_sw0 := Vector2.ZERO
 var ivg_sw_id := -1
 func _unhandled_input(ev: InputEvent) -> void:
+	if ivw_begin != null:      # (the browser's first touch: it lets the sound play, and the film begins)
+		if (ev is InputEventScreenTouch and ev.pressed) or (ev is InputEventMouseButton and ev.pressed): _ivw_begin_go()
+		return
 	if go_iv and ivr_on and started and not ended:
 		if ev is InputEventScreenTouch:
 			if ev.pressed: ivg_sw0 = ev.position; ivg_sw_id = ev.index; return
@@ -4478,7 +4481,7 @@ var ivw_intro_box: Control
 var ivw_video: VideoStreamPlayer
 var ivw_intro_on := false
 func _ivw_menu_make() -> void:
-	if not FileAccess.file_exists("res://ui/logo.png"): return
+	if not ResourceLoader.exists("res://ui/logo.png"): return
 	var vp := get_viewport().get_visible_rect().size
 	var cl := CanvasLayer.new(); cl.layer = 4; add_child(cl)
 	ivw_menu = Control.new(); ivw_menu.set_anchors_preset(Control.PRESET_FULL_RECT); ivw_menu.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(ivw_menu)
@@ -4502,7 +4505,9 @@ func _ivw_menu_make() -> void:
 	ivw_close = 0.0      # (the whole level behind the name)
 	ivw_menu_on = true; ivr_fo = Vector2.ZERO; ivr_fv = Vector2.ZERO      # (the start screen holds the level's own eye)
 	var auto := OS.get_cmdline_user_args().has("godemo")
-	if ResourceLoader.exists("res://intro/intro.ogv") and OS.get_environment("IV_NO_INTRO") == "" and (not auto or OS.get_environment("IV_INTRO") != ""): _ivw_intro()
+	if ResourceLoader.exists("res://intro/intro.ogv") and OS.get_environment("IV_NO_INTRO") == "" and (not auto or OS.get_environment("IV_INTRO") != ""):
+		if OS.has_feature("web"): _ivw_begin()      # (in a browser no sound may play before a first touch: the film waits for it)
+		else: _ivw_intro()
 	else: _ivw_music("res://music/theme.ogg", 2.0)
 
 ## the music (music/: made with the music model from the written descriptions in design/music/): the theme under the
@@ -4533,6 +4538,24 @@ func _ivw_music_out(fade := 3.0) -> void:
 	if ivw_music_p == null: return
 	var old := ivw_music_p; ivw_music_p = null
 	var t := create_tween(); t.tween_property(old, "volume_db", -50.0, fade).set_trans(Tween.TRANS_SINE); t.tween_callback(old.queue_free)
+
+var ivw_begin: Control
+func _ivw_begin() -> void:      # (the browser's first screen: the film's own dark, and a line asking for the touch that lets its sound play)
+	var cl := CanvasLayer.new(); cl.layer = 10; add_child(cl)
+	ivw_begin = Control.new(); ivw_begin.set_anchors_preset(Control.PRESET_FULL_RECT); ivw_begin.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(ivw_begin)
+	var bg := ColorRect.new(); bg.color = Color(0.13, 0.08, 0.13); bg.set_anchors_preset(Control.PRESET_FULL_RECT); bg.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_begin.add_child(bg)
+	var vp := get_viewport().get_visible_rect().size; var k := vp.x / 720.0
+	var lb := Label.new(); lb.text = "tap to begin"; lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	if FileAccess.file_exists("res://fonts/EBGaramond-Italic.ttf"):      # (the game's own letter, read as the lines of the story are)
+		var ff := FontFile.new(); ff.data = FileAccess.get_file_as_bytes("res://fonts/EBGaramond-Italic.ttf"); lb.add_theme_font_override("font", ff)
+	lb.add_theme_font_size_override("font_size", int(34 * k)); lb.add_theme_color_override("font_color", Color(0.93, 0.87, 0.9))
+	lb.set_anchors_preset(Control.PRESET_FULL_RECT); lb.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_begin.add_child(lb)
+	var t := lb.create_tween().set_loops(); t.tween_property(lb, "modulate:a", 0.35, 1.6).set_trans(Tween.TRANS_SINE); t.tween_property(lb, "modulate:a", 1.0, 1.6).set_trans(Tween.TRANS_SINE)
+
+func _ivw_begin_go() -> void:
+	if ivw_begin == null: return
+	ivw_begin.get_parent().queue_free(); ivw_begin = null
+	_ivw_intro()
 
 func _ivw_intro() -> void:
 	var cl := CanvasLayer.new(); cl.layer = 9; add_child(cl)
@@ -4572,7 +4595,7 @@ func _ivw_birds_tick(dt: float) -> void:
 		(bd.n as MeshInstance3D).global_position = q + (bd.fwd as Vector3) * 14.0      # (far off over the sea: behind all the island, before the painted sky)
 
 func _ivw_hand_make(cl: CanvasLayer) -> void:
-	if not FileAccess.file_exists(go_dir + "hand.png"): return
+	if not ResourceLoader.exists(go_dir + "hand.png"): return
 	var k := get_viewport().get_visible_rect().size.x / 720.0
 	ivw_trail = Line2D.new(); ivw_trail.width = 7.0 * k; ivw_trail.default_color = Color(1, 1, 1, 0.0)
 	var g := Gradient.new(); g.offsets = PackedFloat32Array([0.0, 1.0]); g.colors = PackedColorArray([Color(1, 1, 1, 0.0), Color(1, 0.98, 0.95, 0.75)])
@@ -5327,7 +5350,7 @@ func _ivr_build() -> void:
 	ivr_mb_ok = false
 	var j0 = JSON.parse_string(FileAccess.get_file_as_string(go_dir + "level.json"))
 	if j0 is Dictionary and (j0 as Dictionary).get("sea_y") != null: ivr_sea_y = float(j0.sea_y)
-	if (go_moon or go_quarry or go_wake) and OS.get_environment("IV_NO_BACKDROP") == "" and FileAccess.file_exists(go_dir + "backdrop.jpg"): iv_bgtex = load(go_dir + "backdrop.jpg")
+	if (go_moon or go_quarry or go_wake) and OS.get_environment("IV_NO_BACKDROP") == "" and ResourceLoader.exists(go_dir + "backdrop.jpg"): iv_bgtex = load(go_dir + "backdrop.jpg")
 	var bm := ShaderMaterial.new(); var bs := Shader.new(); bs.code = IV_BG_SH if iv_bgtex == null else IV_BGTEX_SH; bm.shader = bs
 	_iv_sky(bm)
 	if iv_bgtex != null: bm.set_shader_parameter("bg_tex", iv_bgtex); bm.set_shader_parameter("bg_scale", _iv_bg_scale()); bm.set_shader_parameter("uv_flip", iv_uvf); ivr_bgm = bm
@@ -5473,7 +5496,7 @@ func _ivr_build() -> void:
 		_ivq_dust(cl)
 	elif go_moon:      # (in the snow at night: snowy pine above at the left, the snow falling; the mist open below)
 		lr.visible = false
-		if FileAccess.file_exists("res://gomoon/pine_tl.png"): iv_leaves.texture = load("res://gomoon/pine_tl.png")
+		if ResourceLoader.exists("res://gomoon/pine_tl.png"): iv_leaves.texture = load("res://gomoon/pine_tl.png")
 		else: iv_leaves.modulate = Color(0.24, 0.29, 0.42)
 		_ivm_snow(cl)
 	else:

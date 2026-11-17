@@ -53,6 +53,13 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   res://chapter1.tscn -- godemo`, then ffmpeg to MP4. Env: `IV_ZOOM` close-up (`IV_ZOOM_AT=dx,dz` aims it that far
   from her start), `IVW_SNAPS=1` + `SHOT_DIR` + `IVW_QUIT_AT=<snap>` stills, `IVW_SKIP=1` start awake,
   `IV_NO_MUSIC=1`, `HAND=1` tutorial hand; `--quit-after <frames>` for a short check clip.
+- Browser build: export preset `WebWake` (feature `gowake`; other levels and unused music left out) →
+  `godot --headless --path eidolon-demo --export-release "WebWake" build/webwake/index.html` (~120 MB). On the web a
+  first tap ("tap to begin") lets the sound play. Code that reads a file raw (`FileAccess`, the `.glb` levels and props)
+  needs it kept raw in the pack (`importer="keep"` or the preset's include filter); for imported pictures check with
+  `ResourceLoader.exists`, never `FileAccess.file_exists`. Earlier demos were published to GitHub Pages from the branch
+  `claude/solo-game-ideas-balatro-yj6hqw` (`site/<name>/` → https://ndimt.github.io/game/<name>/); pushing there needs
+  the owner's explicit OK each time.
 - The cloud machine has 4 cores and no GPU: about 1 s per 720x1280 frame, so a 50 s level video takes ~35 min.
   Drive every motion by the game's time (`iv_t`, shader `TIME`), never the wall clock, or it races in recordings.
   Faster options: cheaper render settings for recordings; splitting a video over parallel cloud sessions; a machine
