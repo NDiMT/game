@@ -662,7 +662,12 @@ func say(s: String) -> void:
 ## a touch that does not travel is still a tap.
 var ivg_sw0 := Vector2.ZERO
 var ivg_sw_id := -1
+var ivw_real_touch_ms := -100000
 func _unhandled_input(ev: InputEvent) -> void:
+	if ev is InputEventScreenTouch or ev is InputEventScreenDrag:      # (a phone's browser can send one touch twice, as itself and again as the mouse it stands in for: the second is dropped)
+		if ev.device == -1:
+			if Time.get_ticks_msec() - ivw_real_touch_ms < 1500: return
+		else: ivw_real_touch_ms = Time.get_ticks_msec()
 	if go_iv and ivr_on and started and not ended:
 		if ev is InputEventScreenTouch:
 			if ev.pressed: ivg_sw0 = ev.position; ivg_sw_id = ev.index; return
@@ -3613,7 +3618,7 @@ func _play_ivp() -> void:
 	await get_tree().create_timer(2.2).timeout
 	if go_wake and ivw_intro_on:      # (with the film: let it run to its end, as a player would, and the name stand a moment under the theme)
 		if OS.get_environment("IV_TEST_SKIP") != "":      # (to check the skip: a touch brings "tap to skip", a second while it shows skips the film)
-			await wait(4.0); tap(Vector2(360, 640)); await wait(1.5); _ivw_snap("f1_skip_words"); tap(Vector2(360, 640))
+			await wait(4.0); tap(Vector2(360, 640)); tap(Vector2(360, 640)); await wait(1.5); _ivw_snap("f1_skip_words"); tap(Vector2(360, 640))      # (the first touch come twice at once: it must not skip)
 		while ivw_intro_on: await get_tree().process_frame
 		await wait(4.0)
 	await snap.call("p0_title")
@@ -4659,10 +4664,14 @@ func _ivw_film_sync_tick(dt: float) -> void:
 		ivw_film_audio.play(at)
 
 ## a touch on the film: "tap to skip" comes a little while, and a second touch while it shows skips the film (the user)
-var ivw_skip_lb: Label
+var ivw_skip_lb: Label; var ivw_skip_ms := 0
 func _ivw_skip_tap() -> void:
-	if ivw_skip_lb != null and is_instance_valid(ivw_skip_lb) and ivw_skip_lb.modulate.a > 0.05: _ivw_intro_end(); return
+	var now := Time.get_ticks_msec()
+	if ivw_skip_lb != null and is_instance_valid(ivw_skip_lb) and ivw_skip_lb.modulate.a > 0.05:
+		if now - ivw_skip_ms > 350: _ivw_intro_end()      # (a second touch, not the first one come twice)
+		return
 	if ivw_intro_box == null: return
+	ivw_skip_ms = now
 	if ivw_skip_lb == null or not is_instance_valid(ivw_skip_lb):
 		var vp := get_viewport().get_visible_rect().size; var k := vp.x / 720.0
 		ivw_skip_lb = Label.new(); ivw_skip_lb.text = "tap to skip"; ivw_skip_lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; ivw_skip_lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
