@@ -33,7 +33,7 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   rises in moments (8 s clip: breath, hands to the knee, weight forward, push, lunge, step, back up, head last).
   She turns the winch; the stones come up out of the water with foam on the water and on them; she climbs to the
   glowing gate, steps into its light, and is lost in it in a flash (the gate alone lights) and rising motes; the
-  last line holds, then the dark end screen (EIDOLON alone: no "tap to ..." words anywhere, the owner). **The story is in
+  last line holds, then the dark end screen (EIDOLON alone: no "tap to ..." words, the owner, but the film's "tap to skip"). **The story is in
   `eidolon-world/dev/EIDOLON_SCRIPT.md`: read it before writing any line.** The player is one of the statues Theron
   carved to make Ione's face again (not Ione). Lines: "Theron went looking for her face in stone. / A thousand times he carved
   it, / and a thousand times it was not hers." (clear, a little poetic: the owner) → (stones up) "Her own face lies at the bottom of the sea. / To pass over, she must see it once more." →
@@ -69,8 +69,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   `IV_NO_MUSIC=1`, `HAND=1` tutorial hand; `--quit-after <frames>` for a short check clip.
 - Browser build: export preset `WebWake` (feature `gowake`; other levels and unused music left out) →
   `godot --headless --path eidolon-demo --export-release "WebWake" build/webwake/index.html` (~120 MB). On the web a
-  first touch lets the sound play: a plain plum screen waits for it (no words), skipped when the browser already allows sound. (`JavaScriptBridge.eval` hands a JS boolean back as
-  the number 1: have the JS return a word.) Code that reads a file raw (`FileAccess`, the `.glb` levels and props)
+  film starts by itself (the owner). Its sound is a player of its own (`intro/intro_audio.ogg`) held to the picture
+  (`_ivw_film_sync_tick`), so where a browser holds sound back until the first touch it comes in at the right place. A
+  touch on the film shows "tap to skip" a while; a second touch while it shows skips (`_ivw_skip_tap`). Code that reads a file raw (`FileAccess`, the `.glb` levels and props)
   needs it kept raw in the pack (`importer="keep"` or the preset's include filter); for imported pictures check with
   `ResourceLoader.exists`, never `FileAccess.file_exists`. Earlier demos were published to GitHub Pages from the branch
   `claude/solo-game-ideas-balatro-yj6hqw` (`site/<name>/` → https://ndimt.github.io/game/<name>/); pushing there needs

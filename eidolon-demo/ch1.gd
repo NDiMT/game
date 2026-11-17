@@ -663,9 +663,6 @@ func say(s: String) -> void:
 var ivg_sw0 := Vector2.ZERO
 var ivg_sw_id := -1
 func _unhandled_input(ev: InputEvent) -> void:
-	if ivw_begin != null:      # (the browser's first touch: it lets the sound play, and the film begins)
-		if (ev is InputEventScreenTouch and ev.pressed) or (ev is InputEventMouseButton and ev.pressed): _ivw_begin_go()
-		return
 	if go_iv and ivr_on and started and not ended:
 		if ev is InputEventScreenTouch:
 			if ev.pressed: ivg_sw0 = ev.position; ivg_sw_id = ev.index; return
@@ -3615,6 +3612,8 @@ func _play_ivp() -> void:
 		await idle.call(); await wait(0.4)
 	await get_tree().create_timer(2.2).timeout
 	if go_wake and ivw_intro_on:      # (with the film: let it run to its end, as a player would, and the name stand a moment under the theme)
+		if OS.get_environment("IV_TEST_SKIP") != "":      # (to check the skip: a touch brings "tap to skip", a second while it shows skips the film)
+			await wait(4.0); tap(Vector2(360, 640)); await wait(1.5); _ivw_snap("f1_skip_words"); tap(Vector2(360, 640))
 		while ivw_intro_on: await get_tree().process_frame
 		await wait(4.0)
 	await snap.call("p0_title")
@@ -4569,8 +4568,7 @@ func _ivw_menu_make() -> void:
 	ivw_menu_on = true; ivr_fo = Vector2.ZERO; ivr_fv = Vector2.ZERO      # (the start screen holds the level's own eye)
 	var auto := OS.get_cmdline_user_args().has("godemo")
 	if ResourceLoader.exists("res://intro/intro.ogv") and OS.get_environment("IV_NO_INTRO") == "" and (not auto or OS.get_environment("IV_INTRO") != ""):
-		if OS.has_feature("web"): _ivw_begin()      # (in a browser no sound may play before a first touch: the film waits for it)
-		else: _ivw_intro()
+		_ivw_intro()      # (the film begins by itself, in a browser too (the user); there its sound comes in at the first touch, where the picture is)
 	else: _ivw_music("res://music/theme.ogg", 2.0)
 
 ## the music (music/: made with the music model from the written descriptions in design/music/): the theme under the
@@ -4649,21 +4647,32 @@ func _ivw_text_style() -> void:      # (the lines over the dawn: deep plum lette
 		elif l.material != null: l.add_theme_color_override("font_outline_color", Color(1.0, 0.95, 0.9, clampf(1.2 / float(o), 0.04, 0.2)))
 		else: l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0))
 
-var ivw_begin: Control
-func _ivw_begin() -> void:      # (the browser's first screen: the film's own dark alone, no words (the user); the first touch lets the sound play and the film begins)
-	if _ivw_web_sound_ok(): _ivw_intro(); return
-	var cl := CanvasLayer.new(); cl.layer = 10; add_child(cl)
-	ivw_begin = Control.new(); ivw_begin.set_anchors_preset(Control.PRESET_FULL_RECT); ivw_begin.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(ivw_begin)
-	var bg := ColorRect.new(); bg.color = Color(0.13, 0.08, 0.13); bg.set_anchors_preset(Control.PRESET_FULL_RECT); bg.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_begin.add_child(bg)
+var ivw_film_audio: AudioStreamPlayer; var ivw_film_sync := 0.0
+func _ivw_film_sync_tick(dt: float) -> void:
+	if not ivw_intro_on or ivw_film_audio == null or ivw_video == null or not ivw_video.is_playing(): return
+	ivw_film_sync -= dt
+	if ivw_film_sync > 0.0: return
+	ivw_film_sync = 0.5
+	var at := ivw_video.stream_position
+	if absf(ivw_film_audio.get_playback_position() - at) > 0.3:      # (held back, or drifted: on to where the picture is)
+		if OS.get_environment("IV_SFX_LOG") != "": print("FILM SYNC ", snappedf(ivw_film_audio.get_playback_position(), 0.01), " -> ", snappedf(at, 0.01))
+		ivw_film_audio.play(at)
 
-func _ivw_web_sound_ok() -> bool:      # (does this browser already let sound play, before any touch? A new audio context starts running only then)
-	var r: Variant = JavaScriptBridge.eval("(function(){try{var C=window.AudioContext||window.webkitAudioContext;if(!C)return 'n';var c=new C();var ok=c.state==='running';c.close();return ok?'y':'n';}catch(e){return 'n';}})()", true)
-	return str(r) == "y"      # (a word, not a JS boolean: the bridge hands a boolean back as the number 1)
-
-func _ivw_begin_go() -> void:
-	if ivw_begin == null: return
-	ivw_begin.get_parent().queue_free(); ivw_begin = null
-	_ivw_intro()
+## a touch on the film: "tap to skip" comes a little while, and a second touch while it shows skips the film (the user)
+var ivw_skip_lb: Label
+func _ivw_skip_tap() -> void:
+	if ivw_skip_lb != null and is_instance_valid(ivw_skip_lb) and ivw_skip_lb.modulate.a > 0.05: _ivw_intro_end(); return
+	if ivw_intro_box == null: return
+	if ivw_skip_lb == null or not is_instance_valid(ivw_skip_lb):
+		var vp := get_viewport().get_visible_rect().size; var k := vp.x / 720.0
+		ivw_skip_lb = Label.new(); ivw_skip_lb.text = "tap to skip"; ivw_skip_lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; ivw_skip_lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		var f := _ivw_font(false)      # (the story's own letter, small, in the film's dark between its words and its border)
+		if f != null: ivw_skip_lb.add_theme_font_override("font", f)
+		ivw_skip_lb.add_theme_font_size_override("font_size", int(27 * k)); ivw_skip_lb.add_theme_color_override("font_color", Color(0.93, 0.87, 0.9, 0.85))
+		ivw_skip_lb.anchor_left = 0.0; ivw_skip_lb.anchor_right = 1.0; ivw_skip_lb.anchor_top = 0.86; ivw_skip_lb.anchor_bottom = 0.86; ivw_skip_lb.offset_top = -22 * k; ivw_skip_lb.offset_bottom = 22 * k
+		ivw_skip_lb.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_intro_box.add_child(ivw_skip_lb)
+	ivw_skip_lb.modulate.a = 0.0
+	var t := ivw_skip_lb.create_tween(); t.tween_property(ivw_skip_lb, "modulate:a", 1.0, 0.25); t.tween_interval(2.4); t.tween_property(ivw_skip_lb, "modulate:a", 0.0, 0.8)
 
 func _ivw_intro() -> void:
 	var cl := CanvasLayer.new(); cl.layer = 9; add_child(cl)
@@ -4675,15 +4684,18 @@ func _ivw_intro() -> void:
 	ivw_intro_on = true
 	get_viewport().disable_3d = true      # (the film covers all: the level is not drawn under it)
 	ivw_video.play()
+	if ResourceLoader.exists("res://intro/intro_audio.ogg"):      # (the film's sound in a player of its own, held to the picture: a browser keeps all sound back until the first touch, and then it must come in where the picture is)
+		ivw_film_audio = AudioStreamPlayer.new(); ivw_film_audio.stream = load("res://intro/intro_audio.ogg"); add_child(ivw_film_audio); ivw_film_audio.play(); ivw_film_sync = 0.5
 
 func _ivw_intro_end() -> void:      # (at its end, or at a tap: the film fades into the faded level, the name, PLAY)
 	if not ivw_intro_on: return
 	ivw_intro_on = false
 	get_viewport().disable_3d = false
 	var t := create_tween(); t.tween_property(ivw_intro_box, "modulate:a", 0.0, 1.3).set_trans(Tween.TRANS_SINE)
-	if ivw_video.is_playing(): t.parallel().tween_property(ivw_video, "volume_db", -40.0, 1.2)
+	if ivw_film_audio != null: t.parallel().tween_property(ivw_film_audio, "volume_db", -40.0, 1.2)
 	await t.finished
-	ivw_video.stop(); ivw_intro_box.get_parent().queue_free(); ivw_intro_box = null; ivw_video = null
+	ivw_video.stop(); ivw_intro_box.get_parent().queue_free(); ivw_intro_box = null; ivw_video = null; ivw_skip_lb = null
+	if ivw_film_audio != null: ivw_film_audio.queue_free(); ivw_film_audio = null
 	if not ivw_theme_on: ivw_theme_on = true; _ivw_music("res://music/theme.ogg", 2.5)      # (skipped early: the theme now; at its end it came in already, and goes on)
 
 func _ivw_play() -> void:      # (PLAY: the name and the haze go, the eye goes down to her where she lies, and she wakes)
@@ -4734,6 +4746,7 @@ func _ivw_tick(dt: float) -> void:
 			ivw_theme_on = true; _ivw_music("res://music/theme.ogg", IVW_THEME_AT - 0.5)
 	_ivw_birds_tick(dt)
 	_ivw_duck_tick(dt)
+	_ivw_film_sync_tick(dt)
 	if ivw_veil_m != null: ivw_veil_m.set_shader_parameter("t", iv_t)      # (the game's own time: on the wall clock the cloth in the gate flapped many times too fast in a recording)
 	if palm_on and not ivw_awake:      # (her palms on the stone before her knees, wherever she is turned)
 		var fw := Vector3(sin(yaw), 0, cos(yaw)); var sd := Vector3(fw.z, 0, -fw.x)
@@ -7934,7 +7947,7 @@ func _self() -> void:
 
 # ---------------------------------------------------------------- I.1
 func tap(sp: Vector2) -> void:
-	if go_demo and not started and go_wake and ivw_intro_on: _ivw_intro_end(); return      # (a tap during the film: on to the start)
+	if go_demo and not started and go_wake and ivw_intro_on: _ivw_skip_tap(); return      # (a tap during the film: "tap to skip" a while; a second one skips it)
 	if go_demo and not started and go_wake and ivw_menu != null:
 		if ivw_menu_on: _ivw_play()
 		return
