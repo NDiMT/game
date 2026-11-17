@@ -3842,6 +3842,7 @@ func _ivw_rings(at: Vector3, size: float) -> void:
 	var mi := MeshInstance3D.new(); mi.mesh = q; mi.material_override = m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi); mi.global_position = at + Vector3(0, 0.015, 0)
 
+const IVW_RISE_S := 8.0      # (the rise clip's own length, seconds: tools/ione4_build.py RISE_SECONDS)
 const IVW_KNEEL_YAW := 145.0      # (degrees from the way's own heading: she faces the eye's left, a little toward it)
 func _ivw_scene2(j: Dictionary) -> void:
 	for ar in (j.get("arches", []) as Array): _ivw_gate_light(Vector3(float(ar[0][0]), float(ar[0][1]), float(ar[0][2])), String(ar[1]))
@@ -4004,12 +4005,12 @@ func _ivw_snap(nm: String) -> void:      # (to judge the waking: a frame at each
 func _ivw_rise() -> void:      # (on one knee; a moment still; then she rises slowly, as one rises from one knee: her weight forward, the back knee up, a lunge, the back foot drawn in and stepped through; she does not turn; the eye does not move)
 	iv_busy = true
 	await _ivw_snap("w0_kneel")
-	await get_tree().create_timer(1.5).timeout
+	await get_tree().create_timer(1.0).timeout      # (still, as the stone she was)
 	var t := create_tween().set_parallel(true)
-	t.tween_property(self, "a_rise", 1.0, 5.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)      # (the clip has it all: her hands push from the knee, her head lifts last)
-	await get_tree().create_timer(1.3).timeout; await _ivw_snap("w1_forward")
-	await get_tree().create_timer(1.2).timeout; await _ivw_snap("w2_lunge")
-	await get_tree().create_timer(1.2).timeout; await _ivw_snap("w3_step")
+	t.tween_property(self, "a_rise", 1.0, IVW_RISE_S)      # (at the clip's own pace, evenly: its moments are timed in it: a breath, her hands to the knee, her weight forward, the push, the step, her back, her head last. Eased on top, it was one smooth blend: "you sent me a transition")
+	await get_tree().create_timer(2.6).timeout; await _ivw_snap("w1_forward")
+	await get_tree().create_timer(1.8).timeout; await _ivw_snap("w2_lunge")
+	await get_tree().create_timer(1.0).timeout; await _ivw_snap("w3_step")
 	if t.is_running(): await t.finished
 	a_rise = -1.0
 	_ivw_ripple(pos, 1.3)

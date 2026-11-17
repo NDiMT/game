@@ -334,7 +334,8 @@ def arm_ik(rot, hips, side, wrist, pole):
     elbow = a_ + dirn * (l1 * ca) + perp * (l1 * math.sqrt(max(1.0 - ca * ca, 0.0)))
     aim(rot, hips, up, lo, elbow - a_)
     pos = fk1(rot, hips); aim(rot, hips, lo, hd, a_ + dirn * d - pos[lo])
-NR = int(os.environ.get("RISE_FRAMES", "84"))
+RISE_S = float(os.environ.get("RISE_SECONDS", "8.0"))       # (the clip's own time: the game plays it as it is, not stretched)
+NR = int(round(RISE_S * FPS))
 HANG_F, HANG_O, HANG_L = (float(v) for v in os.environ.get("RISE_HANG_AT", "0.03,0.03,0.93").split(","))      # (where a hanging hand is: forward, out, down by the arm's length)
 rr = np.zeros((NR + 1, NB, 3, 3)); rh = np.zeros((NR + 1, 3))
 upR = B("RightUpLeg"); reach = (thigh + shin) * 0.98
@@ -349,30 +350,40 @@ ball0 = ra1r - roty(FLAT) @ v0; ball0[2] = TOE_REST          # (where the ball o
 ball1 = p0[RT].copy()                                        # (and where it stands)
 ARMS = [B(n) for n in bones if any(t in n for t in ("Shoulder", "Arm", "Hand"))]
 LEAN0 = float(os.environ.get("RISE_LEAN", "60")); NECK0 = float(os.environ.get("RISE_NECK", "34")); HEAD0 = float(os.environ.get("RISE_HEAD", "46")); SHO0 = float(os.environ.get("RISE_SHO", "16"))
-LIFT0, LIFT1, HLIFT0 = (float(v) for v in os.environ.get("RISE_LIFT", "0.36,0.9,0.52").split(","))
 SPD = [float(v) for v in os.environ.get("RISE_SPD", "0.3,0.35,0.35").split(",")]      # (how the bow is shared down the spine: Spine, Spine1, Spine2)      # (her back bowed over the knee: spread down the spine, so it curves)
+# The rise in its moments, each in its own time, as a person rises (the user: "you sent me a transition": everything
+# had moved at once, one smooth blend from kneeling to standing). Seconds:
+#   0.15-1.35  a breath: the statue stirs (her chest lifts, her shoulders rise and fall, her head stirs)
+#   1.1-2.1    her crossed arms open, her hands go to the knee
+#   2.0-2.9    her weight comes forward over the front foot, a little down: she gathers herself
+#   2.8-5.6    the push: the hips rise; the back leg holds them to a lunge until it steps
+#   3.6-4.4    the back foot drawn in a little on its toes; 4.4-5.5 stepped through beside the other
+#   4.2-5.1    her hands leave the knee and hang; 3.6-6.2 her back comes up; a little sway back as it does
+#   5.6-7.2    her head comes up last; 6.4-7.8 she looks out, a little up, and settles; her arms to the idle's
+def win(t, a_, b_): return ease((t - a_) / (b_ - a_))
+def win5(t, a_, b_): x = min(max((t - a_) / (b_ - a_), 0.0), 1.0); return x * x * x * (x * (x * 6.0 - 15.0) + 10.0)
+def bump(t, a_, b_): x = min(max((t - a_) / (b_ - a_), 0.0), 1.0); return math.sin(math.pi * x)
+TS = RISE_S / 8.0      # (the moments scale with the clip's length)
 for f in range(NR + 1):
-    u = f / NR
-    fw = ease(u / 0.35); roll = ease(u / 0.3); sl = ease((u - 0.25) / 0.3); st = ease((u - 0.52) / 0.42)
-    lift = ease((u - LIFT0) / (LIFT1 - LIFT0))               # (her back comes up as the hips rise: bowed while she pushes, straight as she stands)
-    hlift = ease((u - HLIFT0) / (0.98 - HLIFT0))            # (her head comes up last)
-    rel = ease((u - 0.38) / 0.24)                            # (her hands leave the knee)
-    unx = ease((u - 0.06) / 0.24)                            # (first her crossed arms open, her hands to the knee)
-    pitch = (FLAT + (TUCK - FLAT) * roll) * (1.0 - st)
-    toe = -80.0 * (min(max((FLAT - pitch) / (FLAT - TUCK), 0.0), 1.0) if FLAT - TUCK > 1.0 else 1.0) * (1.0 - st)
+    t = f / FPS / TS; u = f / NR
+    br = bump(t, 0.15, 1.35); unx = win(t, 1.1, 2.1); fw = win(t, 2.0, 2.9); sink = bump(t, 2.0, 3.1)
+    hz = win5(t, 2.8, 5.6); sl = win(t, 3.6, 4.4); st = win(t, 4.4, 5.5); rel = win(t, 4.2, 5.1)
+    lift = win(t, 3.6, 6.2); sway = bump(t, 5.8, 6.9); hlift = win(t, 5.6, 7.2); look = bump(t, 6.4, 7.8); fin = win(t, 6.4, 7.8)
+    pitch = FLAT * (1.0 - st)
+    toe = -80.0 * (1.0 - st)
     ball = ball0 + (ball1 - ball0) * 0.4 * sl; ball = ball * (1.0 - st) + ball1 * st; ball = ball.copy()
-    ball[2] = TOE_REST + 0.04 * math.sin(math.pi * st)
+    ball[2] = TOE_REST + 0.05 * math.sin(math.pi * st)
     ank = ball + roty(pitch) @ v0
     hips = stand_h.copy()
     hips[0] = stand_h[0] - back_r * ((1.0 - fw) + 0.45 * fw) * (1.0 - st)
-    hips[2] = stand_h[2] - drop_end * (1.0 - ease((u - 0.06) / 0.88))
-    lean = LEAN0 * (1.0 - lift) + 6.0 * math.sin(math.pi * min(u / 0.6, 1.0)) * (1.0 - lift)
+    hips[2] = stand_h[2] - drop_end * (1.0 - hz) + 0.006 * br - 0.012 * sink
+    lean = (LEAN0 + 7.0 * fw) * (1.0 - lift) - 4.0 * br - 2.5 * sway
     poses = []
     for with_hands in (True, False, "crossed"):
         rot = stand.copy()
         turn(rot, B("Spine"), roty(lean * SPD[0])); turn(rot, B("Spine1"), roty(lean * SPD[1])); turn(rot, B("Spine2"), roty(lean * SPD[2]))      # (the bow mostly in the upper back: she curls over the knee, not folds at the waist)
-        for sd in ("Left", "Right"): turn(rot, B(sd + "Shoulder"), roty(SHO0 * (1.0 - lift)))      # (her shoulders drawn in and down)
-        turn(rot, B("Neck"), roty(NECK0 * (1.0 - hlift))); turn(rot, B("Head"), roty(HEAD0 * (1.0 - hlift)))
+        for sd in ("Left", "Right"): turn(rot, B(sd + "Shoulder"), roty(SHO0 * (1.0 - lift) - 5.0 * br))      # (her shoulders drawn in and down; they rise with the breath)
+        turn(rot, B("Neck"), roty(NECK0 * (1.0 - hlift) - 4.0 * br)); turn(rot, B("Head"), roty(HEAD0 * (1.0 - hlift) - 5.0 * br - 7.0 * look))
         hh = hips.copy()
         for _ in range(3):      # (no higher than the back leg reaches while its foot is still behind)
             hj = fk1(rot, hh)[upR]; dxy = math.hypot(hj[0] - ank[0], hj[1] - ank[1])
@@ -405,8 +416,7 @@ for f in range(NR + 1):
     if os.environ.get("RISE_HANG", "1") == "1":      # (the hanging arms come to the standing arms as she stands: at the end the clip is the idle's first frame)
         st_ = stand.copy()
         for k_, a_t in ((B("Spine"), SPD[0]), (B("Spine1"), SPD[1]), (B("Spine2"), SPD[2])): turn(st_, k_, roty(lean * a_t))
-        for sd in ("Left", "Right"): turn(st_, B(sd + "Shoulder"), roty(SHO0 * (1.0 - lift)))
-        fin = ease((u - 0.78) / 0.22)
+        for sd in ("Left", "Right"): turn(st_, B(sd + "Shoulder"), roty(SHO0 * (1.0 - lift) - 5.0 * br))
         for b in ARMS: free[b] = slerp_rot(free[b], st_[b], fin)
     for b in ARMS: rot[b] = slerp_rot(cross[b], rot[b], unx)
     for b in ARMS: rot[b] = slerp_rot(rot[b], free[b], rel)
