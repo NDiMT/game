@@ -72,7 +72,7 @@ fade_hand = sstep(0.31, 0.27, np.abs(y))
 Wt = Wt + (Ws - Wt) * (upper * fade_hand)[:, None]
 # (2) below the hips: weights from the place alone
 yc = 0.5 * (J["LeftUpLeg"][1] + J["RightUpLeg"][1]); hipz = J["LeftUpLeg"][2]; kneez = J["LeftLeg"][2]; anklez = J["LeftFoot"][2]
-LAT = float(os.environ.get("SK_LAT", "0.06")); KNEE = float(os.environ.get("SK_KNEE", "0.07"))
+LAT = float(os.environ.get("SK_LAT", "0.1")); KNEE = float(os.environ.get("SK_KNEE", "0.07"))
 sL = sstep(-LAT, LAT, y - yc); sR = 1.0 - sL
 tk = sstep(kneez - KNEE, kneez + KNEE, z)                       # 1 above the knee
 h = sstep(hipz - float(os.environ.get("SK_HIPLO", "0.12")), hipz + float(os.environ.get("SK_HIPHI", "0.035")), z)   # 1 = the hips alone
@@ -80,7 +80,7 @@ F = np.zeros((nv, ng))
 # The surface is one skin: there are no legs inside the wrap, only the patches of leg that show in the slit. So the
 # wrap need not swing as far as the legs do: toward the hem it takes only part of their swing (the rest stays with
 # the hips) and hangs calmer, as cloth would; the feet, below it, go all the way.
-HEM = float(os.environ.get("SK_HEM", "0.72"))
+HEM = float(os.environ.get("SK_HEM", "0.86"))
 dmp = HEM + (1.0 - HEM) * sstep(0.12, 0.5, z)
 leg = (1 - h) * dmp
 F[:, G("Hips")] = 1.0 - leg
@@ -335,6 +335,7 @@ def arm_ik(rot, hips, side, wrist, pole):
     aim(rot, hips, up, lo, elbow - a_)
     pos = fk1(rot, hips); aim(rot, hips, lo, hd, a_ + dirn * d - pos[lo])
 NR = int(os.environ.get("RISE_FRAMES", "84"))
+HANG_F, HANG_O, HANG_L = (float(v) for v in os.environ.get("RISE_HANG_AT", "0.03,0.03,0.93").split(","))      # (where a hanging hand is: forward, out, down by the arm's length)
 rr = np.zeros((NR + 1, NB, 3, 3)); rh = np.zeros((NR + 1, 3))
 upR = B("RightUpLeg"); reach = (thigh + shin) * 0.98
 v0 = p0[RA] - p0[RT]                                         # (the ankle from the ball of the foot, standing)
@@ -347,11 +348,14 @@ ra1r = np.array([p0[B("RightUpLeg")][0] - back_r - shin * float(os.environ.get("
 ball0 = ra1r - roty(FLAT) @ v0; ball0[2] = TOE_REST          # (where the ball of the back foot lies at the start)
 ball1 = p0[RT].copy()                                        # (and where it stands)
 ARMS = [B(n) for n in bones if any(t in n for t in ("Shoulder", "Arm", "Hand"))]
-LEAN0 = float(os.environ.get("RISE_LEAN", "62")); NECK0 = float(os.environ.get("RISE_NECK", "24")); HEAD0 = float(os.environ.get("RISE_HEAD", "34")); SHO0 = float(os.environ.get("RISE_SHO", "16"))      # (her back bowed over the knee: spread down the spine, so it curves)
+LEAN0 = float(os.environ.get("RISE_LEAN", "60")); NECK0 = float(os.environ.get("RISE_NECK", "34")); HEAD0 = float(os.environ.get("RISE_HEAD", "46")); SHO0 = float(os.environ.get("RISE_SHO", "16"))
+LIFT0, LIFT1, HLIFT0 = (float(v) for v in os.environ.get("RISE_LIFT", "0.36,0.9,0.52").split(","))
+SPD = [float(v) for v in os.environ.get("RISE_SPD", "0.3,0.35,0.35").split(",")]      # (how the bow is shared down the spine: Spine, Spine1, Spine2)      # (her back bowed over the knee: spread down the spine, so it curves)
 for f in range(NR + 1):
     u = f / NR
     fw = ease(u / 0.35); roll = ease(u / 0.3); sl = ease((u - 0.25) / 0.3); st = ease((u - 0.52) / 0.42)
-    lift = ease((u - 0.58) / 0.38)                           # (her head and her back come up last)
+    lift = ease((u - LIFT0) / (LIFT1 - LIFT0))               # (her back comes up as the hips rise: bowed while she pushes, straight as she stands)
+    hlift = ease((u - HLIFT0) / (0.98 - HLIFT0))            # (her head comes up last)
     rel = ease((u - 0.38) / 0.24)                            # (her hands leave the knee)
     unx = ease((u - 0.06) / 0.24)                            # (first her crossed arms open, her hands to the knee)
     pitch = (FLAT + (TUCK - FLAT) * roll) * (1.0 - st)
@@ -366,9 +370,9 @@ for f in range(NR + 1):
     poses = []
     for with_hands in (True, False, "crossed"):
         rot = stand.copy()
-        turn(rot, B("Spine"), roty(lean * 0.4)); turn(rot, B("Spine1"), roty(lean * 0.3)); turn(rot, B("Spine2"), roty(lean * 0.3))
+        turn(rot, B("Spine"), roty(lean * SPD[0])); turn(rot, B("Spine1"), roty(lean * SPD[1])); turn(rot, B("Spine2"), roty(lean * SPD[2]))      # (the bow mostly in the upper back: she curls over the knee, not folds at the waist)
         for sd in ("Left", "Right"): turn(rot, B(sd + "Shoulder"), roty(SHO0 * (1.0 - lift)))      # (her shoulders drawn in and down)
-        turn(rot, B("Neck"), roty(NECK0 * (1.0 - lift))); turn(rot, B("Head"), roty(HEAD0 * (1.0 - lift)))
+        turn(rot, B("Neck"), roty(NECK0 * (1.0 - hlift))); turn(rot, B("Head"), roty(HEAD0 * (1.0 - hlift)))
         hh = hips.copy()
         for _ in range(3):      # (no higher than the back leg reaches while its foot is still behind)
             hj = fk1(rot, hh)[upR]; dxy = math.hypot(hj[0] - ank[0], hj[1] - ank[1])
@@ -382,6 +386,13 @@ for f in range(NR + 1):
             arm_ik(rot, hh, "Left", kn_ + np.array([-0.03, 0.03, 0.06]), (-0.4, 1.0, 0.0))
             arm_ik(rot, hh, "Right", kn_ + np.array([-0.015, -0.012, 0.078]), (-0.4, -1.0, 0.0))
             for sd in ("Left", "Right"): aim(rot, hh, B(sd + "Hand"), B(sd + "HandMiddle1"), np.array([0.55, 0.0, -0.83]))
+        elif with_hands is False and os.environ.get("RISE_HANG", "1") == "1":      # (her arms hang by their weight: each hand below its shoulder, a little forward and out, the elbow easy)
+            for sd, sgn in (("Left", 1.0), ("Right", -1.0)):
+                pos_ = fk1(rot, hh); up_, lo_, hd_ = B(sd + "Arm"), B(sd + "ForeArm"), B(sd + "Hand")
+                l1_ = np.linalg.norm(pos_[lo_] - pos_[up_]); l2_ = np.linalg.norm(pos_[hd_] - pos_[lo_])
+                arm_ik(rot, hh, sd, pos_[up_] + np.array([HANG_F, sgn * HANG_O, -(l1_ + l2_) * HANG_L]), (-1.0, sgn * 0.3, 0.0))
+                pos_ = fk1(rot, hh); fa_ = pos_[hd_] - pos_[lo_]
+                aim(rot, hh, hd_, B(sd + "HandMiddle1"), fa_ / np.linalg.norm(fa_) + np.array([0.15, 0.0, 0.0]))
         elif with_hands == "crossed":      # (her forearms crossed over the front knee, each hand at its far side, close together; the elbows down on the thigh)
             kn_ = fk1(rot, hh)[B("LeftLeg")]
             XL = [float(v) for v in os.environ.get("RISE_XL", "0.0,-0.03,0.07").split(",")]; XR = [float(v) for v in os.environ.get("RISE_XR", "0.012,0.035,0.09").split(",")]
@@ -391,6 +402,12 @@ for f in range(NR + 1):
             aim(rot, hh, B("RightHand"), B("RightHandMiddle1"), np.array([0.3, 0.28, -0.91]))
         poses.append((rot, hh))
     rot, hh = poses[0]; free = poses[1][0]; cross = poses[2][0]
+    if os.environ.get("RISE_HANG", "1") == "1":      # (the hanging arms come to the standing arms as she stands: at the end the clip is the idle's first frame)
+        st_ = stand.copy()
+        for k_, a_t in ((B("Spine"), SPD[0]), (B("Spine1"), SPD[1]), (B("Spine2"), SPD[2])): turn(st_, k_, roty(lean * a_t))
+        for sd in ("Left", "Right"): turn(st_, B(sd + "Shoulder"), roty(SHO0 * (1.0 - lift)))
+        fin = ease((u - 0.78) / 0.22)
+        for b in ARMS: free[b] = slerp_rot(free[b], st_[b], fin)
     for b in ARMS: rot[b] = slerp_rot(cross[b], rot[b], unx)
     for b in ARMS: rot[b] = slerp_rot(rot[b], free[b], rel)
     rr[f] = rot; rh[f] = hh
@@ -430,6 +447,22 @@ for cname, c in clips.items():
                 d = AWi @ (c["hips"][f] - AWt) - HEAD[b]
                 pb.location = Vector((RESTL[b].T @ d).tolist()); pb.keyframe_insert("location", frame=f)
     print("BUILD wrote clip %-12s %3d frames (%.2f s)" % (cname, nf, (nf - 1) / FPS))
+# ---- the seam of the hem and the toes: where the wrap's hem lies on her feet the generator joined them by faces a few
+#      millimetres across, one side following the foot, the other the leg. When the foot rolls or the leg lifts they
+#      stretch into long slivers ("the leg behind still breaks"). Those faces only are taken away: the hem comes free
+#      of the toes, as cloth lying on a foot is.
+gidx_foot = [g.index for g in body.vertex_groups if any(t in g.name for t in ("Foot", "ToeBase", "Toe_End"))]
+fsh = np.zeros(len(me.vertices))
+for v in me.vertices:
+    for g in v.groups:
+        if g.group in gidx_foot: fsh[v.index] += g.weight
+zr = np.empty(len(me.vertices) * 3); me.vertices.foreach_get("co", zr); zr = zr.reshape(-1, 3)
+zmin_ = zr[:, 2].min(); zspan_ = zr[:, 2].max() - zmin_
+seam_f = [p_.index for p_ in me.polygons if np.ptp(fsh[list(p_.vertices)]) > 0.5 and (zr[list(p_.vertices), 2].max() - zmin_) < 0.055 * zspan_]
+if seam_f and os.environ.get("SEAM_CUT", "1") == "1":
+    bm = bmesh.new(); bm.from_mesh(me); bm.faces.ensure_lookup_table()
+    bmesh.ops.delete(bm, geom=[bm.faces[i] for i in seam_f], context='FACES_ONLY'); bm.to_mesh(me); bm.free(); me.update()
+print("BUILD seam of the hem and the toes: %d faces taken away" % len(seam_f))
 # ---- membranes: the generator left thin faces bridging parts that are not one cloth (across the slit of the wrap,
 #      between its layers). Standing they are too thin to see; when her legs part (the kneel, the rise) they stretch
 #      into long slivers ("the leg behind still breaks"). Each pose of the clips is measured, and a face that grows
@@ -451,10 +484,10 @@ for cname, f in checks:
     bad_e |= (L1e > STR * np.maximum(L0e, 1e-6)) & (L1e > LONG * med)
 ekey = {tuple(sorted(e.vertices[:])): i for i, e in enumerate(me.edges)}
 bad_f = [p.index for p in me.polygons if any(bad_e[ekey[tuple(sorted(k))]] for k in p.edge_keys)]
-if bad_f and os.environ.get("MEMB_KEEP") != "1":
+if bad_f and os.environ.get("MEMB_CUT") == "1":
     bm = bmesh.new(); bm.from_mesh(me); bm.faces.ensure_lookup_table()
     bmesh.ops.delete(bm, geom=[bm.faces[i] for i in bad_f], context='FACES_ONLY'); bm.to_mesh(me); bm.free(); me.update()
-print("BUILD membranes: %d edges stretch past %.1fx and %.1f of the mean edge in some pose; %d faces taken away" % (int(bad_e.sum()), STR, LONG, len(bad_f)))
+print("BUILD membranes: %d edges stretch past %.1fx and %.1f of the mean edge in some pose; %d faces%s" % (int(bad_e.sum()), STR, LONG, len(bad_f), " taken away" if os.environ.get("MEMB_CUT") == "1" else " (kept)"))
 arm.animation_data.action = None
 for b in arm.pose.bones: b.matrix_basis = Matrix.Identity(4)
 for ac in bpy.data.actions:
@@ -475,6 +508,19 @@ bs.inputs["Metallic"].default_value = 0.0; bs.inputs["Roughness"].default_value 
 dimg.pack()
 for im in list(bpy.data.images):
     if im.users == 0: bpy.data.images.remove(im)
+# ---- her head a little smaller: the generator made the wrapped head large for the figure, and bowed over the knee it
+#      weighed on the whole silhouette. Each point is drawn toward the joint of the head by as much as it follows the
+#      head (its weight there), so the neck goes over smoothly.
+HS = float(os.environ.get("HEAD_SCALE", "0.88"))
+if abs(HS - 1.0) > 1e-3:
+    hg = [g.index for g in body.vertex_groups if g.name.endswith(":Head") or g.name.endswith("HeadTop_End") or g.name in ("Head", "HeadTop_End")]
+    jb = arm.data.bones[bname("Head")]; jw = body.matrix_world.inverted() @ (arm.matrix_world @ jb.head_local)
+    cnt = 0
+    for v in me.vertices:
+        wh = sum(g.weight for g in v.groups if g.group in hg)
+        if wh > 1e-4:
+            k = 1.0 - (1.0 - HS) * min(wh, 1.0); v.co = jw + (v.co - jw) * k; cnt += 1
+    me.update(); print("BUILD head drawn in to %.2f about its joint: %d points" % (HS, cnt))
 n0 = len(me.polygons)
 lods = [int(v) for v in os.environ.get("LODS", "24000,10000,6000").split(",")]
 if os.environ.get("ONLY_FULL") == "1": lods = lods[:1]
