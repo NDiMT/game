@@ -2381,9 +2381,10 @@ uniform sampler2D bg_tex : source_color, filter_linear, repeat_disable;
 uniform vec2 bg_scale = vec2(1.0);
 uniform vec3 bg_top : source_color;
 uniform float uv_flip = 0.0;
+uniform vec2 bg_off = vec2(0.0);      // (as the eye goes with her, the painting goes with the level: of the screen, across and down)
 void fragment(){
-	float sy = uv_flip > 0.5 ? 1.0 - SCREEN_UV.y : SCREEN_UV.y;
-	vec2 uv = vec2(0.5 + (SCREEN_UV.x - 0.5) * bg_scale.x, 0.5 + (sy - 0.5) * bg_scale.y);
+	float sy = (uv_flip > 0.5 ? 1.0 - SCREEN_UV.y : SCREEN_UV.y) + bg_off.y;
+	vec2 uv = vec2(0.5 + (SCREEN_UV.x + bg_off.x - 0.5) * bg_scale.x, 0.5 + (sy - 0.5) * bg_scale.y);
 	vec3 c = texture(bg_tex, clamp(uv, vec2(0.001), vec2(0.999))).rgb;
 	ALBEDO = mix(c, bg_top, smoothstep(0.0, -0.12, uv.y));      // (on a screen taller than the painting: above it, the sky's own colour)
 }
@@ -3113,10 +3114,7 @@ func _iv_do_push(dest: String) -> void:
 func _iv_win() -> void:
 	iv_won = true
 	if go_wake: _ivw_music_out(3.5)
-	if go_wake and ivw_gate_m != null:      # (the gate's light flares as she stands in it)
-		var gf := create_tween().set_parallel()
-		gf.tween_method(func(v: float) -> void: ivw_gate_m.set_shader_parameter("k", v), 1.0, 2.6, 1.4).set_trans(Tween.TRANS_SINE)
-		gf.tween_property(ivw_gate_glow, "albedo_color:a", 0.75, 1.4).set_trans(Tween.TRANS_SINE)
+	if go_wake and ivw_gate_m != null: await _ivw_exit()      # (she steps into the gate's light, and is lost in it)
 	print("IV level done in ", iv_moves, " moves")
 	var gm := iv_glow.material_override as StandardMaterial3D
 	var f := create_tween().set_parallel()
@@ -3382,7 +3380,7 @@ func _ivp_pre(_dt: float) -> void:
 
 func _ivp_post(dt: float) -> void:
 	_ivp_pre(dt)
-	if ivr_on: _ivr_cam()
+	if ivr_on: _ivr_cam(dt)
 	else: _ivp_cam()
 	cam_t = pos; cam_focus = pos; cam_focus_on = true      # (the world's own mist and lights keep to her)
 	if not iv_push.is_empty():      # the stone goes before her hands
@@ -3670,13 +3668,68 @@ func _ivr_edge_dist(p: Vector3, d: Vector3) -> float:
 
 func _ivr_fkey(a: Vector3, b: Vector3) -> String: return "%.2f,%.2f,%.2f|%.2f,%.2f,%.2f" % [a.x, a.y, a.z, b.x, b.y, b.z]
 
-func _ivr_cam() -> void:
+## the eye goes a little with her (the user: "it may follow her a little; some maps will be larger, but it should not go
+## much past their edges", "smooth, with a slight delay"): toward a share of her way from the level's own middle, and on
+## a map larger than the screen as far as keeps her in its middle part; never so far that a map which fits the screen
+## leaves it, or that one larger shows more than a little past its edges. It moves as a damped spring, on the game's
+## own time: it sets off gently, a little behind her, and comes to rest without overshooting.
+const IVR_FOLLOW := 0.22      # (the share of her way from the middle the eye goes with her)
+const IVR_FOLLOW_T := 0.9      # (how long it takes to catch up, about: smooth, a little behind)
+const IVR_BOX := Vector2(0.28, 0.3)      # (on a large map, how far from the screen's middle she may go before it goes all the way with her: of the screen)
+const IVR_EDGE := 0.45      # (how far past the map's edge it may show, in metres)
+var ivr_fo := Vector2.ZERO      # (the eye's drift with her: across and up, in metres)
+var ivr_fv := Vector2.ZERO
+var ivr_mb := Rect2(); var ivr_mb_ok := false      # (the map on the screen, from the level's own middle: its floors and what stands on them)
+var ivr_bgm: ShaderMaterial      # (the painted backdrop: it goes with the level as the eye moves, where the sea and the mist are held to the world)
+var ivs_sea_mats: Array = []
+
+func _ivr_map_box(b: Basis, c: Vector3) -> Rect2:
+	var lo := Vector2(INF, INF); var hi := Vector2(-INF, -INF)
+	for nm in ivr_floors:
+		var fl: Dictionary = ivr_floors[nm]
+		for v in (fl.xz as Array):
+			var p := IV_O + Vector3(float(v[0]), float(fl.h), float(v[1])) - c
+			var x := p.dot(b.x)
+			lo = Vector2(minf(lo.x, x), minf(lo.y, p.dot(b.y))); hi = Vector2(maxf(hi.x, x), maxf(hi.y, (p + Vector3(0, 2.0, 0)).dot(b.y)))      # (and up to 2 m over it: her, a gate)
+	return Rect2(lo, hi - lo) if lo.x <= hi.x else Rect2()
+
+func _ivr_follow(b: Basis, c: Vector3, vw: float, vh: float, dt: float) -> void:
+	var tg := Vector2.ZERO
+	if not ivw_menu_on and not ivr_floors.is_empty():
+		if not ivr_mb_ok: ivr_mb = _ivr_map_box(b, c); ivr_mb_ok = true
+		var hp := pos + Vector3(0, 0.5, 0) - c
+		var ho := Vector2(hp.dot(b.x), hp.dot(b.y))      # (where she is, from the level's own middle)
+		var box := Vector2(vw, vh) * IVR_BOX
+		var hv := Vector2(vw, vh) * 0.5; var lo := ivr_mb.position; var hi := ivr_mb.end
+		for i in 2:
+			var a0: float; var a1: float
+			if hi[i] - lo[i] + 2.0 * IVR_EDGE <= 2.0 * hv[i]:      # (the map fits the screen this way: a little with her, and all of it stays on the screen)
+				tg[i] = ho[i] * IVR_FOLLOW; a0 = hi[i] + IVR_EDGE - hv[i]; a1 = lo[i] - IVR_EDGE + hv[i]
+			else:      # (larger: with her as far as keeps her in the middle part of the screen, and no more than a little past its edges)
+				var inb := clampf(ho[i], -box[i], box[i]); tg[i] = (ho[i] - inb) + inb * IVR_FOLLOW
+				a0 = lo[i] - IVR_EDGE + hv[i]; a1 = hi[i] + IVR_EDGE - hv[i]
+			tg[i] = clampf(tg[i], minf(a0, 0.0), maxf(a1, 0.0))      # (the level's own eye is always allowed)
+	if dt < 0.0: ivr_fo = tg; ivr_fv = Vector2.ZERO; return
+	if OS.get_environment("IVR_FOLLOW_LOG") != "" and Engine.get_process_frames() % 15 == 0: print("FOLLOW t=%.1f her=(%.2f,%.2f) tg=(%.2f,%.2f) fo=(%.2f,%.2f) map=%s" % [iv_t, (pos - c).dot(b.x), (pos + Vector3(0, 0.5, 0) - c).dot(b.y), tg.x, tg.y, ivr_fo.x, ivr_fo.y, str(ivr_mb)])
+	var om := 2.0 / IVR_FOLLOW_T; var x := om * dt; var ex := 1.0 / (1.0 + x + 0.48 * x * x + 0.235 * x * x * x)
+	var ch := ivr_fo - tg; var tmp := (ivr_fv + ch * om) * dt
+	ivr_fv = (ivr_fv - tmp * om) * ex
+	ivr_fo = tg + (ch + tmp) * ex
+
+func _ivr_cam(dt := -1.0) -> void:
 	var b := _ivp_basis()
 	var c := IV_O + b.x * IVR_C.x + b.y * IVR_C.y
 	var w := IVR_W
 	if not ivr_eye.is_empty():
 		var ce: Array = ivr_eye.centre
 		c = IV_O + Vector3(float(ce[0]), float(ce[1]), float(ce[2])); w = float(ivr_eye.width)
+	var vp := get_viewport().get_visible_rect().size
+	var vw := w * maxf(1.0, (vp.x / vp.y) / 0.5625); var vh := vw * vp.y / maxf(vp.x, 1.0)
+	_ivr_follow(b, c, vw, vh, dt)
+	c += b.x * ivr_fo.x + b.y * ivr_fo.y
+	var held := go_wake and OS.get_environment("IV_ZOOM") == ""      # (the waking's painting, sea and mist go together with the level)
+	if ivr_bgm != null: ivr_bgm.set_shader_parameter("bg_off", Vector2(ivr_fo.x / vw, -ivr_fo.y / vh) if held else Vector2.ZERO)
+	if held: for sm in ivs_sea_mats: (sm as ShaderMaterial).set_shader_parameter("hz_v", ivr_hz + ivr_fo.y / vh)
 	if go_wake and ivw_close > 0.001:      # (the waking: the eye close on her, drawn back as she stands)
 		var u := ivw_close * ivw_close * (3.0 - 2.0 * ivw_close)
 		c = c.lerp(pos + Vector3(0, 0.5, 0), u); w = lerpf(w, 3.6, u)
@@ -3687,7 +3740,6 @@ func _ivr_cam() -> void:
 			var za := OS.get_environment("IV_ZOOM_AT").split(","); c = pos + Vector3(float(za[0]), 0.2, float(za[1]))
 		if OS.get_environment("IV_FACE") != "": yaw = atan2(b.z.x, b.z.z)
 	cam.global_transform = Transform3D(b, c + b.z * 40.0)
-	var vp := get_viewport().get_visible_rect().size
 	cam.keep_aspect = Camera3D.KEEP_WIDTH; cam.size = w * maxf(1.0, (vp.x / vp.y) / 0.5625)
 
 func _ivr_mat(kind: String, ao := 1.0, local := false) -> ShaderMaterial: return _iv_mat(kind, 0.0, {"lfog": 1.0 if (local and not iv_at_sea) else 0.0, "fog_hi": (ivr_sea_y + (0.04 if go_wake else 1.5)) if iv_at_sea else (-1.4 if go_moon else (-1.6 if go_quarry else -3.6)), "fog_lo": (ivr_sea_y - (0.7 if go_wake else 0.15)) if iv_at_sea else (-5.4 if go_moon else (-6.0 if go_quarry else -7.5)), "ao_k": ao * ({"marble2": 0.4, "olive2": 0.2, "bark": 0.3, "rock2": 0.0, "quarry": 0.55} as Dictionary).get(kind, 1.0), "veins": (0.35 if go_moon else (0.25 if go_quarry else (0.25 if go_wake else 0.6))) if (kind == "marble2" or kind == "quarry") else 0.0, "dk": 0.17 if kind == "quarry" else 0.0, "bounce": 0.0, "haze": 1.0, "shadow_k": (0.8 if go_wake else 0.0) if kind == "rock2" else 1.0, "lf_hi": 1.0 if iv_at_sea else (1.0 if go_moon else (1.4 if go_quarry else 0.5)), "lf_len": 2.6 if iv_at_sea else (2.8 if go_moon else (3.2 if go_quarry else 1.9))})
@@ -3899,6 +3951,78 @@ void fragment(){
 """
 var ivw_gate_m: ShaderMaterial
 var ivw_gate_glow: StandardMaterial3D
+var ivw_gate_p := Vector3.ZERO; var ivw_gate_front := Vector3.FORWARD
+
+## the end of the waking: she steps through the gate into its light, which flares as she comes and bursts as she is in it;
+## she goes white in it and is lost, as motes of light rising (the user: "then she steps into the gate, a flash comes,
+## and she is lost in the light")
+func _ivw_her_set(v: float, k: String) -> void:
+	for hm in her_mats + flip_mir:
+		if hm is ShaderMaterial: (hm as ShaderMaterial).set_shader_parameter(k, v)
+
+func _ivw_exit() -> void:
+	var gk := func(v: float) -> void: ivw_gate_m.set_shader_parameter("k", v)
+	var gf := create_tween().set_parallel()      # (the gate's light grows as she comes to it)
+	gf.tween_method(gk, 1.0, 2.6, 1.8).set_trans(Tween.TRANS_SINE)
+	gf.tween_property(ivw_gate_glow, "albedo_color:a", 0.75, 1.8).set_trans(Tween.TRANS_SINE)
+	await wait(0.5)
+	var to := Vector3(ivw_gate_p.x, pos.y, ivw_gate_p.z) - ivw_gate_front * 0.04      # (into it: she stands in its doorway, its light behind and about her; deeper in, white in white, she was gone before the flash)
+	var full := maxf(Vector2(pos.x, pos.z).distance_to(Vector2(to.x, to.z)), 0.05)
+	speed_cap = PLAY_WALK * 0.33; face_to = null      # (slow steps: the step into the gate must be seen)
+	route.append({"p": to})
+	var snapped := false
+	while not route.is_empty():      # (slow steps; the light takes her as she goes in)
+		await get_tree().process_frame
+		var u := 1.0 - clampf(Vector2(pos.x, pos.z).distance_to(Vector2(to.x, to.z)) / full, 0.0, 1.0)
+		_ivw_her_set(smoothstep(0.4, 1.0, u) * 0.3, "iv_lux")
+		if u > 0.5 and not snapped: snapped = true; _ivw_snap("x0_going")
+	var tw0 := create_tween(); tw0.tween_method(_ivw_her_set.bind("iv_lux"), 0.3, 0.55, 0.4).set_trans(Tween.TRANS_SINE)      # (she stands in it a breath, the light rising on her)
+	await wait(0.4)
+	await _ivw_snap("x1_in")
+	_ivw_her_set(pos.y, "iv_gone_y")
+	_ivw_flash(ivw_gate_p + Vector3(0, 0.95, 0))
+	_ivw_motes(pos)
+	var tv := create_tween().set_parallel()
+	tv.tween_method(_ivw_her_set.bind("iv_lux"), 0.55, 1.0, 0.12)
+	tv.tween_method(_ivw_her_set.bind("iv_gone"), 0.0, 1.0, 0.9).set_delay(0.06).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)      # (she goes, from the head down, in sparks)
+	if ivp_shadow != null: tv.tween_property(ivp_shadow.material_override, "albedo_color:a", 0.0, 0.5)
+	tv.tween_method(gk, 2.6, 4.2, 0.12)
+	tv.tween_method(gk, 4.2, 2.2, 1.6).set_delay(0.12).set_trans(Tween.TRANS_SINE)
+	await wait(0.3); await _ivw_snap("x2_flash")
+	await wait(0.6); await _ivw_snap("x3_gone")
+	await wait(0.8)
+
+func _ivw_flash(at: Vector3) -> void:      # (the gate's light bursts: a bloom of light over it, and the whole picture flushes with it)
+	var q := QuadMesh.new(); q.size = Vector2(2.6, 2.6)
+	var m := StandardMaterial3D.new(); m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; m.albedo_texture = load("res://goiv/glow.png")
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	m.no_depth_test = true; m.albedo_color = Color(1.0, 0.93, 0.8, 0.0)
+	var mi := MeshInstance3D.new(); mi.mesh = q; mi.material_override = m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(mi)
+	mi.global_position = at
+	var t := create_tween().set_parallel()
+	t.tween_property(m, "albedo_color:a", 1.0, 0.12).set_trans(Tween.TRANS_SINE)
+	t.tween_property(mi, "scale", Vector3.ONE * 3.6, 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	t.tween_property(m, "albedo_color:a", 0.0, 1.4).set_delay(0.12).set_trans(Tween.TRANS_SINE)
+	t.chain().tween_callback(mi.queue_free)
+	if iv_fade != null:
+		var fc := iv_fade.color; fc.a = 0.0; iv_fade.color = fc
+		var tf := create_tween()
+		tf.tween_property(iv_fade, "color:a", 0.6, 0.12).set_trans(Tween.TRANS_SINE)
+		tf.tween_property(iv_fade, "color:a", 0.08, 1.1).set_trans(Tween.TRANS_SINE)
+
+func _ivw_motes(at: Vector3) -> void:      # (what is left of her: motes of light rising from where she stood)
+	var p := CPUParticles3D.new(); add_child(p); p.global_position = at + Vector3(0, 0.55, 0)
+	p.one_shot = true; p.amount = 70; p.lifetime = 2.6; p.explosiveness = 0.5; p.local_coords = false
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX; p.emission_box_extents = Vector3(0.16, 0.5, 0.16)
+	p.direction = Vector3.UP; p.spread = 30.0; p.initial_velocity_min = 0.2; p.initial_velocity_max = 0.7; p.gravity = Vector3(0, 0.3, 0); p.damping_min = 0.1; p.damping_max = 0.3
+	p.scale_amount_min = 0.6; p.scale_amount_max = 1.5
+	var mq := QuadMesh.new(); mq.size = Vector2(0.07, 0.07)
+	var mm := StandardMaterial3D.new(); mm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; mm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; mm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mm.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES; mm.vertex_color_use_as_albedo = true; mm.albedo_texture = load("res://goiv/glow.png"); mq.material = mm; p.mesh = mq
+	var g := Gradient.new(); g.offsets = PackedFloat32Array([0.0, 0.15, 1.0]); g.colors = PackedColorArray([Color(1, 0.96, 0.88, 0.0), Color(1, 0.96, 0.88, 1.0), Color(1, 0.94, 0.86, 0.0)])
+	p.color_ramp = g
+	p.emitting = true
+	get_tree().create_timer(3.2).timeout.connect(p.queue_free)
 func _ivw_gate_light(p: Vector3, ax: String) -> void:
 	var r := 0.41; var hs := 1.34
 	var st := SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -3914,6 +4038,7 @@ func _ivw_gate_light(p: Vector3, ax: String) -> void:
 	if ax != "x": mi.rotation.y = PI * 0.5      # (the opening across the way: along x the gate's face is the x-y plane)
 	var front := Vector3(0, 0, 1) if ax == "x" else Vector3(1, 0, 0)
 	if (ivp_nodes.get(String(ivg_exit) if ivg_on else "r", IV_O + p) as Vector3).dot(front) < (IV_O + p).dot(front): front = -front      # (toward the ring)
+	ivw_gate_p = IV_O + p; ivw_gate_front = front
 	var gq := QuadMesh.new(); gq.size = Vector2(2.6, 2.6)      # (the glow about it)
 	ivw_gate_glow = StandardMaterial3D.new(); ivw_gate_glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; ivw_gate_glow.albedo_texture = load("res://goiv/glow.png")
 	ivw_gate_glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; ivw_gate_glow.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; ivw_gate_glow.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
@@ -4375,7 +4500,7 @@ func _ivw_menu_make() -> void:
 	pt.tween_property(pl, "modulate:a", 0.55, 1.4).set_trans(Tween.TRANS_SINE); pt.tween_property(pl, "modulate:a", 1.0, 1.4).set_trans(Tween.TRANS_SINE)
 	title_box.hide()
 	ivw_close = 0.0      # (the whole level behind the name)
-	ivw_menu_on = true
+	ivw_menu_on = true; ivr_fo = Vector2.ZERO; ivr_fv = Vector2.ZERO      # (the start screen holds the level's own eye)
 	var auto := OS.get_cmdline_user_args().has("godemo")
 	if ResourceLoader.exists("res://intro/intro.ogv") and OS.get_environment("IV_NO_INTRO") == "" and (not auto or OS.get_environment("IV_INTRO") != ""): _ivw_intro()
 	else: _ivw_music("res://music/theme.ogg", 2.0)
@@ -4613,7 +4738,7 @@ func _ivs_sea(sea_y: float) -> void:
 		m.set_shader_parameter("shore_tex", load(go_dir + "shore.png")); m.set_shader_parameter("shore_k", 1.0); m.set_shader_parameter("shore_d", float(ivr_shore.get("D", 1.6)))
 		m.set_shader_parameter("shore_rect", Vector4(IV_O.x + float(rc[0]), IV_O.z + float(rc[1]), 1.0 / (float(rc[2]) - float(rc[0])), 1.0 / (float(rc[3]) - float(rc[1]))))
 		m.set_shader_parameter("riser_up", 1.0 if ivw_up > 0.5 else 0.0)
-	ivs_sea_mat = m
+	ivs_sea_mat = m; ivs_sea_mats = [m, mf]
 	for pass_i in 2:
 		var off := Vector3.ZERO if pass_i == 0 else fwd * 40.0
 		var st := SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -5199,12 +5324,13 @@ func _ivr_block() -> Node3D:
 
 func _ivr_build() -> void:
 	iv_root = Node3D.new(); iv_root.position = IV_O; add_child(iv_root)
+	ivr_mb_ok = false
 	var j0 = JSON.parse_string(FileAccess.get_file_as_string(go_dir + "level.json"))
 	if j0 is Dictionary and (j0 as Dictionary).get("sea_y") != null: ivr_sea_y = float(j0.sea_y)
 	if (go_moon or go_quarry or go_wake) and OS.get_environment("IV_NO_BACKDROP") == "" and FileAccess.file_exists(go_dir + "backdrop.jpg"): iv_bgtex = load(go_dir + "backdrop.jpg")
 	var bm := ShaderMaterial.new(); var bs := Shader.new(); bs.code = IV_BG_SH if iv_bgtex == null else IV_BGTEX_SH; bm.shader = bs
 	_iv_sky(bm)
-	if iv_bgtex != null: bm.set_shader_parameter("bg_tex", iv_bgtex); bm.set_shader_parameter("bg_scale", _iv_bg_scale()); bm.set_shader_parameter("uv_flip", iv_uvf)
+	if iv_bgtex != null: bm.set_shader_parameter("bg_tex", iv_bgtex); bm.set_shader_parameter("bg_scale", _iv_bg_scale()); bm.set_shader_parameter("uv_flip", iv_uvf); ivr_bgm = bm
 	if go_drown: bm.set_shader_parameter("sun", Vector2(0.305, 0.19)); bm.set_shader_parameter("sun_k", 1.0)
 	if go_moon and iv_bgtex == null: bm.set_shader_parameter("sun", IVM_MOON); bm.set_shader_parameter("moon_k", 1.0); bm.set_shader_parameter("moon_r", IVM_MOON_R)
 	var bq := QuadMesh.new(); bq.size = Vector2(900, 900)

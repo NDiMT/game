@@ -98,7 +98,13 @@ The levels are many, in one system. A new level is made in this order (the secon
     - Never run the kneel clip backwards to rise: it swings the back leg forward while she is still low ("the leg bends strangely").
     - Rebuild her with the inputs of the installed model: the retarget model and its data picture (now the smart low-poly one, `ione5s_data.png`; see "The heroine" below). Check a clip in Blender from the side and the front before the game (`tools/go/clip_views.py`).
   - No turning to look about, and no lying curled with her palms on the stone ("it should not turn, just rise slowly").
-  - The eye does not move: no close-up and no draw-back ("no stupid zoom"). It holds the whole level from the start screen on (`ivw_close` stays 0).
+  - No close-up and no draw-back ("no stupid zoom"): the eye holds the whole level from the start screen on (`ivw_close` stays 0).
+  - **The eye goes a little with her** (`_ivr_follow`; the user: "it may follow her a little; some maps will be larger, but it should not go much past their edges", "smooth, with a slight delay"):
+    - It aims at a share of her way from the level's own middle (`IVR_FOLLOW` 0.22) and gets there as a damped spring on the game's time (`IVR_FOLLOW_T` 0.9 s): it sets off gently, a little behind her, and stops without overshooting.
+    - Held to the map (its floors, and 2 m over them for her and the gates): a map that fits the screen stays whole on it; on a larger one the eye goes with her as far as keeps her in the middle part of the screen (`IVR_BOX`), and shows no more than `IVR_EDGE` (0.45 m) past its edges. The level's own eye is always allowed.
+    - The start screen holds the level's own eye; the drift starts at PLAY.
+    - Where the sea and the mist are held to the world (the waking), the painted backdrop goes with them (`bg_off`), and so does the sea's horizon line (`hz_v`); elsewhere the backdrop stays on the screen, behind the level, as a far sky.
+    - To tune it without rendering: `IVR_FOLLOW_LOG=1` prints her place, the aim and the drift in a headless run.
   - The painted sea must be held to the world (`world_uv` in the sea shader: the backdrop's place under the level's own eye), or a moving eye shows the painted sky on the water.
   - An image in the water dims toward the sea's own colour (`sea_c`): left at its default it dims toward blue and muddies a warm sea.
 - **The look of a level at sea** (`gowake/`, after the user's notes):
@@ -145,7 +151,8 @@ The levels are many, in one system. A new level is made in this order (the secon
     - the ring's glow cut by the gate's pillars.
   - **The ring is set whole before a gate, never in its opening**: the opening is narrower than its glow, and the gate's depth hides her from the eye.
   - **The way's line stops at the ring's rim** (`_ivr_way`): a line running into the ring "looks ugly".
-  - **The gate holds light** (`_ivw_gate_light`): a soft warm light fills its opening, brightest low in the middle and stirring. Around it: a glow, its light lying on the stone before it, motes rising. At the end it flares as she stands on the ring.
+  - **The gate holds light** (`_ivw_gate_light`): a soft warm light fills its opening, brightest low in the middle and stirring. Around it: a glow, its light lying on the stone before it, motes rising.
+  - **The end: she goes into the light** (`_ivw_exit`; the user: "she steps into the gate, a flash comes, and she is lost in the light"): from the ring she walks slowly into the gate's light as it grows, turning white as she nears it (`iv_lux` in her shader). In it the light bursts (`_ivw_flash`: a bloom over the gate and the screen flushed warm), and she is gone in sparks from the head down (`iv_gone`, `iv_gone_y`), motes of light rising where she stood (`_ivw_motes`). Then the fade and the level's last line.
 - **The start of the game** (`_ivw_menu_make`, `_ivw_intro`, `_ivw_play`):
   - **The intro film first**: the amphora film, graded into the first level's dawn by a 3D LUT (`tools/intro_grade_lut.py`).
     - Its background, the light at the top corners behind the vase, is then repainted with the first level's sky, lilac-pink down to peach (`tools/intro_peach_bg.py`).

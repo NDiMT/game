@@ -32,7 +32,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   kneels facing her way, both hands on the front knee, back and head bowed; after a second of stone stillness she
   rises in moments (8 s clip: breath, hands to the knee, weight forward, push, lunge, step, back up, head last).
   She turns the winch; the stones come up out of the water with foam on the water and on them; she climbs to the
-  glowing gate.
+  glowing gate, steps into its light, and is lost in it in a flash and rising motes.
+- **The camera** holds the whole map and follows her a little, smoothly and a little behind; on larger maps it goes
+  with her but shows little past the edges (`_ivr_follow` in `ch1.gd`).
 - **Music per level** (`_go_level_music` in `ch1.gd`): waking Lament, sanctuary Requiem, moon Elegy, quarry Stone,
   any other Last Light; the Theme under the intro and the start screen. The owner liked the Theme, the Lament and
   its four variations. Dark orchestral, never piano, a wordless female voice only at moments.
