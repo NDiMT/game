@@ -2972,6 +2972,7 @@ func _iv_begin() -> void:
 		var l := ql as Label
 		if l.get_theme_constant("outline_size") == 0: l.add_theme_color_override("font_color", Color(0.3, 0.21, 0.15, 1))
 		else: l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0))
+	if go_wake: _ivw_text_style()
 	hint.add_theme_color_override("font_color", Color(0.3, 0.21, 0.15, 1)); hint.add_theme_color_override("font_outline_color", Color(1, 0.95, 0.85, 0.6))
 	_iv_card_warm(title_box); _iv_card_warm(end_box)
 
@@ -3117,7 +3118,12 @@ func _iv_do_push(dest: String) -> void:
 func _iv_win() -> void:
 	iv_won = true
 	if go_wake: _ivw_music_out(3.5)
-	if go_wake and ivw_gate_m != null: await _ivw_exit()      # (she steps into the gate's light, and is lost in it)
+	if go_wake and ivw_gate_m != null:
+		await _ivw_exit()      # (she steps into the gate's light, and is lost in it; its last line comes as she goes)
+		print("IV level done in ", iv_moves, " moves")
+		await wait(5.4)      # (the line read, and gone)
+		await _ivw_end_screen()
+		_end(); return
 	print("IV level done in ", iv_moves, " moves")
 	var gm := iv_glow.material_override as StandardMaterial3D
 	var f := create_tween().set_parallel()
@@ -3985,6 +3991,7 @@ func _ivw_exit() -> void:
 	_ivw_her_set(pos.y, "iv_gone_y")
 	_ivw_flash(ivw_gate_p + Vector3(0, 0.95, 0))
 	_ivw_motes(pos)
+	if ivg_on and ivg.has("end"): _go_write(String(ivg.end), 5.6)      # (the last line as she goes into the light, and it stays a while: the user)
 	var tv := create_tween().set_parallel()
 	tv.tween_method(_ivw_her_set.bind("iv_lux"), 0.55, 1.0, 0.12)
 	tv.tween_method(_ivw_her_set.bind("iv_gone"), 0.0, 1.0, 0.9).set_delay(0.06).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)      # (she goes, from the head down, in sparks)
@@ -3992,8 +3999,32 @@ func _ivw_exit() -> void:
 	tv.tween_method(gk, 2.6, 5.0, 0.12)
 	tv.tween_method(gk, 5.0, 2.8, 1.8).set_delay(0.12).set_trans(Tween.TRANS_SINE)
 	await wait(0.3); await _ivw_snap("x2_flash")
-	await wait(0.6); await _ivw_snap("x3_gone")
+	await wait(0.4); await _ivw_snap("x4_line")
+	await wait(0.2); await _ivw_snap("x3_gone")
 	await wait(0.8)
+
+func _ivw_end_screen() -> void:      # (the waking's end: the picture goes down into the dark of the film's first frame, and the name comes over it; a touch begins it again)
+	if iv_fade != null:
+		iv_fade.color = Color(0.13, 0.08, 0.13, 0.0)
+		var t := create_tween(); t.tween_property(iv_fade, "color:a", 1.0, 2.6).set_trans(Tween.TRANS_SINE)
+		await t.finished
+	var cl := CanvasLayer.new(); cl.layer = 6; add_child(cl)
+	var box := Control.new(); box.set_anchors_preset(Control.PRESET_FULL_RECT); box.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.modulate.a = 0.0; cl.add_child(box)
+	var vp := get_viewport().get_visible_rect().size; var k := vp.x / 720.0
+	var cream := Color(0.93, 0.87, 0.9)
+	if ResourceLoader.exists("res://ui/logo.png"):
+		var tr := TextureRect.new(); tr.texture = load("res://ui/logo.png"); tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE; tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		var ts := (tr.texture as Texture2D).get_size(); var w := vp.x * 0.62; var h := w * ts.y / ts.x
+		tr.size = Vector2(w, h); tr.position = Vector2((vp.x - w) * 0.5, vp.y * 0.42 - h * 0.5); tr.modulate = cream; tr.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(tr)
+	var lb := Label.new(); lb.text = "tap to play again"; lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var f := _ivw_font(false)
+	if f != null: lb.add_theme_font_override("font", f)
+	lb.add_theme_font_size_override("font_size", int(32 * k)); lb.add_theme_color_override("font_color", Color(cream.r, cream.g, cream.b, 0.8))
+	lb.anchor_left = 0.0; lb.anchor_right = 1.0; lb.anchor_top = 0.55; lb.anchor_bottom = 0.55; lb.offset_top = -30 * k; lb.offset_bottom = 30 * k; lb.mouse_filter = Control.MOUSE_FILTER_IGNORE; box.add_child(lb)
+	var tl := lb.create_tween().set_loops(); tl.tween_property(lb, "modulate:a", 0.45, 1.6).set_trans(Tween.TRANS_SINE); tl.tween_property(lb, "modulate:a", 1.0, 1.6).set_trans(Tween.TRANS_SINE)
+	var tb := box.create_tween(); tb.tween_property(box, "modulate:a", 1.0, 1.6).set_trans(Tween.TRANS_SINE)
+	await tb.finished
+	await _ivw_snap("x5_end")
 
 func _ivw_flash(at: Vector3) -> void:      # (the gate's light alone bursts, strongly: a white core in its doorway and a bloom about it; the rest of the picture is left as it is, the user: "the whole screen need not light up, only the door, more strongly")
 	for layer in [[1.5, 2.0, 1.0, 1.0], [2.6, 2.9, 0.85, 1.5]]:      # (its size, how far it swells, how bright, how long it takes to go)
@@ -4537,6 +4568,27 @@ func _ivw_music_out(fade := 3.0) -> void:
 	var old := ivw_music_p; ivw_music_p = null
 	var t := create_tween(); t.tween_property(old, "volume_db", -50.0, fade).set_trans(Tween.TRANS_SINE); t.tween_callback(old.queue_free)
 
+## the story's letter (the user: "better texts and better letters for them"): Cormorant Garamond italic, finer than the
+## old one and of a kind with the thin name EIDOLON; its semibold over the picture, its medium for the small lines
+var ivw_fonts := {}
+func _ivw_font(strong := true) -> Font:
+	var fn := "res://fonts/CormorantGaramond-%sItalic.ttf" % ("SemiBold" if strong else "Medium")
+	if ivw_fonts.has(fn): return ivw_fonts[fn]
+	if not FileAccess.file_exists(fn): return null
+	var ff := FontFile.new(); ff.data = FileAccess.get_file_as_bytes(fn); ivw_fonts[fn] = ff
+	return ff
+
+func _ivw_text_style() -> void:      # (the lines over the dawn: deep plum letters, a soft light about them, a little larger as this letter is smaller in the eye)
+	var f := _ivw_font()
+	if f == null: return
+	for ql in quote_lbls:
+		var l := ql as Label
+		l.add_theme_font_override("font", f); l.add_theme_font_size_override("font_size", 46); l.add_theme_constant_override("line_spacing", 2)
+		var o := l.get_theme_constant("outline_size")
+		if o == 0: l.add_theme_color_override("font_color", Color(0.2, 0.11, 0.18, 1))
+		elif l.material != null: l.add_theme_color_override("font_outline_color", Color(1.0, 0.95, 0.9, clampf(1.2 / float(o), 0.04, 0.2)))
+		else: l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0))
+
 var ivw_begin: Control
 func _ivw_begin() -> void:      # (the browser's first screen: the film's own dark, and a line asking for the touch that lets its sound play)
 	var cl := CanvasLayer.new(); cl.layer = 10; add_child(cl)
@@ -4544,8 +4596,8 @@ func _ivw_begin() -> void:      # (the browser's first screen: the film's own da
 	var bg := ColorRect.new(); bg.color = Color(0.13, 0.08, 0.13); bg.set_anchors_preset(Control.PRESET_FULL_RECT); bg.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_begin.add_child(bg)
 	var vp := get_viewport().get_visible_rect().size; var k := vp.x / 720.0
 	var lb := Label.new(); lb.text = "tap to begin"; lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	if FileAccess.file_exists("res://fonts/EBGaramond-Italic.ttf"):      # (the game's own letter, read as the lines of the story are)
-		var ff := FontFile.new(); ff.data = FileAccess.get_file_as_bytes("res://fonts/EBGaramond-Italic.ttf"); lb.add_theme_font_override("font", ff)
+	var bf := _ivw_font(false)      # (the story's own letter)
+	if bf != null: lb.add_theme_font_override("font", bf)
 	lb.add_theme_font_size_override("font_size", int(34 * k)); lb.add_theme_color_override("font_color", Color(0.93, 0.87, 0.9))
 	lb.set_anchors_preset(Control.PRESET_FULL_RECT); lb.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_begin.add_child(lb)
 	var t := lb.create_tween().set_loops(); t.tween_property(lb, "modulate:a", 0.35, 1.6).set_trans(Tween.TRANS_SINE); t.tween_property(lb, "modulate:a", 1.0, 1.6).set_trans(Tween.TRANS_SINE)
