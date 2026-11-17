@@ -3989,29 +3989,27 @@ func _ivw_exit() -> void:
 	tv.tween_method(_ivw_her_set.bind("iv_lux"), 0.55, 1.0, 0.12)
 	tv.tween_method(_ivw_her_set.bind("iv_gone"), 0.0, 1.0, 0.9).set_delay(0.06).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)      # (she goes, from the head down, in sparks)
 	if ivp_shadow != null: tv.tween_property(ivp_shadow.material_override, "albedo_color:a", 0.0, 0.5)
-	tv.tween_method(gk, 2.6, 4.2, 0.12)
-	tv.tween_method(gk, 4.2, 2.2, 1.6).set_delay(0.12).set_trans(Tween.TRANS_SINE)
+	tv.tween_method(gk, 2.6, 5.0, 0.12)
+	tv.tween_method(gk, 5.0, 2.8, 1.8).set_delay(0.12).set_trans(Tween.TRANS_SINE)
 	await wait(0.3); await _ivw_snap("x2_flash")
 	await wait(0.6); await _ivw_snap("x3_gone")
 	await wait(0.8)
 
-func _ivw_flash(at: Vector3) -> void:      # (the gate's light bursts: a bloom of light over it, and the whole picture flushes with it)
-	var q := QuadMesh.new(); q.size = Vector2(2.6, 2.6)
-	var m := StandardMaterial3D.new(); m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; m.albedo_texture = load("res://goiv/glow.png")
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	m.no_depth_test = true; m.albedo_color = Color(1.0, 0.93, 0.8, 0.0)
-	var mi := MeshInstance3D.new(); mi.mesh = q; mi.material_override = m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(mi)
-	mi.global_position = at
-	var t := create_tween().set_parallel()
-	t.tween_property(m, "albedo_color:a", 1.0, 0.12).set_trans(Tween.TRANS_SINE)
-	t.tween_property(mi, "scale", Vector3.ONE * 3.6, 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	t.tween_property(m, "albedo_color:a", 0.0, 1.4).set_delay(0.12).set_trans(Tween.TRANS_SINE)
-	t.chain().tween_callback(mi.queue_free)
-	if iv_fade != null:
-		var fc := iv_fade.color; fc.a = 0.0; iv_fade.color = fc
-		var tf := create_tween()
-		tf.tween_property(iv_fade, "color:a", 0.6, 0.12).set_trans(Tween.TRANS_SINE)
-		tf.tween_property(iv_fade, "color:a", 0.08, 1.1).set_trans(Tween.TRANS_SINE)
+func _ivw_flash(at: Vector3) -> void:      # (the gate's light alone bursts, strongly: a white core in its doorway and a bloom about it; the rest of the picture is left as it is, the user: "the whole screen need not light up, only the door, more strongly")
+	for layer in [[1.5, 2.0, 1.0, 1.0], [2.6, 2.9, 0.85, 1.5]]:      # (its size, how far it swells, how bright, how long it takes to go)
+		var q := QuadMesh.new(); q.size = Vector2(float(layer[0]), float(layer[0]))
+		var m := StandardMaterial3D.new(); m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; m.albedo_texture = load("res://goiv/glow.png")
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+		m.no_depth_test = true; m.albedo_color = Color(1.0, 0.95, 0.85, 0.0)
+		var mi := MeshInstance3D.new(); mi.mesh = q; mi.material_override = m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(mi)
+		mi.global_position = at
+		var t := create_tween().set_parallel()
+		t.tween_property(m, "albedo_color:a", float(layer[2]), 0.12).set_trans(Tween.TRANS_SINE)
+		t.tween_property(mi, "scale", Vector3.ONE * float(layer[1]), float(layer[3]) + 0.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		t.tween_property(m, "albedo_color:a", 0.0, float(layer[3])).set_delay(0.18).set_trans(Tween.TRANS_SINE)
+		t.chain().tween_callback(mi.queue_free)
+	if ivw_gate_glow != null:      # (and its own glow at its brightest a while)
+		var tg := create_tween(); tg.tween_property(ivw_gate_glow, "albedo_color:a", 1.0, 0.12); tg.tween_interval(0.5); tg.tween_property(ivw_gate_glow, "albedo_color:a", 0.8, 1.2).set_trans(Tween.TRANS_SINE)
 
 func _ivw_motes(at: Vector3) -> void:      # (what is left of her: motes of light rising from where she stood)
 	var p := CPUParticles3D.new(); add_child(p); p.global_position = at + Vector3(0, 0.55, 0)
@@ -5483,8 +5481,10 @@ func _ivr_build() -> void:
 		lr.visible = false
 		var plum := Color(0.78, 0.62, 0.86, 0.88)
 		iv_leaves.modulate = plum; iv_leaves.size = Vector2(420, 420) * k; iv_leaves.position = Vector2(-80, -100) * k
-		var rb := _iv_overlay(cl, "res://goiv/rock_br.png", Vector2(720 * k - 345 * k, vh - 400 * k), Vector2(400, 400) * k); rb.modulate = plum      # (a rock before the eye at the lower right: off the way, the sea there is open)
-		var rbl := _iv_overlay(cl, "res://goiv/rock_bl.png", Vector2(-80 * k, vh - 360 * k), Vector2(360, 360) * k); rbl.modulate = plum      # (and one at the lower left, short of the threshold)
+		var lp := ResourceLoader.exists("res://gowake/rock_br_lp.png")      # (the user: "low poly rocks, not just shapes", "a little blurred", "darker": rocks of the level's own cut, rendered dark and softened as things close before the eye)
+		var lpc := Color(0.94, 0.88, 0.97, 0.98)
+		var rb := _iv_overlay(cl, "res://gowake/rock_br_lp.png" if lp else "res://goiv/rock_br.png", Vector2(720 * k - 345 * k, vh - 400 * k), Vector2(400, 400) * k); rb.modulate = lpc if lp else plum      # (a rock before the eye at the lower right: off the way, the sea there is open)
+		var rbl := _iv_overlay(cl, "res://gowake/rock_bl_lp.png" if lp else "res://goiv/rock_bl.png", Vector2(-80 * k, vh - 360 * k), Vector2(360, 360) * k); rbl.modulate = lpc if lp else plum      # (and one at the lower left, short of the threshold)
 		vg.colors = PackedColorArray([Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0.05), Color(0.26, 0.16, 0.3, 0.2)])      # (a soft darkening at the edges: the eye drawn in)
 		_ivw_hand_make(cl)
 		_ivw_life()
