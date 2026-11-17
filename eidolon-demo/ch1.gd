@@ -4657,8 +4657,8 @@ func _ivw_begin() -> void:      # (the browser's first screen: the film's own da
 	var bg := ColorRect.new(); bg.color = Color(0.13, 0.08, 0.13); bg.set_anchors_preset(Control.PRESET_FULL_RECT); bg.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_begin.add_child(bg)
 
 func _ivw_web_sound_ok() -> bool:      # (does this browser already let sound play, before any touch? A new audio context starts running only then)
-	var r: Variant = JavaScriptBridge.eval("(function(){try{var C=window.AudioContext||window.webkitAudioContext;if(!C)return false;var c=new C();var ok=c.state==='running';c.close();return ok;}catch(e){return false;}})()", true)
-	return r is bool and r
+	var r: Variant = JavaScriptBridge.eval("(function(){try{var C=window.AudioContext||window.webkitAudioContext;if(!C)return 'n';var c=new C();var ok=c.state==='running';c.close();return ok?'y':'n';}catch(e){return 'n';}})()", true)
+	return str(r) == "y"      # (a word, not a JS boolean: the bridge hands a boolean back as the number 1)
 
 func _ivw_begin_go() -> void:
 	if ivw_begin == null: return
