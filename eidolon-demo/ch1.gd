@@ -2196,6 +2196,16 @@ float vn(vec3 p){ vec3 i = floor(p); vec3 f = fract(p); f = f * f * (3.0 - 2.0 *
 	return mix(mix(mix(h3(i), h3(i + vec3(1, 0, 0)), f.x), mix(h3(i + vec3(0, 1, 0)), h3(i + vec3(1, 1, 0)), f.x), f.y),
 		mix(mix(h3(i + vec3(0, 0, 1)), h3(i + vec3(1, 0, 1)), f.x), mix(h3(i + vec3(0, 1, 1)), h3(i + vec3(1, 1, 1)), f.x), f.y), f.z); }
 float fbm(vec3 p){ return vn(p) * 0.55 + vn(p * 2.1 + 3.1) * 0.3 + vn(p * 4.3 + 7.7) * 0.15; }
+float fbub(vec2 p, float on_p, float rk){      // (round blobs of a few sizes, most cells empty: foam drawn clean, as the sea's lip is)
+	vec2 i = floor(p); vec2 f = fract(p); float m = 0.0;
+	for (int y = -1; y <= 1; y++) { for (int x = -1; x <= 1; x++) {
+		vec2 g = vec2(float(x), float(y)); vec2 q = i + g;
+		vec2 o = vec2(h3(vec3(q, 5.1)), h3(vec3(q, 9.7))) * 0.8 + 0.1;
+		float r = (0.12 + 0.3 * h3(vec3(q, 2.3))) * rk;
+		m = max(m, step(1.0 - on_p, h3(vec3(q, 7.9))) * (1.0 - smoothstep(r * 0.75, r, length(g + o - f))));
+	} }
+	return m;
+}
 void fragment(){
 	if (clip_k > 0.5 && wp.y < clip_y) discard;
 	if (mirror_k > 0.5 && wp.y > mirror_y) discard;
@@ -2241,14 +2251,17 @@ void fragment(){
 		c += vec3(1.0) * run * wet * 0.24 * (1.0 - abs(fn.y));      // (water running down its sides)
 		c += vec3(1.0) * wet * 0.07 * smoothstep(0.7, 0.95, fn.y);      // (a sheen on its top)
 	}
-	if (foam_k > 0.0) {      // (the user: "foam where they come out, and on them a little": the sea it brought up with it, white, broken into patches, draining off)
-		float below = 1.0 - smoothstep(foam_y - 0.06, foam_y + 0.02, wy);
-		float n1 = fbm(wp * 9.0 + vec3(0.0, TIME * 0.35, 0.0)); float n2 = fbm(wp * 24.0 + 7.0);
-		float upf = smoothstep(0.3, 0.85, fn.y);
-		float patches = smoothstep(0.6, 0.7, n1 * 0.75 + n2 * 0.35);      // (sparse: a few patches and bubbles, the stone seen through)
-		float runs = smoothstep(0.82, 0.95, sin(dot(wp.xz, vec2(29.0, 21.0)) + n1 * 7.0)) * (1.0 - abs(fn.y)) * smoothstep(0.5, 0.62, n2);      // (thin runs down its sides)
-		float ff = foam_k * below * clamp(patches * (0.25 + 0.75 * upf) + runs * 0.5, 0.0, 1.0);
-		c = mix(c, vec3(1.0, 0.99, 0.97), ff * 0.62);
+	if (foam_k > 0.0) {      // (the user: "foam where they come out, and on them a little": a few round blobs of the sea's foam on its top, short runs down its sides, all draining off below a line that sinks)
+		float below = 1.0 - smoothstep(foam_y - 0.04, foam_y + 0.01, wy);
+		float upf = smoothstep(0.55, 0.85, fn.y);
+		float blobs = fbub(wp.xz * 8.5, 0.3, 0.45 + 0.55 * foam_k);      // (a few, and shrinking as it drains: never patches all over it)
+		vec2 tg = normalize(vec2(-fn.z, fn.x) + vec2(0.0001, 0.0));      // (along the side it is on)
+		float sx = dot(wp.xz, tg) * 8.0; float hc = h3(vec3(floor(sx), 3.7, 1.3));
+		float col = (1.0 - smoothstep(0.1, 0.17, abs(fract(sx) - 0.3 - 0.4 * hc))) * step(0.6, hc);      // (here and there a run of water down its side)
+		float dash = smoothstep(0.3, 0.45, fract(wy * 2.0 + TIME * 0.9 + hc * 5.0));
+		float runs = col * dash * (1.0 - upf) * smoothstep(0.0, 0.3, 1.0 - abs(fn.y));
+		float ff = foam_k * below * clamp(blobs * upf + runs * 0.75, 0.0, 1.0);
+		c = mix(c, vec3(1.0, 0.99, 0.97), ff * 0.8);
 	}
 	if (sun_k > 0.0 && sil < 0.5) {
 		float lit = smoothstep(-0.05, 0.45, d);      // (the faces the light falls on)
@@ -4178,27 +4191,32 @@ void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float vn(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), f.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), f.x), f.y); }
 vec2 h22(vec2 p){ return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453); }
-float bub(vec2 p){      // (round bubbles of many sizes, as foam is made of: not angular flecks)
+float bub(vec2 p, float rk){      // (round bubbles of a few sizes, some cells empty, shrinking with rk: foam is round, never angular flecks)
 	vec2 i = floor(p); vec2 f = fract(p); float m = 0.0;
 	for (int y = -1; y <= 1; y++) { for (int x = -1; x <= 1; x++) {
-		vec2 g = vec2(float(x), float(y)); vec2 o = h22(i + g);
-		float r = 0.16 + 0.34 * o.x * o.y; float on = step(0.3, fract(o.x * 7.3 + o.y * 3.1));
-		m = max(m, on * (1.0 - smoothstep(r * 0.6, r, length(g + o - f))));
+		vec2 g = vec2(float(x), float(y)); vec2 o = h22(i + g) * 0.8 + 0.1;
+		float r = (0.14 + 0.3 * h21(i + g + 3.7)) * rk; float on = step(0.45, h21(i + g + 9.1));
+		m = max(m, on * (1.0 - smoothstep(r * 0.75, r, length(g + o - f))));
 	} }
 	return m;
 }
 void fragment(){
 	vec2 su = (wp.xz - shore_rect.xy) * shore_rect.zw;
 	float d = (1.0 - texture(shore_tex, clamp(su, vec2(0.001), vec2(0.999))).g) * shore_d;      // (how far from the stone's edge: nothing over it)
-	float lace = vn(wp.xz * 14.0 + vec2(TIME * 0.4, -TIME * 0.3)) * 0.65 + vn(wp.xz * 31.0 - vec2(TIME * 0.7, TIME * 0.2)) * 0.35;      // (fine: foam is lace and bubbles, never blots)
-	float over = 1.0 - step(0.0005, d);      // (over the stone, while the water still covers it)
-	float hug = 1.0 - smoothstep(0.0, 0.06 + 0.08 * boil, d);      // (and close round its edge)
-	float bb = bub(wp.xz * 24.0 + vec2(TIME * 0.5, -TIME * 0.35)) * 0.8 + bub(wp.xz * 47.0 - vec2(TIME * 0.8)) * 0.6;      // (the bubbles themselves)
-	float b = boil * max(over * 0.22, hug) * smoothstep(0.42, 0.6, lace) * bb;      // (mostly a ring of bubbles tracing its edge on the water; only a few over it)
-	float r0 = d / max(spread, 0.05);
-	float k = churn * (1.0 - smoothstep(0.3, 1.0, r0)) * smoothstep(0.4 + 0.2 * r0, 0.56 + 0.2 * r0, lace) * clamp(bb + 0.25 * (1.0 - r0), 0.0, 1.0);      // (thick at the stone, thinner and more broken outward)
-	float a = clamp(max(b, k), 0.0, 1.0) * (1.0 - smoothstep(rad + spread * 0.85, rad + spread + 0.2, length(wp.xz - centre)));      // (round this stone only)
-	ALBEDO = foam_c; ALPHA = a * 0.62;
+	float onw = step(0.0005, d);      // (on the water only: over the stone nothing, it has its own)
+	float nz = vn(wp.xz * 3.5 + vec2(TIME * 0.3, -TIME * 0.24)) * 0.6 + vn(wp.xz * 8.0 - vec2(TIME * 0.42, -TIME * 0.18)) * 0.4;      // (broad and slow: the edges drawn clean and uneven, as the sea's own lip is; never a fine glitter)
+	float dd = d + (nz - 0.5) * 0.06;
+	float lip = 1.0 - smoothstep(0.025, 0.05, dd);      // (before it breaks the water: a faint lip where it will come up)
+	float ext = 0.1 + spread;      // (how far out the foam has gone)
+	float r0 = d / ext;
+	float band = 1.0 - smoothstep(0.03 + 0.05 * churn, 0.05 + 0.07 * churn, dd);      // (as it breaks: a thick white band round it, thinning as it dies)
+	float nb = vn(wp.xz * 7.0 + vec2(-TIME * 0.35, TIME * 0.3)) * 0.6 + vn(wp.xz * 15.0 + vec2(TIME * 0.5, TIME * 0.2)) * 0.4;
+	float th = 0.52 + 0.22 * r0 + 0.25 * (1.0 - churn);
+	float blobs = smoothstep(th, th + 0.04, nb) * (1.0 - smoothstep(0.7, 1.0, r0));      // (going out it breaks into blobs, fewer and smaller further out and as it dies)
+	float dots = bub(wp.xz * 9.0 + vec2(TIME * 0.15, -TIME * 0.1), 0.35 + 0.65 * churn) * smoothstep(0.15, 0.4, r0) * (1.0 - smoothstep(0.85, 1.2, r0));      // (and round bubbles at its edge)
+	float a = boil * lip * 0.35 + churn * max(band, max(blobs, dots));
+	a *= onw * (1.0 - smoothstep(rad * 1.15 + ext, rad * 1.15 + ext + 0.25, length(wp.xz - centre)));      // (round this stone only)
+	ALBEDO = foam_c; ALPHA = clamp(a, 0.0, 1.0) * 0.78;
 }
 """
 func _ivw_churn_make(r: Array) -> MeshInstance3D:
