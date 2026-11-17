@@ -3403,6 +3403,7 @@ func _ivp_post(dt: float) -> void:
 		tgtL = face + sd; tgtR = face - sd
 	if ivp_shadow != null: ivp_shadow.global_position = Vector3(pos.x, pos.y + 0.01, pos.z) + Vector3(0.3, 0.0, -0.14)
 	if go_wake: _ivw_tick(dt)
+	if ivg_on: _ivg_queue_tick()
 	if not go_text_styled: _go_restyle_text()
 	if started and not ivp_intro:      # she comes up out of the mist to the first floor
 		ivp_intro = true
@@ -3484,12 +3485,26 @@ func _ivp_tap(sp: Vector2) -> void:
 	await _ivp_walk(path)
 
 ## a swipe: one step, to the neighbour whose way lies, on the screen, nearest the swipe's direction (within 50 degrees)
+## a swipe made while she is still moving is kept and done as soon as her turn is over (the user: "a swipe while she
+## moves counts as the next move", "up to one"): one move only, the last swipe made; it is read from where she will be
+var ivg_turning := false
+var ivg_queued := Vector2.ZERO
 func _ivg_swipe(dv: Vector2) -> void:
-	if iv_busy or iv_won or busy or not ivp_intro: return
+	if iv_won or not ivp_intro: return
+	if iv_busy or busy or ivg_turning:
+		if ivg_on: ivg_queued = dv
+		return
 	var n := _ivg_dir_nbr(iv_me, dv)
 	if OS.get_environment("IV_TRACE") != "": print("IV swipe ", dv, " from ", iv_me, " -> ", n)
-	if n == "": await _her_no(); return
-	await _ivg_step(n)
+	ivg_turning = true
+	if n == "": await _her_no()
+	else: await _ivg_step(n)
+	ivg_turning = false
+
+func _ivg_queue_tick() -> void:      # (her turn over and nothing moving: the kept swipe now)
+	if ivg_queued == Vector2.ZERO or ivg_turning or iv_busy or busy or iv_won: return
+	var q := ivg_queued; ivg_queued = Vector2.ZERO
+	_ivg_swipe(q)
 
 func _ivg_dir_nbr(k: String, dv: Vector2) -> String:
 	var sp0 := cam.unproject_position(ivp_nodes[k])
@@ -3612,7 +3627,16 @@ func _play_ivp() -> void:
 	if OS.get_environment("GH_ONLY") == "start": get_tree().quit(); return
 	if ivg_on:      # the trial played by swipes, as a player would: each a stroke from her toward the next node
 		var sol: Array = ivg.solution
-		for i in sol.size():
+		var i0 := 0
+		if OS.get_environment("IV_TEST_QUEUE") != "" and sol.size() > 1:      # (two swipes at once: the second kept and done after the first)
+			var d1 := cam.unproject_position(ivp_nodes[String(sol[0])]) - cam.unproject_position(ivp_nodes[iv_me])
+			_ivg_swipe(d1); await get_tree().process_frame; await get_tree().process_frame
+			var p1 := iv_me if String(sol[0]) == ivg_vol else String(sol[0])      # (turning the volute she stays where she is)
+			var d2 := cam.unproject_position(ivp_nodes[String(sol[1])]) - cam.unproject_position(ivp_nodes[p1])
+			_ivg_swipe(d2); print("IV queue test: swiped twice, kept ", ivg_queued)
+			await idle.call(); await wait(0.6); await idle.call()
+			print("IV queue test: she is at ", iv_me, " (should be ", sol[1], "), volute ", ivg_v); i0 = 2
+		for i in range(i0, sol.size()):
 			var tgt := String(sol[i])
 			if go_wake and bool(ivg.get("tutorial", false)) and i < 2:      # (as a new player would: she waits, and the hand shows the swipe)
 				await wait(2.6); await _ivw_snap("w9_hand%d" % i)
@@ -5911,6 +5935,7 @@ func _ivg_w_break() -> void:
 
 ## struck or caught: the light goes, and the trial begins again
 func _ivg_fail(why: String, at: String, fi := -1) -> void:
+	ivg_queued = Vector2.ZERO      # (a kept swipe does not outlive her fall)
 	iv_busy = true
 	print("IV ", why, " at ", at)
 	if fi >= 0:      # the face strikes: it leans at her
