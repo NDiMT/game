@@ -35,15 +35,16 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   glowing gate, steps into its light, and is lost in it in a flash (the gate alone lights) and rising motes; the
   last line holds, then the dark end screen (EIDOLON alone: no "tap to ..." words, the owner, but the film's "tap to skip"). **The story is in
   `eidolon-world/dev/EIDOLON_SCRIPT.md`: read it before writing any line.** The player is one of the statues Theron
-  carved to make Ione's face again (not Ione). Lines: "Theron went looking for her face in stone. / A thousand times he carved
-  it, / and a thousand times it was not hers." (clear, a little poetic: the owner) → (stones up) "Her own face lies at the bottom of the sea. / To pass over, she must see it once more." →
-  (gate) "One of the thousand went to find her." Letter: Cormorant Garamond italic.
+  carved to make Ione's face again (not Ione). Lines, short and clipped (the owner: "πιο κοφτά"): "Theron carved her face a thousand times. / Not one
+  was hers." → (stones up) "Her face lies under the sea. / She must see it to pass over." → (gate) "One of the
+  thousand went after her." Letter: Cormorant Garamond italic.
 - **Start screen**: plum dark, cream EIDOLON and PLAY, a subdued veiled statue behind (`ui/start_statue.jpg`); the
   film opens and closes in the same plum.
 - **Play it in a browser**: https://ndimt.github.io/game/eidolon-waking/ (the owner OK'd publishing there).
 - **Sounds** (`sfx/`, `_ivw_sfx`, the owner approved them in a preview on the level video): PLAY a low note, each story
   line a woman's sigh (not the last), the stones a swell, the gate's sound peaking on the flash, a blocked swipe a low
-  pluck; the music dips 4 dB under them (its own bus). `IV_SFX_LOG=1` logs their moments.
+  pluck. No audio bus made while the game runs and no dip under the sounds: with one, a phone's browser played nothing in
+  the level. `IV_SFX_LOG=1` logs their moments.
 - **The camera** holds the whole map and follows her a little, smoothly and a little behind; on larger maps it goes
   with her but shows little past the edges (`_ivr_follow` in `ch1.gd`).
 - **Music per level** (`_go_level_music` in `ch1.gd`): waking Lament, sanctuary Requiem, moon Elegy, quarry Stone,
@@ -70,7 +71,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
 - Browser build: export preset `WebWake` (feature `gowake`; other levels and unused music left out) into an empty
   folder as `eidolon-<v>.html` (`<v>` the commit's short hash), then `python3 eidolon-demo/tools/web_stamp.py <folder> <v>`:
   every file carries the version in its name, and `index.html` checks `version.txt` past all caches and moves an old
-  page or an open tab onto the current version (the owner once played a stale copy: "old texts, no sound"). Deploy =
+  page or an open tab onto the current version; it also resumes the page's sound at every touch and plays it as media
+  on iPhone (not muted by the silent switch). Deploy =
   the folder's files in place of the old ones (~120 MB). On the web a
   film starts by itself (the owner). Its sound is a player of its own (`intro/intro_audio.ogg`) held to the picture
   (`_ivw_film_sync_tick`), so where a browser holds sound back until the first touch it comes in at the right place. A
