@@ -67,8 +67,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   res://chapter1.tscn -- godemo`, then ffmpeg to MP4. Env: `IV_ZOOM` close-up (`IV_ZOOM_AT=dx,dz` aims it that far
   from her start), `IVW_SNAPS=1` + `SHOT_DIR` + `IVW_QUIT_AT=<snap>` stills, `IVW_SKIP=1` start awake,
   `IV_NO_MUSIC=1`, `HAND=1` tutorial hand; `--quit-after <frames>` for a short check clip.
-- Browser build: export preset `WebWake` (feature `gowake`; other levels and unused music left out) →
-  `godot --headless --path eidolon-demo --export-release "WebWake" build/webwake/index.html` (~120 MB). On the web a
+- Browser build: export preset `WebWake` (feature `gowake`; other levels and unused music left out) into an empty
+  folder as `eidolon-<v>.html` (`<v>` the commit's short hash), then `python3 eidolon-demo/tools/web_stamp.py <folder> <v>`:
+  every file carries the version in its name, and `index.html` checks `version.txt` past all caches and moves an old
+  page or an open tab onto the current version (the owner once played a stale copy: "old texts, no sound"). Deploy =
+  the folder's files in place of the old ones (~120 MB). On the web a
   film starts by itself (the owner). Its sound is a player of its own (`intro/intro_audio.ogg`) held to the picture
   (`_ivw_film_sync_tick`), so where a browser holds sound back until the first touch it comes in at the right place. A
   touch on the film shows "tap to skip" a while; a second touch while it shows skips (`_ivw_skip_tap`). Code that reads a file raw (`FileAccess`, the `.glb` levels and props)
