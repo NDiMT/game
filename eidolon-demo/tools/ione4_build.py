@@ -349,6 +349,8 @@ ra1r = np.array([p0[B("RightUpLeg")][0] - back_r - shin * float(os.environ.get("
 ball0 = ra1r - roty(FLAT) @ v0; ball0[2] = TOE_REST          # (where the ball of the back foot lies at the start)
 ball1 = p0[RT].copy()                                        # (and where it stands)
 ARMS = [B(n) for n in bones if any(t in n for t in ("Shoulder", "Arm", "Hand"))]
+HOLD_ARMS = set(ARMS) if os.environ.get("RISE_HOLD", "all") == "all" else set()
+KNEE_ARM = set(B(n) for n in bones if any(t in n for t in ("Shoulder", "Arm", "Hand")) and any(("Right" + w) in n for w in ("Shoulder", "Arm", "ForeArm", "Hand"))) if os.environ.get("RISE_RKNEE", "1") == "1" else set()      # (the user: "the right arm is too bent at the start; I want it as when she begins to rise, out a little")
 LEAN0 = float(os.environ.get("RISE_LEAN", "60")); NECK0 = float(os.environ.get("RISE_NECK", "34")); HEAD0 = float(os.environ.get("RISE_HEAD", "46")); SHO0 = float(os.environ.get("RISE_SHO", "16"))
 SPD = [float(v) for v in os.environ.get("RISE_SPD", "0.3,0.35,0.35").split(",")]      # (how the bow is shared down the spine: Spine, Spine1, Spine2)      # (her back bowed over the knee: spread down the spine, so it curves)
 # The rise in its moments, each in its own time, as a person rises (the user: "you sent me a transition": everything
@@ -364,8 +366,7 @@ def win(t, a_, b_): return ease((t - a_) / (b_ - a_))
 def win5(t, a_, b_): x = min(max((t - a_) / (b_ - a_), 0.0), 1.0); return x * x * x * (x * (x * 6.0 - 15.0) + 10.0)
 def bump(t, a_, b_): x = min(max((t - a_) / (b_ - a_), 0.0), 1.0); return math.sin(math.pi * x)
 TS = RISE_S / 8.0      # (the moments scale with the clip's length)
-for f in range(NR + 1):
-    t = f / FPS / TS; u = f / NR
+def rise_pose(t, u):
     br = bump(t, 0.15, 1.35); unx = win(t, 1.1, 2.1); fw = win(t, 2.0, 2.9); sink = bump(t, 2.0, 3.1)
     hz = win5(t, 2.8, 5.6); sl = win(t, 3.6, 4.4); st = win(t, 4.4, 5.5); rel = win(t, 4.2, 5.1)
     lift = win(t, 3.6, 6.2); sway = bump(t, 5.8, 6.9); hlift = win(t, 5.6, 7.2); look = bump(t, 6.4, 7.8); fin = win(t, 6.4, 7.8)
@@ -420,8 +421,24 @@ for f in range(NR + 1):
         for b in ARMS: free[b] = slerp_rot(free[b], st_[b], fin)
     for b in ARMS: rot[b] = slerp_rot(cross[b], rot[b], unx)
     for b in ARMS: rot[b] = slerp_rot(rot[b], free[b], rel)
+    return rot, hh
+# Her arms, from the first, hold the shape they have at RISE_RARM_T of the clip (the user: "the right arm is too bent at
+# the start; I want it as when she begins to rise", "the arm as at 3.9 s" of the video: 2.25 s here): both hands on the
+# front knee, close together, the near elbow a little out. (Seen from behind, the arm that stuck out bent on the right
+# of the picture was her left forearm lying across the knee.) They keep that shape on her chest (they move with her
+# breath) until the clip reaches that moment, and go on from there.
+T_RARM = float(os.environ.get("RISE_RARM_T", "2.25"))
+ref_rot, _ = rise_pose(T_RARM, T_RARM / RISE_S)
+S2 = B("Spine2")
+for f in range(NR + 1):
+    t = f / FPS / TS; u = f / NR
+    rot, hh = rise_pose(t, u)
+    if t < T_RARM:
+        for b in HOLD_ARMS: rot[b] = rot[S2] @ ref_rot[S2].T @ ref_rot[b]
     rr[f] = rot; rh[f] = hh
 rz = {"rot": rr, "hips": rh}
+for f_ in (0, int(round(T_RARM * FPS * TS))):
+    q_ = fk1(rr[f_], rh[f_]); print("BUILD rise frame %d: right hand in the chest's frame %s, elbow %s" % (f_, np.round(rr[f_][S2].T @ (q_[B("RightHand")] - q_[S2]), 3), np.round(rr[f_][S2].T @ (q_[B("RightForeArm")] - q_[S2]), 3)))
 l, r = foot_lift(fk(rz)); p_ = fk1(rr[0], rh[0])
 print("BUILD rise start: head %.3f, neck %.3f, front knee %s, back knee %s, back toe x %.3f (stands at %.3f); elbows L %s R %s; wrists L %s R %s" % (
     p_[B("Head")][2], p_[B("Neck")][2], np.round(p_[B("LeftLeg")], 3), np.round(p_[B("RightLeg")], 3), p_[B("RightToeBase")][0], rh[-1][0],
