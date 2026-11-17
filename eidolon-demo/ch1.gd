@@ -3597,6 +3597,9 @@ func _play_ivp() -> void:
 		_go_tap(cam.unproject_position(p)); await get_tree().process_frame
 		await idle.call(); await wait(0.4)
 	await get_tree().create_timer(2.2).timeout
+	if go_wake and ivw_intro_on:      # (with the film: let it run to its end, as a player would, and the name stand a moment under the theme)
+		while ivw_intro_on: await get_tree().process_frame
+		await wait(4.0)
 	await snap.call("p0_title")
 	tap(Vector2(360, 640)); await wait(1.0)
 	while go_wake and not ivw_awake and not ended: await get_tree().process_frame      # (PLAY takes the eye down to her first: then she wakes)
@@ -4619,20 +4622,22 @@ func _ivw_intro() -> void:
 	ivw_video.set_anchors_preset(Control.PRESET_FULL_RECT); ivw_video.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_intro_box.add_child(ivw_video)
 	ivw_video.finished.connect(_ivw_intro_end)
 	ivw_intro_on = true
+	get_viewport().disable_3d = true      # (the film covers all: the level is not drawn under it)
 	ivw_video.play()
 
 func _ivw_intro_end() -> void:      # (at its end, or at a tap: the film fades into the faded level, the name, PLAY)
 	if not ivw_intro_on: return
 	ivw_intro_on = false
+	get_viewport().disable_3d = false
 	var t := create_tween(); t.tween_property(ivw_intro_box, "modulate:a", 0.0, 1.3).set_trans(Tween.TRANS_SINE)
 	if ivw_video.is_playing(): t.parallel().tween_property(ivw_video, "volume_db", -40.0, 1.2)
 	await t.finished
 	ivw_video.stop(); ivw_intro_box.get_parent().queue_free(); ivw_intro_box = null; ivw_video = null
-	_ivw_music("res://music/theme.ogg", 2.5)
+	if not ivw_theme_on: ivw_theme_on = true; _ivw_music("res://music/theme.ogg", 2.5)      # (skipped early: the theme now; at its end it came in already, and goes on)
 
 func _ivw_play() -> void:      # (PLAY: the name and the haze go, the eye goes down to her where she lies, and she wakes)
 	ivw_menu_on = false
-	_ivw_music(_go_level_music(), 3.5, -5.0)      # (the theme gives way to the level's own piece, quieter: it plays while she thinks)
+	_ivw_music(_go_level_music(), 5.0, -5.0)      # (the theme gives way to the level's own piece, slowly, quieter: it plays while she thinks)
 	var t := create_tween().set_parallel()
 	t.tween_property(ivw_menu, "modulate:a", 0.0, 1.0).set_trans(Tween.TRANS_SINE)
 	await t.finished
@@ -4668,7 +4673,13 @@ func _ivw_next() -> String:      # the next node of the way from where she stand
 			return String(path[i + 1])
 	return ""
 
+const IVW_THEME_AT := 6.0      # (seconds before the film's end: the theme comes in under its fading score)
+var ivw_theme_on := false
 func _ivw_tick(dt: float) -> void:
+	if ivw_intro_on and ivw_video != null and not ivw_theme_on and ivw_video.stream != null:      # (the user: "the music from the film into the first level, seamless")
+		var fl := ivw_video.get_stream_length()
+		if fl > 1.0 and ivw_video.stream_position >= fl - IVW_THEME_AT:
+			ivw_theme_on = true; _ivw_music("res://music/theme.ogg", IVW_THEME_AT - 0.5)
 	_ivw_birds_tick(dt)
 	if ivw_veil_m != null: ivw_veil_m.set_shader_parameter("t", iv_t)      # (the game's own time: on the wall clock the cloth in the gate flapped many times too fast in a recording)
 	if palm_on and not ivw_awake:      # (her palms on the stone before her knees, wherever she is turned)
