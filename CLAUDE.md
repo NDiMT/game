@@ -32,7 +32,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   kneels facing her way, both hands on the front knee, back and head bowed; after a second of stone stillness she
   rises in moments (8 s clip: breath, hands to the knee, weight forward, push, lunge, step, back up, head last).
   She turns the winch; the stones come up out of the water with foam on the water and on them; she climbs to the
-  glowing gate, steps into its light, and is lost in it in a flash and rising motes.
+  glowing gate, steps into its light, and is lost in it in a flash (the gate alone lights) and rising motes; the
+  last line holds, then the dark end screen (EIDOLON, "tap to play again"). The story: intro film (Theron, Ione's
+  smooth face, the veil, the sea takes her) → "The sea gave her back, as stone. / But it kept her face." → "She
+  stepped into the light, / to find the face the sea had kept." Letter: Cormorant Garamond italic.
+- **Play it in a browser**: https://ndimt.github.io/game/eidolon-waking/ (the owner OK'd publishing there).
 - **The camera** holds the whole map and follows her a little, smoothly and a little behind; on larger maps it goes
   with her but shows little past the edges (`_ivr_follow` in `ch1.gd`).
 - **Music per level** (`_go_level_music` in `ch1.gd`): waking Lament, sanctuary Requiem, moon Elegy, quarry Stone,
