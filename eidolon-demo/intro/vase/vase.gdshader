@@ -110,7 +110,7 @@ void fragment() {
 	vec2 hp = vec2((ul + SLOT * 0.5) * PXD, (h - H_TOP) * KK);          // in the strip, texture pixels
 	vec2 hpc = vec2((u + SLOT * 0.5) * PXD, hp.y);                       // the same, without the wrap from place to place
 	vec2 dd = max(abs(dFdx(hpc)), abs(dFdy(hpc)));
-	float lod = max(log2(max(dd.x, dd.y) / KK), 0.0);                   // (the strips hold one texel to a screen pixel of the film)
+	float lod = max(log2(sqrt(max(dd.x * dd.y, 1e-6)) / KK) - 0.35, 0.0);   // (the strips hold one texel to a screen pixel of the film; the mean of the two ways, a little sharp, so the leaning neck keeps its line)
 	int j = int(sl - k0);
 	vec3 col = vec3(0.094, 0.075, 0.078);
 	if (j >= 0 && j <= 3) {
