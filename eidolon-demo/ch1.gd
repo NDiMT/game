@@ -2254,7 +2254,7 @@ void fragment(){
 	if (foam_k > 0.0) {      // (the user: "foam where they come out, and on them a little": a few round blobs of the sea's foam on its top, short runs down its sides, all draining off below a line that sinks)
 		float below = 1.0 - smoothstep(foam_y - 0.04, foam_y + 0.01, wy);
 		float upf = smoothstep(0.55, 0.85, fn.y);
-		float blobs = fbub(wp.xz * 8.5, 0.3, 0.45 + 0.55 * foam_k);      // (a few, and shrinking as it drains: never patches all over it)
+		float blobs = fbub(wp.xz * 8.5, 0.16, 0.45 + 0.55 * foam_k) * smoothstep(0.35, 0.55, vn(vec3(wp.xz * 2.4, 1.7)));      // (a few, in a few clusters, and shrinking as it drains: never spots all over it)
 		vec2 tg = normalize(vec2(-fn.z, fn.x) + vec2(0.0001, 0.0));      // (along the side it is on)
 		float sx = dot(wp.xz, tg) * 8.0; float hc = h3(vec3(floor(sx), 3.7, 1.3));
 		float col = (1.0 - smoothstep(0.1, 0.17, abs(fract(sx) - 0.3 - 0.4 * hc))) * step(0.6, hc);      // (here and there a run of water down its side)
@@ -4195,7 +4195,7 @@ float bub(vec2 p, float rk){      // (round bubbles of a few sizes, some cells e
 	vec2 i = floor(p); vec2 f = fract(p); float m = 0.0;
 	for (int y = -1; y <= 1; y++) { for (int x = -1; x <= 1; x++) {
 		vec2 g = vec2(float(x), float(y)); vec2 o = h22(i + g) * 0.8 + 0.1;
-		float r = (0.14 + 0.3 * h21(i + g + 3.7)) * rk; float on = step(0.45, h21(i + g + 9.1));
+		float r = (0.14 + 0.3 * h21(i + g + 3.7)) * rk; float on = step(0.68, h21(i + g + 9.1));
 		m = max(m, on * (1.0 - smoothstep(r * 0.75, r, length(g + o - f))));
 	} }
 	return m;
@@ -4214,7 +4214,7 @@ void fragment(){
 	float th = 0.52 + 0.22 * r0 + 0.25 * (1.0 - churn);
 	float blobs = smoothstep(th, th + 0.04, nb) * (1.0 - smoothstep(0.7, 1.0, r0));      // (going out it breaks into blobs, fewer and smaller further out and as it dies)
 	float dots = bub(wp.xz * 9.0 + vec2(TIME * 0.15, -TIME * 0.1), 0.35 + 0.65 * churn) * smoothstep(0.15, 0.4, r0) * (1.0 - smoothstep(0.85, 1.2, r0));      // (and round bubbles at its edge)
-	float a = boil * lip * 0.35 + churn * max(band, max(blobs, dots));
+	float a = boil * lip * 0.3 * smoothstep(0.4, 0.6, nb) + churn * max(band, max(blobs, dots));
 	a *= onw * (1.0 - smoothstep(rad * 1.15 + ext, rad * 1.15 + ext + 0.25, length(wp.xz - centre)));      // (round this stone only)
 	ALBEDO = foam_c; ALPHA = clamp(a, 0.0, 1.0) * 0.78;
 }
