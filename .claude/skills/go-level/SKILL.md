@@ -309,6 +309,7 @@ The levels are many, in one system. A new level is made in this order (the secon
   - Run one Godot at a time: there are 4 cores.
 - Compare large side-by-sides of top and bottom with the concept (`pair.py`), and the same region of both enlarged (`zoom.py <concept> <render> <out> x0 y0 x1 y1`). Also run `overlay.py`, and `vstats.py` (value classes; the concept's are about 25/28/17/16/14).
 - Zoom on every junction: stairs to floors, the feet of columns and arches, rock corners, the mist line, the far shapes, the heroine.
+- Drive every motion by the game's own time (`iv_t`, shader `TIME`), never the wall clock (`Time.get_ticks_msec`): a recording takes a second or more of wall time for each frame it shows, so the gate's cloth and the birds' bob, driven by the wall clock, moved about thirty times too fast in the video ("the cloth and the birds move far too fast").
 - Hunt for these faults and fix each one:
   - crooked or slanted edges;
   - floating things or overhangs;

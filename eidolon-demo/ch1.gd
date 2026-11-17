@@ -4333,7 +4333,7 @@ func _ivw_birds_tick(dt: float) -> void:
 	for bdd in ivw_birds:
 		var bd: Dictionary = bdd
 		bd.u = fposmod(float(bd.u) + float(bd.sp) * dt, 1.3)
-		var t := Time.get_ticks_msec() * 0.001
+		var t := iv_t      # (the game's own time, not the wall clock: a recording takes far longer than it shows, and on the wall clock they bobbed many times too fast in it)
 		var sx := (float(bd.u) - 0.65) * float(bd.W) * 1.3; var sy := (0.5 - float(bd.v)) * float(bd.W) * 16.0 / 9.0 + sin(t * 0.7 + float(bd.ph)) * 0.12
 		var q: Vector3 = (bd.ref as Vector3) + (bd.bx as Vector3) * sx + (bd.by as Vector3) * sy
 		(bd.n as MeshInstance3D).global_position = q + (bd.fwd as Vector3) * 14.0      # (far off over the sea: behind all the island, before the painted sky)
@@ -4360,7 +4360,7 @@ func _ivw_next() -> String:      # the next node of the way from where she stand
 
 func _ivw_tick(dt: float) -> void:
 	_ivw_birds_tick(dt)
-	if ivw_veil_m != null: ivw_veil_m.set_shader_parameter("t", Time.get_ticks_msec() / 1000.0)
+	if ivw_veil_m != null: ivw_veil_m.set_shader_parameter("t", iv_t)      # (the game's own time: on the wall clock the cloth in the gate flapped many times too fast in a recording)
 	if palm_on and not ivw_awake:      # (her palms on the stone before her knees, wherever she is turned)
 		var fw := Vector3(sin(yaw), 0, cos(yaw)); var sd := Vector3(fw.z, 0, -fw.x)
 		tgtL = Vector3(pos.x, pos.y + 0.012, pos.z) + fw * 0.5 + sd * 0.17; tgtR = Vector3(pos.x, pos.y + 0.012, pos.z) + fw * 0.5 - sd * 0.17
