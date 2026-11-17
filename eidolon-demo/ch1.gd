@@ -3339,8 +3339,6 @@ func _ivp_begin() -> void:
 	else: _ivp_build()
 	var s0: Vector3 = ivp_nodes["s"]; var s1: Vector3 = ivp_nodes[String(ivg.start) if ivg_on else "n0"]
 	pos = s0; yaw = atan2(s1.x - s0.x, s1.z - s0.z); route.clear()
-	if go_wake and OS.get_environment("IVW_SKIP") == "":      # (she kneels turned to the eye's left, nearly in profile, so her pose reads: seen from behind it was a lump. She rises so, and turns only when sent on her way)
-		yaw += deg_to_rad(float(OS.get_environment("IVW_KNEEL_YAW")) if OS.get_environment("IVW_KNEEL_YAW") != "" else IVW_KNEEL_YAW)
 	ivp_wp_cur = s0; ivp_wp_prev = s0
 	if ivr_on: _ivr_cam()
 	else: _ivp_cam()
@@ -3843,7 +3841,6 @@ func _ivw_rings(at: Vector3, size: float) -> void:
 	add_child(mi); mi.global_position = at + Vector3(0, 0.015, 0)
 
 const IVW_RISE_S := 8.0      # (the rise clip's own length, seconds: tools/ione4_build.py RISE_SECONDS)
-const IVW_KNEEL_YAW := 145.0      # (degrees from the way's own heading: she faces the eye's left, a little toward it)
 func _ivw_scene2(j: Dictionary) -> void:
 	for ar in (j.get("arches", []) as Array): _ivw_gate_light(Vector3(float(ar[0][0]), float(ar[0][1]), float(ar[0][2])), String(ar[1]))
 	for ar in (j.get("arches", []) as Array): _ivw_veil(Vector3(float(ar[0][0]), float(ar[0][1]), float(ar[0][2])), String(ar[1]))
