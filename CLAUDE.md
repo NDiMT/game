@@ -35,9 +35,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   glowing gate, steps into its light, and is lost in it in a flash (the gate alone lights) and rising motes; the
   last line holds, then the dark end screen (EIDOLON alone: no "tap to ..." words, the owner, but the film's "tap to skip"). **The story is in
   `eidolon-world/dev/EIDOLON_SCRIPT.md`: read it before writing any line.** The player is one of the statues Theron
-  carved to make Ione's face again (not Ione). Lines, short and clipped (the owner: "πιο κοφτά"): "Theron carved her face a thousand times. / Not one
-  was hers." → (stones up) "Her face lies under the sea. / She must see it to pass over." → (gate) "One of the
-  thousand went after her." Letter: Cormorant Garamond italic.
+  carved to make Ione's face again (not Ione). Lines, short and clipped (the owner: "πιο κοφτά", and tied to the script: first that Theron searched for a
+  way to bring her back, last "he carved her face a thousand times"): "Theron searched for a way / to bring her back."
+  → (stones up) "Her face lies under the sea. / She must see it to pass over." → (gate) "He carved her face a
+  thousand times." Letter: Cormorant Garamond italic.
 - **Start screen**: plum dark, cream EIDOLON and PLAY, a subdued veiled statue behind (`ui/start_statue.jpg`); the
   film opens and closes in the same plum.
 - **Play it in a browser**: https://ndimt.github.io/game/eidolon-waking/ (the owner OK'd publishing there).
