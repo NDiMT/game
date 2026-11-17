@@ -82,7 +82,7 @@ The levels are many, in one system. A new level is made in this order (the secon
       4. The back foot is drawn in on its toes, and her hands leave the knee (the arm bones are blended to a hands-free pose).
       5. The back foot steps through and she stands, her head and back lifting last.
     - Never run the kneel clip backwards to rise: it swings the back leg forward while she is still low ("the leg bends strangely").
-    - Rebuild her with the inputs of the installed model: the retarget model, `ione4_data4.png`, and the extra clips model. Check a clip in Blender from the side and the front before the game (`tools/go/clip_views.py`).
+    - Rebuild her with the inputs of the installed model: the retarget model and its data picture (now the smart low-poly one, `ione5s_data.png`; see "The heroine" below). Check a clip in Blender from the side and the front before the game (`tools/go/clip_views.py`).
   - No turning to look about, and no lying curled with her palms on the stone ("it should not turn, just rise slowly").
   - The eye does not move: no close-up and no draw-back ("no stupid zoom"). It holds the whole level from the start screen on (`ivw_close` stays 0).
   - The painted sea must be held to the world (`world_uv` in the sea shader: the backdrop's place under the level's own eye), or a moving eye shows the painted sky on the water.
@@ -226,7 +226,12 @@ The levels are many, in one system. A new level is made in this order (the secon
   - Far rock as towers (upright walls, a step partway, a broken top) or broad soft hills deep in the haze; a row of columns on one sloped ridge, never a table or a row of pillars.
   - Leave open mist between groups: the picture has more air than things.
 - **The heroine (Ione)**:
+  - She is the owner's own design (a marble woman in spiral terracotta bands; `design/ione5/ione_new_vs_design.jpg`). Make her again only from that design, never from a new concept.
+  - The model: the generator's multiview from four T-pose views of the design (front, left, back, right), with `smart_low_poly=true`, `face_limit=16000` (v3.1). The owner chose it over the P1 low-poly model (crisper bands, but a round blob of a head) and the default (soft tube bands).
+    - `tripo generate multiview-to-model front.png left.png back.png right.png --model tripo-v3.1 -p smart_low_poly=true -p face_limit=16000`. The `-p` values go to the server unchecked and are charged even when absurd: a test with `face_limit=1` ran and cost 30 credits. Check with `tripo make ... --dry-run` first.
+    - Then `tripo anim rig <task> --spec mixamo --rig-type biped`, `tripo anim retarget <rig task> --animation preset:idle preset:walk --animate-in-place`, `tools/ione4_tex.py` (the data picture), `tools/ione4_build.py` (her clips, her weights, three weights of mesh).
   - The hero shader's level branch: smooth normals, two ramps (skin and cloth) in the picture's colours, the level's sun only.
+    - As the design draws her, the low-poly cut must show: the facets and fold ridges of the data picture's R (`iv_tone_c` 1.0 on the cloth, `iv_tone_m` 0.55 on the marble) and a shade under each band's edge from its B (`iv_ao_c` 0.56). Without them the bands melt into one plain red robe.
   - No grain, no extra lights, or her white burns out.
 
 - **The mist is what lies behind.** Its colour at each point of the screen is the backdrop there (the sky above the horizon, the sea's own colour below it), so whatever goes into it is gone without an edge. Never let a far thing end on a line (the sea's edge, a box's bottom): the user sees "stones floating", "cut abruptly".
