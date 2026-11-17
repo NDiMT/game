@@ -4673,7 +4673,7 @@ func _ivw_next() -> String:      # the next node of the way from where she stand
 			return String(path[i + 1])
 	return ""
 
-const IVW_THEME_AT := 6.0      # (seconds before the film's end: the theme comes in under its fading score)
+const IVW_THEME_AT := 8.0      # (seconds before the film's end: the theme comes in under its fading score and its last spoken line; at 6 there was a breath of silence between them)
 var ivw_theme_on := false
 func _ivw_tick(dt: float) -> void:
 	if ivw_intro_on and ivw_video != null and not ivw_theme_on and ivw_video.stream != null:      # (the user: "the music from the film into the first level, seamless")
