@@ -35,8 +35,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   glowing gate, steps into its light, and is lost in it in a flash (the gate alone lights) and rising motes; the
   last line holds, then the dark end screen (EIDOLON, "tap to play again"). **The story is in
   `eidolon-world/dev/EIDOLON_SCRIPT.md`: read it before writing any line.** The player is one of the statues Theron
-  carved to make Ione's face again (not Ione). Lines: "Theron carved her a thousand times. / None of the faces was
-  hers." → (stones up) "Her own face lies at the bottom of the sea. / To pass over, she must see it once more." →
+  carved to make Ione's face again (not Ione). Lines: "Theron went looking for her face in stone. / A thousand times he carved
+  it, / and a thousand times it was not hers." (clear, a little poetic: the owner) → (stones up) "Her own face lies at the bottom of the sea. / To pass over, she must see it once more." →
   (gate) "One of the thousand went to find her." Letter: Cormorant Garamond italic.
 - **Start screen**: plum dark, cream EIDOLON and PLAY, a subdued veiled statue behind (`ui/start_statue.jpg`); the
   film opens and closes in the same plum.
