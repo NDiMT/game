@@ -1787,7 +1787,7 @@ func _go_begin() -> void:
 	cam_t = _mw_focus(); cam_focus = cam_t; cam_focus_on = true
 
 func _go_write(text: String, hold := 4.5) -> void:
-	if go_wake and not iv_won: _ivw_sfx("line_sigh", -11.9); _ivw_duck(4.9)      # (each line comes on a woman's sigh, the music a little lower under it)
+	if go_wake and not iv_won: _ivw_sfx("line_sigh", -10.0)      # (each line comes on a woman's sigh)
 	for ql in quote_lbls: (ql as Label).text = text
 	var qt := create_tween(); qt.tween_property(quote_box, "modulate:a", 1.0, 0.5); qt.tween_interval(hold); qt.tween_property(quote_box, "modulate:a", 0.0, 0.7)
 	quote_glow.modulate.a = 1.0
@@ -4453,7 +4453,7 @@ func _ivw_splash(at: Vector3, rad: float) -> void:      # (drops thrown up from 
 
 func _ivw_raise(up: bool) -> void:
 	if ivw_risers.is_empty(): ivw_up = 1.0 if up else 0.0; return
-	if up and go_wake: _ivw_sfx("stones_rise", -12.6); _ivw_duck(3.0)      # (the stones come up on a slow swell of strings and voices)
+	if up and go_wake: _ivw_sfx("stones_rise", -11.0)      # (the stones come up on a slow swell of strings and voices)
 	var t := create_tween(); t.tween_method(_ivw_risers_set, ivw_up, 1.0 if up else 0.0, 3.2)      # (each stone eases by itself, in its turn)
 	for k in 4:
 		await get_tree().create_timer(0.55).timeout
@@ -4584,7 +4584,7 @@ func _ivw_music(file: String, fade := 2.5, db := -2.0) -> void:
 	var st := load(file) as AudioStream
 	if st is AudioStreamOggVorbis: (st as AudioStreamOggVorbis).loop = true
 	var old := ivw_music_p
-	var p := AudioStreamPlayer.new(); p.bus = _ivw_music_bus(); add_child(p); p.stream = st; p.volume_db = -40.0; p.play()
+	var p := AudioStreamPlayer.new(); add_child(p); p.stream = st; p.volume_db = -40.0; p.play()
 	create_tween().tween_property(p, "volume_db", db, fade).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	if old != null:
 		var t := create_tween(); t.tween_property(old, "volume_db", -50.0, fade).set_trans(Tween.TRANS_SINE); t.tween_callback(old.queue_free)
@@ -4609,22 +4609,6 @@ func _ivw_sfx(name: String, db := -8.0, from := 0.0) -> AudioStreamPlayer:
 	var p := AudioStreamPlayer.new(); p.stream = load("res://sfx/%s.ogg" % name); p.volume_db = db; add_child(p); p.play(from)
 	p.finished.connect(p.queue_free)
 	return p
-
-## the music goes through its own bus, so that it can dip a little under a sound (4 dB, as in the sound reel the user approved)
-var ivw_duck_until := -1.0; var ivw_duck_db := 0.0
-func _ivw_music_bus() -> String:
-	if AudioServer.get_bus_index("Music") == -1:
-		AudioServer.add_bus(); var i := AudioServer.bus_count - 1
-		AudioServer.set_bus_name(i, "Music"); AudioServer.set_bus_send(i, "Master")
-	return "Music"
-func _ivw_duck(hold: float) -> void:
-	ivw_duck_until = maxf(ivw_duck_until, iv_t + hold)
-func _ivw_duck_tick(dt: float) -> void:
-	var to := -4.0 if iv_t < ivw_duck_until else 0.0
-	if is_equal_approx(to, ivw_duck_db): return
-	ivw_duck_db = move_toward(ivw_duck_db, to, dt * 10.0)      # (4 dB in 0.4 s, down and back up)
-	var bi := AudioServer.get_bus_index("Music")
-	if bi != -1: AudioServer.set_bus_volume_db(bi, ivw_duck_db)
 
 func _ivw_music_out(fade := 3.0) -> void:
 	if ivw_music_p == null: return
@@ -4754,7 +4738,6 @@ func _ivw_tick(dt: float) -> void:
 		if fl > 1.0 and ivw_video.stream_position >= fl - IVW_THEME_AT:
 			ivw_theme_on = true; _ivw_music("res://music/theme.ogg", IVW_THEME_AT - 0.5)
 	_ivw_birds_tick(dt)
-	_ivw_duck_tick(dt)
 	_ivw_film_sync_tick(dt)
 	if ivw_veil_m != null: ivw_veil_m.set_shader_parameter("t", iv_t)      # (the game's own time: on the wall clock the cloth in the gate flapped many times too fast in a recording)
 	if palm_on and not ivw_awake:      # (her palms on the stone before her knees, wherever she is turned)
