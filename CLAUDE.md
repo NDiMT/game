@@ -27,8 +27,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
 - Godot 4.5.1, Compatibility renderer. `eidolon-demo/`: `main.gd` (engine), `ch1.gd` (the chapter and the GO levels:
   Lara-Croft-GO-like, turn-based, swipes). Levels: `FLIP=gowake` (1, The Waking), `gosea` (2, the Drowned
   Sanctuary), `gomoon` (3), `goquarry` (4). Autoplay: `-- godemo`.
-- **Level 1, The Waking**: intro film (the amphora; the Theme under the narrator; fades into the start screen's soft
-  dawn gradient) → start screen (faded level, black thin EIDOLON logo and PLAY, the Theme) → PLAY → the Lament. Ione
+- **Level 1, The Waking**: intro film (the amphora; the Theme under the narrator; drawn by Godot itself, not a video:
+  the owner found the video poor; see the skill) → start screen (faded level, black thin EIDOLON logo and PLAY, the Theme) → PLAY → the Lament. Ione
   kneels facing her way, both hands on the front knee, back and head bowed; after a second of stone stillness she
   rises in moments (8 s clip: breath, hands to the knee, weight forward, push, lunge, step, back up, head last).
   She turns the winch; the stones come up out of the water with foam on the water and on them; she climbs to the

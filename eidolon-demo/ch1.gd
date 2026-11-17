@@ -4543,7 +4543,60 @@ func _ivw_life() -> void:
 var ivw_menu: Control
 var ivw_menu_on := false
 var ivw_intro_box: Control
-var ivw_video: VideoStreamPlayer
+## the intro film, drawn by the game (the owner: "the film inside Godot", the video was too poor): the turning amphora of
+## eidolon-world/dev/intro/amphora/tools/vase.py, its pieces baked by tools/intro_vase_bake.py into intro/vase/, turned,
+## lit and written by intro/vase/vase.gdshader, after its own timeline (film.json, 24 a second)
+var ivf := {}; var ivf_t := 0.0; var ivf_len := 0.0; var ivf_mat: ShaderMaterial; var ivf_rect: ColorRect
+var ivf_vid: VideoStreamPlayer; var ivf_vid_card := -1; var ivf_vid_done := false; var ivf_tex := {}
+func _ivf_load(path: String) -> Texture2D:
+	if not ivf_tex.has(path): ivf_tex[path] = load(path) if ResourceLoader.exists(path) else null
+	return ivf_tex[path]
+func _ivf_sm(v: float) -> float:
+	v = clampf(v, 0.0, 1.0); return v * v * (3.0 - 2.0 * v)
+func _ivf_apply() -> void:      # (the film at ivf_t: how far the vase has turned, which pictures and words are on it)
+	var fr: Array = ivf.frames; var n := fr.size()
+	var x := clampf(ivf_t * float(ivf.fps), 0.0, n - 1.0); var i0 := int(x); var i1 := mini(i0 + 1, n - 1); var w := x - float(i0)
+	var a: Array = fr[i0]; var b: Array = fr[i1]
+	var phi := lerpf(float(a[0]), float(b[0]), w) if absf(float(b[0]) - float(a[0])) < 0.5 else float(a[0])
+	var front := int(a[1])
+	var fade := lerpf(float(a[2]), float(b[2]), w)
+	fade = minf(fade, _ivf_sm(ivf_t / 0.6)); fade = minf(fade, 1.0 - _ivf_sm((ivf_t - (ivf_len - 1.5)) / 1.3))      # (it opens on, and closes into, the plum)
+	var pages: Array = ivf.pages; var T0: Array = ivf.T0
+	if front >= 0 and front <= 6 and ivf_t >= float(T0[front]) and ivf_vid_card != front:      # (the scene in front begins to move a moment after it has come round)
+		var vs: VideoStream = load("res://intro/vase/clip%d.ogv" % front)
+		if vs != null: ivf_vid.stream = vs; ivf_vid.play(); ivf_vid_card = front; ivf_vid_done = false
+	var k0 := floori(phi - 0.75)
+	var has_pan := Vector4.ZERO; var vid_slot := -1.0; var infos: Array = []; var inka: Array = []; var inkb: Array = []
+	for j in 4:
+		var k := k0 + j; var card := k if k >= 0 and k <= 6 else -1
+		ivf_mat.set_shader_parameter("strip%d" % j, _ivf_load("res://intro/vase/strip%d.jpg" % posmod(k, 5)))
+		var info := Vector4.ZERO; var ia := Vector4.ZERO; var ib := Vector4.ZERO
+		if card >= 0:
+			has_pan[j] = 1.0
+			var pv := "a" if (card != front - 1 and not (card == front and ivf_vid_done)) else "b"
+			if card == front and ivf_vid_card == front and not ivf_vid_done: vid_slot = float(j)
+			ivf_mat.set_shader_parameter("pan%d" % j, _ivf_load("res://intro/vase/pan%d%s.jpg" % [card, pv]))
+			if card <= front:
+				var pg: Array = pages[card]; var p := int(a[3]) if card == front else pg.size() - 1
+				var base := 0
+				for q in p: base += int(pg[q])
+				var nl := int(pg[p]); info = Vector4(p, pg.size(), nl, 1.0)
+				for l in mini(nl, 8):
+					var ink := 1.0 if card < front else lerpf(float(a[4 + base + l]), float(b[4 + base + l]), w)
+					if l < 4: ia[l] = ink
+					else: ib[l - 4] = ink
+				ivf_mat.set_shader_parameter("txt%d" % j, _ivf_load("res://intro/vase/text%d.png" % card))
+		infos.append(info); inka.append(ia); inkb.append(ib)
+	ivf_mat.set_shader_parameter("phi", phi); ivf_mat.set_shader_parameter("fade", fade); ivf_mat.set_shader_parameter("k0", float(k0))
+	ivf_mat.set_shader_parameter("has_pan", has_pan); ivf_mat.set_shader_parameter("vid_slot", vid_slot)
+	ivf_mat.set_shader_parameter("txt_info", infos); ivf_mat.set_shader_parameter("ink_a", inka); ivf_mat.set_shader_parameter("ink_b", inkb)
+	if vid_slot >= 0.0: ivf_mat.set_shader_parameter("vid", ivf_vid.get_video_texture())
+	if ivf_rect != null: ivf_mat.set_shader_parameter("rect_px", ivf_rect.size)
+func _ivf_tick(dt: float) -> void:
+	if not ivw_intro_on or ivf_mat == null: return
+	ivf_t += dt
+	if ivf_t >= ivf_len: _ivw_intro_end(); return
+	_ivf_apply()
 var ivw_intro_on := false
 func _ivw_menu_make() -> void:
 	if not ResourceLoader.exists("res://ui/logo.png"): return
@@ -4572,7 +4625,7 @@ func _ivw_menu_make() -> void:
 	ivw_close = 0.0      # (the whole level behind the name)
 	ivw_menu_on = true; ivr_fo = Vector2.ZERO; ivr_fv = Vector2.ZERO      # (the start screen holds the level's own eye)
 	var auto := OS.get_cmdline_user_args().has("godemo")
-	if ResourceLoader.exists("res://intro/intro.ogv") and OS.get_environment("IV_NO_INTRO") == "" and (not auto or OS.get_environment("IV_INTRO") != ""):
+	if FileAccess.file_exists("res://intro/vase/film.json") and OS.get_environment("IV_NO_INTRO") == "" and (not auto or OS.get_environment("IV_INTRO") != ""):
 		_ivw_intro()      # (the film begins by itself, in a browser too (the user); there its sound comes in at the first touch, where the picture is)
 	else: _ivw_music("res://music/theme.ogg", 2.0)
 
@@ -4638,11 +4691,11 @@ func _ivw_text_style() -> void:      # (the lines over the dawn: deep plum lette
 
 var ivw_film_audio: AudioStreamPlayer; var ivw_film_sync := 0.0
 func _ivw_film_sync_tick(dt: float) -> void:
-	if not ivw_intro_on or ivw_film_audio == null or ivw_video == null or not ivw_video.is_playing(): return
+	if not ivw_intro_on or ivw_film_audio == null or ivf_mat == null: return
 	ivw_film_sync -= dt
 	if ivw_film_sync > 0.0: return
 	ivw_film_sync = 0.5
-	var at := ivw_video.stream_position
+	var at := ivf_t
 	if absf(ivw_film_audio.get_playback_position() - at) > 0.3:      # (held back, or drifted: on to where the picture is)
 		if OS.get_environment("IV_SFX_LOG") != "": print("FILM SYNC ", snappedf(ivw_film_audio.get_playback_position(), 0.01), " -> ", snappedf(at, 0.01))
 		ivw_film_audio.play(at)
@@ -4671,12 +4724,21 @@ func _ivw_intro() -> void:
 	var cl := CanvasLayer.new(); cl.layer = 9; add_child(cl)
 	ivw_intro_box = Control.new(); ivw_intro_box.set_anchors_preset(Control.PRESET_FULL_RECT); ivw_intro_box.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(ivw_intro_box)
 	var bg := ColorRect.new(); bg.color = Color(0.13, 0.08, 0.13); bg.set_anchors_preset(Control.PRESET_FULL_RECT); bg.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_intro_box.add_child(bg)
-	ivw_video = VideoStreamPlayer.new(); ivw_video.stream = load("res://intro/intro.ogv"); ivw_video.expand = true
-	ivw_video.set_anchors_preset(Control.PRESET_FULL_RECT); ivw_video.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_intro_box.add_child(ivw_video)
-	ivw_video.finished.connect(_ivw_intro_end)
+	ivf = JSON.parse_string(FileAccess.get_file_as_string("res://intro/vase/film.json"))
+	ivf_len = float((ivf.frames as Array).size()) / float(ivf.fps); ivf_t = 0.0; ivf_vid_card = -1; ivf_vid_done = false
+	if OS.get_environment("IVF_AT") != "": ivf_t = OS.get_environment("IVF_AT").to_float()      # (to look at one moment of it)
+	ivf_rect = ColorRect.new(); ivf_rect.set_anchors_preset(Control.PRESET_FULL_RECT); ivf_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ivf_mat = ShaderMaterial.new(); ivf_mat.shader = load("res://intro/vase/vase.gdshader"); ivf_rect.material = ivf_mat; ivw_intro_box.add_child(ivf_rect)
+	var g: Dictionary = ivf.geo; var pr: Array = g.prof; var fj: Array = g.facj; var p4: Array = []; var f4: Array = []
+	for q in 16: p4.append(Vector4(pr[q * 4], pr[q * 4 + 1], pr[q * 4 + 2], pr[q * 4 + 3]))
+	for q in 15: f4.append(Vector4(fj[q * 4], fj[q * 4 + 1], fj[q * 4 + 2], fj[q * 4 + 3]))
+	ivf_mat.set_shader_parameter("prof", p4); ivf_mat.set_shader_parameter("facj", f4); ivf_mat.set_shader_parameter("lut", _ivf_load("res://intro/vase/lut.png"))
+	ivf_vid = VideoStreamPlayer.new(); ivf_vid.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivf_vid.expand = true; ivf_vid.position = Vector2(-64, -64); ivf_vid.size = Vector2(8, 8); ivf_vid.self_modulate.a = 0.0      # (the scene in front, playing: drawn on the vase, not here)
+	ivf_vid.finished.connect(func() -> void: ivf_vid_done = true)
+	ivw_intro_box.add_child(ivf_vid)
 	ivw_intro_on = true
 	get_viewport().disable_3d = true      # (the film covers all: the level is not drawn under it)
-	ivw_video.play()
+	_ivf_apply()
 	if ResourceLoader.exists("res://intro/intro_audio.ogg"):      # (the film's sound in a player of its own, held to the picture: a browser keeps all sound back until the first touch, and then it must come in where the picture is)
 		ivw_film_audio = AudioStreamPlayer.new(); ivw_film_audio.stream = load("res://intro/intro_audio.ogg"); add_child(ivw_film_audio); ivw_film_audio.play(); ivw_film_sync = 0.5
 
@@ -4687,7 +4749,8 @@ func _ivw_intro_end() -> void:      # (at its end, or at a tap: the film fades i
 	var t := create_tween(); t.tween_property(ivw_intro_box, "modulate:a", 0.0, 1.3).set_trans(Tween.TRANS_SINE)
 	if ivw_film_audio != null: t.parallel().tween_property(ivw_film_audio, "volume_db", -40.0, 1.2)
 	await t.finished
-	ivw_video.stop(); ivw_intro_box.get_parent().queue_free(); ivw_intro_box = null; ivw_video = null; ivw_skip_lb = null
+	if ivf_vid != null: ivf_vid.stop()
+	ivw_intro_box.get_parent().queue_free(); ivw_intro_box = null; ivf_vid = null; ivf_mat = null; ivf_rect = null; ivf_tex.clear(); ivw_skip_lb = null
 	if ivw_film_audio != null: ivw_film_audio.queue_free(); ivw_film_audio = null
 	if not ivw_theme_on: ivw_theme_on = true; _ivw_music("res://music/theme.ogg", 2.5)      # (skipped early: the theme now; at its end it came in already, and goes on)
 
@@ -4733,10 +4796,9 @@ func _ivw_next() -> String:      # the next node of the way from where she stand
 const IVW_THEME_AT := 8.0      # (seconds before the film's end: the theme comes in under its fading score and its last spoken line; at 6 there was a breath of silence between them)
 var ivw_theme_on := false
 func _ivw_tick(dt: float) -> void:
-	if ivw_intro_on and ivw_video != null and not ivw_theme_on and ivw_video.stream != null:      # (the user: "the music from the film into the first level, seamless")
-		var fl := ivw_video.get_stream_length()
-		if fl > 1.0 and ivw_video.stream_position >= fl - IVW_THEME_AT:
-			ivw_theme_on = true; _ivw_music("res://music/theme.ogg", IVW_THEME_AT - 0.5)
+	_ivf_tick(dt)
+	if ivw_intro_on and ivf_mat != null and not ivw_theme_on and ivf_len > 1.0 and ivf_t >= ivf_len - IVW_THEME_AT:      # (the user: "the music from the film into the first level, seamless")
+		ivw_theme_on = true; _ivw_music("res://music/theme.ogg", IVW_THEME_AT - 0.5)
 	_ivw_birds_tick(dt)
 	_ivw_film_sync_tick(dt)
 	if ivw_veil_m != null: ivw_veil_m.set_shader_parameter("t", iv_t)      # (the game's own time: on the wall clock the cloth in the gate flapped many times too fast in a recording)
