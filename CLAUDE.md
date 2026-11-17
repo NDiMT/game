@@ -1,0 +1,66 @@
+# Project memory: EIDOLON (and how the owner works)
+
+Read this first in every session. The deep method for levels, looks, the heroine, the intro and the music is the
+project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the game.
+
+## Working with the owner
+- Reply in **Greek**, short, direct, actionable. The owner judges by **images and videos**: show the result (a
+  contact sheet, a short clip, a before/after), not a description of it.
+- Do exactly what was asked. **Never change what was not asked for**: the heroine was once turned to a profile so
+  her pose would read, and the owner answered "you turned her and I didn't tell you to". When a change of staging
+  or design would help, ask first.
+- When the owner names a side ("the right arm"), it may be the side **of the picture**, not hers. Check both.
+- Videos only when asked; short check clips of the thing being fixed are fine.
+- Game text is English. Controls are swipes. The title is plain "EIDOLON".
+- Commit and push at the end of every turn (see Git below).
+
+## Security (always)
+- API keys live outside the repo (`~/.config/eidolon/`, `~/.tripo/`). Never print, log or commit them; never open
+  the curl config files. Filter tool output with `grep -v -iE "key|token|secret|auth"`.
+- Before every commit, after `git add`: `python3 eidolon-demo/tools/keyscan.py` must print `clean`.
+- Do not add new scripts that call paid APIs to the repo without the owner's OK. Use the copies in
+  `eidolon-world/dev/intro/amphora/tools/` (`gen.py` images, `genvid.py` video, `genmus.py` music, `gentts.py`
+  voice); run them from a scratch directory.
+- Never put the owner's email or personal details in anything sent outside.
+
+## The game (state on 17/11/2026)
+- Godot 4.5.1, Compatibility renderer. `eidolon-demo/`: `main.gd` (engine), `ch1.gd` (the chapter and the GO levels:
+  Lara-Croft-GO-like, turn-based, swipes). Levels: `FLIP=gowake` (1, The Waking), `gosea` (2, the Drowned
+  Sanctuary), `gomoon` (3), `goquarry` (4). Autoplay: `-- godemo`.
+- **Level 1, The Waking**: intro film (the amphora; the Theme under the narrator; fades into the start screen's soft
+  dawn gradient) → start screen (faded level, black thin EIDOLON logo and PLAY, the Theme) → PLAY → the Lament. Ione
+  kneels facing her way, both hands on the front knee, back and head bowed; after a second of stone stillness she
+  rises in moments (8 s clip: breath, hands to the knee, weight forward, push, lunge, step, back up, head last).
+  She turns the winch; the stones come up out of the water with foam on the water and on them; she climbs to the
+  glowing gate.
+- **Music per level** (`_go_level_music` in `ch1.gd`): waking Lament, sanctuary Requiem, moon Elegy, quarry Stone,
+  any other Last Light; the Theme under the intro and the start screen. The owner liked the Theme, the Lament and
+  its four variations. Dark orchestral, never piano, a wordless female voice only at moments.
+- **The heroine Ione** is the owner's own design (`eidolon-demo/design/ione5/`): marble woman in spiral terracotta
+  bands. Model: multiview → smart low-poly (owner's choice), rigged and built by `tools/ione4_build.py` into
+  `hero_models/ione4r*.glb`. Review her clips with `tools/go/hero_look.py` (her colours, the game's eye).
+- Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
+
+## Tools and where they are
+- Images: Gemini image model, 2K by default, 4K for hero art. Video: Gemini Omni Flash (image to video, 6–15 s).
+  Music: Lyria 3.5 (prompts in `eidolon-demo/design/music/`; never name an artist or a game). Voice: Gemini TTS.
+- 3D: Tripo CLI `/opt/node22/bin/tripo` (multiview-to-model, `anim rig --spec mixamo`, `anim retarget`). Try
+  parameters with `tripo make ... --dry-run` first: `-p` values are charged unchecked.
+- Blender 5.0 as a Python module (`python3.11 -I script.py -- args`) for builds, data pictures, review renders.
+- Recording the game: `xvfb-run ... godot --rendering-driver opengl3 --fixed-fps 30 --write-movie out.avi
+  res://chapter1.tscn -- godemo`, then ffmpeg to MP4. Env: `IV_ZOOM` close-up (`IV_ZOOM_AT=dx,dz` aims it that far
+  from her start), `IVW_SNAPS=1` + `SHOT_DIR` + `IVW_QUIT_AT=<snap>` stills, `IVW_SKIP=1` start awake,
+  `IV_NO_MUSIC=1`, `HAND=1` tutorial hand; `--quit-after <frames>` for a short check clip.
+- The cloud machine has 4 cores and no GPU: about 1 s per 720x1280 frame, so a 50 s level video takes ~35 min.
+  Drive every motion by the game's time (`iv_t`, shader `TIME`), never the wall clock, or it races in recordings.
+  Faster options: cheaper render settings for recordings; splitting a video over parallel cloud sessions; a machine
+  with a GPU (the owner's computer via Remote Control, or a self-hosted GPU environment).
+
+## Costs (to 17/11/2026)
+- Gemini, 10–16/11/2026: about $95–100 (video ~$60, images ~$32, music ~$1.5, voice <$0.5). Tripo: 420 credits left.
+- Cheaper: draft videos at 720p and only finals at 1080p; non-urgent images through the batch API (about half).
+
+## Git
+- Work on branch `claude/arrow-pro-3d-game-2tki08` (draft PR #2). Never push elsewhere without permission.
+- End commit messages with the trailer the session gives. Large binaries (models, music, intro) are committed as
+  the game needs them; never commit scratch renders or videos.

@@ -2162,6 +2162,7 @@ uniform float mist_world = 0.0; uniform vec3 mw_c; uniform vec3 mw_bx; uniform v
 uniform float rim_k = 0.0; uniform vec3 rim_col : source_color = vec3(1.0, 0.86, 0.62); uniform vec3 rim_dir = vec3(-0.6, 0.3, -0.6);      // (the low sun behind it: its edges catch the light)
 uniform float wline_k = 0.0;      // (where a thing meets the still water: a fine line of light)
 uniform float wet_k = 0.0; uniform float dry_y = -100.0;      // (a stone come up out of the water: wet below a line that sinks as it drains)
+uniform float foam_k = 0.0; uniform float foam_y = -100.0;      // (and foam on it: patches and bubbles on what faces up, runs down its sides, draining below a line that sinks)
 uniform float sun_k = 0.0; uniform vec3 sun_col : source_color = vec3(1.0, 0.8, 0.45);      // (the low sun's warm light on the faces it falls on, in a gradient:
 uniform vec2 sun_scr = vec2(0.5, 0.3); uniform float sun_rad = 0.8; uniform float sun_lo = 0.0; uniform float sun_hi = 3.0;      //  warmest high up and toward the sun, fading into the stone's own colour)
 uniform float rich_k = 0.0; uniform vec3 lichen_col : source_color = vec3(0.77, 0.73, 0.57);      // (rock as it weathers: each break its own tone, beds across its faces, lichen on what faces the sky)
@@ -2239,6 +2240,15 @@ void fragment(){
 		float run = smoothstep(0.8, 1.0, sin(dot(wp.xz, vec2(37.0, 29.0)) + sin(wp.x * 7.0) * 2.0)) * smoothstep(0.5, 1.0, fract(wy * 2.4 + TIME * 1.7));
 		c += vec3(1.0) * run * wet * 0.24 * (1.0 - abs(fn.y));      // (water running down its sides)
 		c += vec3(1.0) * wet * 0.07 * smoothstep(0.7, 0.95, fn.y);      // (a sheen on its top)
+	}
+	if (foam_k > 0.0) {      // (the user: "foam where they come out, and on them a little": the sea it brought up with it, white, broken into patches, draining off)
+		float below = 1.0 - smoothstep(foam_y - 0.06, foam_y + 0.02, wy);
+		float n1 = fbm(wp * 9.0 + vec3(0.0, TIME * 0.35, 0.0)); float n2 = fbm(wp * 24.0 + 7.0);
+		float upf = smoothstep(0.3, 0.85, fn.y);
+		float patches = smoothstep(0.6, 0.7, n1 * 0.75 + n2 * 0.35);      // (sparse: a few patches and bubbles, the stone seen through)
+		float runs = smoothstep(0.82, 0.95, sin(dot(wp.xz, vec2(29.0, 21.0)) + n1 * 7.0)) * (1.0 - abs(fn.y)) * smoothstep(0.5, 0.62, n2);      // (thin runs down its sides)
+		float ff = foam_k * below * clamp(patches * (0.25 + 0.75 * upf) + runs * 0.5, 0.0, 1.0);
+		c = mix(c, vec3(1.0, 0.99, 0.97), ff * 0.62);
 	}
 	if (sun_k > 0.0 && sil < 0.5) {
 		float lit = smoothstep(-0.05, 0.45, d);      // (the faces the light falls on)
@@ -3660,6 +3670,8 @@ func _ivr_cam() -> void:
 		for mm in ivw_obs_mirror: (mm as ShaderMaterial).set_shader_parameter("mirror_fade", lerpf(2.0, 0.02, u))      # (close on her, the statue's image would be a pale blot with no statue over it)
 	if OS.get_environment("IV_ZOOM") != "":      # (for judging her: the eye close on her)
 		c = pos + Vector3(0, 0.75, 0); w = float(OS.get_environment("IV_ZOOM"))
+		if OS.get_environment("IV_ZOOM_AT") != "":      # (or close on a place: "dx,dz" from where she starts)
+			var za := OS.get_environment("IV_ZOOM_AT").split(","); c = pos + Vector3(float(za[0]), 0.2, float(za[1]))
 		if OS.get_environment("IV_FACE") != "": yaw = atan2(b.z.x, b.z.z)
 	cam.global_transform = Transform3D(b, c + b.z * 40.0)
 	var vp := get_viewport().get_visible_rect().size
@@ -4094,6 +4106,7 @@ func _ivw_risers_find(lv: Node3D, mn: Node3D) -> void:
 		r.append(clampf((z0 - float(zs[i])) / maxf(0.01, z0 - z1), 0.0, 1.0))      # [4] its turn: the stone nearest the threshold first
 		r.append(nm.get_slice("_", 1) if nm.begins_with("riser_") else "")      # [5] which stone
 		r.append(false)      # [6] has it broken the water
+		r.append(null)      # [7] the foam boiling on the water over it, then thrown out round it
 	_ivw_risers_set(0.0)
 
 const IVW_STAGGER := 0.42      # (how much of the rise each stone waits for the one before it)
@@ -4112,8 +4125,12 @@ func _ivw_risers_set(u: float) -> void:
 			e_min = minf(e_min, p * p * (3.0 - 2.0 * p))
 			if String(rm.name).to_lower().contains("marble"):
 				var top := (rm.global_transform * rm.get_aabb()).end.y
+				if r.size() > 7 and r[7] == null and not bool(r[6]) and u > 0.0 and top > sea - 0.35: r[7] = _ivw_churn_make(r)      # (the water boils white over it as it comes near)
 				if not bool(r[6]) and u > 0.0 and top > sea + 0.01: r[6] = true; _ivw_emerge(r)
-				elif bool(r[6]) and top < sea - 0.05: r[6] = false
+				elif bool(r[6]) and top < sea - 0.05: r[6] = false; r[7] = null
+				elif not bool(r[6]) and r.size() > 7 and r[7] != null and top < sea - 0.4:      # (sunk again before it broke the water: no boiling left over it)
+					if is_instance_valid(r[7]): (r[7] as Node).queue_free()
+					r[7] = null
 	if ivs_sea_mat != null: ivs_sea_mat.set_shader_parameter("riser_up", clampf(1.0 - IVW_SINK * (1.0 - e_min) / maxf(0.05, -ivr_sea_y), 0.0, 1.0))      # (their waves once the last is up)
 
 func _ivw_back(p: float) -> float:      # (up a little past its place and settling back: a heavy stone come up out of the water)
@@ -4130,6 +4147,9 @@ func _ivw_emerge(r: Array) -> void:
 	_ivw_ripple(Vector3(c.x, sea, c.z), rad + 0.8)
 	get_tree().create_timer(0.45).timeout.connect(func() -> void: _ivw_ripple(Vector3(c.x, sea, c.z), rad + 1.35))
 	_ivw_splash(Vector3(c.x, sea + 0.02, c.z), rad)
+	if r.size() > 7:
+		if r[7] == null or not is_instance_valid(r[7]): r[7] = _ivw_churn_make(r)
+		_ivw_churn_burst(r[7] as MeshInstance3D)
 	for q in ivw_risers:
 		if q.size() > 5 and String(q[5]) == String(r[5]):
 			var qm := (q[0] as MeshInstance3D).material_override as ShaderMaterial
@@ -4137,6 +4157,76 @@ func _ivw_emerge(r: Array) -> void:
 			qm.set_shader_parameter("wet_k", 1.0); qm.set_shader_parameter("dry_y", bb.end.y + 0.6)
 			var tw := create_tween(); tw.tween_interval(0.6)
 			tw.tween_method(func(v: float) -> void: qm.set_shader_parameter("dry_y", v), bb.end.y + 0.6, sea - 0.15, 2.8).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+			qm.set_shader_parameter("foam_k", 1.0); qm.set_shader_parameter("foam_y", bb.end.y + 0.4)      # (it comes up with the sea's foam on it, which drains off its top and down its sides)
+			var tf := create_tween().set_parallel(true)
+			tf.tween_method(func(v: float) -> void: qm.set_shader_parameter("foam_y", v), bb.end.y + 0.4, sea - 0.1, 2.6).set_delay(0.3).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_SINE)
+			tf.tween_method(func(v: float) -> void: qm.set_shader_parameter("foam_k", v), 1.0, 0.0, 3.6).set_delay(0.8).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+
+## foam on the water where a stone comes up (the user: "foam where they come out, so the coming out of the water is
+## smoother"): first the water boils white over it as it nears the surface; as it breaks through the foam is thrown out
+## round it, broken into patches, spreading and thinning, and settles into the foam the still water keeps along the stones
+const IVW_CHURN_SH := """
+shader_type spatial;
+render_mode unshaded, cull_disabled, shadows_disabled, depth_draw_never;
+uniform sampler2D shore_tex : filter_linear, repeat_disable;
+uniform vec4 shore_rect = vec4(0.0, 0.0, 1.0, 1.0); uniform float shore_d = 1.6;
+uniform float boil = 0.0; uniform float churn = 0.0; uniform float spread = 0.05;
+uniform vec2 centre; uniform float rad = 0.5;
+uniform vec3 foam_c : source_color = vec3(1.0, 0.985, 0.97);
+varying vec3 wp;
+void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float vn(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), f.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), f.x), f.y); }
+vec2 h22(vec2 p){ return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453); }
+float bub(vec2 p){      // (round bubbles of many sizes, as foam is made of: not angular flecks)
+	vec2 i = floor(p); vec2 f = fract(p); float m = 0.0;
+	for (int y = -1; y <= 1; y++) { for (int x = -1; x <= 1; x++) {
+		vec2 g = vec2(float(x), float(y)); vec2 o = h22(i + g);
+		float r = 0.16 + 0.34 * o.x * o.y; float on = step(0.3, fract(o.x * 7.3 + o.y * 3.1));
+		m = max(m, on * (1.0 - smoothstep(r * 0.6, r, length(g + o - f))));
+	} }
+	return m;
+}
+void fragment(){
+	vec2 su = (wp.xz - shore_rect.xy) * shore_rect.zw;
+	float d = (1.0 - texture(shore_tex, clamp(su, vec2(0.001), vec2(0.999))).g) * shore_d;      // (how far from the stone's edge: nothing over it)
+	float lace = vn(wp.xz * 14.0 + vec2(TIME * 0.4, -TIME * 0.3)) * 0.65 + vn(wp.xz * 31.0 - vec2(TIME * 0.7, TIME * 0.2)) * 0.35;      // (fine: foam is lace and bubbles, never blots)
+	float over = 1.0 - step(0.0005, d);      // (over the stone, while the water still covers it)
+	float hug = 1.0 - smoothstep(0.0, 0.06 + 0.08 * boil, d);      // (and close round its edge)
+	float bb = bub(wp.xz * 24.0 + vec2(TIME * 0.5, -TIME * 0.35)) * 0.8 + bub(wp.xz * 47.0 - vec2(TIME * 0.8)) * 0.6;      // (the bubbles themselves)
+	float b = boil * max(over * 0.22, hug) * smoothstep(0.42, 0.6, lace) * bb;      // (mostly a ring of bubbles tracing its edge on the water; only a few over it)
+	float r0 = d / max(spread, 0.05);
+	float k = churn * (1.0 - smoothstep(0.3, 1.0, r0)) * smoothstep(0.4 + 0.2 * r0, 0.56 + 0.2 * r0, lace) * clamp(bb + 0.25 * (1.0 - r0), 0.0, 1.0);      // (thick at the stone, thinner and more broken outward)
+	float a = clamp(max(b, k), 0.0, 1.0) * (1.0 - smoothstep(rad + spread * 0.85, rad + spread + 0.2, length(wp.xz - centre)));      // (round this stone only)
+	ALBEDO = foam_c; ALPHA = a * 0.62;
+}
+"""
+func _ivw_churn_make(r: Array) -> MeshInstance3D:
+	if ivs_sea_mat == null or ivs_sea_mat.get_shader_parameter("shore_tex") == null: return null
+	var bb := AABB(); var first := true
+	for q in ivw_risers:      # (the whole stone: its rock and its slab)
+		if q.size() > 5 and String(q[5]) == String(r[5]):
+			var qb := (q[0] as MeshInstance3D).global_transform * (q[0] as MeshInstance3D).get_aabb()
+			bb = qb if first else bb.merge(qb); first = false
+	var sea := IV_O.y + ivr_sea_y; var c := bb.get_center(); var rad := maxf(bb.size.x, bb.size.z) * 0.5
+	var m := ShaderMaterial.new(); var sh := Shader.new(); sh.code = IVW_CHURN_SH; m.shader = sh; m.render_priority = 6
+	for k in ["shore_tex", "shore_rect", "shore_d"]: m.set_shader_parameter(k, ivs_sea_mat.get_shader_parameter(k))
+	m.set_shader_parameter("centre", Vector2(c.x, c.z)); m.set_shader_parameter("rad", rad)
+	var pm := PlaneMesh.new(); var ext := (rad + 1.2) * 2.0; pm.size = Vector2(ext, ext)
+	var mi := MeshInstance3D.new(); mi.mesh = pm; mi.material_override = m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(mi)
+	mi.global_position = Vector3(c.x, sea + 0.006, c.z)
+	create_tween().tween_method(func(v: float) -> void: m.set_shader_parameter("boil", v), 0.0, 1.0, 0.5).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	return mi
+
+func _ivw_churn_burst(mi: MeshInstance3D) -> void:
+	if mi == null or not is_instance_valid(mi): return
+	var m := mi.material_override as ShaderMaterial
+	var t := create_tween().set_parallel(true)
+	t.tween_method(func(v: float) -> void: m.set_shader_parameter("churn", v), 0.0, 1.0, 0.18)
+	t.tween_method(func(v: float) -> void: m.set_shader_parameter("spread", v), 0.05, 0.45, 1.8).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	t.tween_method(func(v: float) -> void: m.set_shader_parameter("boil", v), 1.0, 0.0, 0.7)
+	t.tween_method(func(v: float) -> void: m.set_shader_parameter("churn", v), 1.0, 0.0, 2.6).set_delay(0.9).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	t.chain().tween_callback(mi.queue_free)
 
 func _ivw_splash(at: Vector3, rad: float) -> void:      # (drops thrown up from a stone's edges as it breaks the water)
 	var p := CPUParticles3D.new(); add_child(p); p.global_position = at
@@ -4263,7 +4353,7 @@ func _ivw_menu_make() -> void:
 	put.call("res://ui/logo.png", lw, vp.y * 0.155, Color(0.07, 0.05, 0.08, 1))      # (the name high in the sky, in black: the user's ask)
 	var pw := vp.x * 0.3
 	var pl: TextureRect = put.call("res://ui/play.png", pw, vp.y * 0.27, Color(0.07, 0.05, 0.08, 1))      # (PLAY under it, in black)
-	var pt := create_tween().set_loops()      # (PLAY breathes, slowly)
+	var pt := pl.create_tween().set_loops()      # (PLAY breathes, slowly; the tween is the word's own, so it ends with it, never spinning on a freed one)
 	pt.tween_property(pl, "modulate:a", 0.55, 1.4).set_trans(Tween.TRANS_SINE); pt.tween_property(pl, "modulate:a", 1.0, 1.4).set_trans(Tween.TRANS_SINE)
 	title_box.hide()
 	ivw_close = 0.0      # (the whole level behind the name)
