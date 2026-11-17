@@ -3621,7 +3621,7 @@ func _play_ivp() -> void:
 			if not iv_won: await snap.call("s%02d_%s" % [i + 1, tgt])
 		var n3 := 0
 		while not ended and n3 < 900: await get_tree().process_frame; n3 += 1
-		await wait(1.5); await snap.call("p9_end")
+		await wait(3.2 if go_wake else 1.5); await snap.call("p9_end")      # (the waking: its end screen held a moment)
 		print("IV ended: ", ended, " in ", iv_moves, " moves")
 		get_tree().quit(); return
 	await tapw.call(ivp_nodes["n2"]); await snap.call("p2_lower")
