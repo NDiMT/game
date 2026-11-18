@@ -4072,7 +4072,8 @@ func _ivw_rings(at: Vector3, size: float) -> void:
 const IVW_RISE_S := 8.0      # (the rise clip's own length, seconds: tools/ione4_build.py RISE_SECONDS)
 func _ivw_scene2(j: Dictionary) -> void:
 	for ar in (j.get("arches", []) as Array): _ivw_gate_light(Vector3(float(ar[0][0]), float(ar[0][1]), float(ar[0][2])), String(ar[1]))
-	for ar in (j.get("arches", []) as Array): _ivw_veil(Vector3(float(ar[0][0]), float(ar[0][1]), float(ar[0][2])), String(ar[1]))
+	if not go_milos:      # (the veil torn from the lintel is the veiled level's own)
+		for ar in (j.get("arches", []) as Array): _ivw_veil(Vector3(float(ar[0][0]), float(ar[0][1]), float(ar[0][2])), String(ar[1]))
 	var lvn := iv_root.get_child(0) as Node3D      # (the level as Blender made it: its sunken stones)
 	for ch in iv_root.get_children():
 		if ch is Node3D and not (ch as Node3D).find_children("riser_*", "MeshInstance3D", true, false).is_empty() and ch != ivw_mirror: lvn = ch; break

@@ -58,7 +58,7 @@ def plan():
     }
     face = lambda dx, dz: round(math.atan2(-dz, dx), 3)
     statues = [['standing', [3.2, -1.0, 0.0], 3.4, face(-1.0, 0.0)],      # (she stands in the water before the island, looking up the channel; a placeholder model)
-               ['welcome', [-8.3, H1 + 2.1, -3.2], 2.1, face(0.72, 0.69)]]      # (the goddess on her rock: a placeholder model)
+               ['goddess', [-8.3, H1 + 2.1, -3.2], 2.35, face(0.72, 0.69)]]      # (the goddess on her rock, without arms: they broke when Theron took her mirror (props/statue_goddess.glb))
     puzzle = {
         'nodes': dict(N, **LIGHT), 'edges': edges, 'start': 'S', 'exit': 'R', 'block': 'K', 'holes': [],
         'intro': [[0.0, H0, 4.41], [0.0, H0, 4.4]],      # (no way in: she stands where the light of the second gate let her go)

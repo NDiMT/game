@@ -112,9 +112,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   terracotta (the owner) (`props/block_meander.glb`, `tools/go/block_meander.py`).
 - **Both levels** (the owner, 18/11): the whole opening of each gate is white, and she stops just before it so she is
   seen until the flash. The way's line stays as it was: a pink and a neon terracotta glow were tried and turned down.
-- **Level 3, designed 18/11, not built** (the owner: "a level 3, the script's third line, a matching map, a puzzle with
-  no tutorial"): the sanctuary of Aphrodite on Milos, white wave-carved volcanic rock in a pale turquoise sea, the
-  goddess's armless statue on the highest rock, at the back (her arms broke when Theron took her mirror); no busts by
+- **Level 3, The Mirror, built 18/11** (`gomilos/`, `FLIP=gomilos`; the owner: "a level 3, the script's third line, a matching map, a
+  puzzle with no tutorial"): the sanctuary of Aphrodite on Milos, white wave-carved volcanic rock in a pale turquoise sea, the
+  goddess's armless statue on the highest rock, at the back (her arms broke when Theron took her mirror;
+  `props/statue_goddess.glb`, Tripo P1, 40 credits); no busts by
   the way or the gate (the owner found them "staged"); one other statue, the light's (below). Line (the script's next truth, the mirror):
   "He stole the goddess's mirror. / She let him." Puzzle, the owner's own rule ("the gate closed; moving the stone
   sends the light to the circle and the gate opens"): a beam of light, seen, leaves a statue (the owner: "the beam
@@ -131,6 +132,18 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   the ring lights and the door opens; over the bridge over the chasm to the ring. The first design, `mirror_holster` in
   `tools/go/trials_designs.py` (a look breaking a face at the gate), made no sense to the owner. Concept
   `design/level3/concept.jpg` (the first, `concept_first.jpg`), the light step by step `board.png`.
+  The island is the concept's, as the owner wanted it ("what Gemini made, like Milos, Sarakiniko"; not the other levels'
+  slabs on chunky rock): `tools/go/milos_island.py` builds it from the plan as a field of distances meshed by marching cubes
+  (scikit-image in `~/.local`): flat walks with rounded lips, broad pillows of white rock, the channel, its arm and the
+  chasm cut out, a bridge of the rock over the chasm, hollows, faint beds, a groove at the waterline; its own palette
+  `island` sampled from the concept (white, lilac shade) lit smoothly (`smooth_k`); the gate's arch from
+  `tools/ivory_level.py` run on the arches alone (extras). Plan `tools/go/milos_plan.py` (asserts the plan is the
+  solver's board). `go_milos` rides `go_veil` (its start, block, statues), and level 2's gate now leads on into it
+  (`_ivw_next_level`); the end screen comes after the last. The light (`_ivm_*` in `ch1.gd`): traced on the board as the
+  solver has it, drawn live each frame and cut where her body or the stone stands; past the mirror it goes out while
+  the mirror turns; the ring is a ring of darker stone until the light reaches it, then lights; the gate's two leaves
+  swing open toward her. Its backdrop `gomilos/backdrop.jpg` (Gemini: the pale Aegean, far white islands). The statue in
+  the sea is still level 2's `standing` model (a placeholder). No dark shapes before the eye here.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
@@ -176,7 +189,7 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   with a GPU (the owner's computer via Remote Control, or a self-hosted GPU environment).
 
 ## Costs (to 18/11/2026)
-- Gemini, 10–16/11/2026: about $95–100 (video ~$60, images ~$32, music ~$1.5, voice <$0.5). Tripo: 220 credits left (18/11: five statues at 40).
+- Gemini, 10–16/11/2026: about $95–100 (video ~$60, images ~$32, music ~$1.5, voice <$0.5). Tripo: 180 credits left (18/11: five statues at 40, the goddess at 40).
 - Cheaper: draft videos at 720p and only finals at 1080p; non-urgent images through the batch API (about half).
 
 ## Git
