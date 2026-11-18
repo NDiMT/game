@@ -421,7 +421,7 @@ class HerMod extends SkeletonModifier3D:
 		sk.set_bone_global_pose(hi, Transform3D(Basis(Quaternion.IDENTITY.slerp((want * have.inverse()).get_rotation_quaternion(), w)) * gh.basis, gh.origin))
 	func _process_modification() -> void:
 		var sk := get_skeleton()
-		if sk == null or main == null: return
+		if sk == null or main == null or not sk.is_inside_tree(): return      # (a level giving way to the next: its last step taken out of the tree)
 		var la := _b(sk, "LeftArm"); var ra := _b(sk, "RightArm")
 		if la < 0 or ra < 0: return
 		var lean: float = bow if own else main.a_lean
@@ -1658,8 +1658,11 @@ func _hollow_glsl(v: String) -> String:
 	return " || ".join(parts) if not parts.is_empty() else "false"
 
 func _ready() -> void:
-	RenderingServer.global_shader_parameter_add("view_ax", RenderingServer.GLOBAL_VAR_TYPE_VEC3, Vector3(0.57735, 0.57735, 0.57735))      # (before any shader is made)
-	RenderingServer.global_shader_parameter_add("sea_y", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, WATER)
+	var gl := RenderingServer.global_shader_parameter_get_list()      # (made once a run: a second scene, as a level that follows another, finds them there)
+	if not gl.has("view_ax"): RenderingServer.global_shader_parameter_add("view_ax", RenderingServer.GLOBAL_VAR_TYPE_VEC3, Vector3(0.57735, 0.57735, 0.57735))      # (before any shader is made)
+	else: RenderingServer.global_shader_parameter_set("view_ax", Vector3(0.57735, 0.57735, 0.57735))
+	if not gl.has("sea_y"): RenderingServer.global_shader_parameter_add("sea_y", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, WATER)
+	else: RenderingServer.global_shader_parameter_set("sea_y", WATER)
 	for k in [["base", SH], ["two", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;")],
 			["mir", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled, shadows_disabled;")],
 			["water", SH_WATER], ["cloth", SH_CLOTH], ["sheet", SH_SHEET], ["mirror", SH_MIRROR], ["ring", SH_RING], ["sea", SH_SEA], ["refl", SH_REFL], ["glass", SH_GLASS], ["pit", SH_PIT], ["face", SH_FACE], ["foam", SH_FOAM], ["fog", SH_FOG], ["shard", SH_SHARD], ["pane", SH_PANE]]:

@@ -84,7 +84,12 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   with her but shows little past the edges (`_ivr_follow` in `ch1.gd`).
 - **Music per level** (`_go_level_music` in `ch1.gd`): waking Lament, sanctuary Requiem, moon Elegy, quarry Stone,
   any other Last Light; the Theme under the intro and the start screen. The owner liked the Theme, the Lament and
-  its four variations. Dark orchestral, never piano, a wordless female voice only at moments.
+  its four variations. Dark orchestral, never piano, a wordless female voice only at moments. The waking's levels'
+  music runs on from level to level, the piece changing as it ends (the owner, 18/11): `music_radio.gd`, a node at the
+  tree's root, outlives each level's scene; its `LIST` (Lament, Last Light) does not loop: at a piece's end, after a
+  breath, the next begins; a level that follows another leaves it playing (`_ivw_music_on`); it fades only at the
+  game's end. The list's pieces are made ready (decoded, in a browser) in the first level's warm-up and kept; the Theme
+  is let go after PLAY. `IV_MUSIC_END=<s>` starts each piece that many seconds before its end, to try the changes.
 - **The heroine Ione** is the owner's own design (`eidolon-demo/design/ione5/`): marble woman in spiral terracotta
   bands. Model: multiview → smart low-poly (owner's choice), rigged and built by `tools/ione4_build.py` into
   `hero_models/ione4r*.glb`. Review her clips with `tools/go/hero_look.py` (her colours, the game's eye).
@@ -134,7 +139,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   old sync restarted it every half second, stopping the film each time). A
   touch on the film shows "tap to skip" a while; a second touch while it shows skips (`_ivw_skip_tap`). Code that reads a file raw (`FileAccess`, the `.glb` levels and props)
   needs it kept raw in the pack (`importer="keep"` or the preset's include filter); for imported pictures check with
-  `ResourceLoader.exists`, never `FileAccess.file_exists`. Earlier demos were published to GitHub Pages from the branch
+  `ResourceLoader.exists`, never `FileAccess.file_exists`. An imported font's raw `.ttf` is not packed even when the
+  include filter names it: load fonts with `load()` (`_ivw_font_file`); read raw, the Cormorant letters were missing on
+  the web and the story fell back to another font (found 18/11). Earlier demos were published to GitHub Pages from the branch
   `claude/solo-game-ideas-balatro-yj6hqw` (`site/<name>/` → https://ndimt.github.io/game/<name>/); pushing there needs
   the owner's explicit OK each time.
 - APK: preset `AndroidWake` (arm64, the browser build's filters, `com.eidolon.waking`) →

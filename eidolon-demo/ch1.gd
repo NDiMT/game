@@ -3205,7 +3205,7 @@ func _iv_do_push(dest: String) -> void:
 
 func _iv_win() -> void:
 	iv_won = true
-	if go_wake: _ivw_music_out(3.5)
+	if go_wake and (go_veil or not _ivw_chain_ok()): _ivw_music_out(3.5)      # (the first going on into the second: its music goes on with it)
 	if go_wake and ivw_gate_m != null:
 		await _ivw_exit()      # (she steps into the gate's light, and is lost in it; its last line comes as she goes)
 		print("IV level done in ", iv_moves, " moves")
@@ -4651,7 +4651,7 @@ func _ivw_warm() -> void:
 	for ql in quote_lbls: was.append((ql as Label).text); (ql as Label).text = "\n".join(said)
 	if not said.is_empty():      # (and the story's own letters, at no strength)
 		for it in _ivw_story_make("\n".join(said)): (it[0] as Label).modulate.a = 0.004
-	_ivw_sounds_ready(["res://music/theme.ogg", _go_level_music()] + IVW_SFX.map(func(n: String) -> String: return "res://sfx/%s.ogg" % n))
+	_ivw_sounds_ready(([] if go_veil else ["res://music/theme.ogg"]) + ["res://music/lament.ogg", "res://music/lastlight.ogg", _go_level_music()] + IVW_SFX.map(func(n: String) -> String: return "res://sfx/%s.ogg" % n))
 	for f in 4: await get_tree().process_frame      # (three of them drawn: what is built is built in the drawing)
 	for i in quote_lbls.size(): (quote_lbls[i] as Label).text = String(was[i])
 	if ivw_story != null:
@@ -4852,16 +4852,20 @@ func _ivw_sfx_test() -> void:
 
 ## the music (music/: made with the music model from the written descriptions in design/music/): the theme under the
 ## start screen, the still sea under the first level, each looping, one fading into the next
-var ivw_music_p: AudioStreamPlayer
+## (now kept outside the level, music_radio.gd: the owner, "the music continuous through the levels, and the track
+## changing when it ends": the levels' pieces are played one after another, the theme loops)
+var ivw_radio_n: Node
+func _ivw_radio() -> Node:
+	if ivw_radio_n != null and is_instance_valid(ivw_radio_n): return ivw_radio_n
+	ivw_radio_n = get_tree().root.get_node_or_null("EidolonMusic")
+	if ivw_radio_n == null:      # (the first level's start: set at the root, beside the level, after the root has done setting it up)
+		ivw_radio_n = (load("res://music_radio.gd") as GDScript).new(); ivw_radio_n.name = "EidolonMusic"
+		get_tree().root.add_child.call_deferred(ivw_radio_n)
+	return ivw_radio_n
 func _ivw_music(file: String, fade := 2.5, db := -2.0) -> void:
 	if OS.get_environment("IV_NO_MUSIC") != "" or not ResourceLoader.exists(file): return
-	var st := _ivw_stream(file)
-	var old := ivw_music_p
-	var p := AudioStreamPlayer.new(); add_child(p); p.stream = st; p.volume_db = -40.0; p.play()
-	create_tween().tween_property(p, "volume_db", db, fade).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	if old != null:
-		var t := create_tween(); t.tween_property(old, "volume_db", -50.0, fade).set_trans(Tween.TRANS_SINE); t.tween_callback(old.queue_free)
-	ivw_music_p = p
+	_ivw_radio().call("play", file, fade, db)
+func _ivw_music_on() -> bool: return OS.get_environment("IV_NO_MUSIC") == "" and bool(_ivw_radio().get("listed"))      # (a piece of the levels' list going on, from the level before)
 
 ## each level its own piece, all in the lament's manner (the user liked the lament best, then "I like those four too"):
 ## the waking the lament itself, the drowned sanctuary the requiem (a low choir like the sea breathing), the moon the
@@ -4890,9 +4894,9 @@ func _ivw_sfx(name: String, db := -8.0, from := 0.0, pitch := 1.0) -> AudioStrea
 const IVW_SFX := ["play_note", "line_sigh", "stones_rise", "gate_pass", "no_move", "step_1", "step_2", "step_3", "step_4", "stone_surface_1", "stone_surface_2", "stone_surface_3", "winch_turn", "gate_light", "block_push", "block_fall"]
 var ivw_streams := {}
 func _ivw_stream(file: String) -> AudioStream:
+	if file.begins_with("res://music/"): return _ivw_radio().call("stream", file) as AudioStream      # (the music kept by the radio, across the levels)
 	if not ivw_streams.has(file):
 		var st: AudioStream = load(file) if ResourceLoader.exists(file) else null
-		if st is AudioStreamOggVorbis and file.begins_with("res://music/"): (st as AudioStreamOggVorbis).loop = true      # (before it is made ready: a browser keeps it as it was then)
 		ivw_streams[file] = st
 	return ivw_streams[file]
 func _ivw_sounds_ready(files: Array) -> void:
@@ -4927,10 +4931,11 @@ func _ivw_step(db: float) -> void:
 	ivw_step_k = (ivw_step_k + 1 + randi() % 3) % 4; ivw_step_last = 0.0      # (never the same one twice running)
 	_ivw_sfx("step_%d" % (ivw_step_k + 1), db + randf_range(-1.5, 0.5), 0.0, randf_range(0.96, 1.04))
 
+func _ivw_theme_drop() -> void:
+	if OS.get_environment("IV_NO_MUSIC") == "": _ivw_radio().call("drop", "res://music/theme.ogg")
 func _ivw_music_out(fade := 3.0) -> void:
-	if ivw_music_p == null: return
-	var old := ivw_music_p; ivw_music_p = null
-	var t := create_tween(); t.tween_property(old, "volume_db", -50.0, fade).set_trans(Tween.TRANS_SINE); t.tween_callback(old.queue_free)
+	if OS.get_environment("IV_NO_MUSIC") != "": return
+	_ivw_radio().call("out", fade)
 
 ## the story's letter (the user: "better texts and better letters for them"): Cormorant Garamond italic, finer than the
 ## old one and of a kind with the thin name EIDOLON; its semibold over the picture, its medium for the small lines
@@ -5062,6 +5067,7 @@ func _ivw_play() -> void:      # (PLAY: the name and the haze go, the eye goes d
 	ivw_menu_on = false
 	_ivw_sfx("play_note", -2.5)
 	_ivw_music(_go_level_music(), 5.0, -5.0)      # (the theme gives way to the level's own piece, slowly, quieter: it plays while she thinks)
+	get_tree().create_timer(6.5).timeout.connect(_ivw_theme_drop)      # (a browser's decoded theme given up: the levels' pieces are enough to keep)
 	for f in 2: await get_tree().process_frame      # (a browser copies a long piece's whole sound as it starts it: that moment passes before anything moves)
 	var t := create_tween().set_parallel()
 	t.tween_property(ivw_menu, "modulate:a", 0.0, 1.0).set_trans(Tween.TRANS_SINE)
@@ -5078,7 +5084,7 @@ func _ivv_begin() -> void:
 	var cl := CanvasLayer.new(); cl.layer = 5; add_child(cl)
 	var fade := ColorRect.new(); fade.color = Color(1.0, 0.95, 0.9, 1.0); fade.set_anchors_preset(Control.PRESET_FULL_RECT); fade.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(fade)
 	await _ivw_warm()
-	_ivw_music(_go_level_music(), 3.0, -5.0)
+	if not _ivw_music_on(): _ivw_music(_go_level_music(), 3.0, -5.0)      # (come from the first, its music goes on)
 	for f in 2: await get_tree().process_frame      # (a browser copies a long piece's whole sound as it starts it: that moment passes before anything moves)
 	started = true; ivw_line_at = iv_t + 1.4
 	var t := create_tween(); t.tween_property(fade, "color:a", 0.0, 1.8).set_trans(Tween.TRANS_SINE)
