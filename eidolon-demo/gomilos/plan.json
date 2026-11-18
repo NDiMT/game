@@ -368,6 +368,10 @@
   ],
   "sat_min": 0.2
  },
+ "smooth_normals": [
+  "rock",
+  "marble"
+ ],
  "rock_clamp": [
   0.04,
   0.35,

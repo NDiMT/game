@@ -1182,6 +1182,10 @@ M = join(marble, 'marble'); R = join(rock, 'rock') if rock else None; O = join(o
 QU = join(quarries, 'quarry') if quarries else None
 SN = join(SNOWS, 'snow') if SNOWS else None
 SA = join(salts, 'salt') if salts else None
+for o_ in (M, R):      # (smooth normals for the painted light (the plan's 'smooth_normals'): the game's facets keep their own light, and may mix the smooth form's into it)
+    if o_ is not None and PLAN and o_.name in PLAN.get('smooth_normals', []):
+        for p_ in o_.data.polygons: p_.use_smooth = True
+        print('SMOOTH NORMALS on', o_.name)
 RS = []
 for nm_, (m_, r_) in RISERS.items():
     RS.append(join(m_, 'riser_%s_marble' % nm_))

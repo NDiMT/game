@@ -2169,7 +2169,7 @@ const IV_WAKE_PAL := {      # the waking: dawn over a still sea. Pearl and rose 
 	"phead": ["f3e4df", "dcc4c4", "b9a0ad", "917b93"],
 	"groove": ["e2cac6", "e2cac6", "e2cac6", "e2cac6"],
 	"line": ["fff4ee", "fff4ee", "fff4ee", "fff4ee"],
-	"ring": ["fff3e2", "fff3e2", "fff3e2", "fff3e2"],
+	"ring": ["f6c862", "f6c862", "f6c862", "f6c862"],      # (the ring before the gate a bright yellowish ochre (the owner, 18/11); before, a warm white)
 	"bronze": ["f2d398", "d7a660", "9c6e40", "6b4a30"],
 	"silver": ["fff1d2", "f3d9a6", "d2ac72", "9a7548"],      # (a mirror's face: polished bronze, bright)
 	"wood": ["b88d68", "96714f", "74533b", "533b2b"],
@@ -2209,7 +2209,7 @@ const IV_MILOS_PAL := {      # the third level in the colours of its concept, ch
 	"marble2": ["f5f7fb", "e8ebf1", "d3d9e8", "b3bbd6"],      # (its slabs, the stair, the gate: white, a cool blue shade (#eaeff1 #e7e9ed #d6dde8 #ccd2e9))
 	"statue": ["fbfbff", "e8e5f3", "c4bfdb", "9089b3"],
 	"groove": ["d9dcec", "d9dcec", "d9dcec", "d9dcec"],
-	"ring": ["fffdf8", "fffdf8", "fffdf8", "fffdf8"],
+	"ring": ["f6c862", "f6c862", "f6c862", "f6c862"],      # (lit: the bright yellowish ochre of every level's ring; unlit, a darker stone (_ivm_ring_tick))
 	"goddess": ["ffffff", "f7f5fc", "c6c0dc", "8a82ad"],      # (the goddess: white in the light, a clear lilac shade, as the concept paints her)
 }
 func _iv_pal(kind: String) -> Array:
@@ -2291,6 +2291,7 @@ uniform vec3 ao_tint : source_color = vec3(0.93, 0.83, 0.78);      // (the colou
 uniform sampler2D bg_tex : source_color, filter_linear, repeat_disable;      // (a painted backdrop: the mist is its colour at that place on the screen)
 uniform float bg_tex_k = 0.0; uniform vec2 bg_scale = vec2(1.0);
 uniform vec3 vein_tint : source_color = vec3(0.9, 0.86, 0.83);
+uniform float paint_light = 0.0;      // (light and shade as a painter lays them (a try): each face's light a soft gradient, the smooth form's light mixed into the facet's, the steps between its tones soft)
 uniform float paint_k = 0.0;      // (light and shade as painted (a try): a wash of tone over each face, the brush's strokes down it, the shade a little bluer)
 uniform float vein_local = 0.0; uniform float vein_sc = 0.9; uniform float vein_w = 0.03; uniform float vein_cloud = 0.05; uniform float vein_gain = 1.0;      // (a block that is pushed: its veins its own, not the world's, so they go with it; light veins on a darker stone: vein_gain over 1)
 uniform float drill = 0.0;      // (a face sawn in the quarry: the drill's grooves down it, the beds across it)
@@ -2336,10 +2337,16 @@ void fragment(){
 		if (mirror_k > 0.5) fn.y = -fn.y;
 	}
 	float wy = mirror_k > 0.5 ? 2.0 * mirror_y - wp.y : wp.y;
-	float d = dot(fn, normalize(key_dir));
-	vec3 c = mix(c_dark, c_mid, smoothstep(-0.34, -0.14, d));      // (the light simple and sharp, as the picture's: each face one tone)
-	c = mix(c, c_lit, smoothstep(0.16, 0.34, d));
-	c = mix(c, c_top, smoothstep(0.7, 0.84, fn.y));
+	vec3 pn = fn;
+	if (paint_light > 0.0 && smooth_k < 0.5) {      // (the painted light: the smooth form's normal mixed into the facet's, so each face's light runs in a soft gradient and the edges between faces soften)
+		vec3 sn0 = normalize(wn); if (dot(sn0, INV_VIEW_MATRIX[2].xyz) < 0.0) sn0 = -sn0;
+		if (mirror_k > 0.5) sn0.y = -sn0.y;
+		pn = normalize(mix(fn, sn0, 0.55 * paint_light));
+	}
+	float d = dot(pn, normalize(key_dir));
+	vec3 c = mix(c_dark, c_mid, smoothstep(mix(-0.34, -0.75, paint_light), mix(-0.14, 0.05, paint_light), d));      // (the light simple and sharp, as the picture's: each face one tone; painted, its steps soft)
+	c = mix(c, c_lit, smoothstep(mix(0.16, -0.12, paint_light), mix(0.34, 0.7, paint_light), d));
+	c = mix(c, c_top, smoothstep(mix(0.7, 0.42, paint_light), mix(0.84, 0.98, paint_light), pn.y));
 	if (smooth_k > 0.5 && smooth_k < 2.5) {
 		vec3 sn = normalize(wn); if (mirror_k > 0.5) sn.y = -sn.y;
 		vec3 vd = normalize(INV_VIEW_MATRIX[2].xyz);
@@ -2602,6 +2609,7 @@ func _iv_mat(kind: String, far_k := 0.0, extra := {}) -> ShaderMaterial:
 	if OS.get_environment("IV_PAINT") != "" and not (kind in ["line", "ring", "groove", "statue", "salt"]): m.set_shader_parameter("paint_k", float(OS.get_environment("IV_PAINT")) * (0.5 if kind == "marble2" else 1.0))      # (a try: light and shade as painted; not on the smooth statues and round rocks, gentler on the slabs)
 	for k in extra: m.set_shader_parameter(k, extra[k])
 	if OS.get_environment("IV_PAINT_AO") != "" and kind == "rock2": m.set_shader_parameter("ao_k", float(OS.get_environment("IV_PAINT_AO")))      # (a try: the rock's hollows shaded, as the concept paints them)
+	if OS.get_environment("IV_PAINT_LIGHT") != "" and (kind == "rock2" or kind == "marble2"): m.set_shader_parameter("paint_light", float(OS.get_environment("IV_PAINT_LIGHT")))      # (a try: the painted light)
 	iv_mats[key] = m
 	return m
 
@@ -3165,6 +3173,7 @@ func _iv_post(dt: float) -> void:
 	var pl := 0.5 + 0.5 * sin(iv_t * 2.2)
 	(iv_glow.material_override as StandardMaterial3D).albedo_color.a = ((0.16 + 0.14 * pl) if ivp_on else (0.5 + 0.35 * pl)) * (ivm_ring_k if go_milos else 1.0)
 	if go_milos and not ivm_beam.is_empty(): _ivm_draw()
+	if go_milos and ivm_ring_gold != null and ivm_ring_k > 0.0 and ivm_ring_k < 1.001 and not ivm_ring_done: _ivm_ring_tick()
 	if not iv_won: iv_glow.scale = Vector3.ONE * (0.92 + 0.12 * pl)
 	if iv_leaves != null: iv_leaves.pivot_offset = Vector2.ZERO; iv_leaves.rotation = deg_to_rad(1.3 * sin(iv_t * 0.9) + 0.6 * sin(iv_t * 2.3))
 	if started and ivp_on:
@@ -6129,13 +6138,14 @@ func _ivr_build() -> void:
 	iv_ring = Node3D.new(); iv_root.add_child(iv_ring); iv_ring.global_position = ivp_nodes[ivg_exit if ivg_on else "r"]
 	var tm := TorusMesh.new(); tm.inner_radius = 0.3 if ivr_on else 0.36; tm.outer_radius = 0.46; tm.rings = 32; tm.ring_segments = 8
 	var rm := _iv_prim(tm, Vector3(0, 0.06, 0), "ring", iv_ring); rm.scale = Vector3(1, 0.62, 1); rm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	if go_milos: ivm_ring_gold = rm      # (the third level: the ring white as the others', only unlit, no glow, until the light reaches it (the owner))
+	if go_milos:      # (the third level: the ring dark, a stone unlit, no glow, until the light reaches it; then the ochre of every ring comes up in it (the owner, 18/11: "before the light falls on it, off, darker"))
+		ivm_ring_gold = rm; rm.material_override = (rm.material_override as ShaderMaterial).duplicate(); _ivm_ring_tick()
 	if ivr_on:
 		var hm := CylinderMesh.new(); hm.top_radius = 0.31; hm.bottom_radius = 0.31; hm.height = 0.02; hm.radial_segments = 28; hm.rings = 1
 		var hi := MeshInstance3D.new(); hi.mesh = hm; hi.material_override = _iv_mat("rock2", 0.0, {"fog_hi": -9.0, "fog_lo": -14.0}); hi.position = Vector3(0, 0.012, 0); iv_ring.add_child(hi)
 	var gq := QuadMesh.new(); gq.size = Vector2(1.7, 1.7)
 	var gm := StandardMaterial3D.new(); gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm.albedo_texture = load("res://goiv/glow.png")
-	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm.blend_mode = BaseMaterial3D.BLEND_MODE_MIX if go_moon else BaseMaterial3D.BLEND_MODE_ADD; gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; gm.albedo_color = Color(1.0, 0.76, 0.36, 0.42) if go_moon else Color(1.0, 0.96, 0.86, 0.5)      # (on the snow a glow added burns white: drawn over it, golden)
+	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm.blend_mode = BaseMaterial3D.BLEND_MODE_MIX if go_moon else BaseMaterial3D.BLEND_MODE_ADD; gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; gm.albedo_color = Color(1.0, 0.76, 0.36, 0.42) if go_moon else (Color(1.0, 0.84, 0.5, 0.5) if go_wake else Color(1.0, 0.96, 0.86, 0.5))      # (on the snow a glow added burns white: drawn over it, golden; at the waking's gates golden too, as the ring's ochre)
 	iv_glow = MeshInstance3D.new(); iv_glow.mesh = gq; iv_glow.material_override = gm; iv_glow.position = Vector3(0, 0.4, 0); iv_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; iv_ring.add_child(iv_glow)
 	if go_quarry: _ivq_decor()
 	if go_moon:
@@ -9423,6 +9433,14 @@ var ivm_ring_k := 0.0      # (the ring's light: 0 unlit stone, 1 lit)
 var ivm_after_k := 1.0      # (the light past the mirror, out while it turns)
 var ivm_ring_dark: MeshInstance3D
 var ivm_ring_gold: MeshInstance3D
+var ivm_ring_done := false
+func _ivm_ring_tick() -> void:      # (the ring's stone by its light: a dark lilac stone, unlit; the bright ochre, lit)
+	var rmm := ivm_ring_gold.material_override as ShaderMaterial
+	var off := Color("8d87a6"); var on := Color(String((_iv_pal("ring") as Array)[0]))
+	var c := off.lerp(on, clampf(ivm_ring_k, 0.0, 1.0))
+	for nm in ["c_top", "c_lit", "c_mid", "c_dark"]: rmm.set_shader_parameter(nm, c)
+	rmm.set_shader_parameter("emit", 0.55 * clampf(ivm_ring_k, 0.0, 1.0))
+	if ivm_ring_k >= 1.0: ivm_ring_done = true
 var ivm_beam: Array = []      # (the beam's straight runs: [core, halo] each)
 var ivm_spark: MeshInstance3D      # (where the light ends on a thing: a bright spot)
 var ivm_leaves: Array = []      # (the gate's leaves: [hinge, its shut basis, the turn that opens it])
