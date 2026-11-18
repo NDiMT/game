@@ -744,6 +744,27 @@ def boulder(name, c, r, top, n=6, ease=0.06, tilt=(0.05, 0.16)):
     return finish(bm, name, fine=2.5)
 
 
+def salt_rock(name, x, z, r, t, sea):
+    """a lump of the white sea-worn rock of Milos (Sarakiniko) in the still water (the owner: "the rocks like salt"):
+    round and soft, a little uneven, its top worn flatter, low out of the water, the rest of it under"""
+    from mathutils import noise
+    bm = bmesh.new(); bmesh.ops.create_icosphere(bm, subdivisions=4, radius=1.0)
+    ry = max(t * 1.6, 0.4); cy = sea + t - ry * 0.89      # (its top t out of the water: a dome more than half out)
+    a0 = rnd.uniform(0.0, 2.0 * math.pi); sx = r * rnd.uniform(0.95, 1.12); sz = r * rnd.uniform(0.68, 0.9)
+    sd = Vector((rnd.uniform(0, 50), rnd.uniform(0, 50), rnd.uniform(0, 50)))
+    ca, sa = math.cos(a0), math.sin(a0)
+    for v in bm.verts:
+        p = v.co.copy()
+        p *= 1.0 + noise.noise(p * 1.25 + sd) * 0.16 + noise.noise(p * 3.2 + sd) * 0.045
+        if p.z > 0.62: p.z = 0.62 + (p.z - 0.62) * 0.7      # (worn a little flatter on top, still round)
+        lx, lz = p.x * sx, p.y * sz
+        v.co = G(x + lx * ca - lz * sa, cy + p.z * ry, z + lx * sa + lz * ca)
+    for f in bm.faces: f.smooth = True
+    me = bpy.data.meshes.new(name); bm.to_mesh(me); bm.free()
+    ob = bpy.data.objects.new(name, me); scene.collection.objects.link(ob)
+    return ob
+
+
 def ledge(name, c, rad, top):
     """rock without marble, that binds the floors into one mountain: a few soft boulders, the greatest in the middle
     with its top at top, the others about it and lower"""
@@ -1035,7 +1056,7 @@ def quarry_terrain(P):
     return obs
 
 # ------------------------------------------------------------------ the level
-marble, rock, olive, barks, quarries = [], [], [], [], []
+marble, rock, olive, barks, quarries, salts = [], [], [], [], [], []
 RISERS = {}      # (floors that rise and sink in the game: each its own two objects, riser_<name>_marble and riser_<name>_rock)
 if PLAN is None:
     for nm, (x0, x1, z0, z1, h, ch) in FLOORS.items():
@@ -1066,6 +1087,8 @@ else:
         fl[4:] = [STEPS[-1]]
     for (c, r_, top) in ([] if NS else PLAN.get('rocks', [])):      # rock that binds the floors into one mountain
         rock += ledge('ledge', c, r_, top)
+    for i_, (x_, z_, r_, t_) in enumerate(PLAN.get('salt_rocks', [])):      # (white sea-worn rocks in the water about it: the third level's, "like salt")
+        salts.append(salt_rock('salt%d' % i_, x_, z_, r_, t_, float(PLAN.get('sea_y', 0.0))))
     if NS:      # (a stone under each place of the way: each cut by hand, a little out of square and out of line, its corners cut aslant, set a little lower or higher; the owner: "on the path the stone crooked and uneven")
         sz = float(NS.get('size', 1.3)); th_ = float(NS.get('thick', 0.3)); skip = set(NS.get('skip', []))
         fls_ = PLAN.get('flights', [])
@@ -1143,6 +1166,7 @@ def join(obs, name):
 M = join(marble, 'marble'); R = join(rock, 'rock') if rock else None; O = join(olive, 'olive') if olive else None; B = join(barks, 'bark') if barks else None
 QU = join(quarries, 'quarry') if quarries else None
 SN = join(SNOWS, 'snow') if SNOWS else None
+SA = join(salts, 'salt') if salts else None
 RS = []
 for nm_, (m_, r_) in RISERS.items():
     RS.append(join(m_, 'riser_%s_marble' % nm_))
@@ -1225,7 +1249,7 @@ if PLAN is not None and PLAN.get('shore') and PLAN.get('sea_y') is not None:
         print('SHORE an open body, filled by its outline:', len(sg), 'segments')
 
     still = []
-    for o in (M, R):
+    for o in (M, R, SA):
         if o is not None: still += cut(o)
     rising = []
     for o in RS: rising += cut(o)
@@ -1269,7 +1293,7 @@ scene.cycles.device = 'CPU'
 scene.cycles.samples = SAMPLES
 w = bpy.data.worlds.new('w'); scene.world = w; w.light_settings.distance = 0.55      # (only the close corners and clefts darken)
 scene.render.bake.target = 'VERTEX_COLORS'
-for o in (M, R, O, B, SN, QU, *RS):
+for o in (M, R, O, B, SN, QU, SA, *RS):
     if o is None: continue
     mat = bpy.data.materials.new(o.name); o.data.materials.append(mat)
     ca = o.data.color_attributes.new('ao', 'BYTE_COLOR', 'CORNER')

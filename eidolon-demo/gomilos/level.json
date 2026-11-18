@@ -383,10 +383,10 @@
  "observer": null,
  "observer_haze": null,
  "observer_model": null,
- "horizon": 0.414,
+ "horizon": 0.475,
  "sun": [
-  0.671,
-  0.265
+  0.658,
+  0.282
  ],
  "statues": [
   [
@@ -414,10 +414,10 @@
  "stair_groove": 0.03,
  "shore": {
   "rect": [
-   -12.1142,
+   -11.7803,
    -11.3137,
-   11.8258,
-   12.5663
+   5.6797,
+   9.8963
   ],
   "D": 1.6
  }

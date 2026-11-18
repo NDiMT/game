@@ -55,16 +55,17 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
 - **Start screen**: plum dark, cream EIDOLON and PLAY, a subdued veiled statue behind (`ui/start_statue.jpg`); the
   film opens and closes in the same plum.
 - **Play it in a browser**: https://ndimt.github.io/game/eidolon-waking/ (the owner OK'd publishing there).
-- **Sounds** (`sfx/`, `_ivw_sfx`, the owner approved them in a preview on the level video): PLAY a low note, each story
-  line a woman's sigh (not the last), the stones a swell, the gate's sound peaking on the flash, a blocked swipe a low
-  pluck. No audio bus made while the game runs and no dip under the sounds: with one, a phone's browser played nothing in
-  the level. `IV_SFX_LOG=1` logs their moments. On an Android phone the owner heard none of these cues over the music
-  (18/11): they lay 5-10 LU under it, so they were raised about 6 dB. And real sounds were added (the owner: "real
-  sounds too"), cut from CC0 recordings (`tools/sfx_real.py`, sources and levels in `design/sfx/README.md`): a step at
-  each footfall of her walk (`IVW_STEP_AT`, read from the walk clip's place), a stone's water and foam as each breaks the
-  sea, the winch's ratchet and clank, the gate's light on the flash. A phone's speaker plays little under 300 Hz: give a
-  sound its presence (2-4 kHz) and judge loudness by ebur128 beside the music, not by peak. `#sfxtest` after a page's
-  address plays each sound in turn every 3 s with its name (`IV_SFXTEST=1` on a desktop).
+- **Sounds** (`sfx/`, `_ivw_sfx`): **only real sound effects** (the owner, 18/11: "cut the melodic sounds, only normal
+  sound effects"). The Lyria cues (a note at PLAY, a sigh on each story line, a swell for the stones, the gate's rise, a
+  pluck for a swipe where she cannot go) are no longer played and are left out of the builds (the presets' exclude
+  filter); their files and notes stay in `sfx/` and `design/sfx/README.md`. The real sounds, cut from CC0 recordings
+  (`tools/sfx_real.py`, sources and levels in the README): a step at each footfall of her walk (`IVW_STEP_AT`, read from
+  the walk clip's place), a stone's water and foam as each breaks the sea, the winch's ratchet and clank, the block
+  dragged and falling, the gate's light on the flash. No audio bus made while the game runs and no dip under the sounds:
+  with one, a phone's browser played nothing in the level. `IV_SFX_LOG=1` logs their moments. A phone's speaker plays
+  little under 300 Hz: give a sound its presence (2-4 kHz) and judge loudness by ebur128 beside the music, not by peak
+  (on an Android phone the owner heard nothing 5-10 LU under the music). `#sfxtest` after a page's address plays each
+  sound in turn every 3 s with its name (`IV_SFXTEST=1` on a desktop).
 - **Smoothness** (the owner, 18/11: "it catches a little, above all where the stones come up"):
   - A phone's browser builds each new shader the moment it is first drawn, and the picture stops while it builds. Make
     one `Shader` per kind of effect (`_ivw_shader`), never `Shader.new()` per effect. Draw each kind once, unseen,
@@ -136,20 +137,26 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   as the others' but unlit until the light reaches it, then lights; the gate keeps its veil, its two leaves hung behind
   it swing open inward (the cloth never goes through them). The statue in the sea is still level 2's `standing` model (a
   placeholder); the sea's foam hugs her (`shore_statues` in the plan). No dark shapes before the eye here.
-  **Its look, as the owner settled it (18/11)**: built like the other levels by `tools/ivory_level.py` (big slabs with
-  chamfered, broken edges on faceted rock; the owner: "look how we made the others"). Turned down, in order: the smooth
-  white island of `tools/go/milos_island.py` (marching cubes, still in the repo), a way of separate crooked stones
-  (`node_slabs`), a deep blue-violet sky. Its rock cut sharper and more aslant than the other levels' (`rock_style` in
-  the plan: lean, chamfers, cuts, tilt; `sat_min` keeps needles of rock off the small ones), in the grey-blue the first
-  concepts gave the rock in shade (`IV_MILOS_PAL` `rock2`, its tops grey so the white slabs read apart); the shade a pale
-  blue-lilac (`shade_tint`). Rocks all about it in the water (`SEA_ROCKS`, 25), each below the painted sea's rim on the
-  screen: a rock behind the island would stand against the sky. The goddess a colossus (the owner: "a big statue of
-  Aphrodite"): 11 m, rising out of the sea behind the highest rock, which hides where she meets the water, her face turned
-  to the eye (turn -1.2), 4200 flat faces (`bake_ao.py --faces=4200 --flat`: "few polygons", then "a little more
-  detail"). The story's line crosses her neck at the level's start. The camera's follow lifts the whole picture about
-  0.085 of the screen at the start (her start is low): keep the colossus's head under the top by that. Its backdrop
-  `gomilos/backdrop.jpg` (Gemini, pale blue and lilac, far white rocks of Milos), raised by 0.14 so its sun stands clear
-  over the island: horizon 0.414, sun (0.671, 0.265).
+  **Its look (18/11, after three rounds of the owner's notes)**: built like the other levels by `tools/ivory_level.py`
+  (big slabs with chamfered, broken edges on faceted rock; the owner: "look how we made the others") and felt as the first
+  two levels are (the owner: "it has nothing of the feeling of the first two"): a hazy, glowing morning sky and a sea that
+  mirrors it, in pale blue and lilac (`gomilos/backdrop.jpg`, Gemini, painted in the style of the first two levels'
+  backdrops given as references; horizon 0.475, sun (0.658, 0.282)); the dark leaves and rocks before the eye at the
+  corners (its rocks a bluer dark); the rock under the way dark, so the white slabs read on it as on the first two
+  levels' mauve rock, in the slate grey-blue of the very first pictures of the game (the owner: "it was in the very first
+  ones": `eidolon_go_4_violet` of the four GO looks, a little greyer; `IV_MILOS_PAL` `rock2`). Turned down, in order: the
+  smooth white island of `tools/go/milos_island.py` (marching cubes, still in the repo), a way of separate crooked stones
+  (`node_slabs`), a deep blue-violet sky, a crisp pale-blue sky with 25 grey rocks in the sea. Its rock cut sharper and
+  more aslant than the other levels' (`rock_style` in the plan: lean, chamfers, cuts, tilt; `sat_min` keeps needles of
+  rock off small ones). In the water about it a few white rounded rocks "like salt" (the owner), as the first build had
+  at the island's foot (`salt_rocks` in the plan: `salt_rock()` in the builder, the game's `salt` palette, smooth light);
+  each below the painted sea's rim on the screen (a rock in the sea behind the island would stand against the sky). The
+  light leaves the statue at the height of her eyes (the owner), not from her hands. The goddess a colossus (the owner:
+  "a big statue of Aphrodite"): 11 m, rising out of the sea behind the highest rock, which hides where she meets the
+  water, her face turned to the eye (turn -1.2), 4200 flat faces (`bake_ao.py --faces=4200 --flat`: "few polygons", then
+  "a little more detail"), a little in the morning's haze (`far_k` 0.2) as the waking's Observer is. The story's line
+  crosses her neck at the level's start. The camera's follow lifts the whole picture about 0.085 of the screen at the
+  start (her start is low): keep the colossus's head under the top by that.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are

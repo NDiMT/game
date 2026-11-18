@@ -1787,7 +1787,6 @@ func _go_begin() -> void:
 	cam_t = _mw_focus(); cam_focus = cam_t; cam_focus_on = true
 
 func _go_write(text: String, hold := 4.5) -> void:
-	if go_wake and not iv_won: _ivw_sfx("line_sigh", -4.0)      # (each line comes on a woman's sigh)
 	if go_wake: _ivw_story_write(text, hold); return
 	for ql in quote_lbls: (ql as Label).text = text
 	var qt := create_tween(); qt.tween_property(quote_box, "modulate:a", 1.0, 0.5); qt.tween_interval(hold); qt.tween_property(quote_box, "modulate:a", 0.0, 0.7)
@@ -2178,8 +2177,9 @@ const IV_WAKE_PAL := {      # the waking: dawn over a still sea. Pearl and rose 
 }
 const IV_WAKE_BG := ["d7c3dd", "fbdcc8", "f5d8ce", "efcfc3"]      # the dawn: lilac above, peach at the sea's rim, the rose haze, the mist at the bottom
 const IV_WAKE_SKY_S := Vector3(0.2, 0.33, 0.95)
-const IV_MILOS_PAL := {      # the third level: Milos at morning in pale blue and lilac (the owner: "light blue, lilac"); its rock cut sharp, in the grey-blue the first concepts gave its shade (the owner), the way's slabs white with a lilac shade
-	"rock2": ["d9d6e3", "c0bccd", "a3a0b7", "7b7c96"],      # (sampled from the first concepts' rock in shade, concept_c/d/e: #ded7e1 #bcb5c8 #a8a5b9 #7d7e98; its tops grey, not white: the way's white slabs read apart from it)
+const IV_MILOS_PAL := {      # the third level: Milos in a hazy morning of pale blue and lilac, felt as the first two levels are (the owner); its rock under the way the slate grey-blue of the very first pictures of the game (the owner: "it was in the very first ones": golook eidolon_go_4_violet), its white rocks in the sea like salt
+	"rock2": ["a3a4c6", "8385ae", "62648e", "44466c"],      # (sampled from eidolon_go_4_violet's stone (#918ec5 #7d7dba #595a92 #414278), a little greyer)
+	"salt": ["fcf7f8", "f2e8ee", "d9d0dc", "a9a3bb"],      # (the white sea-worn rock of the first build, as Milos has it at Sarakiniko: white, a lilac shade)
 	"marble2": ["fdfcff", "eeebf6", "d5d0e6", "aba5c8"],      # (the way's slabs, the stair, the gate: white, a pale lilac shade)
 	"statue": ["fbfbff", "e8e5f3", "c4bfdb", "9089b3"],      # (white marble, its shade deeper than the waking's: the goddess against the pale sky must read)
 	"groove": ["dcd7ec", "dcd7ec", "dcd7ec", "dcd7ec"],
@@ -2535,7 +2535,7 @@ func _iv_mat(kind: String, far_k := 0.0, extra := {}) -> ShaderMaterial:
 	if go_wake:      # (dawn: the shade lilac; what lies under the still water is not drawn, its image is)
 		m.set_shader_parameter("shade_tint", Color(0.68, 0.6, 0.78)); m.set_shader_parameter("ao_tint", Color(0.86, 0.78, 0.86)); m.set_shader_parameter("vein_tint", Color(0.93, 0.88, 0.9))      # (cast shadows that read, a deep lilac: the way Lara Croft GO gives its places depth)
 		if go_milos: m.set_shader_parameter("shade_tint", Color(0.72, 0.71, 0.9)); m.set_shader_parameter("ao_tint", Color(0.86, 0.85, 0.96))      # (the third level: its shade a pale blue-lilac (the owner: "light blue, lilac"))
-		m.set_shader_parameter("clip_k", 1.0); m.set_shader_parameter("clip_y", IV_O.y + ivr_sea_y); m.set_shader_parameter("sea_c", Color("c8d9ef") if go_milos else Color("ead2cf"))      # (an image in the water dims toward the pearl of the sea, not toward blue; at Milos toward its pale blue-lilac sea)
+		m.set_shader_parameter("clip_k", 1.0); m.set_shader_parameter("clip_y", IV_O.y + ivr_sea_y); m.set_shader_parameter("sea_c", Color("c9c3ea") if go_milos else Color("ead2cf"))      # (an image in the water dims toward the pearl of the sea, not toward blue; at Milos toward its pale blue-lilac sea)
 		m.set_shader_parameter("wline_k", 0.6); m.set_shader_parameter("mirror_fade", 2.0); m.set_shader_parameter("mirror_wob", 0.035)
 		if not ivr_eye.is_empty():      # (its mist held to the world, as the sea is: the eye close on her shows no pale shapes where images fade)
 			var eb := _ivp_basis(); var ec: Array = ivr_eye.centre
@@ -3614,7 +3614,6 @@ func _ivg_swipe(dv: Vector2) -> void:
 	var n := _ivg_dir_nbr(iv_me, dv)
 	if OS.get_environment("IV_TRACE") != "": print("IV swipe ", dv, " from ", iv_me, " -> ", n)
 	ivg_turning = true
-	if n == "" and go_wake: _ivw_sfx("no_move", -8.0)      # (a soft low pluck: not that way)
 	if n == "": await _her_no()
 	else: await _ivg_step(n)
 	ivg_turning = false
@@ -4129,8 +4128,6 @@ func _ivw_exit() -> void:
 	var to := Vector3(ivw_gate_p.x, pos.y, ivw_gate_p.z) + ivw_gate_front * 0.1      # (into it: she stands in its doorway, its light behind and about her; deeper in, the white of the opening (drawn whole, the owner) hid her before the flash)
 	var full := maxf(Vector2(pos.x, pos.z).distance_to(Vector2(to.x, to.z)), 0.05)
 	var gp_in := full / (PLAY_WALK * 0.33) + IVW_GATE_WALK_EXTRA + 0.4 - IVW_GATE_PEAK      # (when its sound must begin: the walk, the breath in the light, less the time to its peak)
-	if gp_in <= 0.0: _ivw_sfx("gate_pass", -2.5, -gp_in)
-	else: get_tree().create_timer(gp_in, false).timeout.connect(func() -> void: _ivw_sfx("gate_pass", -2.5))
 	var gl_in := gp_in + IVW_GATE_PEAK - IVW_LIGHT_PEAK      # (and the light's own swell, at its height on the flash)
 	if gl_in <= 0.0: _ivw_sfx("gate_light", IVW_LIGHT_DB, -gl_in)
 	else: get_tree().create_timer(gl_in, false).timeout.connect(func() -> void: _ivw_sfx("gate_light", IVW_LIGHT_DB))
@@ -4597,7 +4594,6 @@ func _ivw_splash(at: Vector3, rad: float) -> void:      # (drops thrown up from 
 
 func _ivw_raise(up: bool) -> void:
 	if ivw_risers.is_empty(): ivw_up = 1.0 if up else 0.0; return
-	if up and go_wake: _ivw_sfx("stones_rise", -6.0)      # (the stones come up on a slow swell of strings and voices)
 	var t := create_tween(); t.tween_method(_ivw_risers_set, ivw_up, 1.0 if up else 0.0, 3.2)      # (each stone eases by itself, in its turn)
 	for k in 4:
 		await get_tree().create_timer(0.55).timeout
@@ -4905,7 +4901,7 @@ func _go_level_music() -> String:
 ## the waking's sounds (sfx/: cut from the music model's pieces made from design/sfx/, each retuned onto the notes the
 ## lament shares with its D-minor turns, so none of them strikes against the music wherever the player meets it):
 ## PLAY a low note, each line of the story a woman's sigh, the stones a swell, the gate its passing, a step that cannot be a low pluck
-func _ivw_sfx(name: String, db := -8.0, from := 0.0, pitch := 1.0) -> AudioStreamPlayer:
+func _ivw_sfx(name: String, db := -8.0, from := 0.0, pitch := 1.0) -> AudioStreamPlayer:      # (real sounds only: steps, water, the winch, stone on stone, the gate's light; the melodic cues (a note at PLAY, a sigh on each line, a swell for the stones, the gate's rise, a pluck for a swipe where she cannot go) were cut, the owner 18/11: "only normal sound effects")
 	if OS.get_environment("IV_NO_MUSIC") != "" or OS.get_environment("IV_NO_SFX") != "" or not ResourceLoader.exists("res://sfx/%s.ogg" % name): return null
 	if OS.get_environment("IV_SFX_LOG") != "": print("SFX ", name, " at ", snappedf(iv_t, 0.01))
 	var p := AudioStreamPlayer.new(); p.stream = _ivw_stream("res://sfx/%s.ogg" % name); p.volume_db = db; p.pitch_scale = pitch; add_child(p); p.play(from)
@@ -4915,7 +4911,7 @@ func _ivw_sfx(name: String, db := -8.0, from := 0.0, pitch := 1.0) -> AudioStrea
 ## every sound kept once loaded, and in a browser made ready before it is needed: there a sound is decoded whole the
 ## first time it plays, and while it decodes the picture stops (the stones' swell stopped it as they came up, the
 ## lament at PLAY, the theme near the film's end). Kept, each is decoded once, at a moment when nothing moves
-const IVW_SFX := ["play_note", "line_sigh", "stones_rise", "gate_pass", "no_move", "step_1", "step_2", "step_3", "step_4", "stone_surface_1", "stone_surface_2", "stone_surface_3", "winch_turn", "gate_light", "block_push", "block_fall"]
+const IVW_SFX := ["step_1", "step_2", "step_3", "step_4", "stone_surface_1", "stone_surface_2", "stone_surface_3", "winch_turn", "gate_light", "block_push", "block_fall"]
 var ivw_streams := {}
 func _ivw_stream(file: String) -> AudioStream:
 	if file.begins_with("res://music/"): return _ivw_radio().call("stream", file) as AudioStream      # (the music kept by the radio, across the levels)
@@ -5089,7 +5085,6 @@ func _ivw_intro_end() -> void:      # (at its end, or at a tap: the film fades i
 
 func _ivw_play() -> void:      # (PLAY: the name and the haze go, the eye goes down to her where she lies, and she wakes)
 	ivw_menu_on = false
-	_ivw_sfx("play_note", -2.5)
 	_ivw_music(_go_level_music(), 5.0, -5.0)      # (the theme gives way to the level's own piece, slowly, quieter: it plays while she thinks)
 	get_tree().create_timer(6.5).timeout.connect(_ivw_theme_drop)      # (a browser's decoded theme given up: the levels' pieces are enough to keep)
 	for f in 2: await get_tree().process_frame      # (a browser copies a long piece's whole sound as it starts it: that moment passes before anything moves)
@@ -5129,7 +5124,7 @@ func _ivv_statues(j: Dictionary) -> void:
 		hp.position = Vector3(float(at[0]), float(at[1]), float(at[2])); hp.rotation.y = float(s[3])
 		var hd := prop_model("statue_" + String(s[0]), hp, float(s[2]))
 		var exs := ex
-		if String(s[0]) == "goddess": exs = ex.duplicate(); exs.merge({"smooth_k": 0.0, "ao_k": 0.55, "rim_k": 0.08, "haze": 0.0}, true)      # (the goddess of few faces (the owner), a little more of her shape: each face its own light, her folds shaded)
+		if String(s[0]) == "goddess": exs = ex.duplicate(); exs.merge({"smooth_k": 0.0, "ao_k": 0.55, "rim_k": 0.08, "haze": 0.0, "far_k": 0.2}, true)      # (the goddess of few faces (the owner), a little more of her shape: each face its own light, her folds shaded)
 		for m in hd.find_children("*", "MeshInstance3D", true, false):
 			(m as MeshInstance3D).material_override = _iv_mat("statue", 0.0, exs); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		_ivs_mirror(hp, func(_mi: MeshInstance3D) -> Array:
@@ -5999,10 +5994,13 @@ func _ivr_build() -> void:
 		var nm := String(mi.name).to_lower() + "|" + String(mi.get_parent().name).to_lower()
 		var kind := "rock2" if nm.contains("rock") else ("olive2" if nm.contains("olive") else ("bark" if nm.contains("bark") else ("snow" if nm.contains("snow") else ("quarry" if nm.contains("quarry") else "marble2"))))
 		mi.material_override = _ivr_mat(kind, 1.0, true); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		if go_milos and nm.contains("salt"): mi.material_override = _iv_mat("salt", 0.0, _ivm_salt_ex())      # (the white rocks in the sea: smooth, softly lit, like salt)
 	if iv_at_sea:      # (the level's image in the still water: faint at dusk, clear at dawn)
 		ivw_mirror = _ivs_mirror(lv, func(mi: MeshInstance3D) -> Array:
 			var nm := String(mi.name).to_lower() + "|" + String(mi.get_parent().name).to_lower()
 			var kd := "rock2" if nm.contains("rock") else "marble2"
+			if go_milos and nm.contains("salt"):
+				var sx := _ivm_salt_ex(); sx.merge({"fog_lo": ivr_sea_y - 0.15, "haze": 1.0}, true); return ["salt", 0.0, sx]
 			return [kd, 0.0, {"fog_hi": ivr_sea_y + (0.04 if go_wake else 1.5), "fog_lo": ivr_sea_y - 0.15, "veins": 0.6 if kd == "marble2" else 0.0, "haze": 1.0}])
 	# its way
 	var j: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(go_dir + "level.json"))
@@ -6122,7 +6120,7 @@ func _ivr_build() -> void:
 		var lpc := Color(0.94, 0.88, 0.97, 0.98)
 		var rb := _iv_overlay(cl, "res://gowake/rock_br_lp.png" if lp else "res://goiv/rock_br.png", Vector2(720 * k - 345 * k, vh - 400 * k), Vector2(400, 400) * k); rb.modulate = lpc if lp else plum      # (a rock before the eye at the lower right: off the way, the sea there is open)
 		var rbl := _iv_overlay(cl, "res://gowake/rock_bl_lp.png" if lp else "res://goiv/rock_bl.png", Vector2(-80 * k, vh - 360 * k), Vector2(360, 360) * k); rbl.modulate = lpc if lp else plum      # (and one at the lower left, short of the threshold)
-		if go_milos: iv_leaves.visible = false; rb.visible = false; rbl.visible = false      # (the third level: an open white place in the noon, nothing dark before the eye; the concept has none)
+		if go_milos: rb.modulate = Color(0.84, 0.86, 1.0, 0.98); rbl.modulate = rb.modulate      # (the third level as the first two: the dark leaves and rocks before the eye (the owner: "the feeling of the first two"); its rocks a bluer dark)
 		vg.colors = PackedColorArray([Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0.05), Color(0.26, 0.16, 0.3, 0.2)])      # (a soft darkening at the edges: the eye drawn in)
 		_ivw_hand_make(cl)
 		_ivw_life()
@@ -9518,6 +9516,9 @@ func _ivm_hit_box(a: Vector3, b: Vector3) -> float:      # (where along a to b t
 	return t0
 
 ## the gate's door: two leaves of marble shut in its opening, its round head as the opening's; the light behind them out
+func _ivm_salt_ex() -> Dictionary:      # (the white rock's light: one soft gradient wrapped round its forms, its hollows a little darker)
+	return {"lfog": 0.0, "fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.7, "ao_k": 0.45, "veins": 0.0, "dk": 0.0, "bounce": 0.0, "haze": 1.0, "shadow_k": 1.0, "lf_hi": 1.0, "lf_len": 2.6, "smooth_k": 2.6}
+
 func _ivm_gate_shut() -> void:
 	for p in ivw_gate_parts: (p as Node3D).visible = false
 	if ivw_gate_glow != null: ivw_gate_glow.albedo_color.a = 0.0
