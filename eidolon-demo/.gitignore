@@ -3,3 +3,4 @@ build/
 shots/*.mp4
 hero_models/hq*.glb
 __pycache__/
+tools/go/trials_found_*.json
