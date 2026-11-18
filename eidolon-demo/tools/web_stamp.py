@@ -20,14 +20,16 @@ check = ('<script>(function(){var V="%s";function chk(){fetch("version.txt?t="+D
          'document.addEventListener("visibilitychange",function(){if(document.visibilityState==="visible")chk()})})();</script>') % v
 # sound on phones: an iPhone plays the page's sound as media (not muted by its silent switch), and at every touch,
 # click or key each audio context the page made is resumed and given a silent sound, inside the gesture itself,
-# as Safari asks
+# as Safari asks. window.eidolonSound() tells the game whether the sound is let go yet ("on"/"off"): the film puts its
+# sound where the picture is at that moment, once
 unlock = ('<script>(function(){function pb(){try{if(navigator.audioSession)navigator.audioSession.type="playback"}catch(e){}}pb();'
           'var C=window.AudioContext||window.webkitAudioContext;if(!C)return;var all=[];'
           'var W=function(o){var c=(o===undefined)?new C():new C(o);all.push(c);return c};W.prototype=C.prototype;'
           'window.AudioContext=W;if(window.webkitAudioContext)window.webkitAudioContext=W;'
           'function go(){pb();all.forEach(function(c){try{if(c.state!=="running")c.resume();if(!c.__pinged){c.__pinged=1;'
           'var s=c.createBufferSource();s.buffer=c.createBuffer(1,1,22050);s.connect(c.destination);s.start(0)}}catch(e){}})}'
-          '["touchend","click","keydown","pointerup"].forEach(function(t){document.addEventListener(t,go,true)})})();</script>')
+          '["touchend","click","keydown","pointerup"].forEach(function(t){document.addEventListener(t,go,true)});'
+          'window.eidolonSound=function(){for(var i=0;i<all.length;i++)if(all[i].state==="running")return"on";return"off"}})();</script>')
 assert '<head>' in html
 html = html.replace('<head>', '<head>\n' + check + '\n' + unlock, 1)
 (d / 'index.html').write_text(html)

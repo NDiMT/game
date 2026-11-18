@@ -4808,14 +4808,27 @@ func _ivw_text_style() -> void:      # (the lines over the dawn: deep plum lette
 		elif l.material != null: l.add_theme_color_override("font_outline_color", Color(1.0, 0.95, 0.9, clampf(1.2 / float(o), 0.04, 0.2)))
 		else: l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0))
 
-var ivw_film_audio: AudioStreamPlayer; var ivw_film_sync := 0.0
+## the film's sound held to its picture. In a browser all sound is held back until the first touch, and then it begins
+## where it was started: it is put where the picture is then, once. (It was put there whenever it seemed to drift, but
+## a browser tells a sound's place a second late, and each new start copies the whole sound, sixty megabytes: it was
+## started anew every half second, the film stopping each time and its voice jumping.) Elsewhere its place is true
+var ivw_film_audio: AudioStreamPlayer; var ivw_film_sync := 0.0; var ivw_film_live := false
+func _ivw_sound_live() -> bool:      # (a browser has let the sound go)
+	if not OS.has_feature("web"): return true
+	return str(JavaScriptBridge.eval("window.eidolonSound ? window.eidolonSound() : 'on'", true)) != "off"
 func _ivw_film_sync_tick(dt: float) -> void:
 	if not ivw_intro_on or ivw_film_audio == null or ivf_mat == null: return
 	ivw_film_sync -= dt
 	if ivw_film_sync > 0.0: return
-	ivw_film_sync = 0.5
+	ivw_film_sync = 0.1 if OS.has_feature("web") else 0.5
 	var at := ivf_t
-	if absf(ivw_film_audio.get_playback_position() - at) > 0.3:      # (held back, or drifted: on to where the picture is)
+	if OS.has_feature("web"):
+		var live := _ivw_sound_live()
+		if live and not ivw_film_live:
+			if OS.get_environment("IV_SFX_LOG") != "": print("FILM SOUND let go at ", snappedf(at, 0.01))
+			ivw_film_audio.play(at)
+		ivw_film_live = live
+	elif absf(ivw_film_audio.get_playback_position() - at) > 0.3:      # (drifted: on to where the picture is)
 		if OS.get_environment("IV_SFX_LOG") != "": print("FILM SYNC ", snappedf(ivw_film_audio.get_playback_position(), 0.01), " -> ", snappedf(at, 0.01))
 		ivw_film_audio.play(at)
 
@@ -4862,6 +4875,7 @@ func _ivw_intro() -> void:
 	ivf_hold = 2
 	if ResourceLoader.exists("res://intro/intro_audio.ogg"):      # (the film's sound in a player of its own, held to the picture: a browser keeps all sound back until the first touch, and then it must come in where the picture is)
 		ivw_film_audio = AudioStreamPlayer.new(); ivw_film_audio.stream = _ivw_stream("res://intro/intro_audio.ogg"); add_child(ivw_film_audio); ivw_film_audio.play(); ivw_film_sync = 0.5
+		ivw_film_live = _ivw_sound_live()      # (let go already, as on a computer that allows it: it began with the picture)
 
 func _ivw_intro_end() -> void:      # (at its end, or at a tap: the film fades into the faded level, the name, PLAY)
 	if not ivw_intro_on or ivf_close_at >= 0.0: return
