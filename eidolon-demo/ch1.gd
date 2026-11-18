@@ -4667,15 +4667,16 @@ func _ivf_apply() -> void:      # (the film at ivf_t: how far the vase has turne
 		if vs != null: ivf_vid.stream = vs; ivf_vid.play(); ivf_vid_card = front; ivf_vid_done = false
 	var k0 := floori(phi - 0.75)
 	var has_pan := Vector4.ZERO; var vid_slot := -1.0; var infos: Array = []; var inka: Array = []; var inkb: Array = []
+	var strip_l := Vector4.ZERO; var pan_l := Vector4.ZERO; var txt_l := Vector4.ZERO      # (the layer of each texture array each of the four places shows)
 	for j in 4:
 		var k := k0 + j; var card := k if k >= 0 and k <= 6 else -1
-		ivf_mat.set_shader_parameter("strip%d" % j, _ivf_load("res://intro/vase/strip%d.jpg" % posmod(k, 5)))
+		strip_l[j] = float(posmod(k, 5))
 		var info := Vector4.ZERO; var ia := Vector4.ZERO; var ib := Vector4.ZERO
 		if card >= 0:
 			has_pan[j] = 1.0
-			var pv := "a" if (card != front - 1 and not (card == front and ivf_vid_done)) else "b"
+			var last := not (card != front - 1 and not (card == front and ivf_vid_done))      # (its last picture once its scene has played)
 			if card == front and ivf_vid_card == front and not ivf_vid_done: vid_slot = float(j)
-			ivf_mat.set_shader_parameter("pan%d" % j, _ivf_load("res://intro/vase/pan%d%s.jpg" % [card, pv]))
+			pan_l[j] = float(card + (7 if last else 0)); txt_l[j] = float(card)
 			if card <= front:
 				var pg: Array = pages[card]; var p := int(a[3]) if card == front else pg.size() - 1
 				var base := 0
@@ -4685,8 +4686,8 @@ func _ivf_apply() -> void:      # (the film at ivf_t: how far the vase has turne
 					var ink := 1.0 if card < front else lerpf(float(a[4 + base + l]), float(b[4 + base + l]), w)
 					if l < 4: ia[l] = ink
 					else: ib[l - 4] = ink
-				ivf_mat.set_shader_parameter("txt%d" % j, _ivf_load("res://intro/vase/text%d.png" % card))
 		infos.append(info); inka.append(ia); inkb.append(ib)
+	ivf_mat.set_shader_parameter("strip_l", strip_l); ivf_mat.set_shader_parameter("pan_l", pan_l); ivf_mat.set_shader_parameter("txt_l", txt_l)
 	ivf_mat.set_shader_parameter("phi", phi); ivf_mat.set_shader_parameter("fade", fade); ivf_mat.set_shader_parameter("k0", float(k0))
 	ivf_mat.set_shader_parameter("has_pan", has_pan); ivf_mat.set_shader_parameter("vid_slot", vid_slot)
 	ivf_mat.set_shader_parameter("txt_info", infos); ivf_mat.set_shader_parameter("ink_a", inka); ivf_mat.set_shader_parameter("ink_b", inkb)
@@ -4870,10 +4871,22 @@ func _ivw_intro() -> void:
 	ivw_intro_box.add_child(ivf_vid)
 	ivw_intro_on = true
 	get_viewport().disable_3d = true      # (the film covers all: the level is not drawn under it)
+	ivf_hold = 1 << 30      # (its clock held until it has what it needs)
 	_ivf_apply()
-	_ivw_sounds_ready(["res://intro/intro_audio.ogg", "res://music/theme.ogg"])      # (in a browser: its sound and the theme that comes in at its end, decoded now, on its first plum, not while the vase turns)
-	ivf_hold = 2
-	if ResourceLoader.exists("res://intro/intro_audio.ogg"):      # (the film's sound in a player of its own, held to the picture: a browser keeps all sound back until the first touch, and then it must come in where the picture is)
+	_ivf_begin()
+
+## the film's first plum drawn at once; then, under it, its pictures loaded and its sounds made ready (in a browser the
+## film's sound and the theme that comes in at its end are decoded here, not while the vase turns); then it begins
+func _ivf_begin() -> void:
+	for f in 2: await get_tree().process_frame
+	if not ivw_intro_on or ivf_mat == null: return
+	for k in ["strips", "pans", "texts"]:      # (its pictures, each kind one texture array: a phone's graphics take few textures to a shader)
+		var fp := "res://intro/vase/%s.%s" % [k, "png" if k == "texts" else "jpg"]
+		ivf_mat.set_shader_parameter(k, load(fp) if ResourceLoader.exists(fp) else null)
+	_ivw_sounds_ready(["res://intro/intro_audio.ogg", "res://music/theme.ogg"])
+	if not ivw_intro_on: return
+	ivf_hold = 2      # (the frames that loaded and decoded are not counted)
+	if ivf_close_at < 0.0 and ResourceLoader.exists("res://intro/intro_audio.ogg"):      # (not if it was skipped while it made ready)      # (the film's sound in a player of its own, held to the picture: a browser keeps all sound back until the first touch, and then it must come in where the picture is)
 		ivw_film_audio = AudioStreamPlayer.new(); ivw_film_audio.stream = _ivw_stream("res://intro/intro_audio.ogg"); add_child(ivw_film_audio); ivw_film_audio.play(); ivw_film_sync = 0.5
 		ivw_film_live = _ivw_sound_live()      # (let go already, as on a computer that allows it: it began with the picture)
 
@@ -4935,31 +4948,15 @@ func _ivw_next() -> String:      # the next node of the way from where she stand
 
 const IVW_THEME_AT := 8.0      # (seconds before the film's end: the theme comes in under its fading score and its last spoken line; at 6 there was a breath of silence between them)
 var ivw_theme_on := false
-## the 3D drawn a little coarser only where the device cannot keep up (never the words, the name or the film): while
-## she plays the frames are timed, and while most of them come late the 3D is drawn at fewer pixels, a step at a time,
-## two steps at most; a device that keeps up keeps every pixel. (A phone's screen has two or three pixels to each of
-## the game's, and drawing every one of them, each frame, is most of a phone's work)
-const IVQ_SCALES := [1.0, 0.8, 0.66]
-var ivq_dts: Array = []; var ivq_wait := 4.0; var ivq_step := 0
-func _ivq_tick(dt: float) -> void:
-	if OS.get_environment("IV_SCALE3D") != "":      # (to see a scale)
-		var want := OS.get_environment("IV_SCALE3D").to_float()
-		if not is_equal_approx(get_viewport().scaling_3d_scale, want): get_viewport().scaling_3d_scale = want
-		return
-	if ivq_step >= IVQ_SCALES.size() - 1 or not started or ivw_intro_on or not (OS.has_feature("web") or OS.has_feature("mobile")): return
-	ivq_dts.append(dt)
-	if ivq_dts.size() > 120: ivq_dts.pop_front()
-	ivq_wait -= dt
-	if ivq_wait > 0.0 or ivq_dts.size() < 120: return
-	var srt := ivq_dts.duplicate(); srt.sort()
-	if float(srt[60]) > 0.0215:      # (most of the last 120 frames late: fewer than about 46 a second)
-		ivq_step += 1; get_viewport().scaling_3d_scale = IVQ_SCALES[ivq_step]; ivq_dts.clear(); ivq_wait = 2.0
-		print("EIDOLON: 3D at ", IVQ_SCALES[ivq_step], " (frames ", snappedf(float(srt[60]) * 1000.0, 0.1), " ms)")
-	else: ivq_wait = 1.0
+## the 3D always at its full resolution in the GO levels (the owner: "I want it in high resolution"): the engine's own
+## watch (main.gd _keep_smooth) lowered it, down to half and without shadows' detail or smoothing, whenever the frames
+## came late for a second, and seldom raised it again
+func _keep_smooth() -> void:
+	if go_demo: return
+	super._keep_smooth()
 
 func _ivw_tick(dt: float) -> void:
 	_ivf_tick(dt)
-	_ivq_tick(dt)
 	if ivw_intro_on and ivf_mat != null and not ivw_theme_on and ivf_len > 1.0 and ivf_t >= ivf_len - IVW_THEME_AT:      # (the user: "the music from the film into the first level, seamless")
 		ivw_theme_on = true; _ivw_music("res://music/theme.ogg", IVW_THEME_AT - 0.5)
 	_ivw_birds_tick(dt)

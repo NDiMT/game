@@ -2,6 +2,9 @@
 // eidolon-world/dev/intro/amphora/tools/vase.py, turning, lit in flat facets, its scenes in their panels and its words
 // on the black band, graded into the first level's dawn (intro_dawn.cube), with the first level's sky behind it.
 // Every length here is the original's: screen pixels of the 1080x1920 film, texture pixels of its strips.
+// Its pictures come in three texture arrays (strips, pans, texts) and two more textures: a phone's graphics give a
+// picture-drawing shader 16 textures at most, Godot keeps three of them and the six highest for itself, and one
+// texture to a piece (14) passed that: on a phone the film was not drawn at all.
 shader_type canvas_item;
 render_mode unshaded;
 
@@ -12,21 +15,15 @@ uniform vec3 plum = vec3(0.1294, 0.0784, 0.1294);
 uniform vec4 prof[16];                        // the vase's radius (in R0) at 64 heights over [-130, 2100]
 uniform vec4 facj[15];                        // each facet's own shade
 uniform float k0 = -2.0;                      // the first of the four places in view
-uniform sampler2D strip0 : filter_linear_mipmap, repeat_disable;
-uniform sampler2D strip1 : filter_linear_mipmap, repeat_disable;
-uniform sampler2D strip2 : filter_linear_mipmap, repeat_disable;
-uniform sampler2D strip3 : filter_linear_mipmap, repeat_disable;
-uniform sampler2D pan0 : filter_linear_mipmap, repeat_disable;
-uniform sampler2D pan1 : filter_linear_mipmap, repeat_disable;
-uniform sampler2D pan2 : filter_linear_mipmap, repeat_disable;
-uniform sampler2D pan3 : filter_linear_mipmap, repeat_disable;
+uniform sampler2DArray strips : filter_linear_mipmap, repeat_disable;   // the five ornament bands
+uniform vec4 strip_l = vec4(0.0);             // which band each of the four places in view wears
+uniform sampler2DArray pans : filter_linear_mipmap, repeat_disable;     // each scene's first picture (layers 0-6) and last (7-13)
+uniform vec4 pan_l = vec4(0.0);               // which picture each place shows
 uniform sampler2D vid : filter_linear, repeat_disable;   // the scene in front, playing
 uniform vec4 has_pan = vec4(0.0);             // which of the four places carry a scene
 uniform float vid_slot = -1.0;                // which of them shows it playing
-uniform sampler2D txt0 : filter_linear_mipmap, repeat_disable;
-uniform sampler2D txt1 : filter_linear_mipmap, repeat_disable;
-uniform sampler2D txt2 : filter_linear_mipmap, repeat_disable;
-uniform sampler2D txt3 : filter_linear_mipmap, repeat_disable;
+uniform sampler2DArray texts : filter_linear_mipmap, repeat_disable;    // each card's words, its pages one under another, three pages' room
+uniform vec4 txt_l = vec4(0.0);               // which card each place carries
 uniform vec4 txt_info[4];                     // per place: the page shown, its pages, the lines on that page, written at all
 uniform vec4 ink_a[4];                        // the ink of the page's lines 1-4, and 5-8
 uniform vec4 ink_b[4];
@@ -45,6 +42,7 @@ const vec4 PAN = vec4(79.0, 579.0, 1118.0, 1112.0);
 const float TXT0 = 1705.0;
 const float BH = 635.0;
 const float LH = 104.0;
+const float NPG = 3.0;                        // (pages' room in each card's words)
 const vec3 SUN = vec3(1.05, 1.0, 0.93);
 const vec3 SHADE = vec3(0.66, 0.62, 0.80);
 const vec3 LIFT = vec3(24.0, 17.0, 42.0) / 255.0;
@@ -77,16 +75,9 @@ vec3 grade(vec3 c) {     // the dawn LUT: 33 slices of red (x) by green (y), one
 }
 
 vec4 tex4(int j, int what, vec2 uv, float lod) {      // one of the four places' strip, picture or words
-	if (what == 0) {
-		if (j == 0) return textureLod(strip0, uv, lod); if (j == 1) return textureLod(strip1, uv, lod);
-		if (j == 2) return textureLod(strip2, uv, lod); return textureLod(strip3, uv, lod);
-	}
-	if (what == 1) {
-		if (j == 0) return textureLod(pan0, uv, lod); if (j == 1) return textureLod(pan1, uv, lod);
-		if (j == 2) return textureLod(pan2, uv, lod); return textureLod(pan3, uv, lod);
-	}
-	if (j == 0) return textureLod(txt0, uv, lod); if (j == 1) return textureLod(txt1, uv, lod);
-	if (j == 2) return textureLod(txt2, uv, lod); return textureLod(txt3, uv, lod);
+	if (what == 0) return textureLod(strips, vec3(uv, strip_l[j]), lod);
+	if (what == 1) return textureLod(pans, vec3(uv, pan_l[j]), lod);
+	return textureLod(texts, vec3(uv, txt_l[j]), lod);
 }
 
 void fragment() {
@@ -110,7 +101,7 @@ void fragment() {
 	vec2 hp = vec2((ul + SLOT * 0.5) * PXD, (h - H_TOP) * KK);          // in the strip, texture pixels
 	vec2 hpc = vec2((u + SLOT * 0.5) * PXD, hp.y);                       // the same, without the wrap from place to place
 	vec2 dd = max(abs(dFdx(hpc)), abs(dFdy(hpc)));
-	float lod = max(log2(sqrt(max(dd.x * dd.y, 1e-6)) / KK) - 0.35, 0.0);   // (the strips hold one texel to a screen pixel of the film; the mean of the two ways, a little sharp, so the leaning neck keeps its line)
+	float lod = max(log2(sqrt(max(dd.x * dd.y, 1e-6))) - 0.35, 0.0);   // (the strips and the words hold the film's full size, a texel to a texture pixel; the mean of the two ways, a little sharp, so the leaning neck keeps its line)
 	int j = int(sl - k0);
 	vec3 col = vec3(0.094, 0.075, 0.078);
 	if (j >= 0 && j <= 3) {
@@ -118,12 +109,12 @@ void fragment() {
 		vec2 pu = (hp - PAN.xy) / PAN.zw;
 		if (has_pan[j] > 0.5 && pu.x >= 0.0 && pu.x <= 1.0 && pu.y >= 0.0 && pu.y <= 1.0) {
 			if (abs(vid_slot - float(j)) < 0.5) col = textureLod(vid, pu, 0.0).rgb;
-			else col = tex4(j, 1, pu, max(lod - 0.35, 0.0)).rgb;
+			else col = tex4(j, 1, pu, max(lod - 0.714, 0.0)).rgb;      // (the pictures are their clips' size, 864 for the 1118 of their frame: log2 of that, and a little sharp, as before)
 		}
 		vec4 ti = txt_info[j];
 		float yb = hp.y - TXT0;
 		if (ti.w > 0.5 && yb >= 0.0 && yb < BH) {
-			float a = tex4(j, 2, vec2(hp.x / SW, (ti.x * BH + yb) / (ti.y * BH)), lod).r;
+			float a = tex4(j, 2, vec2(hp.x / SW, (ti.x * BH + yb) / (NPG * BH)), lod).r;
 			float top = (BH - ti.z * LH) * 0.5 - 8.0;
 			int l = int(clamp(floor((yb - top) / LH), 0.0, max(ti.z - 1.0, 0.0)));
 			float ink = l < 4 ? ink_a[j][l] : ink_b[j][l - 4];

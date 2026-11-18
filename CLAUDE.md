@@ -39,6 +39,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   way to bring her back, last "he carved her face a thousand times"): "Theron searched for a way / to bring her back."
   → (stones up) "Her face lies under the sea. / She must see it to pass over." → (gate) "He carved her face a
   thousand times." Letter: Cormorant Garamond italic.
+- **The film's textures** (`intro/vase/`): three texture arrays (`strips.jpg`, `pans.jpg`, `texts.png`, sliced in
+  their `.import`), the vase and the words at the film's full size. A phone gives a canvas shader 16 textures, and
+  Godot takes three of them plus the six highest units for itself. With one texture per piece (17 sampled) the film
+  was not drawn at all on phones, while a desktop browser (32) showed it. Keep any canvas shader to 8 textures or fewer.
 - **Start screen**: plum dark, cream EIDOLON and PLAY, a subdued veiled statue behind (`ui/start_statue.jpg`); the
   film opens and closes in the same plum.
 - **Play it in a browser**: https://ndimt.github.io/game/eidolon-waking/ (the owner OK'd publishing there).
@@ -56,7 +60,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
     moves.
   - Pose nothing hidden each frame. Hidden drawn figures (`fig`/`wfig` in `main.gd`) and her hidden bodies
     (`_go_bodies_rest`) cost a phone most of its frame.
-  - On web/mobile the 3D steps down to 0.8, then 0.66, only while frames come late (`_ivq_tick`).
+  - The 3D is always at full resolution in the GO levels (the owner: "I want it in high resolution"). The engine's own
+    watch (`main.gd` `_keep_smooth`) lowered it to half, without shadow detail or MSAA, when frames came late; `ch1.gd`
+    turns it off for `go_demo`.
   - `IV_HITCH=1` prints long frames, and every 3 s the frame's work, draws and triangles. Script work for the waking,
     measured without a screen: 5.9 → 1.7 ms a frame.
 - **The camera** holds the whole map and follows her a little, smoothly and a little behind; on larger maps it goes
