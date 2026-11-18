@@ -40,7 +40,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   carved to make Ione's face again (not Ione). **One line only, at the start of each level; nothing in its middle,
   nothing at its end** (the owner, 18/11). Short and clipped ("πιο κοφτά"), the levels telling the story in turn:
   level 1 "Theron searched for her / long after hope was gone." (the owner: "Theron attempted to find her", a little
-  more beautiful); level 2 "So he carved her face / into a thousand statues." (the owner's own line). Letter: the
+  more beautiful); level 2 "He tried to find her face again, / so he carved a thousand statues, / but none was her." (the owner's own
+  words, 18/11; three lines, each within a phone's width: a line wider than about 0.85 of it runs off the screen). Letter: the
   Cormorant Garamond upright (`fonts/CormorantGaramond-Variable.ttf`, weight 520, 47 px at 720 wide), high in the sky,
   its lines coming one after the other, each rising a little (`_ivw_story_write`; the owner chose it of three, 18/11).
 - **The film's textures** (`intro/vase/`): three texture arrays (`strips.jpg`, `pans.jpg`, `texts.png`, sliced in
@@ -53,12 +54,12 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   statues (the owner, 18/11: "smoother and better lit"): `smooth_k` 4, its own light from the front left (`form_key`;
   never `key_dir`, which `light()` uses to keep the sun), shade baked into its folds (`tools/go/bake_ao.py`).
 - **Backdrops in one piece, without a horizon** (the owner, 18/11: "no horizon line", "in general, backdrops in one
-  piece, without a horizon"): the band where a painted sea meets its sky is lost in a soft mist by
-  `tools/bg/no_horizon.py <in> <out> <horizon> [width] [peak] [lift]` (the painting's own light blurred far both ways,
-  laid over the band in a bell: things at the horizon rise out of it, nothing is smeared; blurring the band up and down
-  only smeared them into streaks). Done on all three levels' backdrops (level 1 lighter, 0.024 and 0.75, so its low sun
-  stays). In the game the water's glints and small waves come in slowly over 0.22 of the screen below the haze
-  (`far_w` in `IV_SEA_SH`), so no line marks where the sea begins. Run it on every new backdrop.
+  piece, without a horizon"): the line is taken out of the painting by an edit in Gemini (`gen.py` with the painting as
+  its reference and "keep everything exactly as it is, change only one thing: there must be no horizon line ... the
+  statues stay whole, bases included"); done on all three levels' backdrops. A mist laid over the band by code was
+  turned down: it ate the far statues' bases ("the base of the statues is missing"). In the game the water's glints and
+  small waves come in slowly over 0.22 of the screen below the haze (`far_w` in `IV_SEA_SH`), so no line marks where the
+  sea begins.
 - **Start screen**: plum dark, cream EIDOLON and PLAY, a subdued veiled statue behind (`ui/start_statue.jpg`); the
   film opens and closes in the same plum.
 - **Play it in a browser**: https://ndimt.github.io/game/eidolon-waking/ (the owner OK'd publishing there).
@@ -108,7 +109,7 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   end, the block needed), plan `tools/go/veil_plan.py`. `go_veil` rides the waking's sea, light, sounds and gate
   (`go_wake` is true for it too); what is the waking's own (film, menu, kneel and rise, winch) asks `not go_veil`.
   It begins by itself out of a warm light (`_ivv_begin`), she standing; its piece is Last Light; its one line "So he
-  carved her face / into a thousand statues." The hole (`holes` in the puzzle; `gaps` is the quarry's chasms): no
+  tried to find her face again, / so he carved a thousand statues, / but none was her." The hole (`holes` in the puzzle; `gaps` is the quarry's chasms): no
   walking into it; the block pushed into it falls in, its top flush with the way (`_ivv_push_in`), foam thrown out round
   it and kept round it after (the owner; its place in the shore map by `tools/go/shore_hole.py`: run it again after
   rebuilding the level), and the way's line and disc over it come up out of the water (`_ivv_way_parent`). Five statues, each different (the owner): kneeling,
@@ -117,7 +118,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   (the plan's turn sets that face toward the eye). Its backdrop is its own (`goveil/backdrop.jpg`: the golden morning,
   far veiled statues at the horizon, horizon 0.362). Concept: `design/level2/concept.jpg`. Its block is a sandier
   marble than the slabs, a little uneven; its meander cut unevenly by hand, a darker shade of the same stone, not
-  terracotta (the owner) (`props/block_meander.glb`, `tools/go/block_meander.py`).
+  terracotta (the owner) (`props/block_meander.glb`, `tools/go/block_meander.py`). In the empty sea at the bottom right, a
+  rock and a smaller one beside it (the owner, 18/11): `rocks_after` in its plan, made after all the rest so nothing else
+  of the level changes; it is built `ivory_level.py -- goveil/level.glb goveil/level.json 11 48 goveil/plan.json`, then
+  `shore_hole.py goveil`.
 - **Both levels** (the owner, 18/11): the whole opening of each gate is white, and she stops just before it so she is
   seen until the flash. The way's line stays as it was: a pink and a neon terracotta glow were tried and turned down.
 - **Level 3, The Mirror, built 18/11** (`gomilos/`, `FLIP=gomilos`; the owner: "a level 3, the script's third line, a matching map, a

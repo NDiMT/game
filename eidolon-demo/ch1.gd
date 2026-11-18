@@ -5994,12 +5994,12 @@ func _ivr_build() -> void:
 		var nm := String(mi.name).to_lower() + "|" + String(mi.get_parent().name).to_lower()
 		var kind := "rock2" if nm.contains("rock") else ("olive2" if nm.contains("olive") else ("bark" if nm.contains("bark") else ("snow" if nm.contains("snow") else ("quarry" if nm.contains("quarry") else "marble2"))))
 		mi.material_override = _ivr_mat(kind, 1.0, true); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-		if go_milos and nm.contains("salt"): mi.material_override = _iv_mat("salt", 0.0, _ivm_salt_ex())      # (the white rocks in the sea: smooth, softly lit, like salt)
+		if go_milos and (nm.contains("salt") or nm.contains("island")): mi.material_override = _iv_mat("salt", 0.0, _ivm_salt_ex())      # (the island's white sea-worn rock, as the first build had it (the owner: "the first rocks", "like salt"): smooth, softly lit)
 	if iv_at_sea:      # (the level's image in the still water: faint at dusk, clear at dawn)
 		ivw_mirror = _ivs_mirror(lv, func(mi: MeshInstance3D) -> Array:
 			var nm := String(mi.name).to_lower() + "|" + String(mi.get_parent().name).to_lower()
 			var kd := "rock2" if nm.contains("rock") else "marble2"
-			if go_milos and nm.contains("salt"):
+			if go_milos and (nm.contains("salt") or nm.contains("island")):
 				var sx := _ivm_salt_ex(); sx.merge({"fog_lo": ivr_sea_y - 0.15, "haze": 1.0}, true); return ["salt", 0.0, sx]
 			return [kd, 0.0, {"fog_hi": ivr_sea_y + (0.04 if go_wake else 1.5), "fog_lo": ivr_sea_y - 0.15, "veins": 0.6 if kd == "marble2" else 0.0, "haze": 1.0}])
 	# its way

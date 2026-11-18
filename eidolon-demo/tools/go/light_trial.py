@@ -119,7 +119,31 @@ def milos():      # the third level on the concept's own map (the owner: "the sa
     cells = sorted({c for w in lv + gp for c in w})
     return Light(cells, lv, gp, (-2, 0), (4, 3), ((0, -2), N), [((0, 3), 1)], (2, 3))
 
+def terraces():      # the third level redrawn from the start (the owner, 18/11), stepped as the first two levels are
+    # She starts on a low platform in the sea and climbs to a terrace; at its west end, on its own ledge, the goddess's
+    # mirror. The statue stands in the sea to the east, and the light of her eyes runs over the water to the mirror,
+    # which throws it south, down onto the terrace, at first. Turned (from the terrace, its only side on land), it
+    # throws the light north over the cleft to the upper terrace, where a stone stands in it before the ring. She climbs
+    # to the upper terrace by its own stair, round behind the stone, and pushes it east into its niche: she stands in the
+    # light herself; a step back, and the ring lights and the gate opens; through the stone's place to the ring.
+    # x: east, toward the statue; y: north, up the terraces
+    lv = [((2, 0), (2, 1)),                                                       # the start's stair, up to the terrace
+          ((2, 1), (1, 1)), ((1, 1), (0, 1)), ((0, 1), (-1, 1)),                 # the terrace
+          ((0, 1), (0, 2)),                                                        # (the mirror on its ledge: turned from here)
+          ((-1, 1), (-1, 2)), ((-1, 2), (-1, 3)),                                  # its west end, and the stair to the upper terrace
+          ((-1, 3), (-1, 4)), ((-1, 4), (0, 4)), ((0, 4), (1, 4)),                 # behind the stone; the stone; its niche
+          ((0, 4), (0, 5))]                                                        # the ring before the gate
+    gp = [((4, 2), (3, 2)), ((3, 2), (2, 2)), ((2, 2), (1, 2)), ((1, 2), (0, 2)),      # the light over the water to the mirror
+          ((0, 2), (0, 3)), ((0, 3), (0, 4))]                                      # and over the cleft
+    cells = sorted({c for w in lv + gp for c in w})
+    return Light(cells, lv, gp, (2, 0), (0, 5), ((4, 2), W), [((0, 2), 0)], (0, 4))
+
 if __name__ == '__main__':
+    if len(sys.argv) > 1 and sys.argv[1] == 'terraces':
+        r = solve(terraces())
+        print('terraces: shortest', r['len'], 'ways', r['ways'], 'states', r['states'], 'dead ends', r['dead'])
+        print(' '.join('%d%d%s' % (c[0], c[1], '(' + e + ')' if e else '') for c, e, _ in r['path']))
+        sys.exit(0)
     r = solve(milos())
     print('milos: shortest', r['len'], 'ways', r['ways'], 'states', r['states'], 'dead ends', r['dead'])
     print(' '.join('%d%d%s' % (c[0], c[1], '(' + e + ')' if e else '') for c, e, _ in r['path']))

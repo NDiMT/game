@@ -1149,6 +1149,8 @@ else:
         if cw is None: print('CYPRESS dropped: no room off the way')
         else: lv, bk = cypress(cw[0], cp[1], cw[1], ch_); olive += lv; barks += bk
     if QUARRY_ON: quarries += quarry_terrain(PLAN)
+    for (c, r_, top) in PLAN.get('rocks_after', []):      # (rocks added to a level after it was first built: made last, so that nothing made before them comes out otherwise)
+        rock += ledge('ledge', c, r_, top)
     U = Vector((0.7071, 0.0, -0.7071)); W = Vector((0.7071, 0.0, 0.7071)); Y = Vector((0.0, 1.0, 0.0))
     if PLAN.get('relief'): PLAN['relief'] = list(Vector(PLAN['relief']) + W * 0.32)      # (a small carved stone set in the face of the rock: the game puts it there)
     RELIEF_W = W

@@ -99,7 +99,7 @@ for nm, f in fl.items():
     closer = d2 < dnear; htop = np.where(closer, hr, htop); dnear = np.minimum(dnear, d2); inside_any |= m
     if f['h'] > SEA + 0.6:      # (its shoulder: the rock a step below the walk, broader, flaring more)
         D = smin(D, walk(d2 - 0.75, hr - 0.4, re=0.35, flare=0.25).astype(np.float32), 0.35)
-for (x0, x1, z0, z1, h) in PLAN.get('bridges', []):      # (a bridge of the rock itself: its walk on top)
+for (x0, x1, z0, z1, h) in (PLAN.get('bridges', []) if PLAN.get('island_bridge', True) else []):      # (a bridge of the rock itself: its walk on top; none where the way's own slab spans the chasm)
     m = (Xg >= x0) & (Xg <= x1) & (Zg >= z0 - 0.3) & (Zg <= z1 + 0.3); d2 = sdf2(m)
     D = np.minimum(D, walk(d2, h - DROP, re=0.15, flare=0.05).astype(np.float32))
     closer = d2 < dnear; htop = np.where(closer, h - DROP, htop); dnear = np.minimum(dnear, d2)
@@ -120,7 +120,7 @@ for st in PLAN.get('statues', []):      # (where a statue stands on a rock: a fl
     if y > SEA + 0.2 and not any(abs(y - f['h']) < 0.05 for f in fl.values()):
         D = smin(D, box3(x - 0.55, x + 0.55, z - 0.55, z + 0.55, y - 1.6, y, r=0.18).astype(np.float32), 0.3)
 # the stair cut in it: each step a block from its tread down and back to the walk above
-for (foot, head, w, n, *_) in PLAN.get('flights', []):
+for (foot, head, w, n, *_) in (PLAN.get('flights', []) if PLAN.get('island_stair', True) else []):      # (none where the stair is the way's own, laid by ivory_level.py)
     dx, dz = head[0] - foot[0], head[2] - foot[2]; L = math.hypot(dx, dz); ux, uz = dx / L, dz / L
     rise = (head[1] - foot[1]) / n; run = L / n
     for k in range(n):
@@ -133,7 +133,7 @@ for (foot, head, w, n, *_) in PLAN.get('flights', []):
 # ---------------------------------------------------------------- the waters cut out, the hollows
 for (x0, x1, z0, z1) in PLAN.get('waters', []):
     cut = box3(x0, x1, z0, z1, SEA - 6.0, Y1 + 6.0, r=0.32).astype(np.float32)
-    for (bx0, bx1, bz0, bz1, bh) in PLAN.get('bridges', []):      # (the bridge stays: only its tunnel is cut under it)
+    for (bx0, bx1, bz0, bz1, bh) in (PLAN.get('bridges', []) if PLAN.get('island_bridge', True) else []):      # (the bridge stays: only its tunnel is cut under it)
         keep = box3(bx0 - 0.02, bx1 + 0.02, bz0 - 0.4, bz1 + 0.4, bh - 0.62, bh + 3.0, r=0.12).astype(np.float32)
         cut = np.maximum(cut, -keep)
     D = smax(D, -cut, 0.16)
@@ -144,6 +144,11 @@ for nc in PLAN.get('niches', []):      # (a niche cut for a thing to go into: th
     D = smax(D, -box3(x0, x1, z0, z1, y0, y1, r=0.12).astype(np.float32), 0.08)
 for (x, y, z, r) in PLAN.get('hollows', []):
     D = smax(D, -blob((x, y, z), (r, r * 0.8, r)).astype(np.float32), 0.12)
+if DROP > 0.0:      # (the way's slabs and the stone under them stand in the white rock: none of it over their places)
+    for nm, f in fl.items():
+        d2 = sdf2(poly_inside(f['xz'])); hr = f['h'] - DROP
+        cut = np.maximum(d2[:, None, :] - 0.16, hr - Y3).astype(np.float32)
+        D = smax(D, -cut, 0.1)
 
 # ---------------------------------------------------------------- the sea's wearing, on the faces only
 def noise3(cell, seed_shift):

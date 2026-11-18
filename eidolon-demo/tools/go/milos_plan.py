@@ -40,8 +40,6 @@ LIGHT = {      # nodes the light passes and no one walks: the sea before the isl
     'Q': W(0, -1, H1), 'W1': W(0, 1, H1), 'W2': W(0, 2, H1), 'W3': W(1, 3, H1),
 }
 GODDESS = ['goddess', [-10.62, SEA - 4.2, -5.25], 11.0, -1.2]      # (Aphrodite, a colossus rising out of the sea behind her sanctuary, the highest rock hiding where she meets the water (the owner: "a big statue of Aphrodite", "much bigger"), her face turned to the eye; without arms: they broke when Theron took her mirror; a little more of her shape than at first (the owner) (props/statue_goddess.glb, 4200 faces))
-SALT = [(-1.45, 4.55, 0.62, 0.52), (1.4, 3.7, 0.55, 0.42), (2.3, 1.85, 0.5, 0.48), (2.15, -1.85, 0.48, 0.4),
-        (-6.25, 2.77, 0.7, 0.66), (1.83, 5.93, 0.62, 0.5), (3.34, -2.9, 0.72, 0.62), (0.66, 7.91, 0.45, 0.34)]      # (white sea-worn rocks in the water about it, as Milos has them at Sarakiniko: round and soft, low (the owner: "fewer rocks around", "the rocks you had before, like salt"): the first four at the island's foot where the first build had its white lumps, the rest a little out; x, z, how broad, how far out of the water; each below the painted sea's rim on the screen, clear of the way, the light and its statue)
 WAY = ['A', 'B', 'C', 'D', 'M', 'C', 'B', 'A', 'X', 'F', 'G', 'H', 'P', 'K', 'P', 'K', 'Y', 'R']      # (M: the mirror turned; the first K: the push)
 
 
@@ -83,7 +81,9 @@ def plan():
              [[-6.7, SEA, -6.5], 0.95, H1 + 1.3],
              [[-2.0, SEA, 3.05], 1.05, H1 - 0.55],      # (the island's shoulder beside the path)
              [[-4.4, SEA, 3.0], 0.95, H1 - 0.45],
-             [[-0.7, SEA, -3.3], 0.8, H1 - 0.6]]      # (its shoulder over the chasm's mouth)
+             [[-0.7, SEA, -3.3], 0.8, H1 - 0.6],      # (its shoulder over the chasm's mouth)
+             [[-1.45, SEA, 4.45], 0.6, H0 - 0.2], [[1.35, SEA, 3.65], 0.55, H0 - 0.25],      # (about the platform)
+             [[2.25, SEA, 1.75], 0.5, SEA + 0.24], [[2.1, SEA, -1.75], 0.45, SEA + 0.2]]      # (small rocks in the sea, clear of the light)
     pts = [p for p in N.values()] + [[x, f['h'], z] for f in floors.values() for x, z in f['xz']] + [[-4.5, H1 + 2.3, -6.85]] \
         + [[s[1][0], s[1][1] + s[2], s[1][2]] for s in statues if s[0] != 'goddess'] + [LIGHT['Z']]
     pl = {
@@ -95,7 +95,9 @@ def plan():
         'rock_style': {'ease': [0.006, 0.016], 'boulder_ease': 0.012, 'tilt': [0.2, 0.45], 'lean': 2.6, 'cut_p': 0.85, 'chamf': [0.12, 0.36], 'side_cuts': [2, 3], 'sat_min': 0.2},      # (its rock cut sharper and more aslant than the other levels' (the owner))
         'bridges': [[-5.0, -4.0, -5.24, -3.76, H1]],      # (a slab over the chasm, nothing under it but the sea; a joint's breadth from each floor)
         'statues': statues, 'pedestals': [], 'shore_statues': ['standing'],      # (the light's statue stands in the water: the sea's thin foam hugs her as it does the rock)
-        'rocks': rocks, 'salt_rocks': SALT,
+        'rocks': rocks,      # (the first build's rocks, as the owner asked them back ("the first rocks you had put", "like salt"): the island's white sea-worn rock, made by milos_island.py)
+        'rock_drop': 1.15, 'island_stair': False, 'island_bridge': False,      # (the way is the other levels' slabs on the grey-blue stone cut sharp under them (the owner: "the stone under the path grey-blue", "the grey rocks cut sharper and aslant"), laid by ivory_level.py; the white rock's own top this far under theirs, the stair and the bridge theirs, not the rock's)
+        'hollows': [[-2.0, H1 - 0.42, 3.0, 0.62], [-4.25, H1 - 0.38, 3.05, 0.55]],      # (round pits the sea wore in the shelf beside the path, as the first build had them)
         'columns': [], 'volute': None, 'head': None, 'relief': None, 'cypress': None,
         'eye': eye_fit(pts, top_room=0.33, bottom_room=0.16, margin=0.6),      # (the colossus is left out of the fit: it rises behind, into the sky)
         'shore': True,
