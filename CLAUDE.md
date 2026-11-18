@@ -121,10 +121,14 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   should leave from a statue, and be blocked by a stone"): a veiled marble woman standing in the water at the channel's
   lower end, a light in her hands (no plinth: the busts on plinths looked staged); it runs up the channel to the
   goddess's bronze mirror; a swipe into the mirror turns it; the stone and she herself (where she stands she casts a
-  shadow) stop the light; the gate is closed until the light reaches the ring before it, across a chasm, and then
-  stays open; the ring is entered only open. Board `milos()` in `tools/go/light_trial.py` (12 swipes, 2 ways, no dead
-  end): turn the mirror (the light goes onto the stone at the bridge's head), go round to the stone's far side, push
-  it off the line twice (after the first push she stands in the light herself). The first design, `mirror_holster` in
+  shadow) stop the light; the ring before the gate is unlit and the gate's door shut until the light reaches the ring
+  (the owner: "the mirror lights the circle, which is off, and it lights and the door opens"), and then it stays open;
+  the ring is entered only open. Laid on the concept's own map (the owner: "the same general map, the puzzle as it
+  should be"): board `milos()` in `tools/go/light_trial.py` (18 swipes, one way, no dead end, 60 states). The stair up
+  beside the channel to the mirror (its only side on land) and turn it: the light goes onto the stone at the bridge's
+  head; back down, over the crossing at the channel's mouth (her body cuts the light at its root there), up the other
+  side; push the stone north into its niche under the goddess's rock; she stands in the light herself: one step back,
+  the ring lights and the door opens; over the bridge over the chasm to the ring. The first design, `mirror_holster` in
   `tools/go/trials_designs.py` (a look breaking a face at the gate), made no sense to the owner. Concept
   `design/level3/concept.jpg` (the first, `concept_first.jpg`), the light step by step `board.png`.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).

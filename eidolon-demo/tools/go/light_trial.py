@@ -99,16 +99,25 @@ def solve(t, limit=200000):
     return dict(len=best, ways=nw, path=path, states=len(dist), dead=dead)
 
 
-def milos():      # the third level, Milos (the owner's rule): the stone stands on the bridge's head in the light; turn the
-    # mirror, push the stone off the line from the far side, twice: the second push takes her out of the light too, and the
-    # beam reaches the ring
-    cells = [(0, 3), (0, 4), (0, 5), (0, 6), (1, 6), (2, 6), (3, 6), (4, 6), (1, 5), (2, 5), (3, 5), (4, 5), (4, 4), (4, 3), (5, 4), (5, 5)] + [(1, k) for k in range(5)]
-    lv = [((0, 3), (0, 4)), ((0, 4), (0, 5)), ((0, 5), (0, 6)), ((0, 6), (1, 6)), ((1, 6), (2, 6)), ((2, 6), (3, 6)), ((3, 6), (4, 6)),
-          ((0, 5), (1, 5)), ((1, 5), (2, 5)), ((2, 5), (3, 5)), ((3, 5), (4, 5)), ((1, 5), (1, 6)), ((4, 5), (4, 6)),
-          ((4, 5), (4, 4)), ((4, 4), (4, 3)), ((4, 4), (5, 4)), ((5, 4), (5, 5))]
-    gp = [((1, k), (1, k + 1)) for k in range(5)] + [((4, 5), (5, 5))]      # (the channel's water and the chasm: light only)
-    return Light(cells, lv, gp, (0, 3), (5, 5), ((1, 0), N), [((1, 5), 1)], (4, 5))
-
+def milos():      # the third level on the concept's own map (the owner: "the same general map, the puzzle as it should be")
+    # The statue stands in the sea at the channel's mouth, her light running up the channel; at its head the goddess's
+    # mirror throws it back over the path she climbs (W). Turned (from the path's head, its only side on land), it
+    # throws the light over the channel's arm onto the stone at the bridge's head (E). The stone goes only one way:
+    # pushed north from its south side, into the niche cut for it; that side is reached round by the crossing over the
+    # channel's mouth, where her own body cuts the light at its root. Pushed in, she stands in the light herself: step
+    # back, and the ring lights and the door opens; over the bridge to the ring.
+    # x: from the stone over the bridge to the ring; y: up the channel from the statue to the mirror
+    lv = [((-2, 0), (-1, 0)),                                                      # the start's stair
+          ((-1, 0), (-1, 1)), ((-1, 1), (-1, 2)), ((-1, 2), (-1, 3)),            # up beside the channel, to the mirror's side
+          ((-1, 3), (0, 3)),                                                       # (the mirror: turned from here)
+          ((-1, 0), (0, 0)), ((0, 0), (1, 0)),                                     # the crossing over the channel's mouth
+          ((1, 0), (1, 1)), ((1, 1), (1, 2)), ((1, 2), (2, 2)),                    # up the other side, to the stone's south
+          ((2, 2), (2, 3)), ((2, 3), (2, 4)),                                      # the stone's cell, and its niche
+          ((2, 3), (3, 3)), ((3, 3), (4, 3))]                                      # the bridge over the chasm, the ring
+    gp = [((0, -2), (0, -1)), ((0, -1), (0, 0)), ((0, 0), (0, 1)), ((0, 1), (0, 2)), ((0, 2), (0, 3)),      # sea, channel
+          ((0, 3), (1, 3)), ((1, 3), (2, 3))]                                      # the channel's arm
+    cells = sorted({c for w in lv + gp for c in w})
+    return Light(cells, lv, gp, (-2, 0), (4, 3), ((0, -2), N), [((0, 3), 1)], (2, 3))
 
 if __name__ == '__main__':
     r = solve(milos())
