@@ -52,6 +52,13 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
 - **The Observer** (the veiled colossus in the sea at the waking) is smooth marble softly lit, as the concepts paint
   statues (the owner, 18/11: "smoother and better lit"): `smooth_k` 4, its own light from the front left (`form_key`;
   never `key_dir`, which `light()` uses to keep the sun), shade baked into its folds (`tools/go/bake_ao.py`).
+- **Backdrops in one piece, without a horizon** (the owner, 18/11: "no horizon line", "in general, backdrops in one
+  piece, without a horizon"): the band where a painted sea meets its sky is lost in a soft mist by
+  `tools/bg/no_horizon.py <in> <out> <horizon> [width] [peak] [lift]` (the painting's own light blurred far both ways,
+  laid over the band in a bell: things at the horizon rise out of it, nothing is smeared; blurring the band up and down
+  only smeared them into streaks). Done on all three levels' backdrops (level 1 lighter, 0.024 and 0.75, so its low sun
+  stays). In the game the water's glints and small waves come in slowly over 0.22 of the screen below the haze
+  (`far_w` in `IV_SEA_SH`), so no line marks where the sea begins. Run it on every new backdrop.
 - **Start screen**: plum dark, cream EIDOLON and PLAY, a subdued veiled statue behind (`ui/start_statue.jpg`); the
   film opens and closes in the same plum.
 - **Play it in a browser**: https://ndimt.github.io/game/eidolon-waking/ (the owner OK'd publishing there).

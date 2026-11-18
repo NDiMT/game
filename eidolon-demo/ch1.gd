@@ -5300,7 +5300,7 @@ void fragment(){
 		vec2 suv = vec2(0.5 + (SCREEN_UV.x - 0.5) * bg_scale.x, 0.5 + (sy - 0.5) * bg_scale.y);
 		if (world_uv > 0.5) { vec3 r = wp - eye_c; suv = vec2(0.5 + dot(r, eye_bx) / eye_w, 0.5 - dot(r, eye_by) / (eye_w * 16.0 / 9.0)); }
 		c = texture(bg_tex, clamp(suv, vec2(0.001), vec2(0.999))).rgb;
-		float far_w = smoothstep(hz_v + 0.005, hz_v + 0.09, SCREEN_UV.y);
+		float far_w = smoothstep(hz_v, hz_v + 0.22, SCREEN_UV.y);      // (the water's glints and small waves come in slowly down from the haze: no line where the sea begins (the owner: "no horizon"))
 		c = mix(c, c * 1.04 + vec3(0.01), smoothstep(0.55, 0.95, rip) * 0.5 * far_w);      // (the faintest swell; no lines across the water: the user wants it still, the small waves along the stones are enough)
 		if (wave_k > 0.0) {
 			vec2 dA = normalize(vec2(-0.35, 0.85)); vec2 dC = vec2(dA.y, -dA.x);      // (along each wave, aslant on the screen; and across the waves)
