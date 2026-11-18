@@ -116,16 +116,15 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   standing hand on breast, half out of an uncut block, seated, arms open (`props/statue_*.glb`: painted designs, Tripo
   P1 without texture, 40 credits each, welded and shaded by `tools/go/bake_ao.py --weld`); each model faces its own +x
   (the plan's turn sets that face toward the eye). Its backdrop is its own (`goveil/backdrop.jpg`: the golden morning,
-  far veiled statues at the horizon, horizon 0.362). Concept: `design/level2/concept.jpg`. Its block is a sandier
-  marble than the slabs, a little uneven; its meander cut unevenly by hand, a darker shade of the same stone, not
-  terracotta (the owner) (`props/block_meander.glb`, `tools/go/block_meander.py`). In the empty sea at the bottom right, a
+  far veiled statues at the horizon, horizon 0.362). Concept: `design/level2/concept.jpg`. Its block is the grey-blue
+  marble with light veins of every level's pushed stone (the owner, 18/11; before, a sandier marble than the slabs), a little
+  uneven; its meander cut unevenly by hand, a darker shade of the same stone, not terracotta (the owner) (`props/block_meander.glb`, `tools/go/block_meander.py`). In the empty sea at the bottom right, a
   rock and a smaller one beside it (the owner, 18/11), and the brown rock under the quay where she starts made stronger
   (its tops near the slab's, two more toward the eye; the owner): `rocks_after` in its plan, made after all the rest so
   nothing else of the level changes; it is built `ivory_level.py -- goveil/level.glb goveil/level.json 11 48 goveil/plan.json`, then
-  `shore_hole.py goveil`. No leaves above it: bare branches at the top right instead (the owner, 18/11: "branches on the
-  right side, not leaves"; `goveil/branches_tr.png`, `iv_branches`): painted by Gemini on a sketch of where they lie
-  (along the very top, and down close along the right edge, clear of the story's lines), keyed to alpha in the leaves'
-  own dark colour under the same plum, swaying a little about where they come in.
+  `shore_hole.py goveil`. No leaves above it (the owner, 18/11). Bare branches at the top right were tried and turned
+  down ("I don't like the branches, put something else, blurred"); the top right is narrow (the story's lines reach
+  0.92 of the width), so a blurred veiled statue standing before the eye at the bottom right is offered instead.
 - **Both levels** (the owner, 18/11): the whole opening of each gate is white, and she stops just before it so she is
   seen until the flash. The way's line stays as it was: a pink and a neon terracotta glow were tried and turned down.
 - **Level 3, The Mirror, built 18/11** (`gomilos/`, `FLIP=gomilos`; the owner: "a level 3, the script's third line, a matching map, a
