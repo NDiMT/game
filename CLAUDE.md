@@ -43,6 +43,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   their `.import`), the vase and the words at the film's full size. A phone gives a canvas shader 16 textures, and
   Godot takes three of them plus the six highest units for itself. With one texture per piece (17 sampled) the film
   was not drawn at all on phones, while a desktop browser (32) showed it. Keep any canvas shader to 8 textures or fewer.
+  On a phone taller than 16:9 the film fills the height, enlarged up to 1.22 so the scenes' frames still show. Fitted to
+  the width, the bands were drawn out in streaks above and below.
 - **Start screen**: plum dark, cream EIDOLON and PLAY, a subdued veiled statue behind (`ui/start_statue.jpg`); the
   film opens and closes in the same plum.
 - **Play it in a browser**: https://ndimt.github.io/game/eidolon-waking/ (the owner OK'd publishing there).

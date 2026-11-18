@@ -81,9 +81,14 @@ vec4 tex4(int j, int what, vec2 uv, float lod) {      // one of the four places'
 }
 
 void fragment() {
-	float sc = 1080.0 / rect_px.x;
-	float xs = UV.x * 1080.0;
-	float ys = UV.y * rect_px.y * sc - (rect_px.y * sc - 1920.0) * 0.5;
+	// the film's 1080x1920 on the screen: on a phone taller than it (19.5:9 against its 16:9) it fills the height, a little
+	// larger, its sides cut no further than the scenes' frames allow (1.22 at most); on a wider screen it fills the height
+	// and the vase and the sky go on at the sides. (Fitted to the width, a tall phone saw the vase's bands drawn out in
+	// streaks above and below the film)
+	float sc_w = 1080.0 / rect_px.x; float sc_h = 1920.0 / rect_px.y;      // (film pixels to a screen pixel, fitted either way)
+	float sc = rect_px.x * 16.0 < rect_px.y * 9.0 ? max(sc_h, sc_w / 1.22) : sc_h;
+	float xs = (UV.x - 0.5) * rect_px.x * sc + 540.0;
+	float ys = (UV.y - 0.5) * rect_px.y * sc + 960.0;
 	float x = xs - 540.0; float sy = ys;
 	// where on the vase this pixel lies (as the film's own geometry: a surface of revolution, tilted 9 degrees)
 	float h = sy / cos(TILT); float R; float s; float c;
@@ -130,5 +135,6 @@ void fragment() {
 	col = col * (L * SUN + (1.0 - L) * SHADE) + RIM * rim;
 	col = grade(col);
 	vec3 o = mix(sky(ys / 1920.0), col, cov);
+	o = mix(plum, o, clamp(min(ys, 1920.0 - ys) / sc + 0.5, 0.0, 1.0));      // (beyond the film's own height, where a very tall phone still shows a little: its plum)
 	COLOR = vec4(mix(plum, o, fade), 1.0);
 }
