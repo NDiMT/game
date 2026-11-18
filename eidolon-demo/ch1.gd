@@ -2177,6 +2177,32 @@ const IV_WAKE_PAL := {      # the waking: dawn over a still sea. Pearl and rose 
 }
 const IV_WAKE_BG := ["d7c3dd", "fbdcc8", "f5d8ce", "efcfc3"]      # the dawn: lilac above, peach at the sea's rim, the rose haze, the mist at the bottom
 const IV_WAKE_SKY_S := Vector3(0.2, 0.33, 0.95)
+const IV_PAINT_FX_SH := """shader_type canvas_item;
+render_mode unshaded;
+uniform sampler2D scr : hint_screen_texture, filter_linear, repeat_disable;
+uniform int rad = 3;
+void fragment(){      // (Kuwahara: each point takes the mean of the calmest of the four squares about it: flat washes, edges kept, as a brush lays paint)
+	vec2 px = SCREEN_PIXEL_SIZE;
+	vec3 m0 = vec3(0.0); vec3 m1 = vec3(0.0); vec3 m2 = vec3(0.0); vec3 m3 = vec3(0.0);
+	vec3 s0 = vec3(0.0); vec3 s1 = vec3(0.0); vec3 s2 = vec3(0.0); vec3 s3 = vec3(0.0);
+	for (int j = 0; j <= rad; j++) { for (int i = 0; i <= rad; i++) {
+		vec2 o = vec2(float(i), float(j)) * px; vec3 c;
+		c = texture(scr, SCREEN_UV + vec2(-o.x, -o.y)).rgb; m0 += c; s0 += c * c;
+		c = texture(scr, SCREEN_UV + vec2(o.x, -o.y)).rgb; m1 += c; s1 += c * c;
+		c = texture(scr, SCREEN_UV + vec2(o.x, o.y)).rgb; m2 += c; s2 += c * c;
+		c = texture(scr, SCREEN_UV + vec2(-o.x, o.y)).rgb; m3 += c; s3 += c * c;
+	} }
+	float n = float((rad + 1) * (rad + 1));
+	m0 /= n; m1 /= n; m2 /= n; m3 /= n;
+	vec3 q0 = abs(s0 / n - m0 * m0); vec3 q1 = abs(s1 / n - m1 * m1); vec3 q2 = abs(s2 / n - m2 * m2); vec3 q3 = abs(s3 / n - m3 * m3);
+	float v0 = q0.r + q0.g + q0.b; float v1 = q1.r + q1.g + q1.b; float v2 = q2.r + q2.g + q2.b; float v3 = q3.r + q3.g + q3.b;
+	vec3 best = m0; float bv = v0;
+	if (v1 < bv) { best = m1; bv = v1; }
+	if (v2 < bv) { best = m2; bv = v2; }
+	if (v3 < bv) { best = m3; bv = v3; }
+	COLOR = vec4(best, 1.0);
+}
+"""
 const IV_MILOS_PAL := {      # the third level in the colours of its concept, chosen by the owner (18/11; sampled from it): a hazy morning of pale blue and lilac, white slabs on slate grey-blue rock cut sharp, a few round white rocks like salt in the water
 	"rock2": ["a7b1c8", "8b95ad", "6f7a96", "566383"],      # (the concept's rock: #919ab3 #778299 #626f8c #566383, its tops a little lighter)
 	"salt": ["f6f5f9", "e9e8ee", "cfcedb", "a8acbf"],      # (its round white rocks: #e9e8ee #e4e3e9 #cbcad6 #a8acbf)
@@ -2265,6 +2291,7 @@ uniform vec3 ao_tint : source_color = vec3(0.93, 0.83, 0.78);      // (the colou
 uniform sampler2D bg_tex : source_color, filter_linear, repeat_disable;      // (a painted backdrop: the mist is its colour at that place on the screen)
 uniform float bg_tex_k = 0.0; uniform vec2 bg_scale = vec2(1.0);
 uniform vec3 vein_tint : source_color = vec3(0.9, 0.86, 0.83);
+uniform float paint_k = 0.0;      // (light and shade as painted (a try): a wash of tone over each face, the brush's strokes down it, the shade a little bluer)
 uniform float vein_local = 0.0; uniform float vein_sc = 0.9; uniform float vein_w = 0.03; uniform float vein_cloud = 0.05; uniform float vein_gain = 1.0;      // (a block that is pushed: its veins its own, not the world's, so they go with it; light veins on a darker stone: vein_gain over 1)
 uniform float drill = 0.0;      // (a face sawn in the quarry: the drill's grooves down it, the beds across it)
 varying vec3 wp; varying vec3 lpos;
@@ -2399,6 +2426,20 @@ void fragment(){
 		float lich = smoothstep(0.56, 0.7, fbm(wp * 2.2 + 31.0)) * smoothstep(0.4, 0.8, fn.y);
 		c = mix(c, lichen_col, rich_k * lich * 0.6);
 		c *= 1.0 - rich_k * 0.07 * smoothstep(0.76, 0.9, fbm(wp * 9.0 + 7.0));
+	}
+	if (paint_k > 0.0) {
+		vec3 pp = mix(wp, lpos, vein_local);
+		vec3 upv = abs(fn.y) < 0.92 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+		vec3 t1 = normalize(cross(upv, fn)); vec3 t2 = cross(fn, t1);
+		vec2 sp = vec2(dot(pp, t1), dot(pp, t2));
+		float sdd = dot(fn, vec3(3.1, 7.3, 1.9));
+		float wash = fbm(pp * 0.5 + 3.7) - 0.5;      // (a wash of tone across the face)
+		float strokes = vn(vec3(sp.x * 7.0, sp.y * 1.3, sdd)) - 0.5;      // (the brush's strokes, down the face)
+		float fine = vn(vec3(sp.x * 22.0, sp.y * 3.0, sdd + 5.0)) - 0.5;
+		float lit = smoothstep(-0.25, 0.45, d);
+		c *= 1.0 + paint_k * (0.11 * wash + 0.07 * strokes + 0.035 * fine);
+		c = mix(c, c * vec3(0.94, 0.97, 1.07), paint_k * (1.0 - lit) * 0.7);      // (the shade a little bluer)
+		c = mix(c, c * vec3(1.03, 1.0, 0.97), paint_k * lit * 0.5);      // (the light a little warmer)
 	}
 	if (drill > 0.0 && abs(fn.y) < 0.35) {
 		vec2 tg = normalize(vec2(-fn.z, fn.x));
@@ -2557,6 +2598,7 @@ func _iv_mat(kind: String, far_k := 0.0, extra := {}) -> ShaderMaterial:
 	if OS.get_environment("IV_DBG") != "": m.set_shader_parameter("dbg", float(OS.get_environment("IV_DBG")))
 	if kind == "line" or kind == "ring" or kind == "groove": m.set_shader_parameter("flat_mode", 1.0)
 	if kind == "ring": m.set_shader_parameter("emit", 0.55)
+	if OS.get_environment("IV_PAINT") != "" and not (kind in ["line", "ring", "groove"]): m.set_shader_parameter("paint_k", float(OS.get_environment("IV_PAINT")))      # (a try: light and shade as painted)
 	for k in extra: m.set_shader_parameter(k, extra[k])
 	iv_mats[key] = m
 	return m
@@ -5128,9 +5170,15 @@ func _ivv_statues(j: Dictionary) -> void:
 		var at: Array = s[1]
 		var hp := Node3D.new(); iv_root.add_child(hp)
 		hp.position = Vector3(float(at[0]), float(at[1]), float(at[2])); hp.rotation.y = float(s[3])
+		if String(s[0]) == "goddess" and OS.get_environment("IV_GODDESS_GLB") != "" and not prop_src.has("statue_goddess"):      # (to try another model of her, from anywhere, without touching the game's)
+			var gst := GLTFState.new(); var gdoc := GLTFDocument.new(); gdoc.append_from_buffer(FileAccess.get_file_as_bytes(OS.get_environment("IV_GODDESS_GLB")), "", gst); prop_src["statue_goddess"] = gdoc.generate_scene(gst)
 		var hd := prop_model("statue_" + String(s[0]), hp, float(s[2]))
 		var exs := ex
-		if String(s[0]) == "goddess": exs = ex.duplicate(); exs.merge({"smooth_k": 0.0, "ao_k": 0.55, "rim_k": 0.08, "haze": 0.0, "far_k": 0.08}, true)      # (the goddess of few faces (the owner), a little more of her shape: each face its own light, her folds shaded)
+		if String(s[0]) == "goddess":
+			exs = ex.duplicate(); exs.merge({"smooth_k": 0.0, "ao_k": 0.55, "rim_k": 0.08, "haze": 0.0, "far_k": 0.08}, true)      # (the goddess of few faces (the owner), a little more of her shape: each face its own light, her folds shaded)
+			var glk := OS.get_environment("IV_GODDESS_LOOK")      # (to try her otherwise: "4" smooth marble softly lit, as the Observer; "2" smooth, her light in a few clean bands)
+			if glk == "4": exs = ex.duplicate(); exs.merge({"haze": 0.0, "far_k": 0.08, "rim_col": Color(0.95, 0.95, 1.0)}, true)
+			elif glk == "2": exs = ex.duplicate(); exs.merge({"smooth_k": 2.0, "ao_k": 0.55, "rim_k": 0.1, "haze": 0.0, "far_k": 0.08, "rim_col": Color(0.95, 0.95, 1.0)}, true)
 		for m in hd.find_children("*", "MeshInstance3D", true, false):
 			(m as MeshInstance3D).material_override = _iv_mat("statue", 0.0, exs); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		_ivs_mirror(hp, func(_mi: MeshInstance3D) -> Array:
@@ -6105,6 +6153,11 @@ func _ivr_build() -> void:
 	# before the eye: dark leaves at the top, dark rocks at the foot, the warm shade in the corners
 	var k := get_viewport().get_visible_rect().size.x / 720.0
 	var vh := get_viewport().get_visible_rect().size.y
+	if OS.get_environment("IV_PAINT_FX") != "":      # (a try: the 3D as painted, a brush's filter over it (Kuwahara), under the corners and the story)
+		var pfl := CanvasLayer.new(); pfl.layer = -1; add_child(pfl)
+		var pfr := ColorRect.new(); pfr.set_anchors_preset(Control.PRESET_FULL_RECT); pfr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var pfs := Shader.new(); pfs.code = IV_PAINT_FX_SH; var pfm := ShaderMaterial.new(); pfm.shader = pfs
+		pfm.set_shader_parameter("rad", int(OS.get_environment("IV_PAINT_FX"))); pfr.material = pfm; pfl.add_child(pfr)
 	var cl := CanvasLayer.new(); cl.layer = 1; add_child(cl)
 	var mg := Gradient.new(); mg.offsets = PackedFloat32Array([0.0, 0.58, 0.84, 1.0])
 	var mc := Color("ddbf9d")
