@@ -149,26 +149,23 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   as the others' but unlit until the light reaches it, then lights; the gate keeps its veil, its two leaves hung behind
   it swing open inward (the cloth never goes through them). The statue in the sea is still level 2's `standing` model (a
   placeholder); the sea's foam hugs her (`shore_statues` in the plan). No dark shapes before the eye here.
-  **Its look (18/11, after three rounds of the owner's notes)**: built like the other levels by `tools/ivory_level.py`
-  (big slabs with chamfered, broken edges on faceted rock; the owner: "look how we made the others") and felt as the first
-  two levels are (the owner: "it has nothing of the feeling of the first two"): a hazy, glowing morning sky and a sea that
-  mirrors it, in pale blue and lilac (`gomilos/backdrop.jpg`, Gemini, painted in the style of the first two levels'
-  backdrops given as references; horizon 0.475, sun (0.658, 0.282)); the dark leaves and rocks before the eye at the
-  corners (its rocks a bluer dark); the rock under the way dark, so the white slabs read on it as on the first two
-  levels' mauve rock, in the slate grey-blue of the very first pictures of the game (the owner: "it was in the very first
-  ones": `eidolon_go_4_violet` of the four GO looks, a little greyer; `IV_MILOS_PAL` `rock2`). Turned down, in order: the
-  smooth white island of `tools/go/milos_island.py` (marching cubes, still in the repo), a way of separate crooked stones
-  (`node_slabs`), a deep blue-violet sky, a crisp pale-blue sky with 25 grey rocks in the sea. Its rock cut sharper and
-  more aslant than the other levels' (`rock_style` in the plan: lean, chamfers, cuts, tilt; `sat_min` keeps needles of
-  rock off small ones). In the water about it a few white rounded rocks "like salt" (the owner), as the first build had
-  at the island's foot (`salt_rocks` in the plan: `salt_rock()` in the builder, the game's `salt` palette, smooth light);
-  each below the painted sea's rim on the screen (a rock in the sea behind the island would stand against the sky). The
-  light leaves the statue at the height of her eyes (the owner), not from her hands. The goddess a colossus (the owner:
-  "a big statue of Aphrodite"): 11 m, rising out of the sea behind the highest rock, which hides where she meets the
-  water, her face turned to the eye (turn -1.2), 4200 flat faces (`bake_ao.py --faces=4200 --flat`: "few polygons", then
-  "a little more detail"), a little in the morning's haze (`far_k` 0.2) as the waking's Observer is. The story's line
-  crosses her neck at the level's start. The camera's follow lifts the whole picture about 0.085 of the screen at the
-  start (her start is low): keep the colossus's head under the top by that.
+  **Its look, as the owner settled it (18/11, after many rounds)**: its own map and board as above ("I liked the base we
+  had"), in the colours of a concept he chose (`design/level3/concept_colours.jpg`: the old map's blockout through the
+  game's eye, repainted by Gemini in the colours of a concept made for a stepped redesign he did not keep,
+  `tools/go/terraces_plan.py`, board `light_trial.py terraces`). Built like the other levels by `tools/ivory_level.py`
+  (`-- gomilos/level.glb gomilos/level.json 731 24 gomilos/plan.json`): white slabs with chamfered, broken edges on
+  slate grey-blue rock cut sharper and more aslant than the other levels' (`rock_style`), a few round white rocks like
+  salt in the water (`salt_rocks`, `salt_rock()`), all coloured from the concept (`IV_MILOS_PAL`); the dark leaves and
+  rocks before the eye at the corners (its rocks the concept's dark slate); its backdrop the concept's own sky and sea
+  painted alone by Gemini (no horizon line; a band of bright haze at 0.30, `horizon` 0.33 so the sea's glints come in
+  below it). The light leaves the statue at the height of her eyes (the owner). The goddess a colossus (the owner: "a
+  big statue of Aphrodite"): 11 m, rising out of the sea behind the highest rock, which hides where she meets the water,
+  her face turned to the eye (turn -1.2), 4200 flat faces ("few polygons", then "a little more detail"), a breath of the
+  haze on her (`far_k` 0.08). The story's line crosses her neck at the level's start; the camera's follow lifts the whole
+  picture about 0.085 of the screen there, so her head is kept under the top by that. Turned down on the way: a smooth
+  white island of marching cubes (`tools/go/milos_island.py`, still in the repo), a way of separate crooked stones
+  (`node_slabs`), a deep blue-violet sky, a crisp sky with 25 grey rocks in the sea, the white island round slabs on a
+  grey-blue course, and the stepped redesign's map.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are

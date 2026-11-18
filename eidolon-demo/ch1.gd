@@ -2177,12 +2177,12 @@ const IV_WAKE_PAL := {      # the waking: dawn over a still sea. Pearl and rose 
 }
 const IV_WAKE_BG := ["d7c3dd", "fbdcc8", "f5d8ce", "efcfc3"]      # the dawn: lilac above, peach at the sea's rim, the rose haze, the mist at the bottom
 const IV_WAKE_SKY_S := Vector3(0.2, 0.33, 0.95)
-const IV_MILOS_PAL := {      # the third level: Milos in a hazy morning of pale blue and lilac, felt as the first two levels are (the owner); its rock under the way the slate grey-blue of the very first pictures of the game (the owner: "it was in the very first ones": golook eidolon_go_4_violet), its white rocks in the sea like salt
-	"rock2": ["a3a4c6", "8385ae", "62648e", "44466c"],      # (sampled from eidolon_go_4_violet's stone (#918ec5 #7d7dba #595a92 #414278), a little greyer)
-	"salt": ["fcf7f8", "f2e8ee", "d9d0dc", "a9a3bb"],      # (the white sea-worn rock of the first build, as Milos has it at Sarakiniko: white, a lilac shade)
-	"marble2": ["fdfcff", "eeebf6", "d5d0e6", "aba5c8"],      # (the way's slabs, the stair, the gate: white, a pale lilac shade)
-	"statue": ["fbfbff", "e8e5f3", "c4bfdb", "9089b3"],      # (white marble, its shade deeper than the waking's: the goddess against the pale sky must read)
-	"groove": ["dcd7ec", "dcd7ec", "dcd7ec", "dcd7ec"],
+const IV_MILOS_PAL := {      # the third level in the colours of its concept, chosen by the owner (18/11; sampled from it): a hazy morning of pale blue and lilac, white slabs on slate grey-blue rock cut sharp, a few round white rocks like salt in the water
+	"rock2": ["a7b1c8", "8b95ad", "6f7a96", "566383"],      # (the concept's rock: #919ab3 #778299 #626f8c #566383, its tops a little lighter)
+	"salt": ["f6f5f9", "e9e8ee", "cfcedb", "a8acbf"],      # (its round white rocks: #e9e8ee #e4e3e9 #cbcad6 #a8acbf)
+	"marble2": ["f5f7fb", "e8ebf1", "d3d9e8", "b3bbd6"],      # (its slabs, the stair, the gate: white, a cool blue shade (#eaeff1 #e7e9ed #d6dde8 #ccd2e9))
+	"statue": ["fbfbff", "e8e5f3", "c4bfdb", "9089b3"],
+	"groove": ["d9dcec", "d9dcec", "d9dcec", "d9dcec"],
 	"ring": ["fffdf8", "fffdf8", "fffdf8", "fffdf8"],
 }
 func _iv_pal(kind: String) -> Array:
@@ -5124,7 +5124,7 @@ func _ivv_statues(j: Dictionary) -> void:
 		hp.position = Vector3(float(at[0]), float(at[1]), float(at[2])); hp.rotation.y = float(s[3])
 		var hd := prop_model("statue_" + String(s[0]), hp, float(s[2]))
 		var exs := ex
-		if String(s[0]) == "goddess": exs = ex.duplicate(); exs.merge({"smooth_k": 0.0, "ao_k": 0.55, "rim_k": 0.08, "haze": 0.0, "far_k": 0.2}, true)      # (the goddess of few faces (the owner), a little more of her shape: each face its own light, her folds shaded)
+		if String(s[0]) == "goddess": exs = ex.duplicate(); exs.merge({"smooth_k": 0.0, "ao_k": 0.55, "rim_k": 0.08, "haze": 0.0, "far_k": 0.08}, true)      # (the goddess of few faces (the owner), a little more of her shape: each face its own light, her folds shaded)
 		for m in hd.find_children("*", "MeshInstance3D", true, false):
 			(m as MeshInstance3D).material_override = _iv_mat("statue", 0.0, exs); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		_ivs_mirror(hp, func(_mi: MeshInstance3D) -> Array:
@@ -6120,7 +6120,7 @@ func _ivr_build() -> void:
 		var lpc := Color(0.94, 0.88, 0.97, 0.98)
 		var rb := _iv_overlay(cl, "res://gowake/rock_br_lp.png" if lp else "res://goiv/rock_br.png", Vector2(720 * k - 345 * k, vh - 400 * k), Vector2(400, 400) * k); rb.modulate = lpc if lp else plum      # (a rock before the eye at the lower right: off the way, the sea there is open)
 		var rbl := _iv_overlay(cl, "res://gowake/rock_bl_lp.png" if lp else "res://goiv/rock_bl.png", Vector2(-80 * k, vh - 360 * k), Vector2(360, 360) * k); rbl.modulate = lpc if lp else plum      # (and one at the lower left, short of the threshold)
-		if go_milos: rb.modulate = Color(0.84, 0.86, 1.0, 0.98); rbl.modulate = rb.modulate      # (the third level as the first two: the dark leaves and rocks before the eye (the owner: "the feeling of the first two"); its rocks a bluer dark)
+		if go_milos: rb.modulate = Color(0.66, 0.72, 0.96, 0.98); rbl.modulate = rb.modulate      # (the third level as the first two: the dark leaves and rocks before the eye (the owner: "the feeling of the first two"); its rocks the concept's dark slate (#2f3548))
 		vg.colors = PackedColorArray([Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0.05), Color(0.26, 0.16, 0.3, 0.2)])      # (a soft darkening at the edges: the eye drawn in)
 		_ivw_hand_make(cl)
 		_ivw_life()

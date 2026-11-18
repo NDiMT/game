@@ -89,15 +89,14 @@ def plan():
     pl = {
         'scene': 'wake', 'sea_y': SEA, 'heights': {'H0': H0, 'H1': H1}, 'floors': floors, 'flights': [fl],
         'nodes': N, 'edges': edges, 'ring': N['R'], 'stone': N['K'], 'holes': [], 'faces': [],
-        'horizon': 0.475, 'sun': [0.658, 0.282],      # (its own backdrop's sea rim and sun, measured on gomilos/backdrop.jpg: a hazy glowing morning in pale blue and lilac, in the painted style of the first two levels' (the owner: "the feeling of the first two"), the white rocks of Milos far off in the haze)
+        'horizon': 0.33, 'sun': [0.527, 0.344],      # (its backdrop is its concept's own sky and sea (Gemini, from the concept the owner chose): no horizon line, a band of bright haze at 0.30 and a glow below it; the sea's glints come in below the band)
         'arches': [[[-4.5, H1, -6.85], 'x']],      # (the gate, square to the way's last stretch, just behind the ring)
         'waters': [[-3.75, -0.75, -0.75, 0.75], [-5.25, -3.75, -2.25, -0.75], [-6.75, -2.25, -5.25, -3.75]],      # (the channel, its arm, the chasm: open water the rock keeps clear of)
         'rock_style': {'ease': [0.006, 0.016], 'boulder_ease': 0.012, 'tilt': [0.2, 0.45], 'lean': 2.6, 'cut_p': 0.85, 'chamf': [0.12, 0.36], 'side_cuts': [2, 3], 'sat_min': 0.2},      # (its rock cut sharper and more aslant than the other levels' (the owner))
         'bridges': [[-5.0, -4.0, -5.24, -3.76, H1]],      # (a slab over the chasm, nothing under it but the sea; a joint's breadth from each floor)
         'statues': statues, 'pedestals': [], 'shore_statues': ['standing'],      # (the light's statue stands in the water: the sea's thin foam hugs her as it does the rock)
-        'rocks': rocks,      # (the first build's rocks, as the owner asked them back ("the first rocks you had put", "like salt"): the island's white sea-worn rock, made by milos_island.py)
-        'rock_drop': 1.15, 'island_stair': False, 'island_bridge': False,      # (the way is the other levels' slabs on the grey-blue stone cut sharp under them (the owner: "the stone under the path grey-blue", "the grey rocks cut sharper and aslant"), laid by ivory_level.py; the white rock's own top this far under theirs, the stair and the bridge theirs, not the rock's)
-        'hollows': [[-2.0, H1 - 0.42, 3.0, 0.62], [-4.25, H1 - 0.38, 3.05, 0.55]],      # (round pits the sea wore in the shelf beside the path, as the first build had them)
+        'rocks': rocks,
+        'salt_rocks': [(-0.04, 6.73, 0.95, 0.62), (2.07, 6.06, 0.45, 0.3), (4.4, 1.2, 0.55, 0.42)],      # (a few round white rocks in the water, like salt, where its concept has them (the owner chose its colours, 18/11): a big one and a small one before the island at the left, one at the right)
         'columns': [], 'volute': None, 'head': None, 'relief': None, 'cypress': None,
         'eye': eye_fit(pts, top_room=0.33, bottom_room=0.16, margin=0.6),      # (the colossus is left out of the fit: it rises behind, into the sky)
         'shore': True,
