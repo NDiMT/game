@@ -126,7 +126,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   nothing else of the level changes; it is built `ivory_level.py -- goveil/level.glb goveil/level.json 11 48 goveil/plan.json`, then
   `shore_hole.py goveil`. No leaves above it (the owner, 18/11). Bare branches at the top right were tried and turned
   down ("I don't like the branches, put something else, blurred"); the top right is narrow (the story's lines reach
-  0.92 of the width), so a blurred veiled statue standing before the eye at the bottom right is offered instead.
+  0.92 of the width). In their place a veiled statue stands before the eye at the lower right, blurred, dark against the
+  light, one of the thousand (the owner: "fantastic, the blurred statue"; `goveil/statue_fg.png`: painted alone by Gemini
+  on white, keyed, blurred into the picture (sigma 0.008 of the width), under the leaves' plum (0.55, 0.42, 0.58, 0.95);
+  clear of the way, the gate and the rocks in the sea). A veil, a temple's corner and a rock ledge at the top right
+  were tried first: too small there to read.
 - **Both levels** (the owner, 18/11): the whole opening of each gate is white, and she stops just before it so she is
   seen until the flash. The way's line stays as it was: a pink and a neon terracotta glow were tried and turned down.
 - **Level 3, The Mirror, built 18/11** (`gomilos/`, `FLIP=gomilos`; the owner: "a level 3, the script's third line, a matching map, a

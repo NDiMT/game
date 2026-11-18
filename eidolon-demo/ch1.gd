@@ -2432,12 +2432,14 @@ void fragment(){
 		vec2 sp = vec2(dot(pp, t1), dot(pp, t2));
 		float sdd = dot(fn, vec3(3.1, 7.3, 1.9));
 		float wash = fbm(pp * 0.5 + 3.7) - 0.5;      // (a wash of tone across the face)
-		float strokes = vn(vec3(sp.x * 7.0, sp.y * 1.3, sdd)) - 0.5;      // (the brush's strokes, down the face)
-		float fine = vn(vec3(sp.x * 22.0, sp.y * 3.0, sdd + 5.0)) - 0.5;
+		float strokes = vn(vec3(sp.x * 9.0, sp.y * 1.4, sdd)) - 0.5;      // (the brush's strokes, down the face)
+		float fine = vn(vec3(sp.x * 30.0, sp.y * 4.0, sdd + 5.0)) - 0.5;
+		float cross_s = vn(vec3((sp.x + sp.y) * 5.0, (sp.y - sp.x) * 1.1, sdd + 9.0)) - 0.5;      // (and a few across them)
 		float lit = smoothstep(-0.25, 0.45, d);
-		c *= 1.0 + paint_k * (0.11 * wash + 0.07 * strokes + 0.035 * fine);
-		c = mix(c, c * vec3(0.94, 0.97, 1.07), paint_k * (1.0 - lit) * 0.7);      // (the shade a little bluer)
-		c = mix(c, c * vec3(1.03, 1.0, 0.97), paint_k * lit * 0.5);      // (the light a little warmer)
+		c = mix(c, c_lit, paint_k * (1.0 - lit) * 0.28);      // (the shade lifted, soft as it is painted)
+		c *= 1.0 + paint_k * (0.14 * wash + 0.12 * strokes + 0.06 * fine + 0.05 * cross_s);
+		c = mix(c, c * vec3(0.95, 1.0, 1.05), paint_k * (1.0 - lit) * 0.8);      // (the shade a little cooler, toward teal)
+		c = mix(c, c * vec3(1.04, 1.0, 0.96), paint_k * lit * 0.5);      // (the light a little warmer)
 	}
 	if (drill > 0.0 && abs(fn.y) < 0.35) {
 		vec2 tg = normalize(vec2(-fn.z, fn.x));
@@ -2560,7 +2562,6 @@ var iv_push := {}
 var iv_said := {}
 var iv_hidden := []
 var iv_leaves: TextureRect
-var iv_branches: TextureRect      # (the second level: bare branches at the top right, in place of the leaves)
 var iv_fade: ColorRect
 var iv_hold = null      # a place the eye goes to for a while (the pillar as it rises)
 var iv_moves := 0
@@ -3164,7 +3165,6 @@ func _iv_post(dt: float) -> void:
 	if go_milos and not ivm_beam.is_empty(): _ivm_draw()
 	if not iv_won: iv_glow.scale = Vector3.ONE * (0.92 + 0.12 * pl)
 	if iv_leaves != null: iv_leaves.pivot_offset = Vector2.ZERO; iv_leaves.rotation = deg_to_rad(1.3 * sin(iv_t * 0.9) + 0.6 * sin(iv_t * 2.3))
-	if iv_branches != null: iv_branches.rotation = deg_to_rad(0.7 * sin(iv_t * 0.8) + 0.3 * sin(iv_t * 2.1))
 	if started and ivp_on:
 		if not iv_said.has("line") and iv_t > 1.6 and (not go_wake or (ivw_line_at > 0.0 and iv_t > ivw_line_at)): iv_said["line"] = true; _go_write(_ivg_line(), 4.5)
 	elif started:
@@ -6186,6 +6186,8 @@ func _ivr_build() -> void:
 			rbl.texture = load("res://gomilos/rock_bl.png"); rbl.modulate = Color.WHITE; rbl.size = Vector2(259, 259) * k; rbl.position = Vector2(0.0, vh - 259 * k)
 			rb.texture = load("res://gomilos/rock_br.png"); rb.modulate = Color.WHITE; rb.size = Vector2(216, 258) * k; rb.position = Vector2(720 * k - 216 * k, vh - 258 * k)
 		elif go_milos: rb.modulate = Color(0.66, 0.72, 0.96, 0.98); rbl.modulate = rb.modulate
+		if go_veil and not go_milos and ResourceLoader.exists("res://goveil/statue_fg.png"):      # (the second level: a veiled statue standing before the eye at the lower right, blurred, dark against the light, one of the thousand (the owner, 18/11: "fantastic, the blurred statue"); clear of the way, the gate and the rocks in the sea)
+			var sfg := _iv_overlay(cl, "res://goveil/statue_fg.png", Vector2(487 * k, vh - 468 * k), Vector2(341, 532) * k); sfg.modulate = Color(0.55, 0.42, 0.58, 0.95)
 		vg.colors = PackedColorArray([Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0.05), Color(0.26, 0.16, 0.3, 0.2)])      # (a soft darkening at the edges: the eye drawn in)
 		_ivw_hand_make(cl)
 		_ivw_life()
