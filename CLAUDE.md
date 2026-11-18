@@ -114,12 +114,17 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   seen until the flash. The way's line stays as it was: a pink and a neon terracotta glow were tried and turned down.
 - **Level 3, designed 18/11, not built** (the owner: "a level 3, the script's third line, a matching map, a puzzle with
   no tutorial"): the sanctuary of Aphrodite on Milos, white wave-carved volcanic rock in a pale turquoise sea, the
-  goddess's armless statue on the highest rock (her arms broke when Theron took her mirror). Line (the script's next
-  truth, the mirror): "He stole the goddess's mirror. / She let him." Puzzle `mirror_holster` in
-  `tools/go/trials_designs.py` (21 swipes, one way, no dead end): a mourner looks up a channel to the goddess's bronze
-  mirror; the stone stands in the line of fire; across a chasm a face guards the gate. Turn the mirror away from its
-  safe side, push the stone out of the line, turn it back (the look breaks the gate's face), turn it away again (or its
-  look holds the gate's way). Concept and board: `design/level3/`.
+  goddess's armless statue on the highest rock, at the back (her arms broke when Theron took her mirror); no other
+  statues (the owner found the busts by the way and the gate "staged"). Line (the script's next truth, the mirror):
+  "He stole the goddess's mirror. / She let him." Puzzle, the owner's own rule ("the gate closed; moving the stone
+  sends the light to the circle and the gate opens"): a beam of light, seen, comes from the sea up a channel to the
+  goddess's bronze mirror; a swipe into the mirror turns it; the stone and she herself (where she stands she casts a
+  shadow) stop the light; the gate is closed until the light reaches the ring before it, across a chasm, and then
+  stays open; the ring is entered only open. Board `milos()` in `tools/go/light_trial.py` (12 swipes, 2 ways, no dead
+  end): turn the mirror (the light goes onto the stone at the bridge's head), go round to the stone's far side, push
+  it off the line twice (after the first push she stands in the light herself). The first design, `mirror_holster` in
+  `tools/go/trials_designs.py` (a look breaking a face at the gate), made no sense to the owner. Concept
+  `design/level3/concept.jpg` (the first, `concept_first.jpg`), the light step by step `board.png`.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
