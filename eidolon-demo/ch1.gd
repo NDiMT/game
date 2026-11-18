@@ -2438,7 +2438,7 @@ void fragment(){
 		c *= 1.0 - rich_k * 0.07 * smoothstep(0.76, 0.9, fbm(wp * 9.0 + 7.0));
 	}
 	if (alb_tex_k > 0.0) c *= mix(vec3(1.0), min(texture(alb_tex, UV).rgb * 1.08, vec3(1.0)), alb_tex_k);
-	if (baked_k > 0.5) c = texture(alb_tex, UV).rgb;
+	if (baked_k > 0.5) c = baked_k > 1.5 ? COLOR.rgb : texture(alb_tex, UV).rgb;      // (2: painted into its faces' colours, as the first goddess's few flat faces)
 	if (paint_k > 0.0) {
 		vec3 pp = mix(wp, lpos, vein_local);
 		vec3 upv = abs(fn.y) < 0.92 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
@@ -5203,6 +5203,7 @@ func _ivv_statues(j: Dictionary) -> void:
 			_ivm_goddess_painted(Vector3(float(at[0]), float(at[1]), float(at[2]))); continue
 		var hp := Node3D.new(); iv_root.add_child(hp)
 		hp.position = Vector3(float(at[0]), float(at[1]), float(at[2])); hp.rotation.y = float(s[3])
+		if String(s[0]) == "goddess" and OS.get_environment("IV_GODDESS_TURN") != "": hp.rotation.y = float(OS.get_environment("IV_GODDESS_TURN"))      # (to try her turned otherwise)
 		if String(s[0]) == "goddess" and OS.get_environment("IV_GODDESS_GLB") != "" and not prop_src.has("statue_goddess"):      # (to try another model of her, from anywhere, without touching the game's)
 			var gst := GLTFState.new(); var gdoc := GLTFDocument.new(); gdoc.append_from_buffer(FileAccess.get_file_as_bytes(OS.get_environment("IV_GODDESS_GLB")), "", gst); prop_src["statue_goddess"] = gdoc.generate_scene(gst)
 		var hd := prop_model("statue_" + String(s[0]), hp, float(s[2]))
@@ -5218,6 +5219,7 @@ func _ivv_statues(j: Dictionary) -> void:
 			var exm := exs
 			var om := (m as MeshInstance3D).mesh.surface_get_material(0) as BaseMaterial3D
 			if String(s[0]) == "goddess" and om != null and om.albedo_texture != null: exm = exs.duplicate(); exm["alb_tex"] = om.albedo_texture; exm["baked_k"] = 1.0; exm["far_k"] = 0.05; exm["rim_k"] = 0.0      # (the goddess: her own light and shade painted into her colour (baked in Blender from the level's light, a lilac shade), shown as painted (the owner, 18/11: "a texture with light and shade"))
+			if String(s[0]) == "goddess" and OS.get_environment("IV_GODDESS_VC") != "": exm = exs.duplicate(); exm["baked_k"] = 2.0; exm["far_k"] = 0.05; exm["rim_k"] = 0.0; exm["smooth_k"] = 0.0; exm["ao_k"] = 0.0      # (to try a goddess whose light is painted into her faces' colours)
 			(m as MeshInstance3D).material_override = _iv_mat("goddess" if String(s[0]) == "goddess" and go_milos else "statue", 0.0, exm); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		_ivs_mirror(hp, func(_mi: MeshInstance3D) -> Array:
 			var mx := {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.7, "haze": 1.0, "mirror_fade": 2.0, "mirror_wob": 0.05}; mx.merge(look); return ["statue", 0.0, mx])
