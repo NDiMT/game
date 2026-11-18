@@ -2184,6 +2184,8 @@ const IV_MILOS_PAL := {      # the third level in the colours of its concept, ch
 	"statue": ["fbfbff", "e8e5f3", "c4bfdb", "9089b3"],
 	"groove": ["d9dcec", "d9dcec", "d9dcec", "d9dcec"],
 	"ring": ["fffdf8", "fffdf8", "fffdf8", "fffdf8"],
+	"block": ["bcc5d8", "a1abc2", "8590ab", "68738f"],      # (the stone she pushes: a grey-blue marble with light veins (the owner, 18/11: "grey-blue instead of yellow, with marble patterns"))
+	"meander": ["8a94ad", "77829b", "626e8a", "4e5975"],      # (its meander the same stone, darker)
 }
 func _iv_pal(kind: String) -> Array:
 	if go_milos and IV_MILOS_PAL.has(kind): return IV_MILOS_PAL[kind] as Array
@@ -2263,9 +2265,11 @@ uniform vec3 ao_tint : source_color = vec3(0.93, 0.83, 0.78);      // (the colou
 uniform sampler2D bg_tex : source_color, filter_linear, repeat_disable;      // (a painted backdrop: the mist is its colour at that place on the screen)
 uniform float bg_tex_k = 0.0; uniform vec2 bg_scale = vec2(1.0);
 uniform vec3 vein_tint : source_color = vec3(0.9, 0.86, 0.83);
+uniform float vein_local = 0.0; uniform float vein_sc = 0.9; uniform float vein_w = 0.03; uniform float vein_cloud = 0.05; uniform float vein_gain = 1.0;      // (a block that is pushed: its veins its own, not the world's, so they go with it; light veins on a darker stone: vein_gain over 1)
 uniform float drill = 0.0;      // (a face sawn in the quarry: the drill's grooves down it, the beds across it)
-varying vec3 wp;
+varying vec3 wp; varying vec3 lpos;
 void vertex(){
+	lpos = VERTEX;
 	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; wn = (MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz;
 	if (mirror_k > 0.5 && mirror_wob > 0.0) {      // (the water is not glass: its image wavers, more the deeper it lies)
 		float dep = clamp((mirror_y - wp.y) * 0.9, 0.0, 1.0);
@@ -2374,13 +2378,13 @@ void fragment(){
 	}
 	if (sil > 0.5) c = c_mid * mix(0.95, 1.03, smoothstep(-0.3, 0.7, d));
 	if (veins > 0.0) {      // (veins as marble has them: thin, wandering, now and then two together; a cloud in the stone)
-		vec3 q = wp * 0.9;
+		vec3 q = mix(wp, lpos, vein_local) * vein_sc;
 		float w = fbm(q + vec3(fbm(q * 0.55 + 11.0), 0.0, fbm(q * 0.55 + 5.0)) * 1.7);
 		float px = max(length(dFdx(q)), length(dFdy(q)));
-		float v1 = 1.0 - smoothstep(0.0, 0.03 + px * 0.6, abs(w - 0.5));
-		float v2 = 1.0 - smoothstep(0.0, 0.016 + px * 0.6, abs(fbm(q * 2.3 + 20.0) - 0.47));
-		c = mix(c, c * vein_tint, veins * (0.6 * v1 + 0.3 * v2));
-		c *= 1.0 + veins * (w - 0.5) * 0.05;
+		float v1 = 1.0 - smoothstep(0.0, vein_w + px * 0.6, abs(w - 0.5));
+		float v2 = 1.0 - smoothstep(0.0, vein_w * 0.53 + px * 0.6, abs(fbm(q * 2.3 + 20.0) - 0.47));
+		c = mix(c, c * vein_tint * vein_gain, veins * (0.6 * v1 + 0.3 * v2));
+		c *= 1.0 + veins * (w - 0.5) * vein_cloud;
 	}
 	if (rich_k > 0.0) {
 		vec3 cell = floor(wp * 1.7 + fn * 2.0);
@@ -2517,6 +2521,7 @@ var iv_push := {}
 var iv_said := {}
 var iv_hidden := []
 var iv_leaves: TextureRect
+var iv_branches: TextureRect      # (the second level: bare branches at the top right, in place of the leaves)
 var iv_fade: ColorRect
 var iv_hold = null      # a place the eye goes to for a while (the pillar as it rises)
 var iv_moves := 0
@@ -3118,6 +3123,7 @@ func _iv_post(dt: float) -> void:
 	if go_milos and not ivm_beam.is_empty(): _ivm_draw()
 	if not iv_won: iv_glow.scale = Vector3.ONE * (0.92 + 0.12 * pl)
 	if iv_leaves != null: iv_leaves.pivot_offset = Vector2.ZERO; iv_leaves.rotation = deg_to_rad(1.3 * sin(iv_t * 0.9) + 0.6 * sin(iv_t * 2.3))
+	if iv_branches != null: iv_branches.rotation = deg_to_rad(0.7 * sin(iv_t * 0.8) + 0.3 * sin(iv_t * 2.1))
 	if started and ivp_on:
 		if not iv_said.has("line") and iv_t > 1.6 and (not go_wake or (ivw_line_at > 0.0 and iv_t > ivw_line_at)): iv_said["line"] = true; _go_write(_ivg_line(), 4.5)
 	elif started:
@@ -5965,6 +5971,7 @@ func _ivr_block() -> Node3D:
 	var n := Node3D.new(); iv_root.add_child(n)
 	n.add_child(doc.generate_scene(st))
 	var bx := _ivv_ex(0.0); bx["veins"] = 0.3; bx["ao_k"] = 0.0
+	if go_milos: bx.merge({"veins": 0.9, "vein_local": 1.0, "vein_sc": 1.5, "vein_w": 0.045, "vein_cloud": 0.22, "vein_gain": 1.45, "vein_tint": Color(0.97, 0.98, 1.0), "rim_col": Color(0.93, 0.95, 1.0)}, true)      # (the third level: grey-blue marble, light veins of its own that go with it when pushed, a cloud in the stone; its edges catch a cool light)
 	var mx := _ivv_ex(0.0); mx["veins"] = 0.0; mx["ao_k"] = 0.0
 	for m in n.find_children("*", "MeshInstance3D", true, false):
 		if go_veil and String(m.name).to_lower().contains("meander"): (m as MeshInstance3D).material_override = _iv_mat("meander", 0.0, mx); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON; continue      # (its meander apart, a darker stone)
@@ -6120,7 +6127,15 @@ func _ivr_build() -> void:
 		var lpc := Color(0.94, 0.88, 0.97, 0.98)
 		var rb := _iv_overlay(cl, "res://gowake/rock_br_lp.png" if lp else "res://goiv/rock_br.png", Vector2(720 * k - 345 * k, vh - 400 * k), Vector2(400, 400) * k); rb.modulate = lpc if lp else plum      # (a rock before the eye at the lower right: off the way, the sea there is open)
 		var rbl := _iv_overlay(cl, "res://gowake/rock_bl_lp.png" if lp else "res://goiv/rock_bl.png", Vector2(-80 * k, vh - 360 * k), Vector2(360, 360) * k); rbl.modulate = lpc if lp else plum      # (and one at the lower left, short of the threshold)
-		if go_milos: rb.modulate = Color(0.66, 0.72, 0.96, 0.98); rbl.modulate = rb.modulate      # (the third level as the first two: the dark leaves and rocks before the eye (the owner: "the feeling of the first two"); its rocks the concept's dark slate (#2f3548))
+		if go_veil: iv_leaves.visible = false      # (the second and third levels: no leaves above (the owner, 18/11: "no blurry leaves above"))
+		if go_milos and ResourceLoader.exists("res://gomilos/rock_br.png"):      # (the third level: only rocks below, its concept's own, cut out of it (the owner: "only rocks below, like the second picture you made"))
+			rbl.texture = load("res://gomilos/rock_bl.png"); rbl.modulate = Color.WHITE; rbl.size = Vector2(259, 259) * k; rbl.position = Vector2(0.0, vh - 259 * k)
+			rb.texture = load("res://gomilos/rock_br.png"); rb.modulate = Color.WHITE; rb.size = Vector2(216, 258) * k; rb.position = Vector2(720 * k - 216 * k, vh - 258 * k)
+		elif go_milos: rb.modulate = Color(0.66, 0.72, 0.96, 0.98); rbl.modulate = rb.modulate
+		if go_veil and not go_milos and ResourceLoader.exists("res://goveil/branches_tr.png"):      # (the second level: bare branches from the right in place of the leaves (the owner: "branches on the right side, not leaves"); laid along the top and down the edge, clear of the story's lines)
+			var bw := 0.666 * 720.0 * k; var bh := 0.3634 * 1280.0 * k
+			iv_branches = _iv_overlay(cl, "res://goveil/branches_tr.png", Vector2(720 * k - bw + 8 * k, -10 * k), Vector2(bw, bh)); iv_branches.modulate = plum
+			iv_branches.pivot_offset = Vector2(bw, 0.03 * 1280.0 * k)      # (swaying a little about where it comes in, as the leaves did)
 		vg.colors = PackedColorArray([Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0.05), Color(0.26, 0.16, 0.3, 0.2)])      # (a soft darkening at the edges: the eye drawn in)
 		_ivw_hand_make(cl)
 		_ivw_life()

@@ -122,7 +122,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   rock and a smaller one beside it (the owner, 18/11), and the brown rock under the quay where she starts made stronger
   (its tops near the slab's, two more toward the eye; the owner): `rocks_after` in its plan, made after all the rest so
   nothing else of the level changes; it is built `ivory_level.py -- goveil/level.glb goveil/level.json 11 48 goveil/plan.json`, then
-  `shore_hole.py goveil`.
+  `shore_hole.py goveil`. No leaves above it: bare branches at the top right instead (the owner, 18/11: "branches on the
+  right side, not leaves"; `goveil/branches_tr.png`, `iv_branches`): painted by Gemini on a sketch of where they lie
+  (along the very top, and down close along the right edge, clear of the story's lines), keyed to alpha in the leaves'
+  own dark colour under the same plum, swaying a little about where they come in.
 - **Both levels** (the owner, 18/11): the whole opening of each gate is white, and she stops just before it so she is
   seen until the flash. The way's line stays as it was: a pink and a neon terracotta glow were tried and turned down.
 - **Level 3, The Mirror, built 18/11** (`gomilos/`, `FLIP=gomilos`; the owner: "a level 3, the script's third line, a matching map, a
@@ -155,8 +158,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   `tools/go/terraces_plan.py`, board `light_trial.py terraces`). Built like the other levels by `tools/ivory_level.py`
   (`-- gomilos/level.glb gomilos/level.json 731 24 gomilos/plan.json`): white slabs with chamfered, broken edges on
   slate grey-blue rock cut sharper and more aslant than the other levels' (`rock_style`), a few round white rocks like
-  salt in the water (`salt_rocks`, `salt_rock()`), all coloured from the concept (`IV_MILOS_PAL`); the dark leaves and
-  rocks before the eye at the corners (its rocks the concept's dark slate); its backdrop the concept's own sky and sea
+  salt in the water (`salt_rocks`, `salt_rock()`), all coloured from the concept (`IV_MILOS_PAL`); no leaves above
+  (the owner: "no blurry leaves above"), only rocks before the eye at the bottom corners, the concept's own dark slate
+  cut out of it with their soft edges (`gomilos/rock_bl.png`, `rock_br.png`; the owner: "like the second picture"); the
+  stone she pushes a grey-blue marble with light veins (the owner: "grey-blue instead of yellow, with marble patterns";
+  `block`/`meander` in `IV_MILOS_PAL`), its veins its own (`vein_local` in IV_SH), so they go with it when pushed; its backdrop the concept's own sky and sea
   painted alone by Gemini (no horizon line; a band of bright haze at 0.30, `horizon` 0.33 so the sea's glints come in
   below it). The light leaves the statue at the height of her eyes (the owner). The goddess a colossus (the owner: "a
   big statue of Aphrodite"): 11 m, rising out of the sea behind the highest rock, which hides where she meets the water,
