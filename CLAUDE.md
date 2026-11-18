@@ -119,8 +119,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   far veiled statues at the horizon, horizon 0.362). Concept: `design/level2/concept.jpg`. Its block is a sandier
   marble than the slabs, a little uneven; its meander cut unevenly by hand, a darker shade of the same stone, not
   terracotta (the owner) (`props/block_meander.glb`, `tools/go/block_meander.py`). In the empty sea at the bottom right, a
-  rock and a smaller one beside it (the owner, 18/11): `rocks_after` in its plan, made after all the rest so nothing else
-  of the level changes; it is built `ivory_level.py -- goveil/level.glb goveil/level.json 11 48 goveil/plan.json`, then
+  rock and a smaller one beside it (the owner, 18/11), and the brown rock under the quay where she starts made stronger
+  (its tops near the slab's, two more toward the eye; the owner): `rocks_after` in its plan, made after all the rest so
+  nothing else of the level changes; it is built `ivory_level.py -- goveil/level.glb goveil/level.json 11 48 goveil/plan.json`, then
   `shore_hole.py goveil`.
 - **Both levels** (the owner, 18/11): the whole opening of each gate is white, and she stops just before it so she is
   seen until the flash. The way's line stays as it was: a pink and a neon terracotta glow were tried and turned down.

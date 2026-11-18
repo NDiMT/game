@@ -95,7 +95,9 @@ def plan():
                   [[-1.6, SEA, -10.4], 1.3, H1 - 0.3],
                   [[0.6, SEA, -3.1], 0.42, SEA + 0.16],      # (small rocks in the still water, clear of the stepping stones and the gap)
                   [[0.85, SEA, -5.3], 0.38, SEA + 0.12]],
-        'rocks_after': [[[5.1, SEA, -0.75], 1.05, SEA + 1.05], [[6.55, SEA, -0.2], 0.62, SEA + 0.6]],      # (in the empty sea at the bottom right, a rock and a smaller one beside it (the owner, 18/11); made after all the rest)
+        'rocks_after': [[[5.1, SEA, -0.75], 1.05, SEA + 1.05], [[6.55, SEA, -0.2], 0.62, SEA + 0.6],
+                        [[-2.95, SEA, 1.0], 1.05, H0 - 0.07], [[0.35, SEA, 2.85], 0.9, H0 - 0.07], [[2.75, SEA, -0.75], 0.72, H0 - 0.1],
+                        [[-1.05, SEA, 2.8], 0.85, H0 - 0.08], [[1.65, SEA, 1.3], 0.75, H0 - 0.1]],      # (the brown rock under the quay where she starts made stronger, its tops near the slab's (the owner, 18/11): over its first shoulders and two more toward the eye)      # (in the empty sea at the bottom right, a rock and a smaller one beside it (the owner, 18/11); made after all the rest)
         'columns': [], 'volute': None, 'head': None, 'relief': None, 'cypress': None,
         'eye': eye_fit(pts, top_room=0.33, bottom_room=0.2, margin=0.8),
         'shore': True,
