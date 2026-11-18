@@ -81,6 +81,14 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
 - **The heroine Ione** is the owner's own design (`eidolon-demo/design/ione5/`): marble woman in spiral terracotta
   bands. Model: multiview → smart low-poly (owner's choice), rigged and built by `tools/ione4_build.py` into
   `hero_models/ione4r*.glb`. Review her clips with `tools/go/hero_look.py` (her colours, the game's eye).
+- **Level 2, in design** (18/11, the owner: "the second level, again a tutorial, where you push a box"): "The Veiled".
+  A marble block on a small quay at sea; a causeway of stepping stones with one stone missing; push the block onto the
+  causeway's line, go round behind it, push it twice: it falls into the gap and becomes the missing stone. Board
+  `tools/go/push_trial.py gap` (9 swipes, unique, no dead end, the block needed; `--draw` for the sheet), plan
+  `tools/go/veil_plan.py` (folder `goveil/` once approved), concepts `eidolon-demo/design/level2/` (A silver noon,
+  B golden morning). Veiled statues in the sea and by the gate: the faces Theron carved from outside (script section 7).
+  Lines (drafts): "The goddess gave each one breath, / to live the life he wished for her." End: "He veiled them, so
+  as not to see." New code it needs: a gap node the block falls into and fills. Waiting for the owner's choice.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
