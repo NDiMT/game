@@ -2293,6 +2293,7 @@ uniform float bg_tex_k = 0.0; uniform vec2 bg_scale = vec2(1.0);
 uniform vec3 vein_tint : source_color = vec3(0.9, 0.86, 0.83);
 uniform sampler2D alb_tex : source_color, filter_linear_mipmap, repeat_enable;      // (a model's own colour (the goddess's marble from Tripo): its veins and hollows under the level's light)
 uniform float alb_tex_k = 0.0;
+uniform float baked_k = 0.0;      // (a model whose light and shade are painted into its own colour (the goddess): shown as painted, under the level's haze)
 uniform float paint_light = 0.0;      // (light and shade as a painter lays them (a try): each face's light a soft gradient, the smooth form's light mixed into the facet's, the steps between its tones soft)
 uniform float paint_k = 0.0;      // (light and shade as painted (a try): a wash of tone over each face, the brush's strokes down it, the shade a little bluer)
 uniform float vein_local = 0.0; uniform float vein_sc = 0.9; uniform float vein_w = 0.03; uniform float vein_cloud = 0.05; uniform float vein_gain = 1.0;      // (a block that is pushed: its veins its own, not the world's, so they go with it; light veins on a darker stone: vein_gain over 1)
@@ -2437,6 +2438,7 @@ void fragment(){
 		c *= 1.0 - rich_k * 0.07 * smoothstep(0.76, 0.9, fbm(wp * 9.0 + 7.0));
 	}
 	if (alb_tex_k > 0.0) c *= mix(vec3(1.0), min(texture(alb_tex, UV).rgb * 1.08, vec3(1.0)), alb_tex_k);
+	if (baked_k > 0.5) c = texture(alb_tex, UV).rgb;
 	if (paint_k > 0.0) {
 		vec3 pp = mix(wp, lpos, vein_local);
 		vec3 upv = abs(fn.y) < 0.92 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
@@ -5215,7 +5217,7 @@ func _ivv_statues(j: Dictionary) -> void:
 		for m in hd.find_children("*", "MeshInstance3D", true, false):
 			var exm := exs
 			var om := (m as MeshInstance3D).mesh.surface_get_material(0) as BaseMaterial3D
-			if String(s[0]) == "goddess" and om != null and om.albedo_texture != null: exm = exs.duplicate(); exm["alb_tex"] = om.albedo_texture; exm["alb_tex_k"] = 1.0      # (the goddess: her own marble from Tripo, its veins and hollows under the level's light)
+			if String(s[0]) == "goddess" and om != null and om.albedo_texture != null: exm = exs.duplicate(); exm["alb_tex"] = om.albedo_texture; exm["baked_k"] = 1.0; exm["far_k"] = 0.05; exm["rim_k"] = 0.0      # (the goddess: her own light and shade painted into her colour (baked in Blender from the level's light, a lilac shade), shown as painted (the owner, 18/11: "a texture with light and shade"))
 			(m as MeshInstance3D).material_override = _iv_mat("goddess" if String(s[0]) == "goddess" and go_milos else "statue", 0.0, exm); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		_ivs_mirror(hp, func(_mi: MeshInstance3D) -> Array:
 			var mx := {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.7, "haze": 1.0, "mirror_fade": 2.0, "mirror_wob": 0.05}; mx.merge(look); return ["statue", 0.0, mx])

@@ -39,7 +39,7 @@ LIGHT = {      # nodes the light passes and no one walks: the sea before the isl
     'Z': [3.0, H1, 0.0],          # (the statue: the light's source)
     'Q': W(0, -1, H1), 'W1': W(0, 1, H1), 'W2': W(0, 2, H1), 'W3': W(1, 3, H1),
 }
-GODDESS = ['goddess', [-10.62, SEA - 4.2, -5.25], 11.0, -1.2]      # (Aphrodite, a colossus rising out of the sea behind her sanctuary, the highest rock hiding where she meets the water (the owner: "a big statue of Aphrodite", "much bigger"), her face turned to the eye; without arms: they broke when Theron took her mirror; a little more of her shape than at first (the owner) (props/statue_goddess.glb, 4200 faces))
+GODDESS = ['goddess', [-10.62, SEA - 4.2, -5.25], 11.0, -0.9]      # (turned -0.9: her body near square to the eye, her face a little to the right, as the concept has her)      # (Aphrodite, a colossus rising out of the sea behind her sanctuary, the highest rock hiding where she meets the water (the owner: "a big statue of Aphrodite", "much bigger"), her face turned to the eye; without arms: they broke when Theron took her mirror; a little more of her shape than at first (the owner) (props/statue_goddess.glb, 4200 faces))
 WAY = ['A', 'B', 'C', 'D', 'M', 'C', 'B', 'A', 'X', 'F', 'G', 'H', 'P', 'K', 'P', 'K', 'Y', 'R']      # (M: the mirror turned; the first K: the push)
 
 
