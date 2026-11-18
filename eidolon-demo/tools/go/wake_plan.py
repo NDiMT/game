@@ -86,6 +86,7 @@ def plan():
         # stone's hues; turned 30 degrees to her left, toward the island; her foot 0.8 m under the water, clear of the rocks)
         'observer': [-8.26, SEA - 0.8, -5.77, 6.4, -0.23], 'observer_haze': 0.03, 'observer_model': 'observer_veiled',
         'shore': True,      # (a map of the water's distance from every stone in it: the sea draws small waves along each shore)
+        'rock_clamp': [0.04, 0.35, 0.06],      # (no rock up to a slab's top, inside it or at its edge: the rising stones' rock lay level with their slabs' tops and showed through them; the owner, 18/11: "no rock through things")
     }
     return pl, puzzle
 

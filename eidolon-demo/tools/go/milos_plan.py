@@ -94,7 +94,9 @@ def plan():
         'waters': [[-3.75, -0.75, -0.75, 0.75], [-5.25, -3.75, -2.25, -0.75], [-6.75, -2.25, -5.25, -3.75]],      # (the channel, its arm, the chasm: open water the rock keeps clear of)
         'rock_style': {'ease': [0.006, 0.016], 'boulder_ease': 0.012, 'tilt': [0.2, 0.45], 'lean': 2.6, 'cut_p': 0.85, 'chamf': [0.12, 0.36], 'side_cuts': [2, 3], 'sat_min': 0.2},      # (its rock cut sharper and more aslant than the other levels' (the owner))
         'smooth_normals': ['rock', 'marble'],      # (for the painted light: the smooth form's light can be mixed into the facets' (the owner, 18/11: "the light and shade as painted"))
-        'rock_clamp': [0.04, 0.35, 0.06],      # (no tip of its aslant rock up through a slab (the owner, 18/11: "grey stone passes through the white"))
+        'rock_carve': [[-6.65, -5.25, -3.65, -2.35, 1.26, 2.45],      # (the niche cut out of the rock for the block: room for it under the rock's roof)
+                       [-5.9, -3.1, -7.6, -5.25, 1.26, 3.3]],      # (no rock over the gate's landing)
+        'rock_clamp': [0.04, 0.35, 0.06, 1.15, 0.3],      # (no tip of its aslant rock up through a slab (the owner, 18/11: "grey stone passes through the white"); and no tall rock in what stands on a floor: the niche's roof lifted clear of the block pushed under it, a rock at the gate's landing cut back to its edge ("no rock through things, one in another"))
         'bridges': [[-5.0, -4.0, -5.24, -3.76, H1]],      # (a slab over the chasm, nothing under it but the sea; a joint's breadth from each floor)
         'statues': statues, 'pedestals': [], 'shore_statues': ['standing'],      # (the light's statue stands in the water: the sea's thin foam hugs her as it does the rock)
         'rocks': rocks,

@@ -510,5 +510,10 @@
  ],
  "observer_haze": 0.03,
  "observer_model": "observer_veiled",
- "shore": true
+ "shore": true,
+ "rock_clamp": [
+  0.04,
+  0.35,
+  0.06
+ ]
 }

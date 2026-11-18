@@ -1168,16 +1168,45 @@ def join(obs, name):
 RC = PLAN.get('rock_clamp') if PLAN else None
 if RC and rock:      # (no tip of the rock through a slab: where it rises a little over a floor, inside it or at its edge, it goes under it; the tall rock that stands on a floor, as over a niche, stays; the owner, 18/11: "grey stone passes through the white")
     lo_, hi_, mg_ = float(RC[0]), float(RC[1]), float(RC[2]) if len(RC) > 2 else 0.06
+    clear_ = float(RC[3]) if len(RC) > 3 else None      # (and no tall rock in what stands on a floor: where one reaches in over it, near its edge it is cut back to the edge, deeper in it is lifted clear of what goes under it, as the block pushed into a niche; the owner, 18/11: "no rock through things, one in another")
+    edge_ = float(RC[4]) if len(RC) > 4 else 0.3
     fls_ = [(f['h'], [tuple(q) for q in f['xz']]) for f in PLAN['floors'].values()]
-    n_cl = 0
-    for ob in rock:
+    n_cl = n_out = n_up = 0
+    for ob in rock + [o_ for (m_, r_) in RISERS.items() for o_ in (r_[1] or [])]:      # (the stones that rise as well: their own rock under their own slab)
         mw = ob.matrix_world; mi = mw.inverted()
         for v in ob.data.vertices:
             w = mw @ v.co; gx, gz, gy = w.x, -w.y, w.z
             for (h_, poly_) in fls_:
-                if h_ - lo_ < gy < h_ + hi_ and (inside(poly_, (gx, gz)) or min(seg_dist((gx, gz), poly_[i], poly_[(i + 1) % len(poly_)]) for i in range(len(poly_))) < mg_):
+                ins_ = inside(poly_, (gx, gz)); np_ = len(poly_)
+                if h_ - lo_ < gy < h_ + hi_ and (ins_ or min(seg_dist((gx, gz), poly_[i], poly_[(i + 1) % np_]) for i in range(np_)) < mg_):
                     w.z = h_ - lo_; v.co = mi @ w; n_cl += 1; break
-    print('ROCK CLAMPED under the floors:', n_cl, 'vertices')
+                if clear_ is not None and ins_ and h_ + hi_ <= gy < h_ + clear_:
+                    dm_, im_ = min((seg_dist((gx, gz), poly_[i], poly_[(i + 1) % np_]), i) for i in range(np_))
+                    if dm_ < 0.08: break      # (a rock wall standing at the floor's edge)
+                    if dm_ <= edge_:      # (out over the nearest edge)
+                        (ax_, az_), (bx_, bz_) = poly_[im_], poly_[(im_ + 1) % np_]
+                        dx_, dz_ = bx_ - ax_, bz_ - az_; L_ = dx_ * dx_ + dz_ * dz_
+                        t_ = 0.0 if L_ == 0 else max(0.0, min(1.0, ((gx - ax_) * dx_ + (gz - az_) * dz_) / L_))
+                        qx_, qz_ = ax_ + t_ * dx_, az_ + t_ * dz_; ux_, uz_ = qx_ - gx, qz_ - gz; ul_ = max((ux_ * ux_ + uz_ * uz_) ** 0.5, 1e-6)
+                        w.x = qx_ + ux_ / ul_ * 0.03; w.y = -(qz_ + uz_ / ul_ * 0.03); n_out += 1
+                    else:
+                        w.z = h_ + clear_; n_up += 1
+                    v.co = mi @ w; break
+    print('ROCK CLAMPED under the floors:', n_cl, 'vertices; cut back to their edges:', n_out, '; lifted clear over them:', n_up)
+CV = PLAN.get('rock_carve') if PLAN else None
+if CV and rock:      # (room cut out of the rock where something stands or goes: the niche cut for the block, the space over a floor; boxes [x0, x1, z0, z1, y0, y1] in the game's axes; the owner, 18/11: "no rock through things, one in another")
+    n_cv = 0
+    for (x0_, x1_, z0_, z1_, y0_, y1_) in CV:
+        me_ = bpy.data.meshes.new('carve'); bm_ = bmesh.new(); bmesh.ops.create_cube(bm_, size=1.0); bm_.to_mesh(me_); bm_.free()
+        cut_ = bpy.data.objects.new('carve', me_); bpy.context.scene.collection.objects.link(cut_)
+        cut_.scale = (x1_ - x0_, z1_ - z0_, y1_ - y0_); cut_.location = ((x0_ + x1_) / 2, -(z0_ + z1_) / 2, (y0_ + y1_) / 2)
+        for ob in rock:
+            ws_ = [ob.matrix_world @ v.co for v in ob.data.vertices]
+            if not ws_ or max(w.x for w in ws_) < x0_ or min(w.x for w in ws_) > x1_ or max(-w.y for w in ws_) < z0_ or min(-w.y for w in ws_) > z1_ or max(w.z for w in ws_) < y0_ or min(w.z for w in ws_) > y1_: continue
+            md_ = ob.modifiers.new('carve', 'BOOLEAN'); md_.operation = 'DIFFERENCE'; md_.object = cut_; md_.solver = 'EXACT'
+            bpy.context.view_layer.objects.active = ob; bpy.ops.object.modifier_apply(modifier=md_.name); n_cv += 1
+        bpy.data.objects.remove(cut_, do_unlink=True)
+    print('ROCK CARVED:', len(CV), 'boxes through', n_cv, 'rocks')
 M = join(marble, 'marble'); R = join(rock, 'rock') if rock else None; O = join(olive, 'olive') if olive else None; B = join(barks, 'bark') if barks else None
 QU = join(quarries, 'quarry') if quarries else None
 SN = join(SNOWS, 'snow') if SNOWS else None

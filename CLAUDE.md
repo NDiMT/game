@@ -172,8 +172,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   painted alone by Gemini (no horizon line; a band of bright haze at 0.30, `horizon` 0.33 so the sea's glints come in
   below it). The light leaves the statue at the height of her eyes (the owner). The goddess a colossus (the owner: "a
   big statue of Aphrodite"): 11 m, rising out of the sea behind the highest rock, which hides where she meets the water,
-  her face turned to the eye (turn -1.2). Her model (`props/statue_goddess.glb`) is her first one, 4,200 flat faces,
-  its light and shade baked as painted into the colours of its faces (Cycles, the light from the right of the picture as
+  her face turned to the eye (turn -1.2). Her model (`props/statue_goddess.glb`) is her first one, the whole of it
+  (11,660 flat faces: the owner, 18/11, "the first, with more polygons"; before, 4,200), its light and shade baked as
+  painted into the colours of its faces (Cycles, the light from the right of the picture as
   the concept paints her, a lilac shade), drawn as baked (`baked_k` 2 in IV_SH: the vertex colours as they are; `far_k`
   0.05, no rim); the game takes that look for any goddess model with vertex colours and no texture. The owner chose it
   (18/11: "the first Aphrodite"), after "it doesn't even look like Aphrodite, just a blurred shape" and "I wanted a
@@ -189,8 +190,17 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   for painted light and shade, a trial not yet on by default (the owner asked for "the actual light and shade painted, not
   a texture on the rock"): `IV_PAINT_LIGHT=1 IV_PAINT_AO=0.5` (`paint_light`: the light on smoothed normals in soft
   bands); levels 1 and 2 would need their own rebuild with `smooth_normals`.
-- **The ring before every gate** is a bright yellowish ochre (`e3a94a`, a little glow, `emit` 0.3 in the waking's
-  levels; the owner, 18/11).
+- **The ring before every gate** is a very soft ochre (`dcc495`, a faint glow, `emit` 0.12 in the waking's levels; the
+  owner, 18/11: "ochre, very soft"; a bright yellowish `e3a94a` read as lemon); level 3's unlit ring a light grey-lilac
+  (`d2cee0`; the owner asked twice for it lighter).
+- **No rock through things** (the owner, 18/11: "make sure the rocks are clean, none through objects, one in another"):
+  the builder's `rock_clamp` [below, above, margin, clear, edge] sinks rock tips under the floors (the stones that rise
+  too: in level 1 their rock lay level with their slabs' tops), cuts tall rock reaching in over a floor back to its edge,
+  or lifts it clear deeper in; `rock_carve` boxes are cut out of the rock (level 3: the niche for the block, the space
+  over the gate's landing). Check a level with the audits kept in the scratchpad's way: rock over each floor's outline,
+  in each stair, in each statue, and through the block's place where it comes to rest (all clear on 18/11; level 2
+  needed nothing). Level 1 rebuilt `ivory_level.py -- gowake/level.glb gowake/level.json 7 32 gowake/plan.json` (keep its
+  old level.json: the new build writes null keys it lacked).
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
