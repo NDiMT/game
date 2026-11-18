@@ -153,8 +153,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   grey-blue), the light step by step `board.png`. Plan `tools/go/milos_plan.py` (asserts the plan is the solver's board).
   `go_milos` rides `go_veil` (its start, block, statues), and level 2's gate leads on into it (`_ivw_next_level`); the end
   screen comes after the last. The light (`_ivm_*` in `ch1.gd`): traced on the board as the solver has it, drawn live each
-  frame and cut where her body or the stone stands; past the mirror it goes out while the mirror turns; the ring is white
-  as the others' but unlit until the light reaches it, then lights; the gate keeps its veil, its two leaves hung behind
+  frame and cut where her body or the stone stands; past the mirror it goes out while the mirror turns; the ring is a
+  light lilac grey, unlit (`b6b1cc`; the owner: "darker", then "lighter"), until the light reaches it, then turns to the
+  ochre of every level's ring (`_ivm_ring_tick`); the gate keeps its veil, its two leaves hung behind
   it swing open inward (the cloth never goes through them). The statue in the sea is still level 2's `standing` model (a
   placeholder); the sea's foam hugs her (`shore_statues` in the plan). No dark shapes before the eye here.
   **Its look, as the owner settled it (18/11, after many rounds)**: its own map and board as above ("I liked the base we
@@ -171,14 +172,25 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   painted alone by Gemini (no horizon line; a band of bright haze at 0.30, `horizon` 0.33 so the sea's glints come in
   below it). The light leaves the statue at the height of her eyes (the owner). The goddess a colossus (the owner: "a
   big statue of Aphrodite"): 11 m, rising out of the sea behind the highest rock, which hides where she meets the water,
-  her face turned to the eye (turn -1.2), her whole Tripo model (11,660 faces), smooth white marble with
-  her folds shaded, lit by her own light from the right of the picture (`form_key` 0.72, 0.61, -0.34) as the concept
-  paints her (the owner, 18/11: "make Aphrodite better"; before, 4,200 flat faces for "few polygons"), a breath of the
-  haze on her (`far_k` 0.08). The story's line crosses her neck at the level's start; the camera's follow lifts the whole
+  her face turned to the eye (turn -0.9). Her model (`props/statue_goddess.glb`) is Tripo P2 with its texture (100 +
+  10 credits), cut to 35,286 faces, its colour replaced by her light and shade baked as painted (Cycles, a diffuse bake
+  in soft bands, the light from the right of the picture as the concept paints her; seams with a 32 px margin, or dark
+  specks show), drawn as baked (`baked_k` 1 in IV_SH: the texture's colour as it is; `far_k` 0.05, no rim). The owner
+  (18/11): "it doesn't even look like Aphrodite, just a blurred shape", then "I wanted a texture with light and shade";
+  turned down on the way: a painted picture of her on a card ("it's bad"), a plain P1 model (11,660 faces, shaded by
+  the game), the first 4,200 flat faces. Offered beside her: that first model with the same light baked into its
+  vertex colours (`IV_GODDESS_VC=1`, `baked_k` 2); the owner has to choose. The story's line crosses her neck at the level's start; the camera's follow lifts the whole
   picture about 0.085 of the screen there, so her head is kept under the top by that. Turned down on the way: a smooth
   white island of marching cubes (`tools/go/milos_island.py`, still in the repo), a way of separate crooked stones
   (`node_slabs`), a deep blue-violet sky, a crisp sky with 25 grey rocks in the sea, the white island round slabs on a
-  grey-blue course, and the stepped redesign's map.
+  grey-blue course, and the stepped redesign's map. No rock tip comes through a slab (the owner: "grey stone passes
+  through the white"): the builder sinks every rock vertex a little over a floor, in it or at its edge, under it
+  (`rock_clamp` [below, above, margin] in the plan). Its rock and slabs are built with smooth normals (`smooth_normals`)
+  for painted light and shade, a trial not yet on by default (the owner asked for "the actual light and shade painted, not
+  a texture on the rock"): `IV_PAINT_LIGHT=1 IV_PAINT_AO=0.5` (`paint_light`: the light on smoothed normals in soft
+  bands); levels 1 and 2 would need their own rebuild with `smooth_normals`.
+- **The ring before every gate** is a bright yellowish ochre (`e3a94a`, a little glow, `emit` 0.3 in the waking's
+  levels; the owner, 18/11).
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
@@ -224,7 +236,7 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   with a GPU (the owner's computer via Remote Control, or a self-hosted GPU environment).
 
 ## Costs (to 18/11/2026)
-- Gemini, 10–16/11/2026: about $95–100 (video ~$60, images ~$32, music ~$1.5, voice <$0.5). Tripo: 180 credits left (18/11: five statues at 40, the goddess at 40).
+- Gemini, 10–16/11/2026: about $95–100 (video ~$60, images ~$32, music ~$1.5, voice <$0.5). Tripo: 70 credits left (18/11: five statues at 40, the goddess at 40, then her P2 model and its texture at 110).
 - Cheaper: draft videos at 720p and only finals at 1080p; non-urgent images through the batch API (about half).
 
 ## Git
