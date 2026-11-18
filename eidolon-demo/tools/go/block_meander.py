@@ -1,9 +1,11 @@
 """The second level's block: the first trials' carved cube (goiv/block.glb) made rougher, as fresh from the quarry, its
-meander kept and lifted out to glow (the owner: "the stone a little more uneven, a little different in shade";
-"the meander on the cube with a slight pink glow").
+meander kept and lifted out to be coloured apart (the owner: "the stone a little more uneven, a little different in
+shade"; the meander "more uneven and darker").
 
-  - The meander is the grooves cut 3.2 cm into each side: their floors and walls become a mesh of their own
-    ('meander'), so the game can light it.
+  - The meander is the grooves cut 3.3 cm into each side: their floors and walls become a mesh of their own
+    ('meander'), so the game can colour it.
+  - The meander as cut by hand: its outline wavers, its width and its depth vary (a smooth field in each face's own
+    plane, the same for a groove's rim and its floor, so its walls stay walls; long edges about it cut short first).
   - Block and meander are bent together: each upright face out of true its own way, the top a little out of level.
   - A few corners of the block are broken off aslant (the meander lies in the middle of each face, clear of them).
   - The whole made the size of a causeway stone (0.9 m square, 1.04 m high), its foot at its origin.
@@ -11,7 +13,7 @@ meander kept and lifted out to glow (the owner: "the stone a little more uneven,
 usage: python3.11 -I tools/go/block_meander.py -- <src block.glb> <out.glb> [seed]
 """
 import bpy, bmesh, sys, random
-from mathutils import Vector
+from mathutils import Vector, noise
 
 a = sys.argv[sys.argv.index('--') + 1:]
 SRC, OUT = a[0], a[1]; SEED = int(a[2]) if len(a) > 2 else 7
@@ -22,6 +24,8 @@ ob = [o for o in bpy.context.scene.objects if o.type == 'MESH'][0]
 ob.name = 'source'      # (its name free for the new block)
 bm = bmesh.new(); bm.from_mesh(ob.data); bm.transform(ob.matrix_world)
 bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)      # (its faces each came with their own corners: welded, it is one closed stone, and a break in it closes)
+import math
+bmesh.ops.dissolve_limit(bm, angle_limit=math.radians(0.05), verts=bm.verts[:], edges=bm.edges[:])      # (each flat run of a groove, its floor or a wall, one face: its outline can then be cut evenly along it)
 xs = [v.co.x for v in bm.verts]; ys = [v.co.y for v in bm.verts]; zs = [v.co.z for v in bm.verts]
 X0, X1, Y0, Y1, Z0, Z1 = min(xs), max(xs), min(ys), max(ys), min(zs), max(zs)
 H = Z1 - Z0
@@ -60,7 +64,43 @@ def bend(co):
 bm.faces.index_update(); mea_ix = {f.index for f in mea}      # (by index: a new layer leaves the old face references stale)
 mark = bm.faces.layers.int.new('mea')
 for f in bm.faces: f[mark] = 1 if f.index in mea_ix else 0
-print('marked', sum(f[mark] for f in bm.faces))
+print('marked', sum(f[mark] for f in bm.faces), 'area', round(sum(f.calc_area() for f in bm.faces if f[mark]), 4))
+
+# the meander uneven, as cut by hand
+WOB = (0.02, 0.0125, 0.015)      # (its outline's broad waver and fine one, and its floor's depth, per unit of noise: the noise is mostly about 0.2, so about 4, 2.5 and 3 mm in the source's metres, at times twice that)
+def sm(e0, e1, x):
+    t = min(max((x - e0) / (e1 - e0), 0.0), 1.0); return t * t * (3.0 - 2.0 * t)
+def side_of(co):      # (the side a point near the meander lies on, its across and its up, how deep under that face, how far from its edges)
+    k = max(range(4), key=lambda i: co.dot(sides[i][0]) - sides[i][1])
+    ax, outer = sides[k]; t = Vector((ax.y, -ax.x, 0))
+    half = (X1 - X0) / 2 if ax.x == 0 else (Y1 - Y0) / 2
+    w = (1.0 - sm(half - 0.075, half - 0.035, abs(co.dot(t)))) * sm(Z0 + 0.03, Z0 + 0.07, co.z) * (1.0 - sm(Z1 - 0.07, Z1 - 0.03, co.z))
+    return k, ax, t, outer - co.dot(ax), co.dot(t), w
+SEG = 0.035      # (the longest a piece of the meander's outline may be: each run wavers along its length)
+def split_long(e):      # (cut into even pieces, the faces on either side kept whole: no fan of new faces about it)
+    A, B = e.verts[0].co.copy(), e.verts[1].co.copy(); n = int((B - A).length / SEG) + 1
+    cur = e
+    for k in range(1, n):
+        P = A + (B - A) * (k / n)
+        a = cur.verts[0] if (cur.verts[0].co - A).length < (cur.verts[1].co - A).length else cur.verts[1]
+        ne, nv = bmesh.utils.edge_split(cur, a, (P - a.co).length / cur.calc_length())
+        nv.co = P
+        cur = ne if B.to_tuple(6) in [x.co.to_tuple(6) for x in ne.verts] else cur
+long_es = [e for e in bm.edges if e.calc_length() > SEG and any(f[mark] for f in e.link_faces) and side_of((e.verts[0].co + e.verts[1].co) * 0.5)[5] > 0.0]
+for e in long_es: split_long(e)
+noise.seed_set(SEED)
+moved = 0
+for v in bm.verts:
+    k, ax, t, depth, u, w = side_of(v.co)
+    if w <= 0.0 or depth < -0.01 or depth > 0.05: continue
+    q = Vector((u, v.co.z, 0.0))
+    d1 = noise.noise_vector(q / 0.2 + Vector((0.0, 0.0, 3.1 * k + 0.5)))
+    d2 = noise.noise_vector(q / 0.09 + Vector((0.0, 0.0, 7.3 * k + 11.5)))
+    off = t * (WOB[0] * d1.x + WOB[1] * d2.x) + Vector((0, 0, 1)) * (WOB[0] * d1.y + WOB[1] * d2.y)
+    if depth > 0.018: off -= ax * WOB[2] * noise.noise(q / 0.09 + Vector((0.0, 0.0, 5.7 * k + 23.0)))      # (the floor deeper here, shallower there)
+    v.co += off * w; moved += 1
+bmesh.ops.triangulate(bm, faces=bm.faces[:], quad_method='BEAUTY', ngon_method='BEAUTY')      # (the wavering faces in triangles again)
+print('uneven: verts moved', moved, 'faces now', len(bm.faces), 'marked area', round(sum(f.calc_area() for f in bm.faces if f[mark]), 4))
 for v in bm.verts: v.co = bend(v.co)
 
 def cut(b, co, no):

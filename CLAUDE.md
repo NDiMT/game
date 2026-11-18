@@ -99,9 +99,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   P1 without texture, 40 credits each, welded and shaded by `tools/go/bake_ao.py --weld`); each model faces its own +x
   (the plan's turn sets that face toward the eye). Its backdrop is its own (`goveil/backdrop.jpg`: the golden morning,
   far veiled statues at the horizon, horizon 0.362). Concept: `design/level2/concept.jpg`. Its block is a sandier
-  marble than the slabs, a little uneven, with a meander (`props/block_meander.glb`, `tools/go/block_meander.py`).
-- **Both levels** (the owner, 18/11): the way's line, its discs and the block's meander glow **neon terracotta** (pink
-  was turned down); the whole opening of each gate is white, and she stops just before it so she is seen until the flash.
+  marble than the slabs, a little uneven; its meander cut unevenly by hand, a darker shade of the same stone, not
+  terracotta (the owner) (`props/block_meander.glb`, `tools/go/block_meander.py`).
+- **Both levels** (the owner, 18/11): the whole opening of each gate is white, and she stops just before it so she is
+  seen until the flash. The way's line stays as it was: a pink and a neon terracotta glow were tried and turned down.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
