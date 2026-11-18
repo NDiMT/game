@@ -347,6 +347,14 @@ The levels are many, in one system. A new level is made in this order (the secon
   - detailed backgrounds;
   - things too pale or too flat.
 - Do **at least 10 passes**. Then send one full frame with a one-line Greek caption, and later a video. Reply in Greek, short.
+- **Smooth on a phone** (a catch in the picture is a fault like any other):
+  - Make one shader per kind of effect, never `Shader.new()` per instance. A phone's browser builds a shader when it
+    is first drawn and stops the picture while it builds.
+  - Draw each kind once behind a still screen (`_ivw_warm`). Keep alive one material of each `StandardMaterial3D`
+    kind: the engine frees a kind's shader when its last user goes.
+  - Keep sound streams loaded and ready them on the web (`_ivw_sounds_ready`).
+  - Pose and animate nothing hidden.
+  - Check with `FLIP=<level> IV_HITCH=1 godot --headless ... -- godemo`: frame work under ~2 ms here.
 
 ## 6. Commit
 

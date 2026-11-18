@@ -803,6 +803,7 @@ const SH_RING := "shader_type spatial;\nrender_mode unshaded, blend_add, cull_di
 
 var shaders := {}
 var pmats := {}
+var pm_sent := []      # (the lights, the centre and the mist last sent to them)
 var umats := {}
 var timed: Array = []
 var lights: Array = [Vector4.ZERO, Vector4.ZERO, Vector4.ZERO, Vector4.ZERO, Vector4.ZERO, Vector4.ZERO, Vector4.ZERO]
@@ -5092,7 +5093,8 @@ func _process(dt: float) -> void:
 		"swingL": ((0.03 + 0.08 * rk) * wk * sin(phase) + 0.012 * sin(t * 0.9)) * (1.0 - a_wL), "swingR": (-(0.03 + 0.08 * rk) * wk * sin(phase) + 0.012 * sin(t * 0.9 + 1.7)) * (1.0 - a_wR),
 		"hold": a_hold, "raise": a_raise, "open": a_open, "wL": a_wL, "wR": a_wR, "tL": tgtL, "tR": tgtR,
 	}
-	fig.apply(st); wfig.apply(st)
+	if fig.visible or lamp_held: fig.apply(st)      # (the drawn figure posed only while it is shown, or holds the lamp: hidden wherever she is her own model, it was made anew each frame, its dress rebuilt, for no one; on a phone most of a frame's work)
+	if wfig.visible: wfig.apply(st)
 	for k in ["Bridge", "Cap", "Door", "Boat"]:
 		if refl.has_node(k): (refl.get_node(k) as Node3D).transform = (world.get_node(k) as Node3D).transform
 	var near := smoothstep(MX + 2.2, MX + 1.5, pos.x) * smoothstep(MZ - 0.8, MZ - 0.5, pos.z) * smoothstep(MZ + 0.8, MZ + 0.5, pos.z) * float(old_world)
@@ -5178,9 +5180,12 @@ func _process(dt: float) -> void:
 	lights[0] = Vector4(lamp.position.x, lamp.position.y, lamp.position.z, le)
 	lights[1] = Vector4(DX, 0.8, -26.5, door_energy)
 	var cc := cam_t if shot == null else (shot.c as Vector3)
-	for m in pmats.values():
-		for i in 7: m.set_shader_parameter("l%d" % i, lights[i])
-		m.set_shader_parameter("centre", cc); m.set_shader_parameter("mist_r", maxf(cam.size * 0.64, 6.5))
+	var pm_now := [lights.duplicate(), cc, maxf(cam.size * 0.64, 6.5), pmats.size()]
+	if pm_now != pm_sent:      # (sent only when they change: on most frames nothing has, and some 700 settings each frame were a good part of a phone's frame)
+		pm_sent = pm_now
+		for m in pmats.values():
+			for i in 7: m.set_shader_parameter("l%d" % i, lights[i])
+			m.set_shader_parameter("centre", cc); m.set_shader_parameter("mist_r", maxf(cam.size * 0.64, 6.5))
 	for fm in fogs:
 		fm.set_shader_parameter("hero", cc); fm.set_shader_parameter("far_a", maxf(cam.size * 0.3, 3.5)); fm.set_shader_parameter("far_b", maxf(cam.size * 0.95, 10.0))
 	sea_mat.set_shader_parameter("centre", cc); sea_mat.set_shader_parameter("mist_r", maxf(cam.size * 0.64, 6.5)); sea_mat.set_shader_parameter("time_s", t)

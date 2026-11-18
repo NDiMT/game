@@ -1797,7 +1797,22 @@ func _go_pre(_dt: float) -> void:
 	if gs.is_empty(): return
 	pos.y = MW_TOP
 
+## her bodies that are not shown (her images for other waters, the mirror's) at rest while hidden: in the GO levels
+## eight of them played her every move each frame, unseen, a good part of a phone's frame; shown again, each is first
+## put back in step with her
+func _go_bodies_rest() -> void:
+	var main_ap: AnimationPlayer = H["main"].ap if H.has("main") else null
+	for k in H:
+		var ap: AnimationPlayer = H[k].ap
+		if String(k) == "main" or ap == null: continue
+		var shown := (H[k].holder as Node3D).is_visible_in_tree()
+		if shown and not ap.active:
+			ap.active = true
+			if main_ap != null and main_ap.current_animation != "" and ap.current_animation == main_ap.current_animation: ap.seek(main_ap.current_animation_position, true)
+		elif not shown and ap.active: ap.active = false
+
 func _go_post(dt: float) -> void:
+	_go_bodies_rest()
 	if go_iv: _iv_post(dt); return
 	for dct in [H, SHP]:      # no pool, no mirror wall, no picture on the sea here: of her bodies only her own
 		for hk in dct:
@@ -3390,7 +3405,22 @@ func _ivp_pre(_dt: float) -> void:
 		pos.y = lerpf(ivp_wp_prev.y, nxt.y, t)
 	elif ivp_wp_cur != Vector3.INF: pos.y = ivp_wp_cur.y
 
+var ivh_on := OS.get_environment("IV_HITCH") != ""; var ivh_parts := Vector3.ZERO
+var ivh_last := 0; var ivh_ms: Array = []; var ivh_sum := Vector3.ZERO      # (IV_HITCH=1: the frames that took far longer than the others, to find what makes the game catch; and every 3 s the script's time a frame and the draws)
+func _ivh_tick() -> void:
+	var now := Time.get_ticks_usec()
+	if ivh_last > 0:
+		var ms := (now - ivh_last) / 1000.0; ivh_ms.append(ms)
+		if ivh_ms.size() > 90: ivh_ms.pop_front()
+		var srt := ivh_ms.duplicate(); srt.sort(); var med: float = srt[srt.size() / 2]
+		if ivh_ms.size() > 20 and ms > med * 2.2 and ms - med > 25.0: print("HITCH %.0f ms (usual %.0f) at %.2f" % [ms, med, iv_t])
+	ivh_last = now
+	ivh_sum += Vector3(Performance.get_monitor(Performance.TIME_PROCESS) * 1000.0, Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME), 1.0)
+	if ivh_sum.z >= 90.0:
+		print("FRAMES at %.1f: frame work %.2f ms (scripts: before %.2f, engine %.2f, level %.2f), %.0f draws, %.0f objects, %.0fk triangles" % [iv_t, ivh_sum.x / ivh_sum.z, ivh_parts.x / ivh_sum.z, ivh_parts.y / ivh_sum.z, ivh_parts.z / ivh_sum.z, ivh_sum.y / ivh_sum.z, Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME), Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME) / 1000.0])
+		ivh_sum = Vector3.ZERO; ivh_parts = Vector3.ZERO
 func _ivp_post(dt: float) -> void:
+	if ivh_on: _ivh_tick()
 	_ivp_pre(dt)
 	if ivr_on: _ivr_cam(dt)
 	else: _ivp_cam()
@@ -3955,7 +3985,7 @@ void fragment(){
 """
 func _ivw_rings(at: Vector3, size: float) -> void:
 	var q := QuadMesh.new(); q.size = Vector2(size, size) * 2.0; q.orientation = PlaneMesh.FACE_Y
-	var m := ShaderMaterial.new(); var sh := Shader.new(); sh.code = IVW_RINGS_SH; m.shader = sh
+	var m := ShaderMaterial.new(); m.shader = _ivw_shader(IVW_RINGS_SH)
 	var mi := MeshInstance3D.new(); mi.mesh = q; mi.material_override = m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi); mi.global_position = at + Vector3(0, 0.015, 0)
 
@@ -4417,7 +4447,7 @@ func _ivw_churn_make(r: Array) -> MeshInstance3D:
 			var qb := (q[0] as MeshInstance3D).global_transform * (q[0] as MeshInstance3D).get_aabb()
 			bb = qb if first else bb.merge(qb); first = false
 	var sea := IV_O.y + ivr_sea_y; var c := bb.get_center(); var rad := maxf(bb.size.x, bb.size.z) * 0.5
-	var m := ShaderMaterial.new(); var sh := Shader.new(); sh.code = IVW_CHURN_SH; m.shader = sh; m.render_priority = 6
+	var m := ShaderMaterial.new(); m.shader = _ivw_shader(IVW_CHURN_SH); m.render_priority = 6
 	for k in ["shore_tex", "shore_rect", "shore_d"]: m.set_shader_parameter(k, ivs_sea_mat.get_shader_parameter(k))
 	m.set_shader_parameter("centre", Vector2(c.x, c.z)); m.set_shader_parameter("rad", rad)
 	var pm := PlaneMesh.new(); var ext := (rad + 1.2) * 2.0; pm.size = Vector2(ext, ext)
@@ -4443,9 +4473,7 @@ func _ivw_splash(at: Vector3, rad: float) -> void:      # (drops thrown up from 
 	p.emission_ring_radius = rad + 0.06; p.emission_ring_inner_radius = rad * 0.75
 	p.direction = Vector3.UP; p.spread = 30.0; p.initial_velocity_min = 0.9; p.initial_velocity_max = 1.9; p.gravity = Vector3(0, -7.0, 0)
 	p.scale_amount_min = 0.55; p.scale_amount_max = 1.0
-	var sm := SphereMesh.new(); sm.radius = 0.024; sm.height = 0.048; sm.radial_segments = 6; sm.rings = 3
-	var m := StandardMaterial3D.new(); m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.vertex_color_use_as_albedo = true; sm.material = m; p.mesh = sm
+	p.mesh = _ivw_drop_mesh()
 	var g := Gradient.new(); g.offsets = PackedFloat32Array([0.0, 0.6, 1.0]); g.colors = PackedColorArray([Color(1, 1, 1, 0.95), Color(1, 0.99, 0.98, 0.75), Color(1, 1, 1, 0.0)])
 	p.color_ramp = g
 	p.emitting = true
@@ -4463,6 +4491,77 @@ func _ivw_raise(up: bool) -> void:
 		iv_said["mid"] = true; _go_write("\n".join(PackedStringArray(ivg.mid)), 4.8)
 	await _ivw_snap("w8_risen")
 
+## one shader for each kind of effect, made once (the user: "it catches a little, where the stones come up above all"):
+## each new shader is built by the phone's graphics the first time it is drawn, and while it builds the picture stops;
+## every ripple and every foam made its own, so each one stopped it. Now each kind is built once, unseen (_ivw_warm)
+var ivw_shaders := {}
+func _ivw_shader(code: String) -> Shader:
+	if not ivw_shaders.has(code):
+		var s := Shader.new(); s.code = code; ivw_shaders[code] = s
+	return ivw_shaders[code]
+
+var ivw_drop: SphereMesh      # (the drops a stone throws up: one mesh and one material for all of them)
+func _ivw_drop_mesh() -> SphereMesh:
+	if ivw_drop == null:
+		ivw_drop = SphereMesh.new(); ivw_drop.radius = 0.024; ivw_drop.height = 0.048; ivw_drop.radial_segments = 6; ivw_drop.rings = 3
+		var m := StandardMaterial3D.new(); m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.vertex_color_use_as_albedo = true; ivw_drop.material = m
+	return ivw_drop
+
+## the level made ready while nothing moves, under the plum of the film's end or behind the start screen: each kind of
+## effect drawn once where it will come (the foam and the rings and the drops on the sea by a stone, the flash in the
+## gate, the motes by her), too small and too faint to be seen; the story's lines written once unseen, so their letters
+## are cut; and the sounds still to come made ready. Whatever stops the picture while it is built, stops it here
+var ivw_keep := []      # (kept while the level lives: a kind of shader lives only while something uses it)
+var ivw_warmed := false
+func _ivw_warm() -> void:
+	if ivw_warmed: return
+	ivw_warmed = true
+	await get_tree().process_frame
+	var sea := IV_O.y + ivr_sea_y
+	var on_sea := Vector3(pos.x, sea, pos.z)
+	if not ivw_risers.is_empty():
+		var rm := ivw_risers[0][0] as MeshInstance3D; var c := (rm.global_transform * rm.get_aabb()).get_center(); on_sea = Vector3(c.x, sea, c.z)
+	var made: Array[Node] = []
+	var tiny := func(mesh: Mesh, mat: Material, at: Vector3) -> void:
+		var mi := MeshInstance3D.new(); mi.mesh = mesh; mi.material_override = mat; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mi); mi.global_position = at; mi.scale = Vector3.ONE * 0.01; made.append(mi)
+	var q := QuadMesh.new(); q.size = Vector2(1, 1); q.orientation = PlaneMesh.FACE_Y
+	var rp := ShaderMaterial.new(); rp.shader = _ivw_shader(IVW_RIP_SH); rp.set_shader_parameter("p", 1.0)      # (a ripple at its end: nothing)
+	tiny.call(q, rp, on_sea + Vector3(0, 0.012, 0))
+	if ivr_shore.is_empty():
+		var rg := ShaderMaterial.new(); rg.shader = _ivw_shader(IVW_RINGS_SH); rg.set_shader_parameter("col", Color(0, 0, 0)); tiny.call(q, rg, on_sea + Vector3(0, 0.015, 0))
+	if ivs_sea_mat != null and ivs_sea_mat.get_shader_parameter("shore_tex") != null:
+		var ch := ShaderMaterial.new(); ch.shader = _ivw_shader(IVW_CHURN_SH); ch.render_priority = 6      # (foam not yet boiling: nothing)
+		for k in ["shore_tex", "shore_rect", "shore_d"]: ch.set_shader_parameter(k, ivs_sea_mat.get_shader_parameter(k))
+		var pm := PlaneMesh.new(); pm.size = Vector2(1, 1); tiny.call(pm, ch, on_sea + Vector3(0, 0.006, 0))
+	var fl := StandardMaterial3D.new(); fl.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; fl.albedo_texture = load("res://goiv/glow.png")      # (as _ivw_flash's, unlit)
+	fl.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; fl.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; fl.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	fl.no_depth_test = true; fl.albedo_color = Color(1.0, 0.95, 0.85, 0.0); ivw_keep.append(fl)
+	var fq := QuadMesh.new(); fq.size = Vector2(1, 1); tiny.call(fq, fl, ivw_gate_p + Vector3(0, 0.95, 0))
+	for kind in 2:      # (the drops, and the motes as she goes: drawn as particles are, at no strength)
+		var p := CPUParticles3D.new(); add_child(p); made.append(p)
+		p.global_position = on_sea + Vector3(0, 0.02, 0) if kind == 0 else pos + Vector3(0, 0.55, 0)
+		p.amount = 2; p.lifetime = 0.5; p.local_coords = false; p.initial_velocity_min = 0.0; p.initial_velocity_max = 0.0; p.gravity = Vector3.ZERO
+		p.scale_amount_min = 0.01; p.scale_amount_max = 0.01; p.color = Color(1, 1, 1, 0)
+		if kind == 0: p.mesh = _ivw_drop_mesh()
+		else:
+			var mq := QuadMesh.new(); mq.size = Vector2(0.07, 0.07)
+			var mm := StandardMaterial3D.new(); mm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; mm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; mm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+			mm.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES; mm.vertex_color_use_as_albedo = true; mm.albedo_texture = load("res://goiv/glow.png"); mq.material = mm; p.mesh = mq; ivw_keep.append(mm)
+		p.emitting = true
+	var said := PackedStringArray()      # (every line she will be told, written once where no one sees it)
+	if ivg_on:
+		for k in ["lines", "mid"]:
+			if ivg.has(k): said.append("\n".join(PackedStringArray(ivg[k])))
+		if ivg.has("end"): said.append(String(ivg.end))
+	var was: Array = []
+	for ql in quote_lbls: was.append((ql as Label).text); (ql as Label).text = "\n".join(said)
+	_ivw_sounds_ready(["res://music/theme.ogg", _go_level_music()] + IVW_SFX.map(func(n: String) -> String: return "res://sfx/%s.ogg" % n))
+	for f in 4: await get_tree().process_frame      # (three of them drawn: what is built is built in the drawing)
+	for i in quote_lbls.size(): (quote_lbls[i] as Label).text = String(was[i])
+	for nd in made: nd.queue_free()
+
 ## a ring spreading on the still water
 const IVW_RIP_SH := """
 shader_type spatial;
@@ -4479,7 +4578,7 @@ void fragment(){
 """
 func _ivw_ripple(at: Vector3, size: float) -> void:
 	var q := QuadMesh.new(); q.size = Vector2(size, size) * 2.0; q.orientation = PlaneMesh.FACE_Y
-	var m := ShaderMaterial.new(); var sh := Shader.new(); sh.code = IVW_RIP_SH; m.shader = sh
+	var m := ShaderMaterial.new(); m.shader = _ivw_shader(IVW_RIP_SH)
 	var mi := MeshInstance3D.new(); mi.mesh = q; mi.material_override = m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi); mi.global_position = Vector3(at.x, IV_O.y + ivr_sea_y + 0.012, at.z)
 	var t := create_tween(); t.tween_method(func(v: float) -> void: m.set_shader_parameter("p", v), 0.0, 1.0, 2.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
@@ -4522,7 +4621,7 @@ func _ivw_life() -> void:
 		var sp := 0.22 + 0.06 * float(i % 2)
 		arr[Mesh.ARRAY_VERTEX] = PackedVector3Array([Vector3(0, 0, -0.03), Vector3(-sp, 0, 0.05), Vector3(0, 0, 0.04), Vector3(0, 0, -0.03), Vector3(0, 0, 0.04), Vector3(sp, 0, 0.05)])
 		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
-		var bm := ShaderMaterial.new(); var sh := Shader.new(); sh.code = IVW_BIRD_SH; bm.shader = sh; bm.set_shader_parameter("ph", float(i) * 1.7)
+		var bm := ShaderMaterial.new(); bm.shader = _ivw_shader(IVW_BIRD_SH); bm.set_shader_parameter("ph", float(i) * 1.7)
 		var bd := MeshInstance3D.new(); bd.mesh = am; bd.material_override = bm; bd.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(bd)
 		var u0: float = [0.15, 0.55, 0.9][i]; var v0: float = [0.12, 0.2, 0.16][i]      # (spread, never in a line)
 		ivw_birds.append({"n": bd, "u": u0, "v": v0, "sp": randf_range(0.006, 0.012) * (1.0 if i % 2 == 0 else -1.0), "ph": float(i) * 2.3,
@@ -4561,6 +4660,7 @@ func _ivf_apply() -> void:      # (the film at ivf_t: how far the vase has turne
 	var front := int(a[1])
 	var fade := lerpf(float(a[2]), float(b[2]), w)
 	fade = minf(fade, _ivf_sm(ivf_t / 0.6)); fade = minf(fade, 1.0 - _ivf_sm((ivf_t - (ivf_len - 1.5)) / 1.3))      # (it opens on, and closes into, the plum)
+	if ivf_close_at >= 0.0: fade = minf(fade, 1.0 - _ivf_sm((ivf_t - ivf_close_at) / 0.35))      # (skipped: into the plum at once)
 	var pages: Array = ivf.pages; var T0: Array = ivf.T0
 	if front >= 0 and front <= 6 and ivf_t >= float(T0[front]) and ivf_vid_card != front:      # (the scene in front begins to move a moment after it has come round)
 		var vs: VideoStream = load("res://intro/vase/clip%d.ogv" % front)
@@ -4592,8 +4692,11 @@ func _ivf_apply() -> void:      # (the film at ivf_t: how far the vase has turne
 	ivf_mat.set_shader_parameter("txt_info", infos); ivf_mat.set_shader_parameter("ink_a", inka); ivf_mat.set_shader_parameter("ink_b", inkb)
 	if vid_slot >= 0.0: ivf_mat.set_shader_parameter("vid", ivf_vid.get_video_texture())
 	if ivf_rect != null: ivf_mat.set_shader_parameter("rect_px", ivf_rect.size)
+var ivf_hold := 0      # (frames whose time the film does not count: the one that made its sounds ready, before it began)
+var ivf_close_at := -1.0
 func _ivf_tick(dt: float) -> void:
 	if not ivw_intro_on or ivf_mat == null: return
+	if ivf_hold > 0: ivf_hold -= 1; dt = 0.0
 	ivf_t += dt
 	if ivf_t >= ivf_len: _ivw_intro_end(); return
 	_ivf_apply()
@@ -4627,15 +4730,14 @@ func _ivw_menu_make() -> void:
 	var auto := OS.get_cmdline_user_args().has("godemo")
 	if FileAccess.file_exists("res://intro/vase/film.json") and OS.get_environment("IV_NO_INTRO") == "" and (not auto or OS.get_environment("IV_INTRO") != ""):
 		_ivw_intro()      # (the film begins by itself, in a browser too (the user); there its sound comes in at the first touch, where the picture is)
-	else: _ivw_music("res://music/theme.ogg", 2.0)
+	else: _ivw_music("res://music/theme.ogg", 2.0); _ivw_warm()      # (no film: the level made ready behind the start screen)
 
 ## the music (music/: made with the music model from the written descriptions in design/music/): the theme under the
 ## start screen, the still sea under the first level, each looping, one fading into the next
 var ivw_music_p: AudioStreamPlayer
 func _ivw_music(file: String, fade := 2.5, db := -2.0) -> void:
 	if OS.get_environment("IV_NO_MUSIC") != "" or not ResourceLoader.exists(file): return
-	var st := load(file) as AudioStream
-	if st is AudioStreamOggVorbis: (st as AudioStreamOggVorbis).loop = true
+	var st := _ivw_stream(file)
 	var old := ivw_music_p
 	var p := AudioStreamPlayer.new(); add_child(p); p.stream = st; p.volume_db = -40.0; p.play()
 	create_tween().tween_property(p, "volume_db", db, fade).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
@@ -4659,9 +4761,26 @@ func _go_level_music() -> String:
 func _ivw_sfx(name: String, db := -8.0, from := 0.0) -> AudioStreamPlayer:
 	if OS.get_environment("IV_NO_MUSIC") != "" or OS.get_environment("IV_NO_SFX") != "" or not ResourceLoader.exists("res://sfx/%s.ogg" % name): return null
 	if OS.get_environment("IV_SFX_LOG") != "": print("SFX ", name, " at ", snappedf(iv_t, 0.01))
-	var p := AudioStreamPlayer.new(); p.stream = load("res://sfx/%s.ogg" % name); p.volume_db = db; add_child(p); p.play(from)
+	var p := AudioStreamPlayer.new(); p.stream = _ivw_stream("res://sfx/%s.ogg" % name); p.volume_db = db; add_child(p); p.play(from)
 	p.finished.connect(p.queue_free)
 	return p
+
+## every sound kept once loaded, and in a browser made ready before it is needed: there a sound is decoded whole the
+## first time it plays, and while it decodes the picture stops (the stones' swell stopped it as they came up, the
+## lament at PLAY, the theme near the film's end). Kept, each is decoded once, at a moment when nothing moves
+const IVW_SFX := ["play_note", "line_sigh", "stones_rise", "gate_pass", "no_move"]
+var ivw_streams := {}
+func _ivw_stream(file: String) -> AudioStream:
+	if not ivw_streams.has(file):
+		var st: AudioStream = load(file) if ResourceLoader.exists(file) else null
+		if st is AudioStreamOggVorbis and file.begins_with("res://music/"): (st as AudioStreamOggVorbis).loop = true      # (before it is made ready: a browser keeps it as it was then)
+		ivw_streams[file] = st
+	return ivw_streams[file]
+func _ivw_sounds_ready(files: Array) -> void:
+	if OS.get_environment("IV_NO_MUSIC") != "": return
+	for f in files:
+		var st := _ivw_stream(String(f))
+		if st != null and OS.has_feature("web") and not AudioServer.is_stream_registered_as_sample(st): AudioServer.register_stream_as_sample(st)
 
 func _ivw_music_out(fade := 3.0) -> void:
 	if ivw_music_p == null: return
@@ -4739,25 +4858,32 @@ func _ivw_intro() -> void:
 	ivw_intro_on = true
 	get_viewport().disable_3d = true      # (the film covers all: the level is not drawn under it)
 	_ivf_apply()
+	_ivw_sounds_ready(["res://intro/intro_audio.ogg", "res://music/theme.ogg"])      # (in a browser: its sound and the theme that comes in at its end, decoded now, on its first plum, not while the vase turns)
+	ivf_hold = 2
 	if ResourceLoader.exists("res://intro/intro_audio.ogg"):      # (the film's sound in a player of its own, held to the picture: a browser keeps all sound back until the first touch, and then it must come in where the picture is)
-		ivw_film_audio = AudioStreamPlayer.new(); ivw_film_audio.stream = load("res://intro/intro_audio.ogg"); add_child(ivw_film_audio); ivw_film_audio.play(); ivw_film_sync = 0.5
+		ivw_film_audio = AudioStreamPlayer.new(); ivw_film_audio.stream = _ivw_stream("res://intro/intro_audio.ogg"); add_child(ivw_film_audio); ivw_film_audio.play(); ivw_film_sync = 0.5
 
 func _ivw_intro_end() -> void:      # (at its end, or at a tap: the film fades into the faded level, the name, PLAY)
-	if not ivw_intro_on: return
+	if not ivw_intro_on or ivf_close_at >= 0.0: return
+	ivf_close_at = ivf_t
+	if ivw_film_audio != null: create_tween().tween_property(ivw_film_audio, "volume_db", -40.0, 1.2)
+	if ivf_t < ivf_len - 0.25:      # (skipped: it closes into its plum first, quickly, still turning)
+		while ivw_intro_on and ivf_t < ivf_close_at + 0.4: await get_tree().process_frame
 	ivw_intro_on = false
 	get_viewport().disable_3d = false
+	await _ivw_warm()      # (under the plum, where nothing moves: the level drawn for the first time, its effects and sounds made ready)
 	var t := create_tween(); t.tween_property(ivw_intro_box, "modulate:a", 0.0, 1.3).set_trans(Tween.TRANS_SINE)
-	if ivw_film_audio != null: t.parallel().tween_property(ivw_film_audio, "volume_db", -40.0, 1.2)
 	await t.finished
 	if ivf_vid != null: ivf_vid.stop()
 	ivw_intro_box.get_parent().queue_free(); ivw_intro_box = null; ivf_vid = null; ivf_mat = null; ivf_rect = null; ivf_tex.clear(); ivw_skip_lb = null
-	if ivw_film_audio != null: ivw_film_audio.queue_free(); ivw_film_audio = null
+	if ivw_film_audio != null: ivw_film_audio.queue_free(); ivw_film_audio = null; ivw_streams.erase("res://intro/intro_audio.ogg")
 	if not ivw_theme_on: ivw_theme_on = true; _ivw_music("res://music/theme.ogg", 2.5)      # (skipped early: the theme now; at its end it came in already, and goes on)
 
 func _ivw_play() -> void:      # (PLAY: the name and the haze go, the eye goes down to her where she lies, and she wakes)
 	ivw_menu_on = false
 	_ivw_sfx("play_note", -8.3)
 	_ivw_music(_go_level_music(), 5.0, -5.0)      # (the theme gives way to the level's own piece, slowly, quieter: it plays while she thinks)
+	for f in 2: await get_tree().process_frame      # (a browser copies a long piece's whole sound as it starts it: that moment passes before anything moves)
 	var t := create_tween().set_parallel()
 	t.tween_property(ivw_menu, "modulate:a", 0.0, 1.0).set_trans(Tween.TRANS_SINE)
 	await t.finished
@@ -4795,8 +4921,31 @@ func _ivw_next() -> String:      # the next node of the way from where she stand
 
 const IVW_THEME_AT := 8.0      # (seconds before the film's end: the theme comes in under its fading score and its last spoken line; at 6 there was a breath of silence between them)
 var ivw_theme_on := false
+## the 3D drawn a little coarser only where the device cannot keep up (never the words, the name or the film): while
+## she plays the frames are timed, and while most of them come late the 3D is drawn at fewer pixels, a step at a time,
+## two steps at most; a device that keeps up keeps every pixel. (A phone's screen has two or three pixels to each of
+## the game's, and drawing every one of them, each frame, is most of a phone's work)
+const IVQ_SCALES := [1.0, 0.8, 0.66]
+var ivq_dts: Array = []; var ivq_wait := 4.0; var ivq_step := 0
+func _ivq_tick(dt: float) -> void:
+	if OS.get_environment("IV_SCALE3D") != "":      # (to see a scale)
+		var want := OS.get_environment("IV_SCALE3D").to_float()
+		if not is_equal_approx(get_viewport().scaling_3d_scale, want): get_viewport().scaling_3d_scale = want
+		return
+	if ivq_step >= IVQ_SCALES.size() - 1 or not started or ivw_intro_on or not (OS.has_feature("web") or OS.has_feature("mobile")): return
+	ivq_dts.append(dt)
+	if ivq_dts.size() > 120: ivq_dts.pop_front()
+	ivq_wait -= dt
+	if ivq_wait > 0.0 or ivq_dts.size() < 120: return
+	var srt := ivq_dts.duplicate(); srt.sort()
+	if float(srt[60]) > 0.0215:      # (most of the last 120 frames late: fewer than about 46 a second)
+		ivq_step += 1; get_viewport().scaling_3d_scale = IVQ_SCALES[ivq_step]; ivq_dts.clear(); ivq_wait = 2.0
+		print("EIDOLON: 3D at ", IVQ_SCALES[ivq_step], " (frames ", snappedf(float(srt[60]) * 1000.0, 0.1), " ms)")
+	else: ivq_wait = 1.0
+
 func _ivw_tick(dt: float) -> void:
 	_ivf_tick(dt)
+	_ivq_tick(dt)
 	if ivw_intro_on and ivf_mat != null and not ivw_theme_on and ivf_len > 1.0 and ivf_t >= ivf_len - IVW_THEME_AT:      # (the user: "the music from the film into the first level, seamless")
 		ivw_theme_on = true; _ivw_music("res://music/theme.ogg", IVW_THEME_AT - 0.5)
 	_ivw_birds_tick(dt)
@@ -8616,10 +8765,13 @@ func _do_place6() -> void:
 
 # ---------------------------------------------------------------- frame, and the runs that try the chapter
 func _process(dt: float) -> void:
+	var hp0 := Time.get_ticks_usec() if ivh_on else 0
 	if geo_demo: _gh_pre(dt)
 	if go_demo: _go_pre(dt)
 	if flip_moving: _flip_pre()
+	var hp1 := Time.get_ticks_usec() if ivh_on else 0
 	super._process(dt)
+	var hp2 := Time.get_ticks_usec() if ivh_on else 0
 	if flip_moving: _flip_post()
 	if flip_icon != null: _flip_icon_frame(dt)
 	_smoke_frame(dt)
@@ -8627,6 +8779,7 @@ func _process(dt: float) -> void:
 	if figure_demo: _fig_frame(dt)
 	if geo_demo: _gh_post(dt)
 	if go_demo: _go_post(dt)
+	if ivh_on: ivh_parts += Vector3(hp1 - hp0, hp2 - hp1, Time.get_ticks_usec() - hp2) / 1000.0
 	if match_demo and not ended and not flip_on and not flip_busy and pos.z > MT_Z1 + 0.7: route.clear(); _end()
 	if flip_demo and not ended and not busy and not flip_busy and not flip_on and rects.has("S2") and rects["S2"].on and pos.z < TZ0 - 0.9: route.clear(); _end()      # (the trial ends behind the second sluice)
 	if not flip_on and not flip_busy and woke: _stele_watch()

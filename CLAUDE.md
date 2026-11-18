@@ -46,6 +46,19 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   line a woman's sigh (not the last), the stones a swell, the gate's sound peaking on the flash, a blocked swipe a low
   pluck. No audio bus made while the game runs and no dip under the sounds: with one, a phone's browser played nothing in
   the level. `IV_SFX_LOG=1` logs their moments.
+- **Smoothness** (the owner, 18/11: "it catches a little, above all where the stones come up"):
+  - A phone's browser builds each new shader the moment it is first drawn, and the picture stops while it builds. Make
+    one `Shader` per kind of effect (`_ivw_shader`), never `Shader.new()` per effect. Draw each kind once, unseen,
+    while the plum covers the level (`_ivw_warm`: at the film's end, or behind the start screen).
+  - In a browser a sound is decoded whole the first time it plays, and copied whole every time it starts. Keep every
+    stream (`_ivw_stream`) and make it ready at a quiet moment (`_ivw_sounds_ready`): the film's sound and the theme on
+    the film's first plum, the lament and the effects under the warm-up. Let a long piece's start pass before anything
+    moves.
+  - Pose nothing hidden each frame. Hidden drawn figures (`fig`/`wfig` in `main.gd`) and her hidden bodies
+    (`_go_bodies_rest`) cost a phone most of its frame.
+  - On web/mobile the 3D steps down to 0.8, then 0.66, only while frames come late (`_ivq_tick`).
+  - `IV_HITCH=1` prints long frames, and every 3 s the frame's work, draws and triangles. Script work for the waking,
+    measured without a screen: 5.9 → 1.7 ms a frame.
 - **The camera** holds the whole map and follows her a little, smoothly and a little behind; on larger maps it goes
   with her but shows little past the edges (`_ivr_follow` in `ch1.gd`).
 - **Music per level** (`_go_level_music` in `ch1.gd`): waking Lament, sanctuary Requiem, moon Elegy, quarry Stone,
