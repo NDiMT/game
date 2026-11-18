@@ -5177,7 +5177,7 @@ func _ivv_ex(haze := 0.15) -> Dictionary:
 ## the goddess as the concept paints her (the owner, 18/11: "what has it to do with the Aphrodite in the picture? it looks awful"):
 ## the painting of her itself (Gemini, from the concept; keyed), stood where she stands, square to the eye (which never turns),
 ## as large as the concept has her and where it has her: the rock before her hides her as it hides the statue
-const IVM_GODDESS_QUAD := [0.2981, 0.6402, 0.2753, 0.2261]      # (her picture's size in widths of the screen, and its middle on the screen at the level's own eye, 9:16)
+const IVM_GODDESS_QUAD := [0.2474, 0.5313, 0.2743, 0.2439]      # (her picture's size in widths of the screen, and its middle on the screen at the level's own eye, 9:16: the concept's, made 0.83 as large about the rock's line, so her head stays under the top when the eye, following her at the start, lifts the picture 0.062)
 func _ivm_goddess_painted(p0: Vector3) -> void:
 	var b := _ivp_basis(); var ec: Array = ivr_eye.centre; var w := float(ivr_eye.width)
 	var c := Vector3(float(ec[0]), float(ec[1]), float(ec[2]))
