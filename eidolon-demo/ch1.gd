@@ -1801,8 +1801,9 @@ const IVW_CORM := "res://fonts/CormorantGaramond-Variable.ttf"
 var ivw_story: Control
 func _ivw_vfont(fn: String, wght: float) -> Font:
 	if not ivw_fonts.has(fn):
-		if not FileAccess.file_exists(fn): return null
-		var ff := FontFile.new(); ff.data = FileAccess.get_file_as_bytes(fn); ivw_fonts[fn] = ff
+		var ff := _ivw_font_file(fn)
+		if ff == null: return null
+		ivw_fonts[fn] = ff
 	if wght <= 0.0: return ivw_fonts[fn]
 	var fv := FontVariation.new(); fv.base_font = ivw_fonts[fn]; fv.variation_opentype = {"wght": wght}
 	return fv
@@ -4937,8 +4938,15 @@ var ivw_fonts := {}
 func _ivw_font(strong := true) -> Font:
 	var fn := "res://fonts/CormorantGaramond-%sItalic.ttf" % ("SemiBold" if strong else "Medium")
 	if ivw_fonts.has(fn): return ivw_fonts[fn]
+	var ff := _ivw_font_file(fn)
+	if ff != null: ivw_fonts[fn] = ff
+	return ff
+## a font by the importer, as an exported game has it: the raw .ttf of an imported font is not in the pack (the preset's
+## "fonts/*.ttf" does not bring it), so read raw it was missing on the web and the letters fell back to another font
+func _ivw_font_file(fn: String) -> FontFile:
+	if ResourceLoader.exists(fn): return load(fn) as FontFile
 	if not FileAccess.file_exists(fn): return null
-	var ff := FontFile.new(); ff.data = FileAccess.get_file_as_bytes(fn); ivw_fonts[fn] = ff
+	var ff := FontFile.new(); ff.data = FileAccess.get_file_as_bytes(fn)
 	return ff
 
 func _ivw_text_style() -> void:      # (the lines over the dawn: deep plum letters, a soft light about them, a little larger as this letter is smaller in the eye)
