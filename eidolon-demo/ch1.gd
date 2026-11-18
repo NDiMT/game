@@ -1788,18 +1788,16 @@ func _go_begin() -> void:
 
 func _go_write(text: String, hold := 4.5) -> void:
 	if go_wake and not iv_won: _ivw_sfx("line_sigh", -4.0)      # (each line comes on a woman's sigh)
-	if go_wake and ivw_story_style != "": _ivw_story_write(text, hold); return
+	if go_wake: _ivw_story_write(text, hold); return
 	for ql in quote_lbls: (ql as Label).text = text
 	var qt := create_tween(); qt.tween_property(quote_box, "modulate:a", 1.0, 0.5); qt.tween_interval(hold); qt.tween_property(quote_box, "modulate:a", 0.0, 0.7)
 	quote_glow.modulate.a = 1.0
 
 ## the story's line over the waking's levels (the owner: "can we improve the text at the top? I don't like how it comes
-## out"): higher, in the clear of the sky over the far statues; its lines come one after the other, each rising a little
-## as it clears; they go together. Black letters with no shadow and no glow (the owner's). Its styles, as they were shown
-## to the owner: "cinzel" capitals as cut in stone, "upright" the Cormorant upright, "mixed" spaced capitals over the italic
-const IVW_CINZEL := "res://fonts/Cinzel-Variable.ttf"
+## out"; of three shown him he chose this one): the Cormorant upright, larger, higher, in the clear of the sky over the
+## far statues; its lines come one after the other, each rising a little as it clears; they go together. Black letters
+## with no shadow and no glow (the owner's)
 const IVW_CORM := "res://fonts/CormorantGaramond-Variable.ttf"
-var ivw_story_style := OS.get_environment("IV_TEXT")
 var ivw_story: Control
 func _ivw_vfont(fn: String, wght: float) -> Font:
 	if not ivw_fonts.has(fn):
@@ -1808,12 +1806,8 @@ func _ivw_vfont(fn: String, wght: float) -> Font:
 	if wght <= 0.0: return ivw_fonts[fn]
 	var fv := FontVariation.new(); fv.base_font = ivw_fonts[fn]; fv.variation_opentype = {"wght": wght}
 	return fv
-func _ivw_story_spec(i: int, t: String) -> Dictionary:      # (each line: its words, its font and weight, its size, its spacing, the gap under it)
-	match ivw_story_style:
-		"cinzel": return {"t": t.to_upper(), "f": IVW_CINZEL, "w": 430.0, "s": 30, "sp": 3, "gap": 14}
-		"upright": return {"t": t, "f": IVW_CORM, "w": 520.0, "s": 47, "sp": 1, "gap": 0}
-	if i == 0: return {"t": t.to_upper(), "f": IVW_CINZEL, "w": 430.0, "s": 24, "sp": 5, "gap": 8}      # ("mixed": the first line in small spaced capitals, the rest in the italic, larger)
-	return {"t": t, "f": "res://fonts/CormorantGaramond-MediumItalic.ttf", "w": 0.0, "s": 52, "sp": 0, "gap": 0}
+func _ivw_story_spec(_i: int, t: String) -> Dictionary:      # (each line: its words, its font and weight, its size, its spacing, the gap under it)
+	return {"t": t, "f": IVW_CORM, "w": 520.0, "s": 47, "sp": 1, "gap": 0}
 func _ivw_story_make(text: String) -> Array:      # (its lines as labels, set in their places; returns [label, its place's height] for each)
 	if ivw_story == null:
 		ivw_story = Control.new(); ivw_story.set_anchors_preset(Control.PRESET_FULL_RECT); ivw_story.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2089,7 +2083,7 @@ func _play_go() -> void:
 var go_drown := OS.get_environment("FLIP") == "gosea" or OS.has_feature("gosea")      # the second level: the drowned sanctuary (gosea/), in the same system
 var go_moon := OS.get_environment("FLIP") == "gomoon" or OS.has_feature("gomoon")      # the third level: the moon dial (gomoon/), a sanctuary in the snow at night
 var go_quarry := OS.get_environment("FLIP") == "goquarry" or OS.has_feature("goquarry")      # the fourth level: the quarry (goquarry/), where the faces were cut
-var go_veil := OS.get_environment("FLIP") == "goveil" or OS.has_feature("goveil")      # the second level: the veiled (goveil/), a golden morning on the same still sea: a block pushed into the causeway's gap
+var go_veil := OS.get_environment("FLIP") == "goveil" or OS.has_feature("goveil") or String(Engine.get_meta("ivw_next", "")) == "goveil"      # the second level (or the first's gate has led into it: _ivw_to_veil): the veiled (goveil/), a golden morning on the same still sea: a block pushed into the causeway's gap
 var go_wake := OS.get_environment("FLIP") == "gowake" or OS.has_feature("gowake") or go_veil      # the first level: the waking (gowake/), dawn over a still sea (the second rides its sea, its light, its sounds and its gate; what is the waking's own asks not go_veil)
 var iv_at_sea := go_drown or go_wake      # (a level standing in still water: the sea, the level's image in it)
 var go_iv := OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or go_drown or go_moon or go_quarry or go_wake
@@ -3215,6 +3209,7 @@ func _iv_win() -> void:
 		await _ivw_exit()      # (she steps into the gate's light, and is lost in it; its last line comes as she goes)
 		print("IV level done in ", iv_moves, " moves")
 		await wait(5.4 if ivg_on and ivg.has("end") else 1.6)      # (the line read, and gone; with none, the light settles and the motes rise a moment)
+		if not go_veil and _ivw_chain_ok(): await _ivw_to_veil(); return      # (the first goes on into the second; the end screen comes after the second, the owner)
 		await _ivw_end_screen()
 		_end(); return
 	print("IV level done in ", iv_moves, " moves")
@@ -4149,6 +4144,17 @@ func _ivw_exit() -> void:
 	await wait(0.2); await _ivw_snap("x3_gone")
 	await wait(0.8)
 
+func _ivw_chain_ok() -> bool: return OS.get_environment("IV_ONE") == "" and FileAccess.file_exists("res://goveil/puzzle.json")      # (IV_ONE=1: the first level alone)
+func _ivw_to_veil() -> void:      # (the gate's light fills the picture, the warm white the second level begins in, and the second is set up behind it)
+	var cl := CanvasLayer.new(); cl.layer = 7; add_child(cl)
+	var fade := ColorRect.new(); fade.color = Color(1.0, 0.95, 0.9, 0.0); fade.set_anchors_preset(Control.PRESET_FULL_RECT); fade.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(fade)
+	var t := create_tween(); t.tween_property(fade, "color:a", 1.0, 1.6).set_trans(Tween.TRANS_SINE)
+	await t.finished
+	await get_tree().process_frame
+	print("IV on into the second level")
+	Engine.set_meta("ivw_next", "goveil")
+	get_tree().reload_current_scene()
+
 func _ivw_end_screen() -> void:      # (the waking's end: the picture goes down into the dark of the film's first frame, and the name comes over it, alone; a touch begins it again)
 	if iv_fade != null:
 		iv_fade.color = Color(0.13, 0.08, 0.13, 0.0)
@@ -4642,7 +4648,7 @@ func _ivw_warm() -> void:
 		if ivg.has("end"): said.append(String(ivg.end))
 	var was: Array = []
 	for ql in quote_lbls: was.append((ql as Label).text); (ql as Label).text = "\n".join(said)
-	if ivw_story_style != "" and not said.is_empty():      # (and the story's own letters, at no strength)
+	if not said.is_empty():      # (and the story's own letters, at no strength)
 		for it in _ivw_story_make("\n".join(said)): (it[0] as Label).modulate.a = 0.004
 	_ivw_sounds_ready(["res://music/theme.ogg", _go_level_music()] + IVW_SFX.map(func(n: String) -> String: return "res://sfx/%s.ogg" % n))
 	for f in 4: await get_tree().process_frame      # (three of them drawn: what is built is built in the drawing)
@@ -5059,6 +5065,7 @@ func _ivw_play() -> void:      # (PLAY: the name and the haze go, the eye goes d
 ## it begins by itself: she stands where the light of the first gate let her go; the level comes out of that light, its
 ## piece begins, and its one line comes a moment later
 func _ivv_begin() -> void:
+	if Engine.has_meta("ivw_next"): Engine.remove_meta("ivw_next")      # (come from the first: a touch on the end begins it all again, from the first)
 	if title_box != null: title_box.hide()
 	var cl := CanvasLayer.new(); cl.layer = 5; add_child(cl)
 	var fade := ColorRect.new(); fade.color = Color(1.0, 0.95, 0.9, 1.0); fade.set_anchors_preset(Control.PRESET_FULL_RECT); fade.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(fade)

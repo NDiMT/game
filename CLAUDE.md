@@ -33,13 +33,16 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   rises in moments (8 s clip: breath, hands to the knee, weight forward, push, lunge, step, back up, head last).
   She turns the winch; the stones come up out of the water with foam on the water and on them; she climbs to the
   glowing gate, steps into its light, and is lost in it in a flash (the gate alone lights) and rising motes; a
-  moment's hold, then the dark end screen (EIDOLON alone: no "tap to ..." words, the owner, but the film's "tap to skip"). **The story is in
+  moment's hold, then the light fills the picture and level 2 begins in it (`_ivw_to_veil`: the scene reloads with
+  `Engine` meta `ivw_next`; `IV_ONE=1` stops after level 1). The dark end screen (EIDOLON alone: no "tap to ..." words,
+  the owner, but the film's "tap to skip") comes after level 2 (the owner, 18/11: "after level 1"). **The story is in
   `eidolon-world/dev/EIDOLON_SCRIPT.md`: read it before writing any line.** The player is one of the statues Theron
   carved to make Ione's face again (not Ione). **One line only, at the start of each level; nothing in its middle,
   nothing at its end** (the owner, 18/11). Short and clipped ("πιο κοφτά"), the levels telling the story in turn:
   level 1 "Theron searched for her / long after hope was gone." (the owner: "Theron attempted to find her", a little
-  more beautiful); level 2 "So he carved her face / into a thousand statues." (the owner's own line). Letter:
-  Cormorant Garamond italic.
+  more beautiful); level 2 "So he carved her face / into a thousand statues." (the owner's own line). Letter: the
+  Cormorant Garamond upright (`fonts/CormorantGaramond-Variable.ttf`, weight 520, 47 px at 720 wide), high in the sky,
+  its lines coming one after the other, each rising a little (`_ivw_story_write`; the owner chose it of three, 18/11).
 - **The film's textures** (`intro/vase/`): three texture arrays (`strips.jpg`, `pans.jpg`, `texts.png`, sliced in
   their `.import`), the vase and the words at the film's full size. A phone gives a canvas shader 16 textures, and
   Godot takes three of them plus the six highest units for itself. With one texture per piece (17 sampled) the film
