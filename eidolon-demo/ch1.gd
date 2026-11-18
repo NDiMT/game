@@ -2210,6 +2210,7 @@ const IV_MILOS_PAL := {      # the third level in the colours of its concept, ch
 	"statue": ["fbfbff", "e8e5f3", "c4bfdb", "9089b3"],
 	"groove": ["d9dcec", "d9dcec", "d9dcec", "d9dcec"],
 	"ring": ["fffdf8", "fffdf8", "fffdf8", "fffdf8"],
+	"goddess": ["ffffff", "f7f5fc", "c6c0dc", "8a82ad"],      # (the goddess: white in the light, a clear lilac shade, as the concept paints her)
 }
 func _iv_pal(kind: String) -> Array:
 	if go_milos and IV_MILOS_PAL.has(kind): return IV_MILOS_PAL[kind] as Array
@@ -2270,6 +2271,7 @@ uniform float sea_k = 0.0;      // (a level at sea: the mist is the sea's colour
 uniform float clip_k = 0.0; uniform float clip_y = -1e9;      // (a level at sea: nothing under the water is drawn; the water shows a thing's image instead)
 uniform float under_k = 0.0;      // (a thing that is under the water, or goes under it: drawn, fading into the sea by its depth under clip_y)
 uniform float smooth_k = 0.0;
+uniform float form_wrap = 0.45;
 uniform vec3 form_key = vec3(0.0);      // (a statue's own light to model its form by (smooth_k 4); key_dir stays the sun, which light() keeps)      // (a statue: soft marble shaded by its own smooth normals, not in the facets' bands)
 uniform float mirror_fade = 0.0; uniform float mirror_wob = 0.0;      // (an image in the water: gone into the sea by this depth; wavering by this much)
 uniform float mist_world = 0.0; uniform vec3 mw_c; uniform vec3 mw_bx; uniform vec3 mw_by; uniform float mw_w = 11.0;      // (the mist held to the world as the sea is, so what fades into it fades into the sea's own colour under any eye)
@@ -2360,7 +2362,7 @@ void fragment(){
 		vec3 vd = normalize(INV_VIEW_MATRIX[2].xyz);
 		if (dot(sn, vd) < 0.0) sn = -sn;
 		vec3 kl = normalize(dot(form_key, form_key) > 0.0 ? form_key : key_dir);
-		float wr = clamp((dot(sn, kl) + 0.45) / 1.45, 0.0, 1.0);      // (the light wrapped round the form, as on marble the light goes a little into)
+		float wr = clamp((dot(sn, kl) + form_wrap) / (1.0 + form_wrap), 0.0, 1.0);      // (the light wrapped round the form, as on marble the light goes a little into; less for a form that must read from afar)
 		c = mix(c_dark, c_mid, smoothstep(0.05, 0.45, wr));
 		c = mix(c, c_lit, smoothstep(0.42, 0.85, wr));
 		c = mix(c, c_top, smoothstep(0.35, 0.95, sn.y) * smoothstep(0.2, 0.7, wr) * 0.7);
@@ -5174,14 +5176,14 @@ func _ivv_statues(j: Dictionary) -> void:
 		var hd := prop_model("statue_" + String(s[0]), hp, float(s[2]))
 		var exs := ex
 		if String(s[0]) == "goddess":
-			exs = ex.duplicate(); exs.merge({"haze": 0.0, "far_k": 0.08, "rim_col": Color(0.95, 0.95, 1.0), "form_key": Vector3(0.72, 0.61, -0.34)}, true)      # (the goddess as the concept paints her (the owner, 18/11: "make Aphrodite better"): her whole model (11,660 faces), smooth white marble, its own light from the right of the picture so her form reads, a lilac shade, her folds shaded; before, 4,200 flat faces)
+			exs = ex.duplicate(); exs.merge({"haze": 0.0, "far_k": 0.0, "rim_k": 0.1, "rim_col": Color(0.95, 0.95, 1.0), "form_key": Vector3(0.72, 0.61, -0.34), "form_wrap": 0.12, "ao_k": 0.9}, true)      # (the goddess as the concept paints her (the owner, 18/11: "make Aphrodite better"): her whole model (11,660 faces), smooth white marble, its own light from the right of the picture so her form reads, a lilac shade, her folds shaded; before, 4,200 flat faces)
 			var glk := OS.get_environment("IV_GODDESS_LOOK")      # (to try her otherwise: "0" her few flat faces' light (with the old model); "2" smooth, her light in a few clean bands)
 			if glk == "0": exs = ex.duplicate(); exs.merge({"smooth_k": 0.0, "ao_k": 0.55, "rim_k": 0.08, "haze": 0.0, "far_k": 0.08}, true)
 			if OS.get_environment("IV_GODDESS_KEY") != "":      # (and her own light from elsewhere: "x,y,z")
 				var gk := OS.get_environment("IV_GODDESS_KEY").split(","); exs = exs.duplicate(); exs["form_key"] = Vector3(float(gk[0]), float(gk[1]), float(gk[2]))
 			elif glk == "2": exs = ex.duplicate(); exs.merge({"smooth_k": 2.0, "ao_k": 0.55, "rim_k": 0.1, "haze": 0.0, "far_k": 0.08, "rim_col": Color(0.95, 0.95, 1.0)}, true)
 		for m in hd.find_children("*", "MeshInstance3D", true, false):
-			(m as MeshInstance3D).material_override = _iv_mat("statue", 0.0, exs); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+			(m as MeshInstance3D).material_override = _iv_mat("goddess" if String(s[0]) == "goddess" and go_milos else "statue", 0.0, exs); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		_ivs_mirror(hp, func(_mi: MeshInstance3D) -> Array:
 			var mx := {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.7, "haze": 1.0, "mirror_fade": 2.0, "mirror_wob": 0.05}; mx.merge(look); return ["statue", 0.0, mx])
 

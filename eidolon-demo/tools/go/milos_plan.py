@@ -93,6 +93,7 @@ def plan():
         'arches': [[[-4.5, H1, -6.85], 'x']],      # (the gate, square to the way's last stretch, just behind the ring)
         'waters': [[-3.75, -0.75, -0.75, 0.75], [-5.25, -3.75, -2.25, -0.75], [-6.75, -2.25, -5.25, -3.75]],      # (the channel, its arm, the chasm: open water the rock keeps clear of)
         'rock_style': {'ease': [0.006, 0.016], 'boulder_ease': 0.012, 'tilt': [0.2, 0.45], 'lean': 2.6, 'cut_p': 0.85, 'chamf': [0.12, 0.36], 'side_cuts': [2, 3], 'sat_min': 0.2},      # (its rock cut sharper and more aslant than the other levels' (the owner))
+        'rock_clamp': [0.04, 0.35, 0.06],      # (no tip of its aslant rock up through a slab (the owner, 18/11: "grey stone passes through the white"))
         'bridges': [[-5.0, -4.0, -5.24, -3.76, H1]],      # (a slab over the chasm, nothing under it but the sea; a joint's breadth from each floor)
         'statues': statues, 'pedestals': [], 'shore_statues': ['standing'],      # (the light's statue stands in the water: the sea's thin foam hugs her as it does the rock)
         'rocks': rocks,

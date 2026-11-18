@@ -1165,6 +1165,19 @@ def join(obs, name):
     return o
 
 
+RC = PLAN.get('rock_clamp') if PLAN else None
+if RC and rock:      # (no tip of the rock through a slab: where it rises a little over a floor, inside it or at its edge, it goes under it; the tall rock that stands on a floor, as over a niche, stays; the owner, 18/11: "grey stone passes through the white")
+    lo_, hi_, mg_ = float(RC[0]), float(RC[1]), float(RC[2]) if len(RC) > 2 else 0.06
+    fls_ = [(f['h'], [tuple(q) for q in f['xz']]) for f in PLAN['floors'].values()]
+    n_cl = 0
+    for ob in rock:
+        mw = ob.matrix_world; mi = mw.inverted()
+        for v in ob.data.vertices:
+            w = mw @ v.co; gx, gz, gy = w.x, -w.y, w.z
+            for (h_, poly_) in fls_:
+                if h_ - lo_ < gy < h_ + hi_ and (inside(poly_, (gx, gz)) or min(seg_dist((gx, gz), poly_[i], poly_[(i + 1) % len(poly_)]) for i in range(len(poly_))) < mg_):
+                    w.z = h_ - lo_; v.co = mi @ w; n_cl += 1; break
+    print('ROCK CLAMPED under the floors:', n_cl, 'vertices')
 M = join(marble, 'marble'); R = join(rock, 'rock') if rock else None; O = join(olive, 'olive') if olive else None; B = join(barks, 'bark') if barks else None
 QU = join(quarries, 'quarry') if quarries else None
 SN = join(SNOWS, 'snow') if SNOWS else None
