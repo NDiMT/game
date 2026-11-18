@@ -18,6 +18,7 @@ SEED = int(a[2]) if len(a) > 2 else 7
 SAMPLES = int(a[3]) if len(a) > 3 else 48
 PLAN = json.load(open(a[4])) if len(a) > 4 else None
 rnd = random.Random(SEED)
+RSTYLE = (PLAN or {}).get('rock_style', {})      # (a level's own cut of its rock: the third level's sharper, more aslant (the owner: "more sharply cut and slanted"))
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 scene = bpy.context.scene
@@ -450,21 +451,22 @@ def blocks(name, poly, top_y, keep=(), h=None):
     def one(nm_, c, th, hl, led, din, back=(-0.18, -0.06)):
         if led == 'bind':      # (beside the floor, broad, its top a little under the floor's: the marble set into the rock)
             out = rnd.uniform(0.3, 0.9); yt = h - rnd.uniform(0.08, 0.3)
-            lean = (rnd.uniform(-0.05, 0.05), -rnd.uniform(0.02, 0.08)); led = True
+            lean = (rnd.uniform(-0.05, 0.05) * RSTYLE.get('lean', 1.0), -rnd.uniform(0.02, 0.08) * RSTYLE.get('lean', 1.0)); led = True
         elif led == 'flush':      # (right under the slab, its face in the slab's own plane: white above, brown below, no recess)
             out = rnd.uniform(-0.02, 0.04); yt = h - 0.56; lean = (0.0, 0.0); led = False
         elif led:
             out = rnd.uniform(0.12, 0.32); yt = top_y + 0.05 - rnd.uniform(0.3, 0.85)
-            lean = (rnd.uniform(-0.08, 0.08), -rnd.uniform(0.04, 0.16))
+            lean = (rnd.uniform(-0.08, 0.08) * RSTYLE.get('lean', 1.0), -rnd.uniform(0.04, 0.16) * RSTYLE.get('lean', 1.0))
         else:
             out = rnd.uniform(*back); yt = top_y + 0.05; lean = (0.0, 0.0)
         y1 = yt - rnd.uniform(0.5, 1.1); y2 = y1 - 0.12
         st = rnd.uniform(0.05, 0.2)      # (a step out partway down: the face breaks across, never one straight pillar)
         o0 = -rnd.uniform(0.06, 0.2) if led else 0.0      # (a ledge's face leans back above its step: it takes more light)
         rings = [(yt, 0.0, o0), (y1, rnd.uniform(0.0, 0.06), rnd.uniform(-0.05, 0.06)), (y2, rnd.uniform(0.04, 0.1), st), (yt - 16.0, rnd.uniform(0.1, 0.3), st + rnd.uniform(0.3, 0.8))]
-        ch = (rnd.uniform(0.05, 0.22), rnd.uniform(0.05, 0.22))      # (its outer corners cut off, as the picture's)
-        cut = (math.cos(th) + rnd.uniform(-0.6, 0.6) * -math.sin(th), math.sin(th) + rnd.uniform(-0.6, 0.6) * math.cos(th)) if (led and rnd.random() < 0.5) else None
-        obs.append(frame_block(nm_, c, th, -hl, hl, -din, out, rings, rnd.uniform(0.035, 0.065), ch, lean, cut))
+        cr = RSTYLE.get('chamf', (0.05, 0.22))
+        ch = (rnd.uniform(*cr), rnd.uniform(*cr))      # (its outer corners cut off, as the picture's)
+        cut = (math.cos(th) + rnd.uniform(-0.6, 0.6) * -math.sin(th), math.sin(th) + rnd.uniform(-0.6, 0.6) * math.cos(th)) if (led and rnd.random() < RSTYLE.get('cut_p', 0.5)) else None
+        obs.append(frame_block(nm_, c, th, -hl, hl, -din, out, rings, rnd.uniform(*RSTYLE.get('ease', (0.035, 0.065))), ch, lean, cut))
     for i in range(n):
         a = P[i]; b = P[(i + 1) % n]
         L = math.hypot(b[0] - a[0], b[1] - a[1])
@@ -707,6 +709,7 @@ def boulder(name, c, r, top, n=6, ease=0.06, tilt=(0.05, 0.16)):
     for k in range(n):
         aa = a0 + 2.0 * math.pi * k / n + rnd.uniform(-0.22, 0.22); rr = r * rnd.uniform(0.82, 1.1)
         base.append((math.cos(aa) * rr, math.sin(aa) * rr))
+    tilt = RSTYLE.get('tilt', tilt); ease = RSTYLE.get('boulder_ease', ease)
     ta = rnd.uniform(0.0, 2.0 * math.pi); tl = rnd.uniform(*tilt)
     y1 = top - rnd.uniform(0.5, 1.1); st = rnd.uniform(0.05, 0.25)
     rings = [(top, -rnd.uniform(0.1, 0.28)), (y1, rnd.uniform(0.0, 0.05)), (y1 - 0.12, st), (top - 16.0, st + rnd.uniform(0.4, 0.9))]
@@ -720,7 +723,7 @@ def boulder(name, c, r, top, n=6, ease=0.06, tilt=(0.05, 0.16)):
         rs.append(ring)
     bm = bmesh.new(); loft(bm, rs, cap0=True, cap1=True)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
-    for _ in range(rnd.choice((1, 2))):      # (a side cut off by an upright plane: faces that are not all turned alike)
+    for _ in range(rnd.choice(RSTYLE.get('side_cuts', (1, 2)))):      # (a side cut off by an upright plane: faces that are not all turned alike)
         aa = rnd.uniform(0.0, 2.0 * math.pi)
         nrm = Vector((math.cos(aa), -math.sin(aa), rnd.uniform(-0.15, 0.25))); nrm.normalize()
         far = max(v.co.dot(nrm) for v in bm.verts if v.co.z > top - 3.0)
@@ -746,9 +749,9 @@ def ledge(name, c, rad, top):
     with its top at top, the others about it and lower"""
     obs = [boulder(name + '_b0', (c[0], c[2]), rad * 0.78, top)]
     for k in range(rnd.choice((2, 3))):
-        aa = rnd.uniform(0.0, 2.0 * math.pi); d = rad * rnd.uniform(0.45, 0.8)
-        obs.append(boulder('%s_b%d' % (name, k + 1), (c[0] + math.cos(aa) * d, c[2] + math.sin(aa) * d), rad * rnd.uniform(0.38, 0.55),
-                           top - rnd.uniform(0.15, 0.7), n=rnd.choice((5, 6))))
+        aa = rnd.uniform(0.0, 2.0 * math.pi); d = rad * rnd.uniform(0.45, 0.8); rk = rad * rnd.uniform(0.38, 0.55); tk = top - rnd.uniform(0.15, 0.7)
+        if rk < RSTYLE.get('sat_min', 0.0): continue      # (no needle of rock beside a small one: a small rock in the sea stands alone)
+        obs.append(boulder('%s_b%d' % (name, k + 1), (c[0] + math.cos(aa) * d, c[2] + math.sin(aa) * d), rk, tk, n=rnd.choice((5, 6))))
     for ob in obs: set_depth(ob, lambda x, z: top)
     return obs
 
@@ -1226,19 +1229,24 @@ if PLAN is not None and PLAN.get('shore') and PLAN.get('sea_y') is not None:
         if o is not None: still += cut(o)
     rising = []
     for o in RS: rising += cut(o)
-    ob_ = PLAN.get('observer')
-    if ob_:      # (the Observer, set as the game sets it: its box's foot-middle at its foot, its height the plan's, turned about the up)
-        fn = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'props', '%s.glb' % PLAN.get('observer_model', 'observer'))
+    def stand(model, foot, height, turn):      # (a model set as the game sets it: its box's foot-middle at its foot, its height the plan's, turned about the up; its cut by the water)
+        fn = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'props', '%s.glb' % model)
         before = set(bpy.data.objects); bpy.ops.import_scene.gltf(filepath=fn)
         new = [o for o in bpy.data.objects if o not in before]; mesh_ = [o for o in new if o.type == 'MESH']
         vs = [o.matrix_world @ v.co for o in mesh_ for v in o.data.vertices]
         lo = Vector((min(v.x for v in vs), min(v.y for v in vs), min(v.z for v in vs))); hi = Vector((max(v.x for v in vs), max(v.y for v in vs), max(v.z for v in vs)))
-        k_ = float(ob_[3]) / (hi.z - lo.z)
-        Mx = Matrix.Translation(G(ob_[0], ob_[1], ob_[2])) @ Matrix.Rotation(float(ob_[4]), 4, 'Z') @ Matrix.Scale(k_, 4) @ Matrix.Translation(-Vector(((lo.x + hi.x) * 0.5, (lo.y + hi.y) * 0.5, lo.z)))
+        k_ = float(height) / (hi.z - lo.z)
+        Mx = Matrix.Translation(G(foot[0], foot[1], foot[2])) @ Matrix.Rotation(float(turn), 4, 'Z') @ Matrix.Scale(k_, 4) @ Matrix.Translation(-Vector(((lo.x + hi.x) * 0.5, (lo.y + hi.y) * 0.5, lo.z)))
         for o in mesh_: o.matrix_world = Mx @ o.matrix_world
         bpy.context.view_layer.update()
-        for o in mesh_: still += cut(o)
+        sg_ = []
+        for o in mesh_: sg_ += cut(o)
         for o in new: bpy.data.objects.remove(o, do_unlink=True)
+        return sg_
+    ob_ = PLAN.get('observer')
+    if ob_: still += stand(PLAN.get('observer_model', 'observer'), ob_[:3], ob_[3], ob_[4])      # (the Observer)
+    for s_ in PLAN.get('statues', []):      # (a statue standing in the water, as the third level's light-bearer: the foam hugs her too)
+        if s_[0] in PLAN.get('shore_statues', []): still += stand('statue_' + s_[0], s_[1], s_[2], s_[3])
     allsg = np.concatenate(still + rising)
     D = 1.6; res = 0.03
     x0 = float(min(allsg[:, 0].min(), allsg[:, 2].min())) - D; x1 = float(max(allsg[:, 0].max(), allsg[:, 2].max())) + D

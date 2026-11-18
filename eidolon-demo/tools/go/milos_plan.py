@@ -4,7 +4,7 @@ An island of white rock in a pale turquoise sea. A marble statue stands in the w
 and the light runs up a channel cut into the island to the goddess's bronze mirror at its head. The mirror throws it
 back over the path that climbs beside the channel; turned, it throws it over the channel's arm onto the stone at the
 head of the bridge, and beyond the stone, over the chasm, lies the ring before the gate: unlit, the gate's door shut.
-Behind, on the highest rock, the goddess without arms.
+Behind the island the goddess rises out of the sea, a colossus without arms; rocks stand all about it in the water.
 
 The board is tools/go/light_trial.py's milos(), proven there (18 swipes, one way, no dead end): grid x runs from the
 stone over the bridge to the ring, y up the channel from the statue to the mirror. In the world a step of the board is
@@ -39,6 +39,12 @@ LIGHT = {      # nodes the light passes and no one walks: the sea before the isl
     'Z': [3.0, H1, 0.0],          # (the statue: the light's source)
     'Q': W(0, -1, H1), 'W1': W(0, 1, H1), 'W2': W(0, 2, H1), 'W3': W(1, 3, H1),
 }
+GODDESS = ['goddess', [-10.62, SEA - 4.2, -5.25], 11.0, -1.2]      # (Aphrodite, a colossus rising out of the sea behind her sanctuary, the highest rock hiding where she meets the water (the owner: "a big statue of Aphrodite", "much bigger"), her face turned to the eye; without arms: they broke when Theron took her mirror; a little more of her shape than at first (the owner) (props/statue_goddess.glb, 4200 faces))
+SEA_ROCKS = [(-9.82, -0.31, 0.67, 0.64), (-0.37, -7.24, 0.74, 0.76), (-1.38, -4.51, 0.6, 0.68), (-0.25, -5.51, 0.42, 0.44), (-6.25, 2.77, 0.58, 0.46),
+             (1.43, -2.93, 0.58, 0.57), (3.34, -2.9, 0.88, 0.89), (-3.29, 3.74, 0.49, 0.34), (-0.16, 2.71, 0.45, 0.29), (-2.04, 6.84, 0.46, 0.31),
+             (3.52, 1.61, 0.33, 0.36), (5.36, 0.55, 0.42, 0.43), (1.83, 5.93, 0.75, 0.63), (0.66, 7.91, 0.68, 0.43), (7.28, 2.65, 0.33, 0.36),
+             (3.87, 6.14, 0.64, 0.4), (0.55, 9.87, 0.7, 0.59), (3.12, 7.85, 0.32, 0.25), (6.26, 5.15, 0.95, 1.08), (8.86, 2.62, 0.6, 0.4),
+             (3.73, 10.21, 0.76, 0.74), (6.95, 7.59, 0.84, 0.72), (5.67, 9.16, 0.89, 0.7), (8.38, 6.63, 0.39, 0.37), (10.12, 5.84, 0.31, 0.31)]      # (rocks all about it in the water (the owner: "rocks all around in the water", "more rocks"): x, z, how broad, how far out of the water; on the screen to its left, its right and before it, each in the water below the painted sea's rim (none floats against the sky), clear of the way, the light and its statue)
 WAY = ['A', 'B', 'C', 'D', 'M', 'C', 'B', 'A', 'X', 'F', 'G', 'H', 'P', 'K', 'P', 'K', 'Y', 'R']      # (M: the mirror turned; the first K: the push)
 
 
@@ -58,7 +64,7 @@ def plan():
     }
     face = lambda dx, dz: round(math.atan2(-dz, dx), 3)
     statues = [['standing', [3.2, -1.0, 0.0], 3.4, face(-1.0, 0.0)],      # (she stands in the water before the island, looking up the channel; a placeholder model)
-               ['goddess', [-8.3, H1 + 2.1, -3.2], 5.6, face(0.72, 0.69)]]      # (the goddess on her rock, great (the owner: "a big statue of Aphrodite"), without arms: they broke when Theron took her mirror (props/statue_goddess.glb, few faces))
+               GODDESS]
     puzzle = {
         'nodes': dict(N, **LIGHT), 'edges': edges, 'start': 'S', 'exit': 'R', 'block': 'K', 'holes': [],
         'intro': [[0.0, H0, 4.41], [0.0, H0, 4.4]],      # (no way in: she stands where the light of the second gate let her go)
@@ -72,7 +78,7 @@ def plan():
         'solution': WAY,
         'lines': ["He stole the goddess's mirror.", 'She let him.'],      # (the script's next truth; only at the level's start)
     }
-    rocks = [[[-8.3, SEA, -3.2], 1.75, H1 + 2.1],      # (the goddess's rock, the highest, behind the niche)
+    rocks = [[[-8.3, SEA, -3.2], 1.75, H1 + 2.1],      # (the highest rock, behind the niche: the goddess rises out of the sea behind it)
              [[-6.35, SEA, -1.35], 0.72, H1 + 1.25],      # (the niche's walls)
              [[-6.35, SEA, -4.65], 0.72, H1 + 1.05],
              [[-6.5, SEA, 0.7], 0.95, H1 + 0.55],      # (behind the mirror)
@@ -82,24 +88,22 @@ def plan():
              [[-4.4, SEA, 3.0], 0.95, H1 - 0.45],
              [[-0.7, SEA, -3.3], 0.8, H1 - 0.6],      # (its shoulder over the chasm's mouth)
              [[-1.45, SEA, 4.45], 0.6, H0 - 0.2], [[1.35, SEA, 3.65], 0.55, H0 - 0.25],      # (about the platform)
-             [[2.25, SEA, 1.75], 0.5, SEA + 0.24], [[2.1, SEA, -1.75], 0.45, SEA + 0.2]]      # (small rocks in the sea, clear of the light)
+             [[2.25, SEA, 1.75], 0.5, SEA + 0.24], [[2.1, SEA, -1.75], 0.45, SEA + 0.2]] \
+        + [[[x, SEA, z], r, SEA + t] for (x, z, r, t) in SEA_ROCKS]      # (small rocks in the sea, clear of the light; and more all about it)
     pts = [p for p in N.values()] + [[x, f['h'], z] for f in floors.values() for x, z in f['xz']] + [[-4.5, H1 + 2.3, -6.85]] \
-        + [[s[1][0], s[1][1] + s[2], s[1][2]] for s in statues] + [LIGHT['Z']]
+        + [[s[1][0], s[1][1] + s[2], s[1][2]] for s in statues if s[0] != 'goddess'] + [LIGHT['Z']]
     pl = {
         'scene': 'wake', 'sea_y': SEA, 'heights': {'H0': H0, 'H1': H1}, 'floors': floors, 'flights': [fl],
         'nodes': N, 'edges': edges, 'ring': N['R'], 'stone': N['K'], 'holes': [], 'faces': [],
-        'horizon': 0.48, 'sun': [0.743, 0.395],      # (its own backdrop's sea rim and sun, measured on gomilos/backdrop.jpg: a blue-violet morning, the white rocks of Milos far off (the owner: "more blue-purple"))
+        'horizon': 0.414, 'sun': [0.671, 0.265],      # (its own backdrop's sea rim and sun, measured on gomilos/backdrop.jpg: a pale blue and lilac morning, the white rocks of Milos far off (the owner: "light blue, lilac"); the painting raised so its sun stands clear over the island)
         'arches': [[[-4.5, H1, -6.85], 'x']],      # (the gate, square to the way's last stretch, just behind the ring)
         'waters': [[-3.75, -0.75, -0.75, 0.75], [-5.25, -3.75, -2.25, -0.75], [-6.75, -2.25, -5.25, -3.75]],      # (the channel, its arm, the chasm: open water the rock keeps clear of)
-        'hollows': [[-2.0, H1 - 0.42, 3.0, 0.62], [-4.25, H1 - 0.38, 3.05, 0.55]],      # (round pits the sea wore in the shelf beside the path, as the concept's)
-        'node_slabs': {'size': 1.32, 'thick': 0.3, 'skip': ['Y'], 'whole': ['S', 'M', 'K', 'NI', 'R']},      # (the way in separate stones, crooked and uneven (the owner), on the rock (rock_drop under them))
-        'rock_drop': 0.1,
-        'niches': [{'cut': [-6.95, -5.22, -3.72, -2.28, H1 - 0.16, H1 + 1.28], 'roof': [[-6.25, H1 + 1.62, -3.0], [1.15, 0.78, 1.3]]}],      # (the stone's niche under the goddess's rock: a roof of rock over it, so it reads as the stone's own place)
+        'rock_style': {'ease': [0.006, 0.016], 'boulder_ease': 0.012, 'tilt': [0.2, 0.45], 'lean': 2.6, 'cut_p': 0.85, 'chamf': [0.12, 0.36], 'side_cuts': [2, 3], 'sat_min': 0.2},      # (its rock cut sharper and more aslant than the other levels' (the owner))
         'bridges': [[-5.0, -4.0, -5.24, -3.76, H1]],      # (a slab over the chasm, nothing under it but the sea; a joint's breadth from each floor)
-        'statues': statues, 'pedestals': [],
+        'statues': statues, 'pedestals': [], 'shore_statues': ['standing'],      # (the light's statue stands in the water: the sea's thin foam hugs her as it does the rock)
         'rocks': rocks,
         'columns': [], 'volute': None, 'head': None, 'relief': None, 'cypress': None,
-        'eye': eye_fit(pts, top_room=0.24, bottom_room=0.12, margin=0.6),      # (the great goddess's head just under the story's line; the island as large as the screen allows)
+        'eye': eye_fit(pts, top_room=0.33, bottom_room=0.16, margin=0.6),      # (the colossus is left out of the fit: it rises behind, into the sky)
         'shore': True,
         'scenery': [['statue', [s[1][0], s[1][1] + s[2] / 2, s[1][2]], [0.46, s[2], 0.46], [0.94, 0.93, 0.9]] for s in statues],      # (placeholders in the blockout's preview)
     }

@@ -113,45 +113,43 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
 - **Both levels** (the owner, 18/11): the whole opening of each gate is white, and she stops just before it so she is
   seen until the flash. The way's line stays as it was: a pink and a neon terracotta glow were tried and turned down.
 - **Level 3, The Mirror, built 18/11** (`gomilos/`, `FLIP=gomilos`; the owner: "a level 3, the script's third line, a matching map, a
-  puzzle with no tutorial"): the sanctuary of Aphrodite on Milos, white wave-carved volcanic rock in a pale turquoise sea, the
-  goddess's armless statue on the highest rock, at the back (her arms broke when Theron took her mirror;
-  `props/statue_goddess.glb`, Tripo P1, 40 credits); no busts by
-  the way or the gate (the owner found them "staged"); one other statue, the light's (below). Line (the script's next truth, the mirror):
-  "He stole the goddess's mirror. / She let him." Puzzle, the owner's own rule ("the gate closed; moving the stone
-  sends the light to the circle and the gate opens"): a beam of light, seen, leaves a statue (the owner: "the beam
-  should leave from a statue, and be blocked by a stone"): a veiled marble woman standing in the water at the channel's
-  lower end, a light in her hands (no plinth: the busts on plinths looked staged); it runs up the channel to the
-  goddess's bronze mirror; a swipe into the mirror turns it; the stone and she herself (where she stands she casts a
-  shadow) stop the light; the ring before the gate is unlit and the gate's door shut until the light reaches the ring
-  (the owner: "the mirror lights the circle, which is off, and it lights and the door opens"), and then it stays open;
-  the ring is entered only open. Laid on the concept's own map (the owner: "the same general map, the puzzle as it
-  should be"): board `milos()` in `tools/go/light_trial.py` (18 swipes, one way, no dead end, 60 states). The stair up
-  beside the channel to the mirror (its only side on land) and turn it: the light goes onto the stone at the bridge's
-  head; back down, over the crossing at the channel's mouth (her body cuts the light at its root there), up the other
-  side; push the stone north into its niche under the goddess's rock; she stands in the light herself: one step back,
-  the ring lights and the door opens; over the bridge over the chasm to the ring. The first design, `mirror_holster` in
-  `tools/go/trials_designs.py` (a look breaking a face at the gate), made no sense to the owner. Concept
-  `design/level3/concept.jpg` (the first, `concept_first.jpg`), the light step by step `board.png`.
-  The island is the concept's, as the owner wanted it ("what Gemini made, like Milos, Sarakiniko"; not the other levels'
-  slabs on chunky rock): `tools/go/milos_island.py` builds it from the plan as a field of distances meshed by marching cubes
-  (scikit-image in `~/.local`): flat walks with rounded lips, broad pillows of white rock, the channel, its arm and the
-  chasm cut out, a bridge of the rock over the chasm, hollows, faint beds, a groove at the waterline; its own palette
-  `island` sampled from the concept (white, lilac shade) lit smoothly (`smooth_k`); the gate's arch from
-  `tools/ivory_level.py` run on the arches alone (extras). Plan `tools/go/milos_plan.py` (asserts the plan is the
-  solver's board). `go_milos` rides `go_veil` (its start, block, statues), and level 2's gate now leads on into it
-  (`_ivw_next_level`); the end screen comes after the last. The light (`_ivm_*` in `ch1.gd`): traced on the board as the
-  solver has it, drawn live each frame and cut where her body or the stone stands; past the mirror it goes out while
-  the mirror turns; the ring is a ring of darker stone until the light reaches it, then lights; the gate's two leaves
-  swing open toward her. Its backdrop `gomilos/backdrop.jpg` (Gemini: the pale Aegean, far white islands). The statue in
-  the sea is still level 2's `standing` model (a placeholder). No dark shapes before the eye here.
-  The owner's notes on its first frame (18/11), all taken: the ring white as the others', only unlit (no glow until the
-  light reaches it); the veil kept on the gate, its door's leaves hung behind it and opening inward, so the cloth never
-  goes through them; a great Aphrodite (5.6 m on her rock) of few faces (`bake_ao.py --faces=1800 --flat`, lit face by
-  face); the rock under the way grey-blue (`IV_MILOS_PAL`), and the way itself separate stones, crooked and uneven
-  (`node_slabs` in the plan: `tools/ivory_level.py` lays a hand-cut slab under each place of the way, a little out of
-  square, out of line and lower or higher, on the rock that `milos_island.py` keeps `rock_drop` under them); the
-  stone's niche cut under a roof of rock, so it reads as the stone's own place (`niches`); a much better backdrop, all of
-  it bluer and more violet (a blue-violet morning, the white rocks of Milos far off, horizon 0.48).
+  puzzle with no tutorial"): the sanctuary of Aphrodite on Milos in a pale blue and lilac sea; no busts by the way or the
+  gate (the owner found them "staged"). Line (the script's next truth, the mirror): "He stole the goddess's mirror. / She
+  let him." Puzzle, the owner's own rule ("the gate closed; moving the stone sends the light to the circle and the gate
+  opens"): a beam of light, seen, leaves a statue (the owner: "the beam should leave from a statue, and be blocked by a
+  stone"): a veiled marble woman standing in the water at the channel's lower end, a light in her hands (no plinth: the
+  busts on plinths looked staged); it runs up the channel to the goddess's bronze mirror; a swipe into the mirror turns
+  it; the stone and she herself (where she stands she casts a shadow) stop the light; the ring before the gate is unlit
+  and the gate's door shut until the light reaches the ring (the owner: "the mirror lights the circle, which is off, and
+  it lights and the door opens"), and then it stays open; the ring is entered only open. Laid on the concept's own map
+  (the owner: "the same general map, the puzzle as it should be"): board `milos()` in `tools/go/light_trial.py` (18
+  swipes, one way, no dead end, 60 states). The stair up beside the channel to the mirror (its only side on land) and
+  turn it: the light goes onto the stone at the bridge's head; back down, over the crossing at the channel's mouth (her
+  body cuts the light at its root there), up the other side; push the stone north into its niche under the highest rock;
+  she stands in the light herself: one step back, the ring lights and the door opens; over the bridge over the chasm to
+  the ring. The first design, `mirror_holster` in `tools/go/trials_designs.py`, made no sense to the owner. Concept
+  `design/level3/concept.jpg` (the first, `concept_first.jpg`; the first concepts `concept_c/d/e` gave the rock its
+  grey-blue), the light step by step `board.png`. Plan `tools/go/milos_plan.py` (asserts the plan is the solver's board).
+  `go_milos` rides `go_veil` (its start, block, statues), and level 2's gate leads on into it (`_ivw_next_level`); the end
+  screen comes after the last. The light (`_ivm_*` in `ch1.gd`): traced on the board as the solver has it, drawn live each
+  frame and cut where her body or the stone stands; past the mirror it goes out while the mirror turns; the ring is white
+  as the others' but unlit until the light reaches it, then lights; the gate keeps its veil, its two leaves hung behind
+  it swing open inward (the cloth never goes through them). The statue in the sea is still level 2's `standing` model (a
+  placeholder); the sea's foam hugs her (`shore_statues` in the plan). No dark shapes before the eye here.
+  **Its look, as the owner settled it (18/11)**: built like the other levels by `tools/ivory_level.py` (big slabs with
+  chamfered, broken edges on faceted rock; the owner: "look how we made the others"). Turned down, in order: the smooth
+  white island of `tools/go/milos_island.py` (marching cubes, still in the repo), a way of separate crooked stones
+  (`node_slabs`), a deep blue-violet sky. Its rock cut sharper and more aslant than the other levels' (`rock_style` in
+  the plan: lean, chamfers, cuts, tilt; `sat_min` keeps needles of rock off the small ones), in the grey-blue the first
+  concepts gave the rock in shade (`IV_MILOS_PAL` `rock2`, its tops grey so the white slabs read apart); the shade a pale
+  blue-lilac (`shade_tint`). Rocks all about it in the water (`SEA_ROCKS`, 25), each below the painted sea's rim on the
+  screen: a rock behind the island would stand against the sky. The goddess a colossus (the owner: "a big statue of
+  Aphrodite"): 11 m, rising out of the sea behind the highest rock, which hides where she meets the water, her face turned
+  to the eye (turn -1.2), 4200 flat faces (`bake_ao.py --faces=4200 --flat`: "few polygons", then "a little more
+  detail"). The story's line crosses her neck at the level's start. The camera's follow lifts the whole picture about
+  0.085 of the screen at the start (her start is low): keep the colossus's head under the top by that. Its backdrop
+  `gomilos/backdrop.jpg` (Gemini, pale blue and lilac, far white rocks of Milos), raised by 0.14 so its sun stands clear
+  over the island: horizon 0.414, sun (0.671, 0.265).
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
