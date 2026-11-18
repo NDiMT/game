@@ -114,10 +114,12 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   seen until the flash. The way's line stays as it was: a pink and a neon terracotta glow were tried and turned down.
 - **Level 3, designed 18/11, not built** (the owner: "a level 3, the script's third line, a matching map, a puzzle with
   no tutorial"): the sanctuary of Aphrodite on Milos, white wave-carved volcanic rock in a pale turquoise sea, the
-  goddess's armless statue on the highest rock, at the back (her arms broke when Theron took her mirror); no other
-  statues (the owner found the busts by the way and the gate "staged"). Line (the script's next truth, the mirror):
+  goddess's armless statue on the highest rock, at the back (her arms broke when Theron took her mirror); no busts by
+  the way or the gate (the owner found them "staged"); one other statue, the light's (below). Line (the script's next truth, the mirror):
   "He stole the goddess's mirror. / She let him." Puzzle, the owner's own rule ("the gate closed; moving the stone
-  sends the light to the circle and the gate opens"): a beam of light, seen, comes from the sea up a channel to the
+  sends the light to the circle and the gate opens"): a beam of light, seen, leaves a statue (the owner: "the beam
+  should leave from a statue, and be blocked by a stone"): a veiled marble woman standing in the water at the channel's
+  lower end, a light in her hands (no plinth: the busts on plinths looked staged); it runs up the channel to the
   goddess's bronze mirror; a swipe into the mirror turns it; the stone and she herself (where she stands she casts a
   shadow) stop the light; the gate is closed until the light reaches the ring before it, across a chasm, and then
   stays open; the ring is entered only open. Board `milos()` in `tools/go/light_trial.py` (12 swipes, 2 ways, no dead

@@ -1,11 +1,13 @@
-"""Level 3 (the owner's rule): the gate is closed and dark; a beam of sunlight comes in from the sea up a channel to the
-goddess's bronze mirror; the mirror (a swipe into it turns it, '/' or '\\') sends it on; the stone stops it, and so does
-Ione herself (her body casts a shade). The moment the beam reaches the ring on the threshold, the gate opens, and stays
-open. She wins on the ring with the gate open.
+"""Level 3 (the owner's rule): the gate is closed and dark; a beam of light leaves a statue (the owner: "the beam should
+leave from a statue, and be blocked by a stone"), a veiled marble woman standing in the water at the channel's lower
+end with a light in her hands, and runs up the channel to the goddess's bronze mirror; the mirror (a swipe into it
+turns it, '/' or '\\') sends it on; the stone stops it, and so does Ione herself (her body casts a shade). The moment
+the beam reaches the ring on the threshold, the gate opens, and stays open. She wins on the ring with the gate open.
 
 usage: python3 -I tools/go/light_trial.py      (proves the Milos board)
 
-A board: cells; level ways (walk, push, light); gaps (light only: the channel's water, a chasm); the source (cell, dir)."""
+A board: cells; level ways (walk, push, light); gaps (light only: the channel's water, a chasm); the source (cell,
+dir): the statue's place and the way she faces."""
 import random, sys, json
 from collections import deque
 E, S_, W, N = 0, 1, 2, 3
