@@ -2112,8 +2112,9 @@ const IV_WAKE_PAL := {      # the waking: dawn over a still sea. Pearl and rose 
 	"rock2": ["c39f98", "93727c", "684a57", "4a3140"],
 	"observer": ["f5e7e1", "decdd0", "c6b0bc", "9d8599"],
 	"statue": ["fcf5f1", "f4e6e1", "d8c2c8", "ae96a9"],      # (the Observer as the concepts paint their statues: white marble warmed by the dawn on its lit side, a light rose-lilac shade; the user: "smoother and better lit")      # (the lighter stone's own: the white marble of the slabs; the user's ask)      # (the rock's own hues, its shade a little lighter so her face under the veil still reads)      # (her shade soft: the face under the veil must never fall into a dark hole)
+	"block": ["f6e6d0", "ecd8c0", "d3bba4", "ae968a"],      # (the uncut block: a warmer, sandier marble than the slabs, as stone fresh from the quarry is; the owner: "a little different in shade")
 	"phead": ["f3e4df", "dcc4c4", "b9a0ad", "917b93"],
-	"groove": ["e2cac6", "e2cac6", "e2cac6", "e2cac6"],
+	"groove": ["ff7048", "ff7048", "ff7048", "ff7048"],      # (the way's line and the block's meander a neon terracotta, lit from within, with a halo; the owner, after a pink: "make it neon terracotta")
 	"line": ["fff4ee", "fff4ee", "fff4ee", "fff4ee"],
 	"ring": ["fff3e2", "fff3e2", "fff3e2", "fff3e2"],
 	"bronze": ["f2d398", "d7a660", "9c6e40", "6b4a30"],
@@ -2487,6 +2488,7 @@ func _iv_mat(kind: String, far_k := 0.0, extra := {}) -> ShaderMaterial:
 	if OS.get_environment("IV_DBG") != "": m.set_shader_parameter("dbg", float(OS.get_environment("IV_DBG")))
 	if kind == "line" or kind == "ring" or kind == "groove": m.set_shader_parameter("flat_mode", 1.0)
 	if kind == "ring": m.set_shader_parameter("emit", 0.55)
+	if kind == "groove" and go_wake: m.set_shader_parameter("emit", 0.15)      # (lit from within and still terracotta: more and it burns pale)
 	for k in extra: m.set_shader_parameter(k, extra[k])
 	iv_mats[key] = m
 	return m
@@ -2763,6 +2765,52 @@ func _iv_volute(parent: Node3D, p: Vector3, out_dir: Vector3) -> void:
 
 func _iv_line(parent: Node3D, a: Vector3, b: Vector3) -> void:
 	var st := _iv_st(); _iv_bar(st, a + Vector3(0, 0.005, 0), b + Vector3(0, 0.005, 0), 0.055 if ivr_on else 0.07, 0.018); _iv_commit(st, "groove" if ivr_on else "line", parent, 0.0, {}, false)
+	if go_wake and ivr_on: _ivw_glow_strip(parent, a, b)
+
+## the glow about the way's line (the owner: "a slight glow" on the line and the cube's meander; first pink, then "neon
+## terracotta"): a halo laid on the stone along each line and round each node, mixed into what is under it, fading out
+## from its middle; under the water (the line over a hole not yet filled) it is not drawn. The line and the meander
+## themselves glow by their own light (the "groove" colour, lit from within)
+const IVW_GLOW_SH := """
+shader_type spatial;
+render_mode unshaded, cull_disabled, shadows_disabled, depth_draw_never, blend_mix;
+uniform vec3 col : source_color = vec3(1.0, 0.38, 0.18);
+uniform float k = 0.3;
+uniform float round_k = 0.0;
+uniform float clip_y = -1000.0;
+varying vec3 wp;
+void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment(){      // (the line's light laid over the stone, mixed into it: on white marble an added colour is only more white)
+	if (wp.y < clip_y) discard;
+	float d = round_k > 0.5 ? length(UV - vec2(0.5)) * 2.0 : abs(UV.x - 0.5) * 2.0;
+	ALBEDO = mix(col, vec3(1.0, 0.72, 0.56), exp(-d * d * 40.0) * 0.6);      // (a little paler at its heart, along the line itself: a neon's)
+	ALPHA = exp(-d * d * 3.2) * (1.0 - smoothstep(0.75, 1.0, d)) * k;
+}
+"""
+var ivw_glow_mats := {}
+func _ivw_glow_mat(kind: String) -> ShaderMaterial:
+	if not ivw_glow_mats.has(kind):
+		var m := ShaderMaterial.new(); m.shader = _ivw_shader(IVW_GLOW_SH)
+		m.set_shader_parameter("clip_y", IV_O.y + ivr_sea_y + 0.005)
+		if kind == "node": m.set_shader_parameter("round_k", 1.0); m.set_shader_parameter("k", 0.4)
+		else: m.set_shader_parameter("k", 0.45)
+		ivw_glow_mats[kind] = m
+	return ivw_glow_mats[kind]
+func _ivw_glow_strip(parent: Node3D, a: Vector3, b: Vector3, w := 0.26) -> void:
+	var d := Vector3(b.x - a.x, 0, b.z - a.z)
+	if d.length() < 0.01: return      # (an upright piece, the riser of a step: its line glows enough)
+	var s := d.normalized().cross(Vector3.UP) * (w * 0.5)
+	var y := maxf(a.y, b.y) + 0.026
+	var p0 := Vector3(a.x, y, a.z); var p1 := Vector3(b.x, y, b.z)
+	var st := SurfaceTool.new(); st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for q in [[p0 - s, 0.0], [p0 + s, 1.0], [p1 + s, 1.0], [p0 - s, 0.0], [p1 + s, 1.0], [p1 - s, 0.0]]:
+		st.set_uv(Vector2(float(q[1]), 0.0)); st.add_vertex(q[0])
+	var mi := MeshInstance3D.new(); mi.mesh = st.commit(); mi.material_override = _ivw_glow_mat("line"); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(mi)
+func _ivw_glow_node(parent: Node3D, p: Vector3, r := 0.42) -> void:
+	var q := QuadMesh.new(); q.size = Vector2(r * 2.0, r * 2.0); q.orientation = PlaneMesh.FACE_Y
+	var mi := MeshInstance3D.new(); mi.mesh = q; mi.material_override = _ivw_glow_mat("node"); mi.position = p + Vector3(0, 0.03, 0); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(mi)
 
 ## a groove up the face of a riser
 func _iv_riser(parent: Node3D, a: Vector3, b: Vector3) -> void:
@@ -3881,6 +3929,7 @@ func _ivr_way() -> void:
 		var ri := _iv_prim(rm, p + Vector3(0, 0.008, 0), "groove", wp_k); ri.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		var dm := CylinderMesh.new(); dm.top_radius = 0.16; dm.bottom_radius = 0.165; dm.height = 0.035; dm.radial_segments = 24; dm.rings = 1
 		var di := MeshInstance3D.new(); di.mesh = dm; di.material_override = _ivr_mat("marble2", 0.0); di.position = p + Vector3(0, 0.02, 0); di.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; wp_k.add_child(di)
+		if go_wake and ivr_on: _ivw_glow_node(wp_k, p)
 
 ## far off, as the picture has it, one band behind another, each paler and smaller than the one before: tall crags at
 ## the eye's sides; behind them a colonnade on its pillar of rock and lesser crags; far behind, highest, the hill of
@@ -4024,19 +4073,14 @@ func _ivw_scene2(j: Dictionary) -> void:
 ## motes of light rising from it. At the end it flares.
 const IVW_GATE_SH := """
 shader_type spatial;
-render_mode unshaded, cull_disabled, shadows_disabled, depth_draw_never, blend_add;
-uniform vec3 col : source_color = vec3(1.0, 0.93, 0.8);
+render_mode unshaded, cull_disabled, shadows_disabled;
+uniform vec3 col : source_color = vec3(1.0, 0.988, 0.975);
 uniform float k = 1.0;
 varying vec2 q;
 void vertex(){ q = VERTEX.xy; }
-void fragment(){
-	float r = 0.41; float hs = 1.34;
-	float across = abs(q.x) / r;
-	float up = q.y / (hs + r);
-	float a = (1.0 - smoothstep(0.55, 1.0, across)) * 0.55 + 0.45;      // (brightest in the middle)
-	a *= 1.0 - smoothstep(0.35, 1.0, up) * 0.6;      // (and low, where it falls on the threshold)
-	a *= 0.86 + 0.14 * sin(TIME * 1.2 + q.y * 3.0 + sin(TIME * 0.7 + q.x * 5.0));      // (stirring)
-	ALBEDO = col * a * 0.62 * k;
+void fragment(){      // (the whole opening white, the owner: "in the gates I'd like the whole inside of the gate to look white"; only a breath of stirring in it)
+	float st = 0.982 + 0.018 * sin(TIME * 1.2 + q.y * 3.0 + sin(TIME * 0.7 + q.x * 5.0));
+	ALBEDO = min(col * st * (0.97 + 0.03 * min(k, 1.0)), vec3(1.0));
 }
 """
 var ivw_gate_m: ShaderMaterial
@@ -4060,7 +4104,7 @@ func _ivw_exit() -> void:
 	gf.tween_method(gk, 1.0, 2.6, 1.8).set_trans(Tween.TRANS_SINE)
 	gf.tween_property(ivw_gate_glow, "albedo_color:a", 0.75, 1.8).set_trans(Tween.TRANS_SINE)
 	await wait(0.5)
-	var to := Vector3(ivw_gate_p.x, pos.y, ivw_gate_p.z) - ivw_gate_front * 0.04      # (into it: she stands in its doorway, its light behind and about her; deeper in, white in white, she was gone before the flash)
+	var to := Vector3(ivw_gate_p.x, pos.y, ivw_gate_p.z) + ivw_gate_front * 0.1      # (into it: she stands in its doorway, its light behind and about her; deeper in, the white of the opening (drawn whole, the owner) hid her before the flash)
 	var full := maxf(Vector2(pos.x, pos.z).distance_to(Vector2(to.x, to.z)), 0.05)
 	var gp_in := full / (PLAY_WALK * 0.33) + IVW_GATE_WALK_EXTRA + 0.4 - IVW_GATE_PEAK      # (when its sound must begin: the walk, the breath in the light, less the time to its peak)
 	if gp_in <= 0.0: _ivw_sfx("gate_pass", -2.5, -gp_in)
@@ -5037,7 +5081,8 @@ func _ivv_way_parent(a: String, b: String) -> Node3D:      # (the line or disc t
 	if not ivv_hole_way.has(h):
 		var n := Node3D.new(); iv_root.add_child(n); n.position.y = -1.4; ivv_hole_way[h] = n
 	return ivv_hole_way[h]
-const IVV_BLOCK_SCALE := 1.22      # (the block a stone of the causeway's size: it is to be the stone that is missing)
+const IVV_BLOCK_SCALE := 1.0      # (the block a stone of the causeway's size: it is to be the stone that is missing)
+const IVV_BLOCK_H := 1.04
 const IVV_FALL_DB := -3.0
 const IVV_PUSH_DB := -4.0
 func _ivv_push_in(nb: String, c: String) -> void:
@@ -5045,7 +5090,7 @@ func _ivv_push_in(nb: String, c: String) -> void:
 	iv_busy = true
 	var bp: Vector3 = iv_block_n.global_position
 	var sea := IV_O.y + ivr_sea_y
-	var hgt := 0.85 * IVV_BLOCK_SCALE      # (it sinks its own height: its top comes to rest level with the way)
+	var hgt := IVV_BLOCK_H * IVV_BLOCK_SCALE      # (it sinks its own height: its top comes to rest level with the way)
 	print("IV the block falls into ", c)
 	_ivw_sfx("block_fall", IVV_FALL_DB)
 	var t := create_tween(); t.tween_property(iv_block_n, "global_position:y", bp.y - hgt - 0.05, 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
@@ -5828,11 +5873,14 @@ func _ivr_block() -> Node3D:
 		for m in b0.find_children("*", "MeshInstance3D", true, false): (m as MeshInstance3D).material_override = _ivr_mat("marble2", 0.0)
 		return b0
 	var st := GLTFState.new(); var doc := GLTFDocument.new()
-	doc.append_from_buffer(FileAccess.get_file_as_bytes("res://goiv/block.glb"), "", st)
+	var bf := "res://props/block_meander.glb" if go_veil else "res://goiv/block.glb"      # (the second level: the carved cube made rougher, its faces out of true, corners broken; its meander apart, to glow (tools/go/block_meander.py))
+	doc.append_from_buffer(FileAccess.get_file_as_bytes(bf), "", st)
 	var n := Node3D.new(); iv_root.add_child(n)
 	n.add_child(doc.generate_scene(st))
+	var bx := _ivv_ex(0.0); bx["veins"] = 0.3; bx["ao_k"] = 0.0
 	for m in n.find_children("*", "MeshInstance3D", true, false):
-		(m as MeshInstance3D).material_override = _iv_mat("statue", 0.0, _ivv_ex(0.0)) if go_veil else _ivr_mat("marble2"); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON      # (the second level: an uncut block of the statues' own marble, lit as softly)
+		if go_veil and String(m.name).to_lower().contains("meander"): (m as MeshInstance3D).material_override = _iv_mat("groove", 0.0, {"emit": 0.24}); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; continue      # (the owner: "the meander on the cube with a slight pink glow")
+		(m as MeshInstance3D).material_override = _iv_mat("block", 0.0, bx) if go_veil else _ivr_mat("marble2"); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON      # (the second level: an uncut block of the statues' own marble, lit as softly)
 	return n
 
 func _ivr_build() -> void:
@@ -5897,7 +5945,7 @@ func _ivr_build() -> void:
 	_ivr_way()
 	iv_me = "s"; iv_block = String(ivg.block) if ivg_on else "b0"
 	iv_block_n = _ivr_block()
-	if go_veil: iv_block_n.scale = Vector3.ONE * IVV_BLOCK_SCALE
+	if go_veil: iv_block_n.scale = Vector3.ONE * IVV_BLOCK_SCALE      # (made at its size: 0.9 m square, 1.04 m high)
 	if ivp_nodes.has(iv_block): iv_block_n.global_position = ivp_nodes[iv_block]
 	else: iv_block_n.visible = false; iv_block_n.global_position = IV_O + Vector3(0, -60, 0)      # (a trial without the stone)
 	if ivg_vol != "":

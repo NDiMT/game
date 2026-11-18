@@ -98,7 +98,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   standing hand on breast, half out of an uncut block, seated, arms open (`props/statue_*.glb`: painted designs, Tripo
   P1 without texture, 40 credits each, welded and shaded by `tools/go/bake_ao.py --weld`); each model faces its own +x
   (the plan's turn sets that face toward the eye). Its backdrop is its own (`goveil/backdrop.jpg`: the golden morning,
-  far veiled statues at the horizon, horizon 0.362). Concept: `design/level2/concept.jpg`.
+  far veiled statues at the horizon, horizon 0.362). Concept: `design/level2/concept.jpg`. Its block is a sandier
+  marble than the slabs, a little uneven, with a meander (`props/block_meander.glb`, `tools/go/block_meander.py`).
+- **Both levels** (the owner, 18/11): the way's line, its discs and the block's meander glow **neon terracotta** (pink
+  was turned down); the whole opening of each gate is white, and she stops just before it so she is seen until the flash.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
