@@ -172,14 +172,14 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   painted alone by Gemini (no horizon line; a band of bright haze at 0.30, `horizon` 0.33 so the sea's glints come in
   below it). The light leaves the statue at the height of her eyes (the owner). The goddess a colossus (the owner: "a
   big statue of Aphrodite"): 11 m, rising out of the sea behind the highest rock, which hides where she meets the water,
-  her face turned to the eye (turn -0.9). Her model (`props/statue_goddess.glb`) is Tripo P2 with its texture (100 +
-  10 credits), cut to 35,286 faces, its colour replaced by her light and shade baked as painted (Cycles, a diffuse bake
-  in soft bands, the light from the right of the picture as the concept paints her; seams with a 32 px margin, or dark
-  specks show), drawn as baked (`baked_k` 1 in IV_SH: the texture's colour as it is; `far_k` 0.05, no rim). The owner
-  (18/11): "it doesn't even look like Aphrodite, just a blurred shape", then "I wanted a texture with light and shade";
-  turned down on the way: a painted picture of her on a card ("it's bad"), a plain P1 model (11,660 faces, shaded by
-  the game), the first 4,200 flat faces. Offered beside her: that first model with the same light baked into its
-  vertex colours (`IV_GODDESS_VC=1`, `baked_k` 2); the owner has to choose. The story's line crosses her neck at the level's start; the camera's follow lifts the whole
+  her face turned to the eye (turn -1.2). Her model (`props/statue_goddess.glb`) is her first one, 4,200 flat faces,
+  its light and shade baked as painted into the colours of its faces (Cycles, the light from the right of the picture as
+  the concept paints her, a lilac shade), drawn as baked (`baked_k` 2 in IV_SH: the vertex colours as they are; `far_k`
+  0.05, no rim); the game takes that look for any goddess model with vertex colours and no texture. The owner chose it
+  (18/11: "the first Aphrodite"), after "it doesn't even look like Aphrodite, just a blurred shape" and "I wanted a
+  texture with light and shade". Turned down on the way: a painted picture of her on a card ("it's bad"), a smooth P1
+  model (11,660 faces, shaded by the game), a detailed Tripo P2 model with her light baked into its texture (110 credits;
+  its texture needs mipmaps, `_iv_mipped`, or it sparkles in dark specks far off). The story's line crosses her neck at the level's start; the camera's follow lifts the whole
   picture about 0.085 of the screen there, so her head is kept under the top by that. Turned down on the way: a smooth
   white island of marching cubes (`tools/go/milos_island.py`, still in the repo), a way of separate crooked stones
   (`node_slabs`), a deep blue-violet sky, a crisp sky with 25 grey rocks in the sea, the white island round slabs on a

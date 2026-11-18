@@ -5195,6 +5195,12 @@ func _ivm_goddess_painted(p0: Vector3) -> void:
 	var mi := MeshInstance3D.new(); mi.mesh = q; mi.material_override = m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	iv_root.add_child(mi); mi.transform = Transform3D(b, pc)
 
+func _iv_mipped(t: Texture2D) -> Texture2D:      # (a model's texture read raw from its .glb comes without mipmaps: far off, each pixel then takes one texel of many, and her fine atlas sparkled in dark specks; given its mipmaps, it is seen smooth)
+	var im := t.get_image()
+	if im == null or im.has_mipmaps(): return t
+	im = im.duplicate(); if im.is_compressed(): im.decompress()
+	im.generate_mipmaps(); return ImageTexture.create_from_image(im)
+
 func _ivv_statues(j: Dictionary) -> void:
 	var look := IVV_LOOK; var ex := _ivv_ex()
 	for s in (j.statues as Array):
@@ -5218,8 +5224,8 @@ func _ivv_statues(j: Dictionary) -> void:
 		for m in hd.find_children("*", "MeshInstance3D", true, false):
 			var exm := exs
 			var om := (m as MeshInstance3D).mesh.surface_get_material(0) as BaseMaterial3D
-			if String(s[0]) == "goddess" and om != null and om.albedo_texture != null: exm = exs.duplicate(); exm["alb_tex"] = om.albedo_texture; exm["baked_k"] = 1.0; exm["far_k"] = 0.05; exm["rim_k"] = 0.0      # (the goddess: her own light and shade painted into her colour (baked in Blender from the level's light, a lilac shade), shown as painted (the owner, 18/11: "a texture with light and shade"))
-			if String(s[0]) == "goddess" and OS.get_environment("IV_GODDESS_VC") != "": exm = exs.duplicate(); exm["baked_k"] = 2.0; exm["far_k"] = 0.05; exm["rim_k"] = 0.0; exm["smooth_k"] = 0.0; exm["ao_k"] = 0.0      # (to try a goddess whose light is painted into her faces' colours)
+			if String(s[0]) == "goddess" and om != null and om.albedo_texture != null: exm = exs.duplicate(); exm["alb_tex"] = _iv_mipped(om.albedo_texture); exm["baked_k"] = 1.0; exm["far_k"] = 0.05; exm["rim_k"] = 0.0      # (the goddess: her own light and shade painted into her colour (baked in Blender from the level's light, a lilac shade), shown as painted (the owner, 18/11: "a texture with light and shade"))
+			if String(s[0]) == "goddess" and (m as MeshInstance3D).mesh is ArrayMesh and (((m as MeshInstance3D).mesh as ArrayMesh).surface_get_format(0) & Mesh.ARRAY_FORMAT_COLOR) != 0 and (om == null or om.albedo_texture == null): exm = exs.duplicate(); exm["baked_k"] = 2.0; exm["far_k"] = 0.05; exm["rim_k"] = 0.0; exm["smooth_k"] = 0.0; exm["ao_k"] = 0.0      # (the goddess: her first model, its few flat faces, her light and shade painted into their colours (baked in Blender from the level's light, a lilac shade), shown as painted (the owner, 18/11: "the first Aphrodite", "light and shade on the first model"))
 			(m as MeshInstance3D).material_override = _iv_mat("goddess" if String(s[0]) == "goddess" and go_milos else "statue", 0.0, exm); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		_ivs_mirror(hp, func(_mi: MeshInstance3D) -> Array:
 			var mx := {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.7, "haze": 1.0, "mirror_fade": 2.0, "mirror_wob": 0.05}; mx.merge(look); return ["statue", 0.0, mx])
