@@ -2597,7 +2597,7 @@ func _iv_mat(kind: String, far_k := 0.0, extra := {}) -> ShaderMaterial:
 	if OS.get_environment("IV_DBG") != "": m.set_shader_parameter("dbg", float(OS.get_environment("IV_DBG")))
 	if kind == "line" or kind == "ring" or kind == "groove": m.set_shader_parameter("flat_mode", 1.0)
 	if kind == "ring": m.set_shader_parameter("emit", 0.55)
-	if OS.get_environment("IV_PAINT") != "" and not (kind in ["line", "ring", "groove"]): m.set_shader_parameter("paint_k", float(OS.get_environment("IV_PAINT")))      # (a try: light and shade as painted)
+	if OS.get_environment("IV_PAINT") != "" and not (kind in ["line", "ring", "groove", "statue", "salt"]): m.set_shader_parameter("paint_k", float(OS.get_environment("IV_PAINT")) * (0.5 if kind == "marble2" else 1.0))      # (a try: light and shade as painted; not on the smooth statues and round rocks, gentler on the slabs)
 	for k in extra: m.set_shader_parameter(k, extra[k])
 	if OS.get_environment("IV_PAINT_AO") != "" and kind == "rock2": m.set_shader_parameter("ao_k", float(OS.get_environment("IV_PAINT_AO")))      # (a try: the rock's hollows shaded, as the concept paints them)
 	iv_mats[key] = m
@@ -5174,9 +5174,9 @@ func _ivv_statues(j: Dictionary) -> void:
 		var hd := prop_model("statue_" + String(s[0]), hp, float(s[2]))
 		var exs := ex
 		if String(s[0]) == "goddess":
-			exs = ex.duplicate(); exs.merge({"smooth_k": 0.0, "ao_k": 0.55, "rim_k": 0.08, "haze": 0.0, "far_k": 0.08}, true)      # (the goddess of few faces (the owner), a little more of her shape: each face its own light, her folds shaded)
-			var glk := OS.get_environment("IV_GODDESS_LOOK")      # (to try her otherwise: "4" smooth marble softly lit, as the Observer; "2" smooth, her light in a few clean bands)
-			if glk == "4": exs = ex.duplicate(); exs.merge({"haze": 0.0, "far_k": 0.08, "rim_col": Color(0.95, 0.95, 1.0)}, true)
+			exs = ex.duplicate(); exs.merge({"haze": 0.0, "far_k": 0.08, "rim_col": Color(0.95, 0.95, 1.0), "form_key": Vector3(0.72, 0.61, -0.34)}, true)      # (the goddess as the concept paints her (the owner, 18/11: "make Aphrodite better"): her whole model (11,660 faces), smooth white marble, its own light from the right of the picture so her form reads, a lilac shade, her folds shaded; before, 4,200 flat faces)
+			var glk := OS.get_environment("IV_GODDESS_LOOK")      # (to try her otherwise: "0" her few flat faces' light (with the old model); "2" smooth, her light in a few clean bands)
+			if glk == "0": exs = ex.duplicate(); exs.merge({"smooth_k": 0.0, "ao_k": 0.55, "rim_k": 0.08, "haze": 0.0, "far_k": 0.08}, true)
 			if OS.get_environment("IV_GODDESS_KEY") != "":      # (and her own light from elsewhere: "x,y,z")
 				var gk := OS.get_environment("IV_GODDESS_KEY").split(","); exs = exs.duplicate(); exs["form_key"] = Vector3(float(gk[0]), float(gk[1]), float(gk[2]))
 			elif glk == "2": exs = ex.duplicate(); exs.merge({"smooth_k": 2.0, "ao_k": 0.55, "rim_k": 0.1, "haze": 0.0, "far_k": 0.08, "rim_col": Color(0.95, 0.95, 1.0)}, true)

@@ -171,7 +171,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   painted alone by Gemini (no horizon line; a band of bright haze at 0.30, `horizon` 0.33 so the sea's glints come in
   below it). The light leaves the statue at the height of her eyes (the owner). The goddess a colossus (the owner: "a
   big statue of Aphrodite"): 11 m, rising out of the sea behind the highest rock, which hides where she meets the water,
-  her face turned to the eye (turn -1.2), 4200 flat faces ("few polygons", then "a little more detail"), a breath of the
+  her face turned to the eye (turn -1.2), her whole Tripo model (11,660 faces), smooth white marble with
+  her folds shaded, lit by her own light from the right of the picture (`form_key` 0.72, 0.61, -0.34) as the concept
+  paints her (the owner, 18/11: "make Aphrodite better"; before, 4,200 flat faces for "few polygons"), a breath of the
   haze on her (`far_k` 0.08). The story's line crosses her neck at the level's start; the camera's follow lifts the whole
   picture about 0.085 of the screen there, so her head is kept under the top by that. Turned down on the way: a smooth
   white island of marching cubes (`tools/go/milos_island.py`, still in the repo), a way of separate crooked stones
