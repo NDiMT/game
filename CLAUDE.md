@@ -51,7 +51,13 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
 - **Sounds** (`sfx/`, `_ivw_sfx`, the owner approved them in a preview on the level video): PLAY a low note, each story
   line a woman's sigh (not the last), the stones a swell, the gate's sound peaking on the flash, a blocked swipe a low
   pluck. No audio bus made while the game runs and no dip under the sounds: with one, a phone's browser played nothing in
-  the level. `IV_SFX_LOG=1` logs their moments.
+  the level. `IV_SFX_LOG=1` logs their moments. On an Android phone the owner heard none of these cues over the music
+  (18/11): they lay 5-10 LU under it, so they were raised about 6 dB. And real sounds were added (the owner: "real
+  sounds too"), cut from CC0 recordings (`tools/sfx_real.py`, sources and levels in `design/sfx/README.md`): a step at
+  each footfall of her walk (`IVW_STEP_AT`, read from the walk clip's place), a stone's water and foam as each breaks the
+  sea, the winch's ratchet and clank, the gate's light on the flash. A phone's speaker plays little under 300 Hz: give a
+  sound its presence (2-4 kHz) and judge loudness by ebur128 beside the music, not by peak. `#sfxtest` after a page's
+  address plays each sound in turn every 3 s with its name (`IV_SFXTEST=1` on a desktop).
 - **Smoothness** (the owner, 18/11: "it catches a little, above all where the stones come up"):
   - A phone's browser builds each new shader the moment it is first drawn, and the picture stops while it builds. Make
     one `Shader` per kind of effect (`_ivw_shader`), never `Shader.new()` per effect. Draw each kind once, unseen,

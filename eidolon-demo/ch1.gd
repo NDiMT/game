@@ -1787,7 +1787,7 @@ func _go_begin() -> void:
 	cam_t = _mw_focus(); cam_focus = cam_t; cam_focus_on = true
 
 func _go_write(text: String, hold := 4.5) -> void:
-	if go_wake and not iv_won: _ivw_sfx("line_sigh", -10.0)      # (each line comes on a woman's sigh)
+	if go_wake and not iv_won: _ivw_sfx("line_sigh", -4.0)      # (each line comes on a woman's sigh)
 	for ql in quote_lbls: (ql as Label).text = text
 	var qt := create_tween(); qt.tween_property(quote_box, "modulate:a", 1.0, 0.5); qt.tween_interval(hold); qt.tween_property(quote_box, "modulate:a", 0.0, 0.7)
 	quote_glow.modulate.a = 1.0
@@ -3530,7 +3530,7 @@ func _ivg_swipe(dv: Vector2) -> void:
 	var n := _ivg_dir_nbr(iv_me, dv)
 	if OS.get_environment("IV_TRACE") != "": print("IV swipe ", dv, " from ", iv_me, " -> ", n)
 	ivg_turning = true
-	if n == "" and go_wake: _ivw_sfx("no_move", -14.0)      # (a soft low pluck: not that way)
+	if n == "" and go_wake: _ivw_sfx("no_move", -8.0)      # (a soft low pluck: not that way)
 	if n == "": await _her_no()
 	else: await _ivg_step(n)
 	ivg_turning = false
@@ -4034,6 +4034,8 @@ func _ivw_her_set(v: float, k: String) -> void:
 
 const IVW_GATE_PEAK := 1.15      # (the gate's sound peaks this long after it begins)
 const IVW_GATE_WALK_EXTRA := 0.21      # (her slow walk's start and stop, beyond distance over pace)
+const IVW_LIGHT_PEAK := 0.33      # (the gate's light, a real sound under the music's: its swell is at its height this long after it begins)
+const IVW_LIGHT_DB := -3.5
 func _ivw_exit() -> void:
 	var gk := func(v: float) -> void: ivw_gate_m.set_shader_parameter("k", v)
 	var gf := create_tween().set_parallel()      # (the gate's light grows as she comes to it)
@@ -4043,8 +4045,11 @@ func _ivw_exit() -> void:
 	var to := Vector3(ivw_gate_p.x, pos.y, ivw_gate_p.z) - ivw_gate_front * 0.04      # (into it: she stands in its doorway, its light behind and about her; deeper in, white in white, she was gone before the flash)
 	var full := maxf(Vector2(pos.x, pos.z).distance_to(Vector2(to.x, to.z)), 0.05)
 	var gp_in := full / (PLAY_WALK * 0.33) + IVW_GATE_WALK_EXTRA + 0.4 - IVW_GATE_PEAK      # (when its sound must begin: the walk, the breath in the light, less the time to its peak)
-	if gp_in <= 0.0: _ivw_sfx("gate_pass", -4.3, -gp_in)
-	else: get_tree().create_timer(gp_in, false).timeout.connect(func() -> void: _ivw_sfx("gate_pass", -4.3))
+	if gp_in <= 0.0: _ivw_sfx("gate_pass", -2.5, -gp_in)
+	else: get_tree().create_timer(gp_in, false).timeout.connect(func() -> void: _ivw_sfx("gate_pass", -2.5))
+	var gl_in := gp_in + IVW_GATE_PEAK - IVW_LIGHT_PEAK      # (and the light's own swell, at its height on the flash)
+	if gl_in <= 0.0: _ivw_sfx("gate_light", IVW_LIGHT_DB, -gl_in)
+	else: get_tree().create_timer(gl_in, false).timeout.connect(func() -> void: _ivw_sfx("gate_light", IVW_LIGHT_DB))
 	speed_cap = PLAY_WALK * 0.33; face_to = null      # (slow steps: the step into the gate must be seen)
 	route.append({"p": to})
 	var snapped := false
@@ -4372,6 +4377,9 @@ func _ivw_back(p: float) -> float:      # (up a little past its place and settli
 
 ## a stone breaks the still water: rings go out from it, water leaps from its edges, and it comes up wet, the water
 ## running down its sides as it drains, drying from the top down
+const IVW_SURF_DB := -7.0
+const IVW_WINCH_DB := -3.0
+var ivw_surf_n := 0
 func _ivw_emerge(r: Array) -> void:
 	var rm := r[0] as MeshInstance3D
 	var bb := rm.global_transform * rm.get_aabb()
@@ -4380,6 +4388,8 @@ func _ivw_emerge(r: Array) -> void:
 	_ivw_ripple(Vector3(c.x, sea, c.z), rad + 0.8)
 	get_tree().create_timer(0.45).timeout.connect(func() -> void: _ivw_ripple(Vector3(c.x, sea, c.z), rad + 1.35))
 	_ivw_splash(Vector3(c.x, sea + 0.02, c.z), rad)
+	if go_wake:      # (the water thrown off it, running down its sides, the foam fizzing: each stone its own, a little apart in pitch)
+		ivw_surf_n += 1; _ivw_sfx("stone_surface_%d" % (1 + ivw_surf_n % 3), IVW_SURF_DB, 0.0, randf_range(0.93, 1.07))
 	if r.size() > 7:
 		if r[7] == null or not is_instance_valid(r[7]): r[7] = _ivw_churn_make(r)
 		_ivw_churn_burst(r[7] as MeshInstance3D)
@@ -4481,7 +4491,7 @@ func _ivw_splash(at: Vector3, rad: float) -> void:      # (drops thrown up from 
 
 func _ivw_raise(up: bool) -> void:
 	if ivw_risers.is_empty(): ivw_up = 1.0 if up else 0.0; return
-	if up and go_wake: _ivw_sfx("stones_rise", -11.0)      # (the stones come up on a slow swell of strings and voices)
+	if up and go_wake: _ivw_sfx("stones_rise", -6.0)      # (the stones come up on a slow swell of strings and voices)
 	var t := create_tween(); t.tween_method(_ivw_risers_set, ivw_up, 1.0 if up else 0.0, 3.2)      # (each stone eases by itself, in its turn)
 	for k in 4:
 		await get_tree().create_timer(0.55).timeout
@@ -4729,9 +4739,30 @@ func _ivw_menu_make() -> void:
 	ivw_close = 0.0      # (the whole level behind the name)
 	ivw_menu_on = true; ivr_fo = Vector2.ZERO; ivr_fv = Vector2.ZERO      # (the start screen holds the level's own eye)
 	var auto := OS.get_cmdline_user_args().has("godemo")
+	if _ivw_web_hash("sfxtest"): _ivw_sfx_test(); return
 	if FileAccess.file_exists("res://intro/vase/film.json") and OS.get_environment("IV_NO_INTRO") == "" and (not auto or OS.get_environment("IV_INTRO") != ""):
 		_ivw_intro()      # (the film begins by itself, in a browser too (the user); there its sound comes in at the first touch, where the picture is)
 	else: _ivw_music("res://music/theme.ogg", 2.0); _ivw_warm()      # (no film: the level made ready behind the start screen)
+
+## a browser's page opened with a word after # in its address (#sfxtest): for checks on a phone
+func _ivw_web_hash(word: String) -> bool:
+	if not OS.has_feature("web"): return OS.get_environment("IV_" + word.to_upper()) != ""
+	return str(JavaScriptBridge.eval("location.hash.indexOf('%s') >= 0 ? 'y' : 'n'" % word, true)) == "y"
+
+## (#sfxtest: no film and no music, only the sounds, each in turn every three seconds, with its name written: so
+## whether they play can be heard, on a phone too, after a first touch)
+func _ivw_sfx_test() -> void:
+	get_viewport().disable_3d = true      # (the level not drawn: only the sounds are tried, and a browser without a graphics card keeps up)
+	_ivw_sounds_ready(IVW_SFX.map(func(s: String) -> String: return "res://sfx/%s.ogg" % s))
+	var lb := Label.new(); lb.add_theme_font_size_override("font_size", 40); lb.position = Vector2(40, 40); lb.add_theme_color_override("font_color", Color(1, 1, 1))
+	var cl := CanvasLayer.new(); cl.layer = 20; add_child(cl); cl.add_child(lb)
+	var i := 0
+	while is_inside_tree():
+		var nm: String = IVW_SFX[i % IVW_SFX.size()]; i += 1
+		var p := _ivw_sfx(nm, -6.0)
+		lb.text = "%d  %s  %s" % [i, nm, "playing" if p != null and p.playing else "NOT PLAYING"]
+		print("SFXTEST ", nm, " playing ", p != null and p.playing)
+		await get_tree().create_timer(3.0).timeout
 
 ## the music (music/: made with the music model from the written descriptions in design/music/): the theme under the
 ## start screen, the still sea under the first level, each looping, one fading into the next
@@ -4759,17 +4790,17 @@ func _go_level_music() -> String:
 ## the waking's sounds (sfx/: cut from the music model's pieces made from design/sfx/, each retuned onto the notes the
 ## lament shares with its D-minor turns, so none of them strikes against the music wherever the player meets it):
 ## PLAY a low note, each line of the story a woman's sigh, the stones a swell, the gate its passing, a step that cannot be a low pluck
-func _ivw_sfx(name: String, db := -8.0, from := 0.0) -> AudioStreamPlayer:
+func _ivw_sfx(name: String, db := -8.0, from := 0.0, pitch := 1.0) -> AudioStreamPlayer:
 	if OS.get_environment("IV_NO_MUSIC") != "" or OS.get_environment("IV_NO_SFX") != "" or not ResourceLoader.exists("res://sfx/%s.ogg" % name): return null
 	if OS.get_environment("IV_SFX_LOG") != "": print("SFX ", name, " at ", snappedf(iv_t, 0.01))
-	var p := AudioStreamPlayer.new(); p.stream = _ivw_stream("res://sfx/%s.ogg" % name); p.volume_db = db; add_child(p); p.play(from)
+	var p := AudioStreamPlayer.new(); p.stream = _ivw_stream("res://sfx/%s.ogg" % name); p.volume_db = db; p.pitch_scale = pitch; add_child(p); p.play(from)
 	p.finished.connect(p.queue_free)
 	return p
 
 ## every sound kept once loaded, and in a browser made ready before it is needed: there a sound is decoded whole the
 ## first time it plays, and while it decodes the picture stops (the stones' swell stopped it as they came up, the
 ## lament at PLAY, the theme near the film's end). Kept, each is decoded once, at a moment when nothing moves
-const IVW_SFX := ["play_note", "line_sigh", "stones_rise", "gate_pass", "no_move"]
+const IVW_SFX := ["play_note", "line_sigh", "stones_rise", "gate_pass", "no_move", "step_1", "step_2", "step_3", "step_4", "stone_surface_1", "stone_surface_2", "stone_surface_3", "winch_turn", "gate_light"]
 var ivw_streams := {}
 func _ivw_stream(file: String) -> AudioStream:
 	if not ivw_streams.has(file):
@@ -4782,6 +4813,32 @@ func _ivw_sounds_ready(files: Array) -> void:
 	for f in files:
 		var st := _ivw_stream(String(f))
 		if st != null and OS.has_feature("web") and not AudioServer.is_stream_registered_as_sample(st): AudioServer.register_stream_as_sample(st)
+
+## her steps on the stone (the user: "real sounds too: steps on the stone"): one at each footfall of her walk, read
+## from where her walk's clip is (her heel comes down at these moments of it, measured on the model), so that the sound
+## keeps to her feet at any pace; the small steps of a turn on the spot softer, and one as she stops
+const IVW_STEP_AT := {"walk": [0.10, 0.60, 1.13, 1.63], "turn_step": [0.21, 0.73, 1.25, 1.77]}
+const IVW_STEP_DB := -1.0
+var ivw_step_clip := ""; var ivw_step_was := 0.0; var ivw_step_age := 0.0; var ivw_step_last := 0.0; var ivw_step_k := 0
+func _ivw_steps_tick(dt: float) -> void:
+	if not H.has("main") or H["main"].ap == null: return
+	var ap := H["main"].ap as AnimationPlayer
+	var clip := String(ap.current_animation) if ap.is_playing() else ""
+	var at := ap.current_animation_position if clip != "" else 0.0
+	ivw_step_age += dt; ivw_step_last += dt
+	if clip != ivw_step_clip:
+		if ivw_step_clip == "walk" and clip == "idle" and ivw_step_last > 0.3: get_tree().create_timer(0.18, false).timeout.connect(_ivw_step_settle)      # (the trailing foot set down beside the other)
+		ivw_step_clip = clip; ivw_step_was = at; ivw_step_age = 0.0; return
+	if not IVW_STEP_AT.has(clip): return
+	for c: float in IVW_STEP_AT[clip]:
+		var crossed: bool = (ivw_step_was < c and c <= at) if at >= ivw_step_was else (c > ivw_step_was or c <= at)
+		if crossed and ivw_step_age > 0.15: _ivw_step(IVW_STEP_DB if clip == "walk" else IVW_STEP_DB - 5.0)      # (none in the clip's first moment: the foot has not yet left the floor)
+	ivw_step_was = at
+func _ivw_step_settle() -> void:
+	if ivw_step_clip == "idle" and ivw_step_last > 0.25: _ivw_step(IVW_STEP_DB - 6.0)      # (only if she is still stopped: going on at once, she sets no foot down to stand)
+func _ivw_step(db: float) -> void:
+	ivw_step_k = (ivw_step_k + 1 + randi() % 3) % 4; ivw_step_last = 0.0      # (never the same one twice running)
+	_ivw_sfx("step_%d" % (ivw_step_k + 1), db + randf_range(-1.5, 0.5), 0.0, randf_range(0.96, 1.04))
 
 func _ivw_music_out(fade := 3.0) -> void:
 	if ivw_music_p == null: return
@@ -4909,7 +4966,7 @@ func _ivw_intro_end() -> void:      # (at its end, or at a tap: the film fades i
 
 func _ivw_play() -> void:      # (PLAY: the name and the haze go, the eye goes down to her where she lies, and she wakes)
 	ivw_menu_on = false
-	_ivw_sfx("play_note", -8.3)
+	_ivw_sfx("play_note", -2.5)
 	_ivw_music(_go_level_music(), 5.0, -5.0)      # (the theme gives way to the level's own piece, slowly, quieter: it plays while she thinks)
 	for f in 2: await get_tree().process_frame      # (a browser copies a long piece's whole sound as it starts it: that moment passes before anything moves)
 	var t := create_tween().set_parallel()
@@ -6151,6 +6208,7 @@ func _ivg_turn_volute() -> void:
 	ivg_v ^= 1
 	print("IV the volute turns: ", ivg_v)
 	var sp := create_tween(); sp.tween_property(iv_wheel, "rotation:z", iv_wheel.rotation.z - (TAU if go_wake else PI), 1.6 if go_wake else 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	if go_wake: _ivw_sfx("winch_turn", IVW_WINCH_DB)      # (a click at each tooth as the wheel passes it, slow, quick, slow, as the wheel goes round once in 1.6 s; a clank as it holds)
 	for f in ivg_faces:
 		if f.alive: _ivg_face_aim(f, 1.0)
 	if go_wake: await _ivw_raise(ivg_v == 1)      # (the chains draw the stones up out of the water)
@@ -8791,6 +8849,7 @@ func _process(dt: float) -> void:
 	if figure_demo: _fig_frame(dt)
 	if geo_demo: _gh_post(dt)
 	if go_demo: _go_post(dt)
+	if go_wake: _ivw_steps_tick(dt)
 	if ivh_on: ivh_parts += Vector3(hp1 - hp0, hp2 - hp1, Time.get_ticks_usec() - hp2) / 1000.0
 	if match_demo and not ended and not flip_on and not flip_busy and pos.z > MT_Z1 + 0.7: route.clear(); _end()
 	if flip_demo and not ended and not busy and not flip_busy and not flip_on and rects.has("S2") and rects["S2"].on and pos.z < TZ0 - 0.9: route.clear(); _end()      # (the trial ends behind the second sluice)
