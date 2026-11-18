@@ -1788,9 +1788,66 @@ func _go_begin() -> void:
 
 func _go_write(text: String, hold := 4.5) -> void:
 	if go_wake and not iv_won: _ivw_sfx("line_sigh", -4.0)      # (each line comes on a woman's sigh)
+	if go_wake and ivw_story_style != "": _ivw_story_write(text, hold); return
 	for ql in quote_lbls: (ql as Label).text = text
 	var qt := create_tween(); qt.tween_property(quote_box, "modulate:a", 1.0, 0.5); qt.tween_interval(hold); qt.tween_property(quote_box, "modulate:a", 0.0, 0.7)
 	quote_glow.modulate.a = 1.0
+
+## the story's line over the waking's levels (the owner: "can we improve the text at the top? I don't like how it comes
+## out"): higher, in the clear of the sky over the far statues; its lines come one after the other, each rising a little
+## as it clears; they go together. Black letters with no shadow and no glow (the owner's). Its styles, as they were shown
+## to the owner: "cinzel" capitals as cut in stone, "upright" the Cormorant upright, "mixed" spaced capitals over the italic
+const IVW_CINZEL := "res://fonts/Cinzel-Variable.ttf"
+const IVW_CORM := "res://fonts/CormorantGaramond-Variable.ttf"
+var ivw_story_style := OS.get_environment("IV_TEXT")
+var ivw_story: Control
+func _ivw_vfont(fn: String, wght: float) -> Font:
+	if not ivw_fonts.has(fn):
+		if not FileAccess.file_exists(fn): return null
+		var ff := FontFile.new(); ff.data = FileAccess.get_file_as_bytes(fn); ivw_fonts[fn] = ff
+	if wght <= 0.0: return ivw_fonts[fn]
+	var fv := FontVariation.new(); fv.base_font = ivw_fonts[fn]; fv.variation_opentype = {"wght": wght}
+	return fv
+func _ivw_story_spec(i: int, t: String) -> Dictionary:      # (each line: its words, its font and weight, its size, its spacing, the gap under it)
+	match ivw_story_style:
+		"cinzel": return {"t": t.to_upper(), "f": IVW_CINZEL, "w": 430.0, "s": 30, "sp": 3, "gap": 14}
+		"upright": return {"t": t, "f": IVW_CORM, "w": 520.0, "s": 47, "sp": 1, "gap": 0}
+	if i == 0: return {"t": t.to_upper(), "f": IVW_CINZEL, "w": 430.0, "s": 24, "sp": 5, "gap": 8}      # ("mixed": the first line in small spaced capitals, the rest in the italic, larger)
+	return {"t": t, "f": "res://fonts/CormorantGaramond-MediumItalic.ttf", "w": 0.0, "s": 52, "sp": 0, "gap": 0}
+func _ivw_story_make(text: String) -> Array:      # (its lines as labels, set in their places; returns [label, its place's height] for each)
+	if ivw_story == null:
+		ivw_story = Control.new(); ivw_story.set_anchors_preset(Control.PRESET_FULL_RECT); ivw_story.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		quote_box.get_parent().add_child(ivw_story)
+	for ch in ivw_story.get_children(): ch.queue_free()
+	ivw_story.modulate.a = 1.0
+	var vp := get_viewport().get_visible_rect().size; var k := vp.x / 720.0
+	var y := vp.y * 0.083
+	var out := []
+	var ls := text.split("\n")
+	for i in ls.size():
+		var sp := _ivw_story_spec(i, ls[i])
+		var f := _ivw_vfont(String(sp.f), float(sp.w))
+		if f == null: continue
+		if f is FontVariation: (f as FontVariation).spacing_glyph = int(round(float(sp.sp) * k))
+		var fs := int(round(float(sp.s) * k))
+		var lb := Label.new(); lb.text = String(sp.t); lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lb.add_theme_font_override("font", f); lb.add_theme_font_size_override("font_size", fs); lb.add_theme_color_override("font_color", Color(0.07, 0.05, 0.08))
+		var h := f.get_height(fs)
+		lb.position = Vector2(0, y); lb.size = Vector2(vp.x, h)
+		ivw_story.add_child(lb); out.append([lb, y])
+		y += h + float(sp.gap) * k
+	return out
+func _ivw_story_write(text: String, hold: float) -> void:
+	var k := get_viewport().get_visible_rect().size.x / 720.0
+	var ls := _ivw_story_make(text)
+	for i in ls.size():
+		var lb := ls[i][0] as Label; var y := float(ls[i][1])
+		lb.modulate.a = 0.0; lb.position.y = y + 12.0 * k
+		var d := 0.8 * float(i)      # (each line after the one before it)
+		var tw := create_tween().set_parallel(true)
+		tw.tween_property(lb, "modulate:a", 1.0, 1.7).set_delay(d).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.tween_property(lb, "position:y", y, 2.2).set_delay(d).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)      # (rising a little as it clears)
+	var to := create_tween(); to.tween_interval(0.8 * float(ls.size() - 1) + 1.7 + hold - 1.2); to.tween_property(ivw_story, "modulate:a", 0.0, 1.4).set_trans(Tween.TRANS_SINE)
 
 func _go_pre(_dt: float) -> void:
 	if go_iv: _iv_pre(_dt); return
@@ -4431,6 +4488,7 @@ uniform sampler2D shore_tex : filter_linear, repeat_disable;
 uniform vec4 shore_rect = vec4(0.0, 0.0, 1.0, 1.0); uniform float shore_d = 1.6;
 uniform float boil = 0.0; uniform float churn = 0.0; uniform float spread = 0.05;
 uniform vec2 centre; uniform float rad = 0.5;
+uniform float box_k = 0.0; uniform vec2 box_half = vec2(0.45);      // (or round a square stone set down in the water, not one in the shore's map: the block fallen into its hole)
 uniform vec3 foam_c : source_color = vec3(1.0, 0.985, 0.97);
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
@@ -4449,6 +4507,7 @@ float bub(vec2 p, float rk){      // (round bubbles of a few sizes, some cells e
 void fragment(){
 	vec2 su = (wp.xz - shore_rect.xy) * shore_rect.zw;
 	float d = (1.0 - texture(shore_tex, clamp(su, vec2(0.001), vec2(0.999))).g) * shore_d;      // (how far from the stone's edge: nothing over it)
+	if (box_k > 0.5) { vec2 bq = abs(wp.xz - centre) - box_half; d = length(max(bq, vec2(0.0))); }
 	float onw = step(0.0005, d);      // (on the water only: over the stone nothing, it has its own)
 	float nz = vn(wp.xz * 3.5 + vec2(TIME * 0.3, -TIME * 0.24)) * 0.6 + vn(wp.xz * 8.0 - vec2(TIME * 0.42, -TIME * 0.18)) * 0.4;      // (broad and slow: the edges drawn clean and uneven, as the sea's own lip is; never a fine glitter)
 	float dd = d + (nz - 0.5) * 0.06;
@@ -4583,9 +4642,13 @@ func _ivw_warm() -> void:
 		if ivg.has("end"): said.append(String(ivg.end))
 	var was: Array = []
 	for ql in quote_lbls: was.append((ql as Label).text); (ql as Label).text = "\n".join(said)
+	if ivw_story_style != "" and not said.is_empty():      # (and the story's own letters, at no strength)
+		for it in _ivw_story_make("\n".join(said)): (it[0] as Label).modulate.a = 0.004
 	_ivw_sounds_ready(["res://music/theme.ogg", _go_level_music()] + IVW_SFX.map(func(n: String) -> String: return "res://sfx/%s.ogg" % n))
 	for f in 4: await get_tree().process_frame      # (three of them drawn: what is built is built in the drawing)
 	for i in quote_lbls.size(): (quote_lbls[i] as Label).text = String(was[i])
+	if ivw_story != null:
+		for ch in ivw_story.get_children(): ch.queue_free()
 	for nd in made: nd.queue_free()
 
 ## a ring spreading on the still water
@@ -5036,6 +5099,7 @@ func _ivv_way_parent(a: String, b: String) -> Node3D:      # (the line or disc t
 	return ivv_hole_way[h]
 const IVV_BLOCK_SCALE := 1.0      # (the block a stone of the causeway's size: it is to be the stone that is missing)
 const IVV_BLOCK_H := 1.04
+const IVV_BLOCK_HALF := 0.46      # (half its side, its faces a little out of true)
 const IVV_FALL_DB := -3.0
 const IVV_PUSH_DB := -4.0
 func _ivv_push_in(nb: String, c: String) -> void:
@@ -5044,18 +5108,45 @@ func _ivv_push_in(nb: String, c: String) -> void:
 	var bp: Vector3 = iv_block_n.global_position
 	var sea := IV_O.y + ivr_sea_y
 	var hgt := IVV_BLOCK_H * IVV_BLOCK_SCALE      # (it sinks its own height: its top comes to rest level with the way)
-	print("IV the block falls into ", c)
+	print("IV the block falls into ", c, " at ", snappedf(iv_t, 0.01))
 	_ivw_sfx("block_fall", IVV_FALL_DB)
 	var t := create_tween(); t.tween_property(iv_block_n, "global_position:y", bp.y - hgt - 0.05, 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	t.tween_property(iv_block_n, "global_position:y", bp.y - hgt, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)      # (down a little past its rest, and up to it: a heavy stone settling on its bed)
 	get_tree().create_timer(0.2, false).timeout.connect(func() -> void:
 		_ivw_ripple(Vector3(bp.x, sea, bp.z), 1.4); _ivw_splash(Vector3(bp.x, sea + 0.02, bp.z), 0.55)
+		_ivw_churn_burst(_ivv_churn_box(Vector3(bp.x, sea, bp.z), IVV_BLOCK_HALF * IVV_BLOCK_SCALE))      # (foam thrown out round it as it plunges, the owner: "when the stone falls in, foam")
+		_ivv_block_foam(sea)
 		get_tree().create_timer(0.4, false).timeout.connect(func() -> void: _ivw_ripple(Vector3(bp.x, sea, bp.z), 1.9)))
 	await t.finished
 	ivv_filled[c] = true; iv_block = ""
+	if ivs_sea_mat != null:      # (and then the still water's own thin foam and small waves round it, as round every stone: its place is in the shore map's green, tools/go/shore_hole.py)
+		var tu := create_tween(); tu.tween_interval(1.2)
+		tu.tween_method(func(v: float) -> void: ivs_sea_mat.set_shader_parameter("riser_up", v), 0.0, 1.0, 2.4).set_trans(Tween.TRANS_SINE)
 	if ivv_hole_way.has(c): create_tween().tween_property(ivv_hole_way[c], "position:y", 0.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await wait(0.3)
 	iv_busy = false
+
+func _ivv_churn_box(c: Vector3, half: float) -> MeshInstance3D:      # (the waking's foam on the water, round a square)
+	var m := ShaderMaterial.new(); m.shader = _ivw_shader(IVW_CHURN_SH); m.render_priority = 6
+	if ivs_sea_mat != null and ivs_sea_mat.get_shader_parameter("shore_tex") != null:
+		for k in ["shore_tex", "shore_rect", "shore_d"]: m.set_shader_parameter(k, ivs_sea_mat.get_shader_parameter(k))
+	var rad := half * 1.42
+	m.set_shader_parameter("box_k", 1.0); m.set_shader_parameter("box_half", Vector2(half, half))
+	m.set_shader_parameter("centre", Vector2(c.x, c.z)); m.set_shader_parameter("rad", rad); m.set_shader_parameter("boil", 1.0)
+	var pm := PlaneMesh.new(); var ext := (rad + 1.2) * 2.0; pm.size = Vector2(ext, ext)
+	var mi := MeshInstance3D.new(); mi.mesh = pm; mi.material_override = m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(mi)
+	mi.global_position = Vector3(c.x, c.y + 0.006, c.z)
+	return mi
+
+func _ivv_block_foam(sea: float) -> void:      # (the sea's foam thrown up its sides as it plunges, clinging to its foot a while and draining (not wet: wet, its sand went grey))
+	if iv_block_n == null: return
+	for n in iv_block_n.find_children("*", "MeshInstance3D", true, false):
+		var bm := (n as MeshInstance3D).material_override as ShaderMaterial
+		if bm == null: continue
+		bm.set_shader_parameter("foam_k", 1.0); bm.set_shader_parameter("foam_y", sea + 0.3)
+		var tf := create_tween().set_parallel(true)
+		tf.tween_method(func(v: float) -> void: bm.set_shader_parameter("foam_y", v), sea + 0.3, sea - 0.1, 2.4).set_delay(0.4).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_SINE)
+		tf.tween_method(func(v: float) -> void: bm.set_shader_parameter("foam_k", v), 1.0, 0.0, 3.2).set_delay(0.8).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
 
 func _ivw_birds_tick(dt: float) -> void:
 	for bdd in ivw_birds:

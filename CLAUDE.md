@@ -93,8 +93,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   (`go_wake` is true for it too); what is the waking's own (film, menu, kneel and rise, winch) asks `not go_veil`.
   It begins by itself out of a warm light (`_ivv_begin`), she standing; its piece is Last Light; its one line "So he
   carved her face / into a thousand statues." The hole (`holes` in the puzzle; `gaps` is the quarry's chasms): no
-  walking into it; the block pushed into it falls in, its top flush with the way (`_ivv_push_in`), and the way's line
-  and disc over it come up out of the water (`_ivv_way_parent`). Five statues, each different (the owner): kneeling,
+  walking into it; the block pushed into it falls in, its top flush with the way (`_ivv_push_in`), foam thrown out round
+  it and kept round it after (the owner; its place in the shore map by `tools/go/shore_hole.py`: run it again after
+  rebuilding the level), and the way's line and disc over it come up out of the water (`_ivv_way_parent`). Five statues, each different (the owner): kneeling,
   standing hand on breast, half out of an uncut block, seated, arms open (`props/statue_*.glb`: painted designs, Tripo
   P1 without texture, 40 credits each, welded and shaded by `tools/go/bake_ao.py --weld`); each model faces its own +x
   (the plan's turn sets that face toward the eye). Its backdrop is its own (`goveil/backdrop.jpg`: the golden morning,
