@@ -2164,8 +2164,8 @@ const IV_WAKE_PAL := {      # the waking: dawn over a still sea. Pearl and rose 
 	"rock2": ["c39f98", "93727c", "684a57", "4a3140"],
 	"observer": ["f5e7e1", "decdd0", "c6b0bc", "9d8599"],
 	"statue": ["fcf5f1", "f4e6e1", "d8c2c8", "ae96a9"],      # (the Observer as the concepts paint their statues: white marble warmed by the dawn on its lit side, a light rose-lilac shade; the user: "smoother and better lit")      # (the lighter stone's own: the white marble of the slabs; the user's ask)      # (the rock's own hues, its shade a little lighter so her face under the veil still reads)      # (her shade soft: the face under the veil must never fall into a dark hole)
-	"block": ["bcc5d8", "a1abc2", "8590ab", "68738f"],      # (the stone she pushes: a grey-blue marble with light veins, in every level (the owner, 18/11: "didn't we say the stone with the meander grey-blue, of marble?"); before, a sandier marble than the slabs)
-	"meander": ["8a94ad", "77829b", "626e8a", "4e5975"],      # (its meander the same stone, darker)
+	"block": ["f6e6d0", "ecd8c0", "d3bba4", "ae968a"],      # (the uncut block: a warmer, sandier marble than the slabs, as stone fresh from the quarry is; the owner: "a little different in shade"; a grey-blue was tried and turned down, 18/11: "leave it yellowish as it was, with a few discreet marble veins")
+	"meander": ["cbb497", "baa386", "9e886f", "7a6756"],      # (its meander the block's own sandy stone, darker; the owner, after a pink and a terracotta: "not terracotta, just darker than the stone's colour")
 	"phead": ["f3e4df", "dcc4c4", "b9a0ad", "917b93"],
 	"groove": ["e2cac6", "e2cac6", "e2cac6", "e2cac6"],
 	"line": ["fff4ee", "fff4ee", "fff4ee", "fff4ee"],
@@ -2210,8 +2210,6 @@ const IV_MILOS_PAL := {      # the third level in the colours of its concept, ch
 	"statue": ["fbfbff", "e8e5f3", "c4bfdb", "9089b3"],
 	"groove": ["d9dcec", "d9dcec", "d9dcec", "d9dcec"],
 	"ring": ["fffdf8", "fffdf8", "fffdf8", "fffdf8"],
-	"block": ["bcc5d8", "a1abc2", "8590ab", "68738f"],      # (the stone she pushes: a grey-blue marble with light veins (the owner, 18/11: "grey-blue instead of yellow, with marble patterns"))
-	"meander": ["8a94ad", "77829b", "626e8a", "4e5975"],      # (its meander the same stone, darker)
 }
 func _iv_pal(kind: String) -> Array:
 	if go_milos and IV_MILOS_PAL.has(kind): return IV_MILOS_PAL[kind] as Array
@@ -6022,7 +6020,7 @@ func _ivr_block() -> Node3D:
 	var n := Node3D.new(); iv_root.add_child(n)
 	n.add_child(doc.generate_scene(st))
 	var bx := _ivv_ex(0.0); bx["veins"] = 0.3; bx["ao_k"] = 0.0
-	if go_veil: bx.merge({"veins": 0.9, "vein_local": 1.0, "vein_sc": 1.5, "vein_w": 0.045, "vein_cloud": 0.22, "vein_gain": 1.45, "vein_tint": Color(0.97, 0.98, 1.0), "rim_col": Color(0.93, 0.95, 1.0)}, true)      # (the third level: grey-blue marble, light veins of its own that go with it when pushed, a cloud in the stone; its edges catch a cool light)
+	if go_veil: bx.merge({"veins": 0.42, "vein_local": 1.0, "vein_sc": 1.1, "vein_w": 0.022, "vein_cloud": 0.06, "vein_tint": Color(0.86, 0.8, 0.76)}, true)      # (a few discreet veins, a little darker than the stone, its own so they go with it when pushed (the owner, 18/11))
 	var mx := _ivv_ex(0.0); mx["veins"] = 0.0; mx["ao_k"] = 0.0
 	for m in n.find_children("*", "MeshInstance3D", true, false):
 		if go_veil and String(m.name).to_lower().contains("meander"): (m as MeshInstance3D).material_override = _iv_mat("meander", 0.0, mx); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON; continue      # (its meander apart, a darker stone)

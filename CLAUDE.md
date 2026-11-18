@@ -116,9 +116,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   standing hand on breast, half out of an uncut block, seated, arms open (`props/statue_*.glb`: painted designs, Tripo
   P1 without texture, 40 credits each, welded and shaded by `tools/go/bake_ao.py --weld`); each model faces its own +x
   (the plan's turn sets that face toward the eye). Its backdrop is its own (`goveil/backdrop.jpg`: the golden morning,
-  far veiled statues at the horizon, horizon 0.362). Concept: `design/level2/concept.jpg`. Its block is the grey-blue
-  marble with light veins of every level's pushed stone (the owner, 18/11; before, a sandier marble than the slabs), a little
-  uneven; its meander cut unevenly by hand, a darker shade of the same stone, not terracotta (the owner) (`props/block_meander.glb`, `tools/go/block_meander.py`). In the empty sea at the bottom right, a
+  far veiled statues at the horizon, horizon 0.362). Concept: `design/level2/concept.jpg`. Its block is a sandier
+  marble than the slabs, a little uneven, with a few discreet veins a little darker than it, its own so they go with it
+  when pushed (`vein_local`; the owner, 18/11, after a grey-blue with white veins was tried in levels 2 and 3 and turned
+  down: "leave it yellowish as it was, with a few discreet marble veins"); its meander cut unevenly by hand, a darker
+  shade of the same stone, not terracotta (the owner) (`props/block_meander.glb`, `tools/go/block_meander.py`). In the empty sea at the bottom right, a
   rock and a smaller one beside it (the owner, 18/11), and the brown rock under the quay where she starts made stronger
   (its tops near the slab's, two more toward the eye; the owner): `rocks_after` in its plan, made after all the rest so
   nothing else of the level changes; it is built `ivory_level.py -- goveil/level.glb goveil/level.json 11 48 goveil/plan.json`, then
@@ -160,8 +162,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   salt in the water (`salt_rocks`, `salt_rock()`), all coloured from the concept (`IV_MILOS_PAL`); no leaves above
   (the owner: "no blurry leaves above"), only rocks before the eye at the bottom corners, the concept's own dark slate
   cut out of it with their soft edges (`gomilos/rock_bl.png`, `rock_br.png`; the owner: "like the second picture"); the
-  stone she pushes a grey-blue marble with light veins (the owner: "grey-blue instead of yellow, with marble patterns";
-  `block`/`meander` in `IV_MILOS_PAL`), its veins its own (`vein_local` in IV_SH), so they go with it when pushed; its backdrop the concept's own sky and sea
+  stone she pushes level 2's own sandy block with its few discreet veins (a grey-blue was asked for, tried and turned
+  down); its backdrop the concept's own sky and sea
   painted alone by Gemini (no horizon line; a band of bright haze at 0.30, `horizon` 0.33 so the sea's glints come in
   below it). The light leaves the statue at the height of her eyes (the owner). The goddess a colossus (the owner: "a
   big statue of Aphrodite"): 11 m, rising out of the sea behind the highest rock, which hides where she meets the water,
