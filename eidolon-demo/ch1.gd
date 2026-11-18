@@ -2291,6 +2291,8 @@ uniform vec3 ao_tint : source_color = vec3(0.93, 0.83, 0.78);      // (the colou
 uniform sampler2D bg_tex : source_color, filter_linear, repeat_disable;      // (a painted backdrop: the mist is its colour at that place on the screen)
 uniform float bg_tex_k = 0.0; uniform vec2 bg_scale = vec2(1.0);
 uniform vec3 vein_tint : source_color = vec3(0.9, 0.86, 0.83);
+uniform sampler2D alb_tex : source_color, filter_linear_mipmap, repeat_enable;      // (a model's own colour (the goddess's marble from Tripo): its veins and hollows under the level's light)
+uniform float alb_tex_k = 0.0;
 uniform float paint_light = 0.0;      // (light and shade as a painter lays them (a try): each face's light a soft gradient, the smooth form's light mixed into the facet's, the steps between its tones soft)
 uniform float paint_k = 0.0;      // (light and shade as painted (a try): a wash of tone over each face, the brush's strokes down it, the shade a little bluer)
 uniform float vein_local = 0.0; uniform float vein_sc = 0.9; uniform float vein_w = 0.03; uniform float vein_cloud = 0.05; uniform float vein_gain = 1.0;      // (a block that is pushed: its veins its own, not the world's, so they go with it; light veins on a darker stone: vein_gain over 1)
@@ -2434,6 +2436,7 @@ void fragment(){
 		c = mix(c, lichen_col, rich_k * lich * 0.6);
 		c *= 1.0 - rich_k * 0.07 * smoothstep(0.76, 0.9, fbm(wp * 9.0 + 7.0));
 	}
+	if (alb_tex_k > 0.0) c *= mix(vec3(1.0), min(texture(alb_tex, UV).rgb * 1.08, vec3(1.0)), alb_tex_k);
 	if (paint_k > 0.0) {
 		vec3 pp = mix(wp, lpos, vein_local);
 		vec3 upv = abs(fn.y) < 0.92 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
@@ -5194,7 +5197,7 @@ func _ivv_statues(j: Dictionary) -> void:
 	var look := IVV_LOOK; var ex := _ivv_ex()
 	for s in (j.statues as Array):
 		var at: Array = s[1]
-		if String(s[0]) == "goddess" and go_milos and ResourceLoader.exists("res://gomilos/aphrodite.png") and OS.get_environment("IV_GODDESS_3D") == "":
+		if String(s[0]) == "goddess" and go_milos and OS.get_environment("IV_GODDESS_PAINTED") != "" and ResourceLoader.exists("res://gomilos/aphrodite.png"):      # (her painting stood up instead: tried, and turned down (the owner: "it is awful"))
 			_ivm_goddess_painted(Vector3(float(at[0]), float(at[1]), float(at[2]))); continue
 		var hp := Node3D.new(); iv_root.add_child(hp)
 		hp.position = Vector3(float(at[0]), float(at[1]), float(at[2])); hp.rotation.y = float(s[3])
@@ -5210,7 +5213,10 @@ func _ivv_statues(j: Dictionary) -> void:
 				var gk := OS.get_environment("IV_GODDESS_KEY").split(","); exs = exs.duplicate(); exs["form_key"] = Vector3(float(gk[0]), float(gk[1]), float(gk[2]))
 			elif glk == "2": exs = ex.duplicate(); exs.merge({"smooth_k": 2.0, "ao_k": 0.55, "rim_k": 0.1, "haze": 0.0, "far_k": 0.08, "rim_col": Color(0.95, 0.95, 1.0)}, true)
 		for m in hd.find_children("*", "MeshInstance3D", true, false):
-			(m as MeshInstance3D).material_override = _iv_mat("goddess" if String(s[0]) == "goddess" and go_milos else "statue", 0.0, exs); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+			var exm := exs
+			var om := (m as MeshInstance3D).mesh.surface_get_material(0) as BaseMaterial3D
+			if String(s[0]) == "goddess" and om != null and om.albedo_texture != null: exm = exs.duplicate(); exm["alb_tex"] = om.albedo_texture; exm["alb_tex_k"] = 1.0      # (the goddess: her own marble from Tripo, its veins and hollows under the level's light)
+			(m as MeshInstance3D).material_override = _iv_mat("goddess" if String(s[0]) == "goddess" and go_milos else "statue", 0.0, exm); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		_ivs_mirror(hp, func(_mi: MeshInstance3D) -> Array:
 			var mx := {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.7, "haze": 1.0, "mirror_fade": 2.0, "mirror_wob": 0.05}; mx.merge(look); return ["statue", 0.0, mx])
 
