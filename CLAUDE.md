@@ -25,8 +25,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
 
 ## The game (state on 17/11/2026)
 - Godot 4.5.1, Compatibility renderer. `eidolon-demo/`: `main.gd` (engine), `ch1.gd` (the chapter and the GO levels:
-  Lara-Croft-GO-like, turn-based, swipes). Levels: `FLIP=gowake` (1, The Waking), `gosea` (2, the Drowned
-  Sanctuary), `gomoon` (3), `goquarry` (4). Autoplay: `-- godemo`.
+  Lara-Croft-GO-like, turn-based, swipes). Levels: `FLIP=gowake` (1, The Waking), `goveil` (2, The Veiled), `gosea`
+  (the Drowned Sanctuary), `gomoon`, `goquarry`. Autoplay: `-- godemo`.
 - **Level 1, The Waking**: intro film (the amphora; the Theme under the narrator; drawn by Godot itself, not a video:
   the owner found the video poor; see the skill) → start screen (faded level, black thin EIDOLON logo and PLAY, the Theme) → PLAY → the Lament. Ione
   kneels facing her way, both hands on the front knee, back and head bowed; after a second of stone stillness she
@@ -85,16 +85,20 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
 - **The heroine Ione** is the owner's own design (`eidolon-demo/design/ione5/`): marble woman in spiral terracotta
   bands. Model: multiview → smart low-poly (owner's choice), rigged and built by `tools/ione4_build.py` into
   `hero_models/ione4r*.glb`. Review her clips with `tools/go/hero_look.py` (her colours, the game's eye).
-- **Level 2, in design** (18/11, the owner: "the second level, again a tutorial, where you push a box"): "The Veiled".
-  A marble block on a small quay at sea; a causeway of stepping stones with one stone missing; push the block onto the
-  causeway's line, go round behind it, push it twice: it falls into the gap and becomes the missing stone. Board
-  `tools/go/push_trial.py gap` (9 swipes, unique, no dead end, the block needed; `--draw` for the sheet), plan
-  `tools/go/veil_plan.py` (folder `goveil/` once approved), concepts `eidolon-demo/design/level2/` (A silver noon,
-  B golden morning). Veiled statues in the sea and by the gate: the faces Theron carved from outside (script section 7).
-  Its line: "So he carved her face / into a thousand statues." The owner chose the golden morning in the first
-  level's colours (`design/level2/concept.jpg`) and wants the statues each different: by pose, height, attribute and
-  finish (kneeling, turned to the land, half out of an uncut block, seated, arms open; far off one fallen in the sea).
-  New code it needs: a gap node the block falls into and fills.
+- **Level 2, The Veiled** (`goveil/`, `FLIP=goveil`; built 18/11, the owner: "the second level, again a tutorial, where
+  you push a box"): a marble block on a small quay at sea; a causeway of stepping stones with one stone missing; push
+  the block onto the causeway's line, go round behind it, push it twice: it falls into the gap and becomes the missing
+  stone; over it, up the stair, into the gate's light. Board `tools/go/push_trial.py gap` (9 swipes, unique, no dead
+  end, the block needed), plan `tools/go/veil_plan.py`. `go_veil` rides the waking's sea, light, sounds and gate
+  (`go_wake` is true for it too); what is the waking's own (film, menu, kneel and rise, winch) asks `not go_veil`.
+  It begins by itself out of a warm light (`_ivv_begin`), she standing; its piece is Last Light; its one line "So he
+  carved her face / into a thousand statues." The hole (`holes` in the puzzle; `gaps` is the quarry's chasms): no
+  walking into it; the block pushed into it falls in, its top flush with the way (`_ivv_push_in`), and the way's line
+  and disc over it come up out of the water (`_ivv_way_parent`). Five statues, each different (the owner): kneeling,
+  standing hand on breast, half out of an uncut block, seated, arms open (`props/statue_*.glb`: painted designs, Tripo
+  P1 without texture, 40 credits each, welded and shaded by `tools/go/bake_ao.py --weld`); each model faces its own +x
+  (the plan's turn sets that face toward the eye). Its backdrop is its own (`goveil/backdrop.jpg`: the golden morning,
+  far veiled statues at the horizon, horizon 0.362). Concept: `design/level2/concept.jpg`.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
@@ -137,8 +141,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   Faster options: cheaper render settings for recordings; splitting a video over parallel cloud sessions; a machine
   with a GPU (the owner's computer via Remote Control, or a self-hosted GPU environment).
 
-## Costs (to 17/11/2026)
-- Gemini, 10–16/11/2026: about $95–100 (video ~$60, images ~$32, music ~$1.5, voice <$0.5). Tripo: 420 credits left.
+## Costs (to 18/11/2026)
+- Gemini, 10–16/11/2026: about $95–100 (video ~$60, images ~$32, music ~$1.5, voice <$0.5). Tripo: 220 credits left (18/11: five statues at 40).
 - Cheaper: draft videos at 720p and only finals at 1080p; non-urgent images through the batch API (about half).
 
 ## Git

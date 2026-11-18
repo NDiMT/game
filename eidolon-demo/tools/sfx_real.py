@@ -80,3 +80,18 @@ save("winch_turn", peak_to(fade(o, 0.0, 0.2), -1.0))
 # the gate: a swell of light, its height near 0.3 s
 tp = rd("teleport"); tp = hp(tp, 80); tp = peq(tp, 2500, 3, 0.9)
 save("gate_light", peak_to(fade(tp, 0.0, 0.25), -1.0))
+
+# the second level: the block dragged on the stone as she pushes it (the stone grind, lower, its scrape lifted), and the
+# block falling into the gap in the causeway (the plunge whole, deep, then the water closing over it and the foam)
+gr = rd("stone_rock_or_wood_moved_no_tick")
+pu = np.concatenate([pitch(gr, 0.82), pitch(gr, 0.78) * 0.7])
+pu = hp(pu, 90); pu = peq(pu, 1800, 5, 0.8)
+save("block_push", peak_to(limit(fade(pu, 0.01, 0.15), -6.0), -1.0))
+L = int(2.6 * SR); o = np.zeros(L)
+sp2 = pitch(sp, 0.86); sp2 = hp(sp2, 45); sp2 = peq(sp2, 2800, 4, 0.8)
+place(o, sp2, 0.0, 1.0)
+ws = wa[int(1.0 * SR):int(1.0 * SR) + int(2.2 * SR)]; ws = hp(ws, 150) * env(len(ws), 0.15, 0.3, 0.45)
+place(o, ws, 0.25, db(-4))
+bs = bu[int(3.0 * SR):int(3.0 * SR) + int(2.0 * SR)]; bs = bs * env(len(bs), 0.3, 0.6, 0.5)
+place(o, bs, 0.45, db(-3))
+save("block_fall", peak_to(limit(fade(o, 0.0, 0.3), -8.0), -1.0))

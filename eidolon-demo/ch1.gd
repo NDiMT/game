@@ -259,7 +259,7 @@ void fragment(){
 	}
 }"""
 var flip_test := OS.get_environment("FLIP") == "1"      # every water turns the picture
-var go_demo := OS.has_feature("godemo") or OS.get_environment("FLIP") == "go" or OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or OS.get_environment("FLIP") == "gosea" or OS.has_feature("gosea") or OS.get_environment("FLIP") == "gomoon" or OS.has_feature("gomoon") or OS.get_environment("FLIP") == "goquarry" or OS.has_feature("goquarry") or OS.get_environment("FLIP") == "gowake" or OS.has_feature("gowake")      # the trial played a step at a time (Eidolon GO)
+var go_demo := OS.has_feature("godemo") or OS.get_environment("FLIP") == "go" or OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or OS.get_environment("FLIP") == "gosea" or OS.has_feature("gosea") or OS.get_environment("FLIP") == "gomoon" or OS.has_feature("gomoon") or OS.get_environment("FLIP") == "goquarry" or OS.has_feature("goquarry") or OS.get_environment("FLIP") == "gowake" or OS.has_feature("gowake") or OS.get_environment("FLIP") == "goveil" or OS.has_feature("goveil")      # the trial played a step at a time (Eidolon GO)
 var geo_demo := OS.has_feature("geodemo") or OS.get_environment("FLIP") == "geo"      # the trial of the hall of images: ways that join where their pictures join
 var figure_demo := OS.has_feature("figuredemo") or OS.get_environment("FLIP") == "figure"      # the trial of the face in the water: three courts where a picture is made whole in the water
 var match_demo := OS.has_feature("matchdemo") or OS.get_environment("FLIP") == "match"      # the trial of the still water: one new court, where the world and what its water shows are to be made to agree
@@ -2032,10 +2032,11 @@ func _play_go() -> void:
 var go_drown := OS.get_environment("FLIP") == "gosea" or OS.has_feature("gosea")      # the second level: the drowned sanctuary (gosea/), in the same system
 var go_moon := OS.get_environment("FLIP") == "gomoon" or OS.has_feature("gomoon")      # the third level: the moon dial (gomoon/), a sanctuary in the snow at night
 var go_quarry := OS.get_environment("FLIP") == "goquarry" or OS.has_feature("goquarry")      # the fourth level: the quarry (goquarry/), where the faces were cut
-var go_wake := OS.get_environment("FLIP") == "gowake" or OS.has_feature("gowake")      # the first level: the waking (gowake/), dawn over a still sea
+var go_veil := OS.get_environment("FLIP") == "goveil" or OS.has_feature("goveil")      # the second level: the veiled (goveil/), a golden morning on the same still sea: a block pushed into the causeway's gap
+var go_wake := OS.get_environment("FLIP") == "gowake" or OS.has_feature("gowake") or go_veil      # the first level: the waking (gowake/), dawn over a still sea (the second rides its sea, its light, its sounds and its gate; what is the waking's own asks not go_veil)
 var iv_at_sea := go_drown or go_wake      # (a level standing in still water: the sea, the level's image in it)
 var go_iv := OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or go_drown or go_moon or go_quarry or go_wake
-var go_dir := "res://gowake/" if go_wake else ("res://gosea/" if go_drown else ("res://gomoon/" if go_moon else ("res://goquarry/" if go_quarry else "res://goiv/")))      # the level's own folder: its level.glb, level.json, puzzle.json
+var go_dir := "res://goveil/" if go_veil else "res://gowake/" if go_wake else ("res://gosea/" if go_drown else ("res://gomoon/" if go_moon else ("res://goquarry/" if go_quarry else "res://goiv/")))      # the level's own folder: its level.glb, level.json, puzzle.json
 const IV_O := Vector3(460.0, 0.0, 0.0)      # (far from the world, and from the courts of the other trial)
 const IV_T := 2.0      # from one node of the way to the next
 const IV_PITCH := 37.0
@@ -3455,7 +3456,7 @@ func _ivp_post(dt: float) -> void:
 	if not go_text_styled: _go_restyle_text()
 	if started and not ivp_intro:      # she comes up out of the mist to the first floor
 		ivp_intro = true
-		if go_wake and OS.get_environment("IVW_SKIP") != "": ivw_awake = true; iv_me = String(ivg.start)
+		if go_wake and (OS.get_environment("IVW_SKIP") != "" or go_veil): ivw_awake = true; iv_me = String(ivg.start)
 		elif go_wake: _ivw_rise()      # (the first level: she wakes where she lies, and rises)
 		else: _ivp_walk([String(ivg.start) if ivg_on else "n0"])
 
@@ -3871,14 +3872,15 @@ func _ivr_way() -> void:
 			var ld := (lb - la); ld.y = 0.0; ld = ld.normalized()
 			if String(e[1]) == ex_n: lb -= ld * 0.52      # (the line ends at the ring's rim: never inside it)
 			if String(e[0]) == ex_n: la += ld * 0.52
-			_iv_line(iv_root, la - IV_O, lb - IV_O)
+			_iv_line(_ivv_way_parent(String(e[0]), String(e[1])), la - IV_O, lb - IV_O)
 	for k in ivp_nodes:
 		if k == "r" or k == "s" or (ivg_on and (k == ivg_exit or k == ivg_vol)): continue
 		var p: Vector3 = (ivp_nodes[k] as Vector3) - IV_O
 		var rm := CylinderMesh.new(); rm.top_radius = 0.215; rm.bottom_radius = 0.215; rm.height = 0.02; rm.radial_segments = 24; rm.rings = 1
-		var ri := _iv_prim(rm, p + Vector3(0, 0.008, 0), "groove", iv_root); ri.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var wp_k := _ivv_way_parent(String(k), String(k))
+		var ri := _iv_prim(rm, p + Vector3(0, 0.008, 0), "groove", wp_k); ri.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		var dm := CylinderMesh.new(); dm.top_radius = 0.16; dm.bottom_radius = 0.165; dm.height = 0.035; dm.radial_segments = 24; dm.rings = 1
-		var di := MeshInstance3D.new(); di.mesh = dm; di.material_override = _ivr_mat("marble2", 0.0); di.position = p + Vector3(0, 0.02, 0); di.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; iv_root.add_child(di)
+		var di := MeshInstance3D.new(); di.mesh = dm; di.material_override = _ivr_mat("marble2", 0.0); di.position = p + Vector3(0, 0.02, 0); di.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; wp_k.add_child(di)
 
 ## far off, as the picture has it, one band behind another, each paler and smaller than the one before: tall crags at
 ## the eye's sides; behind them a colonnade on its pillar of rock and lesser crags; far behind, highest, the hill of
@@ -3962,6 +3964,7 @@ var ivw_veil_m: ShaderMaterial
 
 func _ivw_scene(j: Dictionary) -> void:
 	if j.get("observer") != null: _ivw_observer(j)
+	if j.get("statues") != null: _ivv_statues(j)
 	_ivw_scene2(j)
 
 func _ivw_observer(j: Dictionary) -> void:
@@ -4014,7 +4017,7 @@ func _ivw_scene2(j: Dictionary) -> void:
 	_ivw_risers_find(lvn, ivw_mirror)
 	a_drop = 0.0; a_rise = 0.0; a_headp = 0.0; a_lean = 0.0; palm_on = false; a_wL = 0.0; a_wR = 0.0      # (on one knee where she woke, as the rise clip begins: her head bowed, both hands resting on the front knee)
 	if OS.get_environment("IVW_YAW") != "": yaw += float(OS.get_environment("IVW_YAW"))      # (to judge her pose from the side)
-	if OS.get_environment("IVW_SKIP") != "": a_drop = 0.0; a_rise = -1.0; a_headp = 0.0; a_lean = 0.0; palm_on = false; a_wL = 0.0; a_wR = 0.0; ivw_close = 0.0      # (to judge the look: awake already)
+	if OS.get_environment("IVW_SKIP") != "" or go_veil: a_drop = 0.0; a_rise = -1.0; a_headp = 0.0; a_lean = 0.0; palm_on = false; a_wL = 0.0; a_wR = 0.0; ivw_close = 0.0      # (to judge the look: awake already; the second level: she stands from the first)
 
 ## light in the gate (the user: "maybe the gate should glow, have light inside it"): a soft warm light filling its
 ## opening, brightest low in the middle, stirring a little; a glow about it; its light lying on the stone before it;
@@ -4350,6 +4353,7 @@ func _ivw_risers_find(lv: Node3D, mn: Node3D) -> void:
 					if (bx as AABB).grow(0.05).has_point(Vector3(cc.x, (bx as AABB).get_center().y, cc.z)): on_stone = true
 				if not at_node or on_stone: on = true
 		if on: ivw_risers.append([mi2, mi2.position, null, Vector3.ZERO])
+	if ivw_risers.is_empty(): return      # (a level with no stones that rise: the second)
 	var zs := []
 	for r in ivw_risers: zs.append(((r[0] as MeshInstance3D).global_transform * (r[0] as MeshInstance3D).get_aabb().get_center()).z)
 	var z0: float = zs.max(); var z1: float = zs.min()
@@ -4796,6 +4800,7 @@ func _ivw_music(file: String, fade := 2.5, db := -2.0) -> void:
 ## the waking the lament itself, the drowned sanctuary the requiem (a low choir like the sea breathing), the moon the
 ## elegy (a woman's voice alone, far off), the quarry the stone (two cellos: a statue that remembers being alive)
 func _go_level_music() -> String:
+	if go_veil: return "res://music/lastlight.ogg"      # (the second level: a lament of the same hand, a woman of marble walking alone toward a far gate)
 	if go_wake: return "res://music/lament.ogg"
 	if go_drown: return "res://music/requiem.ogg"
 	if go_moon: return "res://music/elegy.ogg"
@@ -4815,7 +4820,7 @@ func _ivw_sfx(name: String, db := -8.0, from := 0.0, pitch := 1.0) -> AudioStrea
 ## every sound kept once loaded, and in a browser made ready before it is needed: there a sound is decoded whole the
 ## first time it plays, and while it decodes the picture stops (the stones' swell stopped it as they came up, the
 ## lament at PLAY, the theme near the film's end). Kept, each is decoded once, at a moment when nothing moves
-const IVW_SFX := ["play_note", "line_sigh", "stones_rise", "gate_pass", "no_move", "step_1", "step_2", "step_3", "step_4", "stone_surface_1", "stone_surface_2", "stone_surface_3", "winch_turn", "gate_light"]
+const IVW_SFX := ["play_note", "line_sigh", "stones_rise", "gate_pass", "no_move", "step_1", "step_2", "step_3", "step_4", "stone_surface_1", "stone_surface_2", "stone_surface_3", "winch_turn", "gate_light", "block_push", "block_fall"]
 var ivw_streams := {}
 func _ivw_stream(file: String) -> AudioStream:
 	if not ivw_streams.has(file):
@@ -4989,6 +4994,70 @@ func _ivw_play() -> void:      # (PLAY: the name and the haze go, the eye goes d
 	await t.finished
 	ivw_menu.get_parent().queue_free(); ivw_menu = null
 	started = true; ivw_line_at = iv_t + 1.2
+
+## ---------------------------------------------------------------- the second level: the veiled (goveil/)
+## it begins by itself: she stands where the light of the first gate let her go; the level comes out of that light, its
+## piece begins, and its one line comes a moment later
+func _ivv_begin() -> void:
+	if title_box != null: title_box.hide()
+	var cl := CanvasLayer.new(); cl.layer = 5; add_child(cl)
+	var fade := ColorRect.new(); fade.color = Color(1.0, 0.95, 0.9, 1.0); fade.set_anchors_preset(Control.PRESET_FULL_RECT); fade.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(fade)
+	await _ivw_warm()
+	_ivw_music(_go_level_music(), 3.0, -5.0)
+	for f in 2: await get_tree().process_frame      # (a browser copies a long piece's whole sound as it starts it: that moment passes before anything moves)
+	started = true; ivw_line_at = iv_t + 1.4
+	var t := create_tween(); t.tween_property(fade, "color:a", 0.0, 1.8).set_trans(Tween.TRANS_SINE)
+	await t.finished
+	cl.queue_free()
+
+## the veiled ones (the owner: each different): statues of her as he wished her to be, smooth marble softly lit as the
+## Observer is, each where the plan sets its foot, its height and its turn; those in the sea stand on their pedestals
+const IVV_LOOK := {"smooth_k": 4.0, "rim_k": 0.16, "rim_col": Color(1.0, 0.86, 0.76), "rim_dir": Vector3(0.3, 0.25, -1.0), "form_key": Vector3(-0.55, 0.62, 0.56), "veins": 0.05, "ao_k": 0.6}      # (the Observer's smooth soft light)
+func _ivv_ex(haze := 0.15) -> Dictionary:
+	var ex := {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.7, "haze": haze, "clip_k": 1.0, "clip_y": IV_O.y + ivr_sea_y, "shadow_k": 0.0, "wline_k": 0.0}
+	ex.merge(IVV_LOOK); return ex
+func _ivv_statues(j: Dictionary) -> void:
+	var look := IVV_LOOK; var ex := _ivv_ex()
+	for s in (j.statues as Array):
+		var at: Array = s[1]
+		var hp := Node3D.new(); iv_root.add_child(hp)
+		hp.position = Vector3(float(at[0]), float(at[1]), float(at[2])); hp.rotation.y = float(s[3])
+		var hd := prop_model("statue_" + String(s[0]), hp, float(s[2]))
+		for m in hd.find_children("*", "MeshInstance3D", true, false):
+			(m as MeshInstance3D).material_override = _iv_mat("statue", 0.0, ex); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		_ivs_mirror(hp, func(_mi: MeshInstance3D) -> Array:
+			var mx := {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.7, "haze": 1.0, "mirror_fade": 2.0, "mirror_wob": 0.05}; mx.merge(look); return ["statue", 0.0, mx])
+
+## a hole in the way (a stone of the causeway missing: still water): no one walks into it; the block pushed into it falls
+## in, its top comes to rest level with the way, and the way goes on over it
+func _ivv_hole(n: String) -> bool: return ivg_holes.has(n) and not ivv_filled.has(n)
+func _ivv_way_parent(a: String, b: String) -> Node3D:      # (the line or disc touching a hole: under the water till it is filled)
+	var h := a if ivg_holes.has(a) else (b if ivg_holes.has(b) else "")
+	if h == "": return iv_root
+	if not ivv_hole_way.has(h):
+		var n := Node3D.new(); iv_root.add_child(n); n.position.y = -1.4; ivv_hole_way[h] = n
+	return ivv_hole_way[h]
+const IVV_BLOCK_SCALE := 1.22      # (the block a stone of the causeway's size: it is to be the stone that is missing)
+const IVV_FALL_DB := -3.0
+const IVV_PUSH_DB := -4.0
+func _ivv_push_in(nb: String, c: String) -> void:
+	await _ivg_push(nb, c)      # (she pushes it on as any push: it slides out over the gap)
+	iv_busy = true
+	var bp: Vector3 = iv_block_n.global_position
+	var sea := IV_O.y + ivr_sea_y
+	var hgt := 0.85 * IVV_BLOCK_SCALE      # (it sinks its own height: its top comes to rest level with the way)
+	print("IV the block falls into ", c)
+	_ivw_sfx("block_fall", IVV_FALL_DB)
+	var t := create_tween(); t.tween_property(iv_block_n, "global_position:y", bp.y - hgt - 0.05, 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_property(iv_block_n, "global_position:y", bp.y - hgt, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)      # (down a little past its rest, and up to it: a heavy stone settling on its bed)
+	get_tree().create_timer(0.2, false).timeout.connect(func() -> void:
+		_ivw_ripple(Vector3(bp.x, sea, bp.z), 1.4); _ivw_splash(Vector3(bp.x, sea + 0.02, bp.z), 0.55)
+		get_tree().create_timer(0.4, false).timeout.connect(func() -> void: _ivw_ripple(Vector3(bp.x, sea, bp.z), 1.9)))
+	await t.finished
+	ivv_filled[c] = true; iv_block = ""
+	if ivv_hole_way.has(c): create_tween().tween_property(ivv_hole_way[c], "position:y", 0.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	await wait(0.3)
+	iv_busy = false
 
 func _ivw_birds_tick(dt: float) -> void:
 	for bdd in ivw_birds:
@@ -5276,6 +5345,9 @@ func _ivs_far() -> void:
 ## face's look reaches breaks (tools/go/trials.py: the same rules, proven first).
 var ivg_mir := {}      # the bronze mirrors: node -> {turn (0 '/', 1 '\'), turn0, n (what turns), mark (on the floor)}
 var ivg_gaps := []      # (chasms a look goes over and nobody walks)
+var ivg_holes := []      # (a stone missing from the way: still water no one walks into, until the block is pushed into it and fills it)
+var ivv_filled := {}
+var ivv_hole_way := {}      # (the way's line and disc over a hole: kept under the water until it is filled)
 var ivg_fbreak := false
 var ivg_dirv := {}      # the board's ways in the world: "E", "S", "W", "N"
 const IVQ_MIRROR := [{"E": "N", "N": "E", "W": "S", "S": "W"}, {"E": "S", "S": "E", "W": "N", "N": "W"}]
@@ -5760,7 +5832,7 @@ func _ivr_block() -> Node3D:
 	var n := Node3D.new(); iv_root.add_child(n)
 	n.add_child(doc.generate_scene(st))
 	for m in n.find_children("*", "MeshInstance3D", true, false):
-		(m as MeshInstance3D).material_override = _ivr_mat("marble2"); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		(m as MeshInstance3D).material_override = _iv_mat("statue", 0.0, _ivv_ex(0.0)) if go_veil else _ivr_mat("marble2"); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON      # (the second level: an uncut block of the statues' own marble, lit as softly)
 	return n
 
 func _ivr_build() -> void:
@@ -5819,11 +5891,13 @@ func _ivr_build() -> void:
 		ivp_nodes["s"] = V.call(it[0]); ivp_edges.append(["s", String(ivg.start), [V.call(it[0]), V.call(it[1])]])
 		ivg_vol = String(ivg.volute.node) if ivg.get("volute") != null else ""; ivg_exit = String(ivg.exit)
 		ivg_gaps = ivg.get("gaps", []) as Array; ivg_fbreak = bool(ivg.get("faces_break", false))
+		ivg_holes = ivg.get("holes", []) as Array
 		var gd: Dictionary = ivg.get("grid", {"E": [0, 0, -1], "S": [1, 0, 0], "W": [0, 0, 1], "N": [-1, 0, 0]})
 		for gk in gd: ivg_dirv[gk] = Vector3(float(gd[gk][0]), float(gd[gk][1]), float(gd[gk][2]))
 	_ivr_way()
 	iv_me = "s"; iv_block = String(ivg.block) if ivg_on else "b0"
 	iv_block_n = _ivr_block()
+	if go_veil: iv_block_n.scale = Vector3.ONE * IVV_BLOCK_SCALE
 	if ivp_nodes.has(iv_block): iv_block_n.global_position = ivp_nodes[iv_block]
 	else: iv_block_n.visible = false; iv_block_n.global_position = IV_O + Vector3(0, -60, 0)      # (a trial without the stone)
 	if ivg_vol != "":
@@ -5908,7 +5982,8 @@ func _ivr_build() -> void:
 		vg.colors = PackedColorArray([Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0.05), Color(0.26, 0.16, 0.3, 0.2)])      # (a soft darkening at the edges: the eye drawn in)
 		_ivw_hand_make(cl)
 		_ivw_life()
-		_ivw_menu_make()
+		if go_veil: _ivv_begin()
+		else: _ivw_menu_make()
 	elif go_drown:      # (at sea: the leaves above, cool in the dusk; no rocks before the eye, the mist is open)
 		for ov in [iv_leaves, lr]: (ov as CanvasItem).modulate = Color(0.62, 0.66, 0.8)
 	elif go_quarry:      # (the quarry: the leaves above at the left, warm; dust in the air; the pit open below)
@@ -6143,7 +6218,8 @@ func _ivg_turn(nb: String) -> void:
 			if c == "" or c == ivg_vol or _ivg_face_on(c) >= 0 or c == wn: await _her_no(); return
 			if bool(ivg.get("plinths", false)) and (_ivg_plinth(c) or c == ivg_exit): await _her_no(); return
 			iv_moves += 1
-			await _ivg_push(nb, c)
+			if _ivv_hole(c): await _ivv_push_in(nb, c)      # (into the gap in the way: it falls in, and its top is the way)
+			else: await _ivg_push(nb, c)
 			_ivg_gaze_all()
 		else:
 			var fi := _ivg_face_on(nb)
@@ -6158,6 +6234,7 @@ func _ivg_turn(nb: String) -> void:
 				iv_moves += 1
 				await _ivg_w_break()
 				await _ivp_walk([nb])
+			elif _ivv_hole(nb): await _her_no(); return      # (still water: no way yet)
 			else:
 				iv_moves += 1
 				await _ivp_walk([nb])
@@ -6198,6 +6275,7 @@ func _ivg_push(nb: String, c: String) -> void:
 	var dv := Vector3(qp.x - kp.x, 0, qp.z - kp.z).normalized()
 	iv_push = {"d": dv, "start": pos, "m0": kp, "len": Vector2(qp.x - kp.x, qp.z - kp.z).length()}
 	print("IV push ", nb, " -> ", c)
+	if go_veil: _ivw_sfx("block_push", IVV_PUSH_DB, 0.0, randf_range(0.95, 1.05))      # (stone dragged on stone)
 	route.clear(); speed_cap = 1.0; face_to = null
 	route.append({"p": kp})
 	var up := tw(); up.set_parallel(); up.tween_property(self, "a_wL", 1.0, 0.3); up.tween_property(self, "a_wR", 1.0, 0.3); up.tween_property(self, "a_lean", 0.16, 0.3)

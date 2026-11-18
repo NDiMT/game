@@ -26,7 +26,7 @@ BOARDS = {
                   'D': (3, 1), 'E': (4, 1), 'R': (5, 1)},
         'ways': [('S', 'K'), ('K', 'L'), ('K', 'N'), ('N', 'M'), ('M', 'L'), ('L', 'C'), ('C', 'H'), ('H', 'D'),
                  ('D', 'E', 'stair'), ('E', 'R')],
-        'start': 'S', 'ring': 'R', 'stone': 'K', 'gaps': ['H'],
+        'start': 'S', 'ring': 'R', 'stone': 'K', 'holes': ['H'],
     },
 }
 
@@ -41,7 +41,7 @@ class Trial:
             s.ways[(p, q)] = lv; s.ways[(q, p)] = lv
         s.start, s.ring = s.ix[b['start']], s.ix[b['ring']]
         s.stone0 = s.ix[b['stone']] if stone and b.get('stone') else -1
-        s.gaps = [s.ix[g] for g in b.get('gaps', [])]
+        s.gaps = [s.ix[g] for g in b.get('holes', [])]
     def gap_bit(s, i): return (1 << s.gaps.index(i)) if i in s.gaps else 0
     def init(s): return (s.start, s.stone0, 0)
     def moves(s, st):

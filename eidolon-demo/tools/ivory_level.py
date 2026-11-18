@@ -1052,6 +1052,8 @@ else:
         marble += column(cw[0], p[1], cw[1], h)
     for (cx_, cy_, cz_, ch_, cr_, cb_) in PLAN.get('sea_columns', []):      # (columns standing in the water, a ruin half sunk: off the way, scenery)
         marble += column(cx_, cy_, cz_, ch_, cr_, cb_)
+    for (px, pz, top, hs) in PLAN.get('pedestals', []):      # (a square marble pedestal standing out of the still water, a statue on it)
+        bm = bmesh.new(); box(bm, (px - hs, top - 2.4, pz - hs), (px + hs, top, pz + hs)); chisel(bm, 3, depth=(0.015, 0.05), keep_above=None); marble.append(finish(bm, 'pedestal'))
     for (p, ax) in PLAN.get('arches', []):
         marble += arch(p[0], p[1], p[2], W=1.42, Hh=2.3, r=0.41, D=0.36, along_x=(ax == 'x'))
     if PLAN.get('cypress'):
@@ -1224,7 +1226,7 @@ for extra in (dict(export_vertex_color='ACTIVE'), dict(export_colors=True), {}):
 
 # ------------------------------------------------------------------ the way, for the game
 if PLAN is not None:
-    way = {k: PLAN.get(k) for k in ('heights', 'nodes', 'edges', 'volute', 'head', 'ring', 'eye', 'flights', 'floors', 'relief', 'faces', 'stone', 'scene', 'sea_y', 'arches', 'braziers', 'dial', 'mirrors', 'door', 'walls', 'trench', 'observer', 'observer_haze', 'observer_model', 'horizon', 'sun')}
+    way = {k: PLAN.get(k) for k in ('heights', 'nodes', 'edges', 'volute', 'head', 'ring', 'eye', 'flights', 'floors', 'relief', 'faces', 'stone', 'scene', 'sea_y', 'arches', 'braziers', 'dial', 'mirrors', 'door', 'walls', 'trench', 'observer', 'observer_haze', 'observer_model', 'horizon', 'sun', 'statues', 'holes')}
     way['stair_groove'] = STAIR_GROOVE
     if SHORE is not None: way['shore'] = SHORE
     with open(OUTJ, 'w') as f: json.dump(way, f, indent=1)

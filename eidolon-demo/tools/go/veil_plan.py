@@ -61,21 +61,30 @@ def plan():
         'D': {'h': H0, 'xz': [[-2.1, -3.95], [-0.9, -3.95], [-0.9, -4.95], [-2.1, -4.95]]},
         'U': {'h': H1, 'xz': [[-3.35, -6.75], [0.35, -6.75], [0.35, -9.7], [-3.35, -9.7]]},      # (the terrace: the gate, the veiled ones beside it)
     }
-    statues = [[-3.0, H1, -8.0], [-0.15, H1, -9.15]]      # (the veiled ones beside the gate, clear of it as the eye sees it: it is seen whole)
-    sea_statues = [[-3.3, SEA, -1.2], [-3.3, SEA, -3.0], [-3.3, SEA, -4.8]]      # (and in the sea on their plinths, behind the causeway as the eye sees it, facing it: she passes before them)
+    # (the veiled ones, each carved as he wished her to be, each different (the owner): two beside the gate, clear of it as
+    # the eye sees it, and three in the sea on pedestals behind the causeway, turned to it: she passes before them.
+    # model (props/statue_<model>.glb), where its foot stands, its height, its turn about the upright)
+    # (each model faces its own +x, as it was made from a picture of its front; a turn t sets that face toward (cos t, -sin t)
+    # in the world's x and z: toward the eye is (0.71, 0.71). They are a third larger than she is: monuments)
+    face = lambda dx, dz: round(math.atan2(-dz, dx), 3)
+    statues = [['seated', [-3.0, H1, -8.0], 1.9, face(0.8, 0.6)], ['welcome', [-0.15, H1, -9.15], 2.4, face(0.1, 1.0)]]
+    sea_statues = [['kneeling', [-3.3, H0, -1.2], 1.7, face(0.8, 0.6)], ['standing', [-3.3, H0, -3.0], 2.4, face(0.8, 0.6)], ['unfinished', [-3.3, H0, -4.8], 2.4, face(0.8, 0.6)]]
     puzzle = {
-        'nodes': N, 'edges': edges, 'start': 'S', 'exit': 'R', 'block': 'K', 'gaps': ['H'],
+        'nodes': N, 'edges': edges, 'start': 'S', 'exit': 'R', 'block': 'K', 'holes': ['H'],
+        'intro': [[1.5, H0, 0.01], [1.5, H0, 0.0]],      # (no way in: she stands where the light of the first gate let her go)
         'watchers': [], 'wanderers': [], 'plinths': False, 'volute': None,
         'tutorial': True,
         'solution': WAY,
         'lines': ['So he carved her face', 'into a thousand statues.'],      # (the owner's own line; only at the level's start)
     }
-    pts = [p for p in N.values()] + [[x, f['h'], z] for f in floors.values() for x, z in f['xz']] + [[-1.5, H1 + 2.6, -8.9]] + [[s[0], s[1] + 2.0, s[2]] for s in statues + sea_statues]
+    pts = [p for p in N.values()] + [[x, f['h'], z] for f in floors.values() for x, z in f['xz']] + [[-1.5, H1 + 2.6, -8.9]] + [[s[1][0], s[1][1] + s[2], s[1][2]] for s in statues + sea_statues]
     pl = {
         'scene': 'wake', 'sea_y': SEA, 'heights': {'H0': H0, 'H1': H1}, 'floors': floors, 'flights': [fl],
-        'nodes': N, 'edges': edges, 'ring': N['R'], 'stone': N['K'], 'gaps': ['H'], 'faces': [],
+        'nodes': N, 'edges': edges, 'ring': N['R'], 'stone': N['K'], 'holes': ['H'], 'faces': [],
+        'horizon': 0.362, 'sun': [0.51, 0.286],      # (its own backdrop's sea rim and sun, measured on goveil/backdrop.jpg: the golden morning, the veiled ones far off)
         'arches': [[[-1.5, H1, -8.9], 'x']],      # (the gate, square to the way's last stretch, just behind the ring)
-        'statues': statues, 'sea_statues': sea_statues,
+        'statues': statues + sea_statues,
+        'pedestals': [[s[1][0], s[1][2], H0, 0.42] for s in sea_statues],      # (square marble pedestals out of the water, their tops level with the way)
         'rocks': [[[-2.95, SEA, 1.0], 0.95, H0 - 0.2],      # (the quay's shoulders, out of the water)
                   [[0.35, SEA, 2.85], 0.8, H0 - 0.22],
                   [[2.75, SEA, -0.75], 0.62, H0 - 0.28],
@@ -89,8 +98,7 @@ def plan():
         'columns': [], 'volute': None, 'head': None, 'relief': None, 'cypress': None,
         'eye': eye_fit(pts, top_room=0.33, bottom_room=0.2, margin=0.8),
         'shore': True,
-        'scenery': [['statue', [s[0], s[1] + 0.95, s[2]], [0.46, 1.9, 0.46], [0.94, 0.93, 0.9]] for s in statues] +
-                   [['statue', [s[0], s[1] + 1.2, s[2]], [0.5, 2.4, 0.5], [0.94, 0.93, 0.9]] for s in sea_statues],      # (placeholders for the concept: plinth and veiled figure)
+        'scenery': [['statue', [s[1][0], s[1][1] + s[2] / 2, s[1][2]], [0.46, s[2], 0.46], [0.94, 0.93, 0.9]] for s in statues + sea_statues],      # (placeholders in the blockout's preview)
     }
     return pl, puzzle
 
