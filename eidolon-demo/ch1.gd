@@ -4889,6 +4889,7 @@ func _ivf_begin() -> void:
 	if ivf_close_at < 0.0 and ResourceLoader.exists("res://intro/intro_audio.ogg"):      # (not if it was skipped while it made ready)      # (the film's sound in a player of its own, held to the picture: a browser keeps all sound back until the first touch, and then it must come in where the picture is)
 		ivw_film_audio = AudioStreamPlayer.new(); ivw_film_audio.stream = _ivw_stream("res://intro/intro_audio.ogg"); add_child(ivw_film_audio); ivw_film_audio.play(); ivw_film_sync = 0.5
 		ivw_film_live = _ivw_sound_live()      # (let go already, as on a computer that allows it: it began with the picture)
+		if OS.get_environment("IV_SFX_LOG") != "": print("FILM SOUND starts at ", snappedf(ivf_t, 0.01), ", let go ", ivw_film_live, ", stream ", ivw_film_audio.stream != null)
 
 func _ivw_intro_end() -> void:      # (at its end, or at a tap: the film fades into the faded level, the name, PLAY)
 	if not ivw_intro_on or ivf_close_at >= 0.0: return
