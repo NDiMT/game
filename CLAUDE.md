@@ -112,6 +112,14 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   terracotta (the owner) (`props/block_meander.glb`, `tools/go/block_meander.py`).
 - **Both levels** (the owner, 18/11): the whole opening of each gate is white, and she stops just before it so she is
   seen until the flash. The way's line stays as it was: a pink and a neon terracotta glow were tried and turned down.
+- **Level 3, designed 18/11, not built** (the owner: "a level 3, the script's third line, a matching map, a puzzle with
+  no tutorial"): the sanctuary of Aphrodite on Milos, white wave-carved volcanic rock in a pale turquoise sea, the
+  goddess's armless statue on the highest rock (her arms broke when Theron took her mirror). Line (the script's next
+  truth, the mirror): "He stole the goddess's mirror. / She let him." Puzzle `mirror_holster` in
+  `tools/go/trials_designs.py` (21 swipes, one way, no dead end): a mourner looks up a channel to the goddess's bronze
+  mirror; the stone stands in the line of fire; across a chasm a face guards the gate. Turn the mirror away from its
+  safe side, push the stone out of the line, turn it back (the look breaks the gate's face), turn it away again (or its
+  look holds the gate's way). Concept and board: `design/level3/`.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are

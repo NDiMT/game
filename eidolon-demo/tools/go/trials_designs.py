@@ -62,6 +62,20 @@ def lure():      # the lure: wake the hunter that sleeps on the way, and lead it
     t = Trial(B, faces=[((0, 1), E, E)], hunters=[((1, 3), S_)])
     return report('the lure', t)
 
+@design
+def mirror_holster():      # the third level (Milos, the goddess's temple): aim away, clear the line, fire, holster. A mourner looks up a
+    # channel to the goddess's bronze mirror; the stone stands in the line of fire; across a chasm the face at the gate.
+    # Turn the mirror away from the safe side, push the stone out of the line, turn it back: the look breaks the face
+    # across the chasm. Then turn it away again, or its look holds the gate's way
+    cells = [(0, 3), (0, 4), (0, 5), (0, 6), (1, 6), (2, 6), (3, 6), (1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (2, 5), (3, 5), (4, 5), (3, 4),
+             (4, 4), (5, 4), (5, 5), (5, 6), (5, 3)]
+    lv = [((0, 3), (0, 4)), ((0, 4), (0, 5)), ((0, 5), (0, 6)), ((0, 6), (1, 6)), ((1, 6), (2, 6)), ((2, 6), (3, 6)),
+          ((1, 1), (1, 2)), ((1, 2), (1, 3)), ((1, 3), (1, 4)), ((1, 4), (1, 5)), ((0, 5), (1, 5)), ((1, 5), (2, 5)), ((2, 5), (3, 5)), ((3, 5), (4, 5)),
+          ((1, 5), (1, 6)), ((3, 5), (3, 6)), ((3, 5), (3, 4)), ((4, 5), (4, 4)), ((4, 4), (5, 4)), ((5, 3), (5, 4)), ((5, 4), (5, 5)), ((5, 5), (5, 6))]
+    B = Board(cells, (0, 3), (5, 6), cut=grid_cut(cells, lv), gaps=[((4, 5), (5, 5))])
+    t = Trial(B, faces=[((1, 1), N, N), ((5, 5), S_, S_)], stone=(3, 5), mirrors=[((1, 5), 0)], faces_break=True)
+    return report('aim away, clear the line, fire, holster', t)
+
 QUARRY = dict(      # aim, then fire, laid in the quarry: its cells, their heights, the flights between benches, the trench a look crosses
     H={(0, 0): 0.0, (1, 0): 0.0, (2, 0): 0.0, (3, 0): 0.0, (3, 1): 0.0, (3, 2): 0.0, (2, 1): 0.0,
        (0, 1): 0.65, (0, 2): 0.65,
