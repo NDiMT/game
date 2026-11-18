@@ -9454,7 +9454,7 @@ var ivm_ring_gold: MeshInstance3D
 var ivm_ring_done := false
 func _ivm_ring_tick() -> void:      # (the ring's stone by its light: a dark lilac stone, unlit; the bright ochre, lit)
 	var rmm := ivm_ring_gold.material_override as ShaderMaterial
-	var off := Color("8d87a6"); var on := Color(String((_iv_pal("ring") as Array)[0]))
+	var off := Color("b6b1cc"); var on := Color(String((_iv_pal("ring") as Array)[0]))      # (unlit, a soft grey-lilac: off, but not dark (the owner, 18/11: "the unlit ring lighter"))
 	var c := off.lerp(on, clampf(ivm_ring_k, 0.0, 1.0))
 	for nm in ["c_top", "c_lit", "c_mid", "c_dark"]: rmm.set_shader_parameter(nm, c)
 	rmm.set_shader_parameter("emit", 0.3 * clampf(ivm_ring_k, 0.0, 1.0))
