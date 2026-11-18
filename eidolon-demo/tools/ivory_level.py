@@ -585,12 +585,29 @@ def cut_corners(poly, keep=()):
     return out
 
 
+def bridge_ends(h=None):
+    """each bridge of the plan (a slab over a chasm: [x0, x1, z0, z1, h]): the middles of its two ends, and its breadth"""
+    out = []
+    for (bx0, bx1, bz0, bz1, bh) in (PLAN or {}).get('bridges', []):
+        if h is not None and abs(bh - h) > 0.05: continue
+        along_z = (bx1 - bx0) < (bz1 - bz0)
+        ends = [((bx0 + bx1) / 2, bz0), ((bx0 + bx1) / 2, bz1)] if along_z else [(bx0, (bz0 + bz1) / 2), (bx1, (bz0 + bz1) / 2)]
+        out.append((ends, min(bx1 - bx0, bz1 - bz0)))
+    return out
+
+
 def floor(name, x0, x1, z0, z1, h, ch, poly=None):
     """a floor of the way: its marble slab on the rock, the rock in broad blocks under its edge"""
     poly = poly or rect(x0, x1, z0, z1, ch)
     fls = (PLAN or {}).get('flights', [])
     keep = [(fl[i][0], fl[i][2]) for fl in fls for i in (0, 1) if abs(fl[i][1] - h) < 0.05]
     kp = [((fl[i][0], fl[i][2]), fl[2] * 0.5 + 0.3) for fl in fls for i in (0, 1) if abs(fl[i][1] - h) < 0.05]
+    for (ends, wd) in bridge_ends(h):      # (where a bridge over a chasm comes to this floor: its edge square and sharp there)
+        keep += ends; kp += [(e, wd * 0.5 + 0.3) for e in ends]
+    for (wx0, wx1, wz0, wz1) in (PLAN or {}).get('waters', []):      # (open water within the island, a channel or a chasm: the rock under the floors stands flush along it, never out into it)
+        nx_, nz_ = max(1, int((wx1 - wx0) / 0.4)), max(1, int((wz1 - wz0) / 0.4))
+        wp = [(wx0 + (wx1 - wx0) * k / nx_, z_) for k in range(nx_ + 1) for z_ in (wz0, wz1)] + [(x_, wz0 + (wz1 - wz0) * k / nz_) for k in range(nz_ + 1) for x_ in (wx0, wx1)]
+        kp += [(q, 0.45) for q in wp]
     poly = cut_corners(poly, kp)
     out = square_to_flights(broken(faceted(grow(poly, 0.05), keep), seg=0.3, jit=0.012, chip=0.06), h)
     poly = simplify(square_to_flights(densify(ccw(poly), 0.3), h))
@@ -1056,6 +1073,10 @@ else:
         bm = bmesh.new(); box(bm, (px - hs, top - 2.4, pz - hs), (px + hs, top, pz + hs)); chisel(bm, 3, depth=(0.015, 0.05), keep_above=None); marble.append(finish(bm, 'pedestal'))
     for (p, ax) in PLAN.get('arches', []):
         marble += arch(p[0], p[1], p[2], W=1.42, Hh=2.3, r=0.41, D=0.36, along_x=(ax == 'x'))
+    for (bx0, bx1, bz0, bz1, bh) in PLAN.get('bridges', []):      # (a slab over a chasm: marble only, nothing under it but the sea; square where it meets the floors)
+        ends = bridge_ends(bh)
+        kp_ = [e for (es, _) in ends for e in es]
+        marble.append(slab('bridge', ccw(broken(rect(bx0, bx1, bz0, bz1, 0.0), seg=0.3, jit=0.008, chip=0.03)), bh, thick=0.34, keep=kp_))
     if PLAN.get('cypress'):
         cp, ch_ = PLAN['cypress']
         x_, z_ = on_floor(cp[0], cp[1], cp[2], 0.32)
