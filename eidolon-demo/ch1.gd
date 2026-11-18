@@ -5174,10 +5174,28 @@ const IVV_LOOK := {"smooth_k": 4.0, "rim_k": 0.16, "rim_col": Color(1.0, 0.86, 0
 func _ivv_ex(haze := 0.15) -> Dictionary:
 	var ex := {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.7, "haze": haze, "clip_k": 1.0, "clip_y": IV_O.y + ivr_sea_y, "shadow_k": 0.0, "wline_k": 0.0}
 	ex.merge(IVV_LOOK); return ex
+## the goddess as the concept paints her (the owner, 18/11: "what has it to do with the Aphrodite in the picture? it looks awful"):
+## the painting of her itself (Gemini, from the concept; keyed), stood where she stands, square to the eye (which never turns),
+## as large as the concept has her and where it has her: the rock before her hides her as it hides the statue
+const IVM_GODDESS_QUAD := [0.2981, 0.6402, 0.2753, 0.2261]      # (her picture's size in widths of the screen, and its middle on the screen at the level's own eye, 9:16)
+func _ivm_goddess_painted(p0: Vector3) -> void:
+	var b := _ivp_basis(); var ec: Array = ivr_eye.centre; var w := float(ivr_eye.width)
+	var c := Vector3(float(ec[0]), float(ec[1]), float(ec[2]))
+	var dx := (float(IVM_GODDESS_QUAD[2]) - 0.5) * w; var dy := (0.5 - float(IVM_GODDESS_QUAD[3])) * w * 16.0 / 9.0
+	var pc := c + b.x * dx + b.y * dy
+	pc -= b.z * (p0 - pc).dot(-b.z)      # (at her own depth: behind the rock that hides her)
+	var q := QuadMesh.new(); q.size = Vector2(float(IVM_GODDESS_QUAD[0]) * w, float(IVM_GODDESS_QUAD[1]) * w)
+	var m := StandardMaterial3D.new(); m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; m.albedo_texture = load("res://gomilos/aphrodite.png")
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; m.cull_mode = BaseMaterial3D.CULL_DISABLED; m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	var mi := MeshInstance3D.new(); mi.mesh = q; mi.material_override = m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	iv_root.add_child(mi); mi.transform = Transform3D(b, pc)
+
 func _ivv_statues(j: Dictionary) -> void:
 	var look := IVV_LOOK; var ex := _ivv_ex()
 	for s in (j.statues as Array):
 		var at: Array = s[1]
+		if String(s[0]) == "goddess" and go_milos and ResourceLoader.exists("res://gomilos/aphrodite.png") and OS.get_environment("IV_GODDESS_3D") == "":
+			_ivm_goddess_painted(Vector3(float(at[0]), float(at[1]), float(at[2]))); continue
 		var hp := Node3D.new(); iv_root.add_child(hp)
 		hp.position = Vector3(float(at[0]), float(at[1]), float(at[2])); hp.rotation.y = float(s[3])
 		if String(s[0]) == "goddess" and OS.get_environment("IV_GODDESS_GLB") != "" and not prop_src.has("statue_goddess"):      # (to try another model of her, from anywhere, without touching the game's)
