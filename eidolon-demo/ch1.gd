@@ -2109,7 +2109,8 @@ const IV_QUARRY_SKY_S := Vector3(0.22, 0.46, 0.9)
 const IV_WAKE_PAL := {      # the waking: dawn over a still sea. Pearl and rose marble, its shade lilac; warm mauve rock; the Observer pale in the haze
 	"marble2": ["f5e7e1", "decdd0", "c6b0bc", "9d8599"],      # (lit from above: the tops brightest, the sides that face the light a step darker, never burnt white)
 	"rock2": ["c39f98", "93727c", "684a57", "4a3140"],
-	"observer": ["f5e7e1", "decdd0", "c6b0bc", "9d8599"],      # (the lighter stone's own: the white marble of the slabs; the user's ask)      # (the rock's own hues, its shade a little lighter so her face under the veil still reads)      # (her shade soft: the face under the veil must never fall into a dark hole)
+	"observer": ["f5e7e1", "decdd0", "c6b0bc", "9d8599"],
+	"statue": ["fcf5f1", "f4e6e1", "d8c2c8", "ae96a9"],      # (the Observer as the concepts paint their statues: white marble warmed by the dawn on its lit side, a light rose-lilac shade; the user: "smoother and better lit")      # (the lighter stone's own: the white marble of the slabs; the user's ask)      # (the rock's own hues, its shade a little lighter so her face under the veil still reads)      # (her shade soft: the face under the veil must never fall into a dark hole)
 	"phead": ["f3e4df", "dcc4c4", "b9a0ad", "917b93"],
 	"groove": ["e2cac6", "e2cac6", "e2cac6", "e2cac6"],
 	"line": ["fff4ee", "fff4ee", "fff4ee", "fff4ee"],
@@ -2177,7 +2178,8 @@ uniform float lf_hi = 0.5;
 uniform float sea_k = 0.0;      // (a level at sea: the mist is the sea's colour where the sea lies behind, so what sinks into it leaves no edge)
 uniform float clip_k = 0.0; uniform float clip_y = -1e9;      // (a level at sea: nothing under the water is drawn; the water shows a thing's image instead)
 uniform float under_k = 0.0;      // (a thing that is under the water, or goes under it: drawn, fading into the sea by its depth under clip_y)
-uniform float smooth_k = 0.0;      // (a statue: soft marble shaded by its own smooth normals, not in the facets' bands)
+uniform float smooth_k = 0.0;
+uniform vec3 form_key = vec3(0.0);      // (a statue's own light to model its form by (smooth_k 4); key_dir stays the sun, which light() keeps)      // (a statue: soft marble shaded by its own smooth normals, not in the facets' bands)
 uniform float mirror_fade = 0.0; uniform float mirror_wob = 0.0;      // (an image in the water: gone into the sea by this depth; wavering by this much)
 uniform float mist_world = 0.0; uniform vec3 mw_c; uniform vec3 mw_bx; uniform vec3 mw_by; uniform float mw_w = 11.0;      // (the mist held to the world as the sea is, so what fades into it fades into the sea's own colour under any eye)
 uniform float rim_k = 0.0; uniform vec3 rim_col : source_color = vec3(1.0, 0.86, 0.62); uniform vec3 rim_dir = vec3(-0.6, 0.3, -0.6);      // (the low sun behind it: its edges catch the light)
@@ -2258,6 +2260,19 @@ void fragment(){
 		}
 		float fr = pow(1.0 - clamp(dot(sn, vd), 0.0, 1.0), 2.2);
 		c += rim_col * rim_k * fr * (0.35 + 0.65 * smoothstep(-0.4, 0.7, dot(sn, normalize(rim_dir))));
+		fn = sn;
+	} else if (smooth_k > 3.5) {      // (a statue as the concepts paint them, the user: "smoother and better lit": smooth white marble, its light one soft gradient from the lit side round into a light lilac shade, its hollows shaded (ao_k), a soft sheen where the light glances off, its edges catching the low sun behind)
+		vec3 sn = normalize(wn); if (mirror_k > 0.5) sn.y = -sn.y;
+		vec3 vd = normalize(INV_VIEW_MATRIX[2].xyz);
+		if (dot(sn, vd) < 0.0) sn = -sn;
+		vec3 kl = normalize(dot(form_key, form_key) > 0.0 ? form_key : key_dir);
+		float wr = clamp((dot(sn, kl) + 0.45) / 1.45, 0.0, 1.0);      // (the light wrapped round the form, as on marble the light goes a little into)
+		c = mix(c_dark, c_mid, smoothstep(0.05, 0.45, wr));
+		c = mix(c, c_lit, smoothstep(0.42, 0.85, wr));
+		c = mix(c, c_top, smoothstep(0.35, 0.95, sn.y) * smoothstep(0.2, 0.7, wr) * 0.7);
+		c += vec3(1.0, 0.96, 0.93) * pow(clamp(dot(sn, normalize(kl + vd)), 0.0, 1.0), 24.0) * 0.1;
+		float fr = pow(1.0 - clamp(dot(sn, vd), 0.0, 1.0), 2.6);
+		c += rim_col * rim_k * fr * smoothstep(-0.2, 0.8, dot(sn, normalize(rim_dir)));
 		fn = sn;
 	} else if (rim_k > 0.0) {
 		vec3 vd2 = normalize(INV_VIEW_MATRIX[2].xyz);
@@ -3139,7 +3154,7 @@ func _iv_win() -> void:
 	if go_wake and ivw_gate_m != null:
 		await _ivw_exit()      # (she steps into the gate's light, and is lost in it; its last line comes as she goes)
 		print("IV level done in ", iv_moves, " moves")
-		await wait(5.4)      # (the line read, and gone)
+		await wait(5.4 if ivg_on and ivg.has("end") else 1.6)      # (the line read, and gone; with none, the light settles and the motes rise a moment)
 		await _ivw_end_screen()
 		_end(); return
 	print("IV level done in ", iv_moves, " moves")
@@ -3956,14 +3971,14 @@ func _ivw_observer(j: Dictionary) -> void:
 	var hd := prop_model(String(j.get("observer_model", "observer")), hp, float(ob[3]))
 	var sea := IV_O.y + ivr_sea_y
 	var lowp := String(j.get("observer_model", "observer")).ends_with("_lp")      # (a low-poly one: faceted as everything else is)
-	var rim := {"smooth_k": 0.0 if lowp else 3.0, "rim_k": 0.0, "veins": 0.25, "ao_k": 0.0}      # (the light slab's own stone: its colour, its bands of light and shade, its veins; the user's ask)
-	var ex := {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.7, "haze": 1.0, "clip_k": 1.0, "clip_y": sea, "shadow_k": 0.0, "wline_k": 0.6}      # (she meets the water as the rocks do: solid to it, a fine line of light where she enters it; no mist eating her robe)
+	var rim := {"smooth_k": 0.0 if lowp else 4.0, "rim_k": 0.0 if lowp else 0.16, "rim_col": Color(1.0, 0.86, 0.76), "rim_dir": Vector3(0.3, 0.25, -1.0), "form_key": Vector3.ZERO if lowp else Vector3(-0.55, 0.62, 0.56), "veins": 0.25 if lowp else 0.05, "ao_k": 0.0 if lowp else 0.6}      # (smooth marble softly lit, as the concepts' statues: its hollows from the shade baked into its vertices, the low sun behind catching its edges, a hint of veins, less haze; the user: "smoother and better lit")
+	var ex := {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.7, "haze": 1.0 if lowp else 0.15, "clip_k": 1.0, "clip_y": sea, "shadow_k": 0.0, "wline_k": 0.6}      # (she meets the water as the rocks do: solid to it, a fine line of light where she enters it; no mist eating her robe)
 	if ivr_shore.is_empty(): _ivw_rings(Vector3(hp.global_position.x, sea, hp.global_position.z), float(ob[3]) * 0.55)      # (else the sea's own small waves follow her outline)
 	ex.merge(rim)
 	for m in hd.find_children("*", "MeshInstance3D", true, false):
-		(m as MeshInstance3D).material_override = _iv_mat("marble2", float(j.get("observer_haze", 0.28)), ex); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		(m as MeshInstance3D).material_override = _iv_mat("marble2" if lowp else "statue", float(j.get("observer_haze", 0.28)), ex); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var obs_mn := _ivs_mirror(hp, func(_mi: MeshInstance3D) -> Array:
-		var mx := {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.7, "haze": 1.0, "mirror_fade": 2.0, "mirror_wob": 0.05}; mx.merge(rim); return ["marble2", float(j.get("observer_haze", 0.28)), mx])      # (her image as the rocks' are: fading down over 2 m, not cut short)
+		var mx := {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.7, "haze": 1.0, "mirror_fade": 2.0, "mirror_wob": 0.05}; mx.merge(rim); return ["marble2" if lowp else "statue", float(j.get("observer_haze", 0.28)), mx])      # (her image as the rocks' are: fading down over 2 m, not cut short)
 	for m2 in obs_mn.find_children("*", "MeshInstance3D", true, false): ivw_obs_mirror.append((m2 as MeshInstance3D).material_override)      # (kept short while the eye is close on the waking)
 
 ## rings of ripples spreading slowly about a thing standing in the still water, one after another, fading

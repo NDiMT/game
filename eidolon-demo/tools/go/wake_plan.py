@@ -57,8 +57,7 @@ def plan():
         'tutorial': True,      # (a hand shows each swipe while she waits)
         'intro': [[0.0, H0, 0.01], [0.0, H0, 0.0]],      # (no way in: she wakes where she lies, facing the stones)
         'solution': ['W'] + WAY[1:],
-        'lines': ['Her face lies at the bottom of the sea.', 'To pass over, she must see it once more.'],
-        'end': 'Somewhere above, the water was still.',
+        'lines': ['Theron searched for her', 'long after hope was gone.'],      # (the owner: a line only at the start of each level, none in its middle or at its end)
     }
     pl = {      # (horizon: the sea's rim in the backdrop, gowake/backdrop.jpg, made by tools/bg/iso_backdrop.py from tools/bg/recipes/wake_far.json)
         'scene': 'wake', 'sea_y': SEA, 'risers': ['A', 'B', 'C'], 'horizon': 0.3714, 'sun': [0.5, 0.341], 'heights': {'H0': H0, 'H1': H1, 'H2': H2}, 'floors': floors, 'flights': [fl1, fl2],

@@ -32,19 +32,23 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   kneels facing her way, both hands on the front knee, back and head bowed; after a second of stone stillness she
   rises in moments (8 s clip: breath, hands to the knee, weight forward, push, lunge, step, back up, head last).
   She turns the winch; the stones come up out of the water with foam on the water and on them; she climbs to the
-  glowing gate, steps into its light, and is lost in it in a flash (the gate alone lights) and rising motes; the
-  last line holds, then the dark end screen (EIDOLON alone: no "tap to ..." words, the owner, but the film's "tap to skip"). **The story is in
+  glowing gate, steps into its light, and is lost in it in a flash (the gate alone lights) and rising motes; a
+  moment's hold, then the dark end screen (EIDOLON alone: no "tap to ..." words, the owner, but the film's "tap to skip"). **The story is in
   `eidolon-world/dev/EIDOLON_SCRIPT.md`: read it before writing any line.** The player is one of the statues Theron
-  carved to make Ione's face again (not Ione). Lines, short and clipped (the owner: "πιο κοφτά", and tied to the script: first that Theron searched for a
-  way to bring her back, last "he carved her face a thousand times"): "Theron searched for a way / to bring her back."
-  → (stones up) "Her face lies under the sea. / She must see it to pass over." → (gate) "He carved her face a
-  thousand times." Letter: Cormorant Garamond italic.
+  carved to make Ione's face again (not Ione). **One line only, at the start of each level; nothing in its middle,
+  nothing at its end** (the owner, 18/11). Short and clipped ("πιο κοφτά"), the levels telling the story in turn:
+  level 1 "Theron searched for her / long after hope was gone." (the owner: "Theron attempted to find her", a little
+  more beautiful); level 2 "So he carved her face / into a thousand statues." (the owner's own line). Letter:
+  Cormorant Garamond italic.
 - **The film's textures** (`intro/vase/`): three texture arrays (`strips.jpg`, `pans.jpg`, `texts.png`, sliced in
   their `.import`), the vase and the words at the film's full size. A phone gives a canvas shader 16 textures, and
   Godot takes three of them plus the six highest units for itself. With one texture per piece (17 sampled) the film
   was not drawn at all on phones, while a desktop browser (32) showed it. Keep any canvas shader to 8 textures or fewer.
   On a phone taller than 16:9 the film fills the height, enlarged up to 1.22 so the scenes' frames still show. Fitted to
   the width, the bands were drawn out in streaks above and below.
+- **The Observer** (the veiled colossus in the sea at the waking) is smooth marble softly lit, as the concepts paint
+  statues (the owner, 18/11: "smoother and better lit"): `smooth_k` 4, its own light from the front left (`form_key`;
+  never `key_dir`, which `light()` uses to keep the sun), shade baked into its folds (`tools/go/bake_ao.py`).
 - **Start screen**: plum dark, cream EIDOLON and PLAY, a subdued veiled statue behind (`ui/start_statue.jpg`); the
   film opens and closes in the same plum.
 - **Play it in a browser**: https://ndimt.github.io/game/eidolon-waking/ (the owner OK'd publishing there).
@@ -87,8 +91,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   `tools/go/push_trial.py gap` (9 swipes, unique, no dead end, the block needed; `--draw` for the sheet), plan
   `tools/go/veil_plan.py` (folder `goveil/` once approved), concepts `eidolon-demo/design/level2/` (A silver noon,
   B golden morning). Veiled statues in the sea and by the gate: the faces Theron carved from outside (script section 7).
-  Lines (drafts): "The goddess gave each one breath, / to live the life he wished for her." End: "He veiled them, so
-  as not to see." New code it needs: a gap node the block falls into and fills. Waiting for the owner's choice.
+  Its line: "So he carved her face / into a thousand statues." The owner chose the golden morning in the first
+  level's colours (`design/level2/concept.jpg`) and wants the statues each different: by pose, height, attribute and
+  finish (kneeling, turned to the land, half out of an uncut block, seated, arms open; far off one fallen in the sea).
+  New code it needs: a gap node the block falls into and fills.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are

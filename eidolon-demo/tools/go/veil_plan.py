@@ -68,8 +68,7 @@ def plan():
         'watchers': [], 'wanderers': [], 'plinths': False, 'volute': None,
         'tutorial': True,
         'solution': WAY,
-        'lines': ['The goddess gave each one breath,', 'to live the life he wished for her.'],
-        'end': 'He veiled them, so as not to see.',
+        'lines': ['So he carved her face', 'into a thousand statues.'],      # (the owner's own line; only at the level's start)
     }
     pts = [p for p in N.values()] + [[x, f['h'], z] for f in floors.values() for x, z in f['xz']] + [[-1.5, H1 + 2.6, -8.9]] + [[s[0], s[1] + 2.0, s[2]] for s in statues + sea_statues]
     pl = {
