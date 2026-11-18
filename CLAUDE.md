@@ -86,10 +86,12 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   folder as `eidolon-<v>.html` (`<v>` the commit's short hash), then `python3 eidolon-demo/tools/web_stamp.py <folder> <v>`:
   every file carries the version in its name, and `index.html` checks `version.txt` past all caches and moves an old
   page or an open tab onto the current version; it also resumes the page's sound at every touch and plays it as media
-  on iPhone (not muted by the silent switch). Deploy =
-  the folder's files in place of the old ones (~120 MB). On the web a
+  on iPhone (not muted by the silent switch); it also gives the game `window.eidolonSound()` ("on" once the browser has
+  let sound go). Deploy = the folder's files in place of the old ones (~120 MB). On the web a
   film starts by itself (the owner). Its sound is a player of its own (`intro/intro_audio.ogg`) held to the picture
-  (`_ivw_film_sync_tick`), so where a browser holds sound back until the first touch it comes in at the right place. A
+  (`_ivw_film_sync_tick`): in a browser it is put where the picture is once, when sound is let go. Never seek a
+  sample over and over: a browser reports a sample's place a second late, and each start copies the whole sound (the
+  old sync restarted it every half second, stopping the film each time). A
   touch on the film shows "tap to skip" a while; a second touch while it shows skips (`_ivw_skip_tap`). Code that reads a file raw (`FileAccess`, the `.glb` levels and props)
   needs it kept raw in the pack (`importer="keep"` or the preset's include filter); for imported pictures check with
   `ResourceLoader.exists`, never `FileAccess.file_exists`. Earlier demos were published to GitHub Pages from the branch
