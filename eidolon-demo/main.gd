@@ -1658,11 +1658,12 @@ func _hollow_glsl(v: String) -> String:
 	return " || ".join(parts) if not parts.is_empty() else "false"
 
 func _ready() -> void:
-	var gl := RenderingServer.global_shader_parameter_get_list()      # (made once a run: a second scene, as a level that follows another, finds them there)
-	if not gl.has("view_ax"): RenderingServer.global_shader_parameter_add("view_ax", RenderingServer.GLOBAL_VAR_TYPE_VEC3, Vector3(0.57735, 0.57735, 0.57735))      # (before any shader is made)
-	else: RenderingServer.global_shader_parameter_set("view_ax", Vector3(0.57735, 0.57735, 0.57735))
-	if not gl.has("sea_y"): RenderingServer.global_shader_parameter_add("sea_y", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, WATER)
-	else: RenderingServer.global_shader_parameter_set("sea_y", WATER)
+	if not Engine.has_meta("iv_globals"):      # (made once a run: a second scene, as a level that follows another, finds them there; the server's own list of them may not be asked outside the editor)
+		Engine.set_meta("iv_globals", true)
+		RenderingServer.global_shader_parameter_add("view_ax", RenderingServer.GLOBAL_VAR_TYPE_VEC3, Vector3(0.57735, 0.57735, 0.57735))      # (before any shader is made)
+		RenderingServer.global_shader_parameter_add("sea_y", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, WATER)
+	else:
+		RenderingServer.global_shader_parameter_set("view_ax", Vector3(0.57735, 0.57735, 0.57735)); RenderingServer.global_shader_parameter_set("sea_y", WATER)
 	for k in [["base", SH], ["two", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;")],
 			["mir", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled, shadows_disabled;")],
 			["water", SH_WATER], ["cloth", SH_CLOTH], ["sheet", SH_SHEET], ["mirror", SH_MIRROR], ["ring", SH_RING], ["sea", SH_SEA], ["refl", SH_REFL], ["glass", SH_GLASS], ["pit", SH_PIT], ["face", SH_FACE], ["foam", SH_FOAM], ["fog", SH_FOG], ["shard", SH_SHARD], ["pane", SH_PANE]]:
