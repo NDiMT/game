@@ -144,6 +144,14 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   the mirror turns; the ring is a ring of darker stone until the light reaches it, then lights; the gate's two leaves
   swing open toward her. Its backdrop `gomilos/backdrop.jpg` (Gemini: the pale Aegean, far white islands). The statue in
   the sea is still level 2's `standing` model (a placeholder). No dark shapes before the eye here.
+  The owner's notes on its first frame (18/11), all taken: the ring white as the others', only unlit (no glow until the
+  light reaches it); the veil kept on the gate, its door's leaves hung behind it and opening inward, so the cloth never
+  goes through them; a great Aphrodite (5.6 m on her rock) of few faces (`bake_ao.py --faces=1800 --flat`, lit face by
+  face); the rock under the way grey-blue (`IV_MILOS_PAL`), and the way itself separate stones, crooked and uneven
+  (`node_slabs` in the plan: `tools/ivory_level.py` lays a hand-cut slab under each place of the way, a little out of
+  square, out of line and lower or higher, on the rock that `milos_island.py` keeps `rock_drop` under them); the
+  stone's niche cut under a roof of rock, so it reads as the stone's own place (`niches`); a much better backdrop, all of
+  it bluer and more violet (a blue-violet morning, the white rocks of Milos far off, horizon 0.48).
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are

@@ -1,5 +1,5 @@
 # the Observer's folds made to read: ambient occlusion baked into its vertex colours (R=G=B), so the game's shader can
-# shade the hollows of its veil and robe softly, as the concepts' statues are. usage: python3.11 -I tools/go/bake_ao.py -- in.glb out.glb [samples] [distance] [--weld]
+# shade the hollows of its veil and robe softly, as the concepts' statues are. usage: python3.11 -I tools/go/bake_ao.py -- in.glb out.glb [samples] [distance] [--weld] [--faces=N] [--flat]
 import bpy, sys
 a = sys.argv[sys.argv.index('--') + 1:]
 src, out = a[0], a[1]; a = [x for x in a if not x.startswith('--')]
@@ -14,6 +14,13 @@ if '--weld' in sys.argv:      # (a model straight from the generator: its vertic
     bm = bmesh.new(); bm.from_mesh(me); bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-4); bm.to_mesh(me); bm.free()
     for f in me.polygons: f.use_smooth = True
     for uv in list(me.uv_layers): me.uv_layers.remove(uv)
+nf = next((int(x.split('=')[1]) for x in sys.argv if x.startswith('--faces=')), 0)
+if nf and len(me.polygons) > nf:      # (few faces, as the game's own low-poly things are: the owner, of the goddess, "few polygons")
+    dm = ob.modifiers.new('few', 'DECIMATE'); dm.ratio = nf / len(me.polygons); dm.use_collapse_triangulate = True
+    bpy.ops.object.modifier_apply(modifier='few')
+    print('FEW faces:', len(me.polygons))
+if '--flat' in sys.argv:      # (each face its own flat light: the facets show)
+    for f in me.polygons: f.use_smooth = False
 if not me.materials:
     m = bpy.data.materials.new('stone'); m.use_nodes = True; me.materials.append(m)
 ca = me.color_attributes.new(name='ao', type='BYTE_COLOR', domain='POINT')

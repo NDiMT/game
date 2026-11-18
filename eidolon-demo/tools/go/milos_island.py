@@ -27,6 +27,7 @@ PLAN = json.load(open(a[0])); OUT = a[1]
 EXTRAS = a[2] if len(a) > 2 and a[2].endswith('.glb') else None
 V = float(a[3]) if len(a) > 3 else 0.06
 SEA = float(PLAN['sea_y'])
+DROP = float(PLAN.get('rock_drop', 0.0))      # (where the way is laid in separate stones: the rock's own top this much under theirs)
 rng = np.random.default_rng(sum(ord(c) * (i + 1) for i, c in enumerate('gomilos')))      # (its own dice: from its name)
 
 # ---------------------------------------------------------------- the grid
@@ -93,15 +94,15 @@ def blob(c, r):
 D = np.full((nx, ny, nz), 9.0, dtype=np.float32)
 inside_any = np.zeros(Xg.shape, dtype=bool); htop = np.full(Xg.shape, -9.0); dnear = np.full(Xg.shape, 9.0)
 for nm, f in fl.items():
-    m = poly_inside(f['xz']); d2 = sdf2(m)
-    D = np.minimum(D, walk(d2, f['h']).astype(np.float32))
-    closer = d2 < dnear; htop = np.where(closer, f['h'], htop); dnear = np.minimum(dnear, d2); inside_any |= m
+    m = poly_inside(f['xz']); d2 = sdf2(m); hr = f['h'] - DROP
+    D = np.minimum(D, walk(d2, hr).astype(np.float32))
+    closer = d2 < dnear; htop = np.where(closer, hr, htop); dnear = np.minimum(dnear, d2); inside_any |= m
     if f['h'] > SEA + 0.6:      # (its shoulder: the rock a step below the walk, broader, flaring more)
-        D = smin(D, walk(d2 - 0.75, f['h'] - 0.45, re=0.35, flare=0.25).astype(np.float32), 0.35)
+        D = smin(D, walk(d2 - 0.75, hr - 0.4, re=0.35, flare=0.25).astype(np.float32), 0.35)
 for (x0, x1, z0, z1, h) in PLAN.get('bridges', []):      # (a bridge of the rock itself: its walk on top)
     m = (Xg >= x0) & (Xg <= x1) & (Zg >= z0 - 0.3) & (Zg <= z1 + 0.3); d2 = sdf2(m)
-    D = np.minimum(D, walk(d2, h, re=0.15, flare=0.05).astype(np.float32))
-    closer = d2 < dnear; htop = np.where(closer, h, htop); dnear = np.minimum(dnear, d2)
+    D = np.minimum(D, walk(d2, h - DROP, re=0.15, flare=0.05).astype(np.float32))
+    closer = d2 < dnear; htop = np.where(closer, h - DROP, htop); dnear = np.minimum(dnear, d2)
 def pillow(c, r, top, k):
     """a rounded mass of the white rock, as the sea leaves them: broad, flat-topped, its edge rolling down and out; its
     outline wandering a little round it"""
@@ -136,6 +137,11 @@ for (x0, x1, z0, z1) in PLAN.get('waters', []):
         keep = box3(bx0 - 0.02, bx1 + 0.02, bz0 - 0.4, bz1 + 0.4, bh - 0.62, bh + 3.0, r=0.12).astype(np.float32)
         cut = np.maximum(cut, -keep)
     D = smax(D, -cut, 0.16)
+for nc in PLAN.get('niches', []):      # (a niche cut for a thing to go into: the rock over it as a roof, the hollow under it)
+    (rx, ry, rz), (ax, ay, az) = nc['roof']
+    D = smin(D, blob((rx, ry, rz), (ax, ay, az)).astype(np.float32), 0.35)
+    x0, x1, z0, z1, y0, y1 = nc['cut']
+    D = smax(D, -box3(x0, x1, z0, z1, y0, y1, r=0.12).astype(np.float32), 0.08)
 for (x, y, z, r) in PLAN.get('hollows', []):
     D = smax(D, -blob((x, y, z), (r, r * 0.8, r)).astype(np.float32), 0.12)
 

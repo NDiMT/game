@@ -2179,7 +2179,16 @@ const IV_WAKE_PAL := {      # the waking: dawn over a still sea. Pearl and rose 
 }
 const IV_WAKE_BG := ["d7c3dd", "fbdcc8", "f5d8ce", "efcfc3"]      # the dawn: lilac above, peach at the sea's rim, the rose haze, the mist at the bottom
 const IV_WAKE_SKY_S := Vector3(0.2, 0.33, 0.95)
+const IV_MILOS_PAL := {      # the third level: Milos at morning, all of it bluer and more violet than the waking (the owner); the rock under the way grey-blue, the way's stones white with a violet shade
+	"island": ["c3c8db", "a9aec6", "878ca8", "626582"],      # (the rock under the way: grey-blue (the owner))
+	"rock2": ["c3c8db", "a9aec6", "878ca8", "626582"],
+	"marble2": ["fbfaff", "e8e5f4", "cbc6e0", "9e98bf"],      # (the way's stones, the stair, the gate: white, shaded violet)
+	"statue": ["fbfbff", "ebe9f6", "cfcbe3", "a29dc2"],
+	"groove": ["d9d3ea", "d9d3ea", "d9d3ea", "d9d3ea"],
+	"ring": ["fffdf8", "fffdf8", "fffdf8", "fffdf8"],
+}
 func _iv_pal(kind: String) -> Array:
+	if go_milos and IV_MILOS_PAL.has(kind): return IV_MILOS_PAL[kind] as Array
 	if go_wake and IV_WAKE_PAL.has(kind): return IV_WAKE_PAL[kind] as Array
 	if go_quarry and IV_QUARRY_PAL.has(kind): return IV_QUARRY_PAL[kind] as Array
 	if go_moon and IV_MOON_PAL.has(kind): return IV_MOON_PAL[kind] as Array
@@ -2527,6 +2536,7 @@ func _iv_mat(kind: String, far_k := 0.0, extra := {}) -> ShaderMaterial:
 		m.set_shader_parameter("shade_tint", Color(0.74, 0.79, 0.9)); m.set_shader_parameter("clip_k", 1.0); m.set_shader_parameter("clip_y", IV_O.y + ivr_sea_y)
 	if go_wake:      # (dawn: the shade lilac; what lies under the still water is not drawn, its image is)
 		m.set_shader_parameter("shade_tint", Color(0.68, 0.6, 0.78)); m.set_shader_parameter("ao_tint", Color(0.86, 0.78, 0.86)); m.set_shader_parameter("vein_tint", Color(0.93, 0.88, 0.9))      # (cast shadows that read, a deep lilac: the way Lara Croft GO gives its places depth)
+		if go_milos: m.set_shader_parameter("shade_tint", Color(0.6, 0.6, 0.85)); m.set_shader_parameter("ao_tint", Color(0.8, 0.8, 0.94))      # (the third level: its shade bluer and more violet (the owner))
 		m.set_shader_parameter("clip_k", 1.0); m.set_shader_parameter("clip_y", IV_O.y + ivr_sea_y); m.set_shader_parameter("sea_c", Color("ead2cf"))      # (an image in the water dims toward the pearl of the sea, not toward blue)
 		m.set_shader_parameter("wline_k", 0.6); m.set_shader_parameter("mirror_fade", 2.0); m.set_shader_parameter("mirror_wob", 0.035)
 		if not ivr_eye.is_empty():      # (its mist held to the world, as the sea is: the eye close on her shows no pale shapes where images fade)
@@ -4072,8 +4082,7 @@ func _ivw_rings(at: Vector3, size: float) -> void:
 const IVW_RISE_S := 8.0      # (the rise clip's own length, seconds: tools/ione4_build.py RISE_SECONDS)
 func _ivw_scene2(j: Dictionary) -> void:
 	for ar in (j.get("arches", []) as Array): _ivw_gate_light(Vector3(float(ar[0][0]), float(ar[0][1]), float(ar[0][2])), String(ar[1]))
-	if not go_milos:      # (the veil torn from the lintel is the veiled level's own)
-		for ar in (j.get("arches", []) as Array): _ivw_veil(Vector3(float(ar[0][0]), float(ar[0][1]), float(ar[0][2])), String(ar[1]))
+	for ar in (j.get("arches", []) as Array): _ivw_veil(Vector3(float(ar[0][0]), float(ar[0][1]), float(ar[0][2])), String(ar[1]))
 	var lvn := iv_root.get_child(0) as Node3D      # (the level as Blender made it: its sunken stones)
 	for ch in iv_root.get_children():
 		if ch is Node3D and not (ch as Node3D).find_children("riser_*", "MeshInstance3D", true, false).is_empty() and ch != ivw_mirror: lvn = ch; break
@@ -5121,8 +5130,10 @@ func _ivv_statues(j: Dictionary) -> void:
 		var hp := Node3D.new(); iv_root.add_child(hp)
 		hp.position = Vector3(float(at[0]), float(at[1]), float(at[2])); hp.rotation.y = float(s[3])
 		var hd := prop_model("statue_" + String(s[0]), hp, float(s[2]))
+		var exs := ex
+		if String(s[0]) == "goddess": exs = ex.duplicate(); exs.merge({"smooth_k": 0.0, "ao_k": 0.35, "rim_k": 0.08}, true)      # (the goddess of few faces (the owner): each face its own light)
 		for m in hd.find_children("*", "MeshInstance3D", true, false):
-			(m as MeshInstance3D).material_override = _iv_mat("statue", 0.0, ex); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+			(m as MeshInstance3D).material_override = _iv_mat("statue", 0.0, exs); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		_ivs_mirror(hp, func(_mi: MeshInstance3D) -> Array:
 			var mx := {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.7, "haze": 1.0, "mirror_fade": 2.0, "mirror_wob": 0.05}; mx.merge(look); return ["statue", 0.0, mx])
 
@@ -5990,7 +6001,7 @@ func _ivr_build() -> void:
 		var nm := String(mi.name).to_lower() + "|" + String(mi.get_parent().name).to_lower()
 		var kind := "rock2" if nm.contains("rock") else ("olive2" if nm.contains("olive") else ("bark" if nm.contains("bark") else ("snow" if nm.contains("snow") else ("quarry" if nm.contains("quarry") else "marble2"))))
 		mi.material_override = _ivr_mat(kind, 1.0, true); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-		if go_milos and nm.contains("island"): mi.material_override = _iv_mat("island", 0.0, _ivm_island_ex())      # (the sea-worn white rock: smooth, softly lit)
+		if go_milos and (nm.contains("island") or nm.contains("rock")): mi.material_override = _iv_mat("island", 0.0, _ivm_island_ex())      # (the sea-worn rock under the way: smooth, softly lit, grey-blue)
 	if iv_at_sea:      # (the level's image in the still water: faint at dusk, clear at dawn)
 		ivw_mirror = _ivs_mirror(lv, func(mi: MeshInstance3D) -> Array:
 			var nm := String(mi.name).to_lower() + "|" + String(mi.get_parent().name).to_lower()
@@ -6067,10 +6078,7 @@ func _ivr_build() -> void:
 	iv_ring = Node3D.new(); iv_root.add_child(iv_ring); iv_ring.global_position = ivp_nodes[ivg_exit if ivg_on else "r"]
 	var tm := TorusMesh.new(); tm.inner_radius = 0.3 if ivr_on else 0.36; tm.outer_radius = 0.46; tm.rings = 32; tm.ring_segments = 8
 	var rm := _iv_prim(tm, Vector3(0, 0.06, 0), "ring", iv_ring); rm.scale = Vector3(1, 0.62, 1); rm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	if go_milos:      # (the third level: the ring unlit, a ring of darker stone let into the floor, until the light reaches it)
-		ivm_ring_gold = rm; rm.visible = false
-		ivm_ring_dark = MeshInstance3D.new(); ivm_ring_dark.mesh = tm; ivm_ring_dark.material_override = _iv_mat("meander", 0.0, _ivv_ex(0.0))
-		ivm_ring_dark.position = Vector3(0, 0.03, 0); ivm_ring_dark.scale = Vector3(1, 0.4, 1); ivm_ring_dark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; iv_ring.add_child(ivm_ring_dark)
+	if go_milos: ivm_ring_gold = rm      # (the third level: the ring white as the others', only unlit, no glow, until the light reaches it (the owner))
 	if ivr_on:
 		var hm := CylinderMesh.new(); hm.top_radius = 0.31; hm.bottom_radius = 0.31; hm.height = 0.02; hm.radial_segments = 28; hm.rings = 1
 		var hi := MeshInstance3D.new(); hi.mesh = hm; hi.material_override = _iv_mat("rock2", 0.0, {"fog_hi": -9.0, "fog_lo": -14.0}); hi.position = Vector3(0, 0.012, 0); iv_ring.add_child(hi)
@@ -9430,10 +9438,6 @@ func _ivm_check() -> void:
 func _ivm_open() -> void:
 	ivm_open = true
 	print("IV the light reaches the ring: it lights, and the gate opens")
-	if ivm_ring_gold != null: ivm_ring_gold.visible = true
-	if ivm_ring_dark != null:
-		var dk := ivm_ring_dark
-		var tf := create_tween(); tf.tween_property(dk, "scale", Vector3(1.0, 0.01, 1.0), 0.6).set_trans(Tween.TRANS_SINE); tf.tween_callback(dk.hide)
 	var t := create_tween(); t.tween_property(self, "ivm_ring_k", 1.0, 0.9).set_trans(Tween.TRANS_SINE)
 	await wait(0.75)
 	_ivm_gate_open()
@@ -9529,12 +9533,12 @@ func _ivm_gate_shut() -> void:
 	for side in [-1.0, 1.0]:
 		var xd: Vector3 = along * -side      # (from its hinge toward the middle)
 		var hn := Node3D.new(); iv_root.add_child(hn)
-		hn.global_position = ivw_gate_p + along * (side * r) + ivw_gate_front * 0.2      # (hung just before the opening, in its frame)
+		hn.global_position = ivw_gate_p + along * (side * r) + ivw_gate_front * 0.06      # (hung in the opening, behind the veil that hangs from the lintel's face: the cloth never goes through them (the owner))
 		var b0 := Basis(xd, Vector3.UP, xd.cross(Vector3.UP))
 		hn.basis = b0
 		var mi := MeshInstance3D.new(); mi.mesh = mesh; mi.material_override = mat; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON; hn.add_child(mi)
-		var ang := 1.62      # (it swings out, toward her, its free edge going the way the gate faces)
-		if (Basis(Vector3.UP, ang) * xd).dot(ivw_gate_front) < 0.0: ang = -ang
+		var ang := 1.62      # (it swings in, away from her and from the veil, its free edge going into the gate)
+		if (Basis(Vector3.UP, ang) * xd).dot(ivw_gate_front) > 0.0: ang = -ang
 		ivm_leaves.append([hn, b0, ang])
 
 func _ivm_leaf_mesh(r: float, hs: float, th: float) -> ArrayMesh:

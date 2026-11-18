@@ -58,7 +58,7 @@ def plan():
     }
     face = lambda dx, dz: round(math.atan2(-dz, dx), 3)
     statues = [['standing', [3.2, -1.0, 0.0], 3.4, face(-1.0, 0.0)],      # (she stands in the water before the island, looking up the channel; a placeholder model)
-               ['goddess', [-8.3, H1 + 2.1, -3.2], 2.35, face(0.72, 0.69)]]      # (the goddess on her rock, without arms: they broke when Theron took her mirror (props/statue_goddess.glb))
+               ['goddess', [-8.3, H1 + 2.1, -3.2], 5.6, face(0.72, 0.69)]]      # (the goddess on her rock, great (the owner: "a big statue of Aphrodite"), without arms: they broke when Theron took her mirror (props/statue_goddess.glb, few faces))
     puzzle = {
         'nodes': dict(N, **LIGHT), 'edges': edges, 'start': 'S', 'exit': 'R', 'block': 'K', 'holes': [],
         'intro': [[0.0, H0, 4.41], [0.0, H0, 4.4]],      # (no way in: she stands where the light of the second gate let her go)
@@ -88,15 +88,18 @@ def plan():
     pl = {
         'scene': 'wake', 'sea_y': SEA, 'heights': {'H0': H0, 'H1': H1}, 'floors': floors, 'flights': [fl],
         'nodes': N, 'edges': edges, 'ring': N['R'], 'stone': N['K'], 'holes': [], 'faces': [],
-        'horizon': 0.388, 'sun': [0.693, 0.344],      # (its own backdrop's sea rim and sun, measured on gomilos/backdrop.jpg: the pale Aegean, far white islands)
+        'horizon': 0.48, 'sun': [0.743, 0.395],      # (its own backdrop's sea rim and sun, measured on gomilos/backdrop.jpg: a blue-violet morning, the white rocks of Milos far off (the owner: "more blue-purple"))
         'arches': [[[-4.5, H1, -6.85], 'x']],      # (the gate, square to the way's last stretch, just behind the ring)
         'waters': [[-3.75, -0.75, -0.75, 0.75], [-5.25, -3.75, -2.25, -0.75], [-6.75, -2.25, -5.25, -3.75]],      # (the channel, its arm, the chasm: open water the rock keeps clear of)
         'hollows': [[-2.0, H1 - 0.42, 3.0, 0.62], [-4.25, H1 - 0.38, 3.05, 0.55]],      # (round pits the sea wore in the shelf beside the path, as the concept's)
+        'node_slabs': {'size': 1.32, 'thick': 0.3, 'skip': ['Y'], 'whole': ['S', 'M', 'K', 'NI', 'R']},      # (the way in separate stones, crooked and uneven (the owner), on the rock (rock_drop under them))
+        'rock_drop': 0.1,
+        'niches': [{'cut': [-6.95, -5.22, -3.72, -2.28, H1 - 0.16, H1 + 1.28], 'roof': [[-6.25, H1 + 1.62, -3.0], [1.15, 0.78, 1.3]]}],      # (the stone's niche under the goddess's rock: a roof of rock over it, so it reads as the stone's own place)
         'bridges': [[-5.0, -4.0, -5.24, -3.76, H1]],      # (a slab over the chasm, nothing under it but the sea; a joint's breadth from each floor)
         'statues': statues, 'pedestals': [],
         'rocks': rocks,
         'columns': [], 'volute': None, 'head': None, 'relief': None, 'cypress': None,
-        'eye': eye_fit(pts, top_room=0.33, bottom_room=0.2, margin=0.8),
+        'eye': eye_fit(pts, top_room=0.24, bottom_room=0.12, margin=0.6),      # (the great goddess's head just under the story's line; the island as large as the screen allows)
         'shore': True,
         'scenery': [['statue', [s[1][0], s[1][1] + s[2] / 2, s[1][2]], [0.46, s[2], 0.46], [0.94, 0.93, 0.9]] for s in statues],      # (placeholders in the blockout's preview)
     }

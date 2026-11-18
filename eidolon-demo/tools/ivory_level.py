@@ -1051,7 +1051,9 @@ if PLAN is None:
     bm = bmesh.new(); box(bm, (-2.2, H1 - 1.55, 1.62), (-1.7, H1 - 1.0, 2.05)); chisel(bm, 2, depth=(0.02, 0.06)); marble.append(finish(bm, 'relief'))      # a carved block in the face of the rock
 else:
     QUARRY_ON = PLAN.get('scene') == 'quarry'
+    NS = PLAN.get('node_slabs')      # (a way of separate stones, laid on rock made elsewhere: the third level's crooked path; its floors are the rock's own)
     for nm, fl in PLAN['floors'].items():
+        if NS: continue
         m, r = floor(nm, 0, 0, 0, 0, fl['h'], 0, poly=[tuple(p) for p in fl['xz']])
         if nm in PLAN.get('risers', []): RISERS[nm] = (m, r); continue      # (a floor that moves in the game: its slab and its rock kept apart)
         marble += m; rock += r
@@ -1059,8 +1061,45 @@ else:
         m, r = flight(tuple(fl[0]), tuple(fl[1]), fl[2], fl[3] if len(fl) > 3 else None, solid=QUARRY_ON); marble += m; rock += r
         while len(fl) < 4: fl.append(len(STEPS[-1]))
         fl[4:] = [STEPS[-1]]
-    for (c, r_, top) in PLAN.get('rocks', []):      # rock that binds the floors into one mountain
+    for (c, r_, top) in ([] if NS else PLAN.get('rocks', [])):      # rock that binds the floors into one mountain
         rock += ledge('ledge', c, r_, top)
+    if NS:      # (a stone under each place of the way: each cut by hand, a little out of square and out of line, its corners cut aslant, set a little lower or higher; the owner: "on the path the stone crooked and uneven")
+        sz = float(NS.get('size', 1.3)); th_ = float(NS.get('thick', 0.3)); skip = set(NS.get('skip', []))
+        fls_ = PLAN.get('flights', [])
+        def half(poly, n_, c_, side):      # (a stone's outline on one side of a crack through it)
+            out_ = []
+            for i in range(len(poly)):
+                a_, b_ = poly[i], poly[(i + 1) % len(poly)]
+                da = ((a_[0] - c_[0]) * n_[0] + (a_[1] - c_[1]) * n_[1]) * side; db = ((b_[0] - c_[0]) * n_[0] + (b_[1] - c_[1]) * n_[1]) * side
+                if da >= 0: out_.append(a_)
+                if (da >= 0) != (db >= 0):
+                    t = da / (da - db); out_.append((a_[0] + (b_[0] - a_[0]) * t, a_[1] + (b_[1] - a_[1]) * t))
+            return out_
+        for k_, p_ in PLAN['nodes'].items():
+            if k_ in skip: continue
+            ang = math.radians(rnd.uniform(-9.0, 9.0)); dh = rnd.uniform(-0.04, -0.004)
+            hx, hz = sz / 2 * rnd.uniform(0.86, 1.04), sz / 2 * rnd.uniform(0.86, 1.04)
+            ca, sa = math.cos(ang), math.sin(ang)
+            pts = []
+            for (cx, cz) in [(-hx, -hz), (hx, -hz), (hx, hz), (-hx, hz)]:
+                cx += rnd.uniform(-0.11, 0.11); cz += rnd.uniform(-0.11, 0.11)
+                pts.append((p_[0] + cx * ca - cz * sa, p_[2] + cx * sa + cz * ca))
+            keep = [(fl[i][0], fl[i][2]) for fl in fls_ for i in (0, 1) if abs(fl[i][1] - p_[1]) < 0.05 and math.hypot(fl[i][0] - p_[0], fl[i][2] - p_[2]) < sz * 1.2]
+            pieces = [pts]
+            if not keep and k_ not in set(NS.get('whole', [])) and rnd.random() < 0.38:      # (some stones cracked in two, the halves a little apart, each set its own way; the special ones whole)
+                th0 = ang + (0.0 if rnd.random() < 0.5 else math.pi / 2) + math.radians(rnd.uniform(-28.0, 28.0))
+                n_ = (math.cos(th0), math.sin(th0)); c_ = (p_[0] + rnd.uniform(-0.18, 0.18) * n_[0], p_[2] + rnd.uniform(-0.18, 0.18) * n_[1])
+                pieces = []
+                for side in (1.0, -1.0):
+                    c2 = (c_[0] + n_[0] * 0.025 * side, c_[1] + n_[1] * 0.025 * side)
+                    hp = half(pts, n_, c2, side)
+                    if len(hp) >= 3: pieces.append(hp)
+            for pi_, pts_ in enumerate(pieces):
+                poly = cut_corners(pts_, [(q, 0.9) for q in keep])
+                cracked = len(pieces) > 1
+                out = square_to_flights(broken(faceted(poly, keep, seg=(0.3, 0.55), jit=0.02 if cracked else 0.035), seg=0.2, jit=0.008 if cracked else 0.014, chip=0.0 if cracked else 0.1), p_[1])      # (a cracked half: its edges less broken, its outline kept simple)
+                dh_ = dh if pi_ == 0 else rnd.uniform(-0.045, -0.004)
+                marble.append(slab('stone_%s_%d' % (k_, pi_), ccw(out), p_[1] + dh_, thick=th_, keep=keep))
     for (p, h) in PLAN.get('columns', []):
         x_, z_ = on_floor(p[0], p[1], p[2], 0.42)
         cw = clear_of_way(x_, p[1], z_, 0.26)
