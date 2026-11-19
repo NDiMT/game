@@ -176,10 +176,12 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   Gemini, further back, like low poly but big"; "no, the low poly is better"; "strange rocks in the depth"; "Aphrodite as
   she is, I liked her; the rocks behind"; "Aphrodite must be in front of the rocks, the rocks much further back; make the
   whole image in Gemini", not cut and sewn): `gomilos/backdrop.jpg` (source `design/level3/backdrop_whole.jpg`) is
-  Gemini's repainting, in one painting, of the backdrop he liked (the low-poly goddess, `goddess_lowpoly.png`, laid into
-  the plain backdrop by `tools/go/backdrop_figure.py`: at the left, her head at 0.085 of its height, her hips into the
-  bright haze band at about 0.30), "keeping it as it is" and adding, much farther away behind her, a leaning rock, an arch
-  and needles, small, faint, almost swallowed by the haze, no higher than her waist; the level's `horizon` stays 0.33.
+  Gemini's edit of the backdrop he liked (the low-poly goddess, `goddess_lowpoly.png`, laid into the plain backdrop by
+  `tools/go/backdrop_figure.py`: at the left, her head at 0.085 of its height, her hips into the bright haze band at
+  about 0.33), with only the prompt he asked for, "Add a few strange rock formations far in the distance, behind the
+  statue, subdued and faded into the haze. Keep everything else exactly as it is." (`design/level3/backdrop_prompt.txt`;
+  the owner: "send the sky with the Aphrodite I liked as a picture and just tell it to add strange rocks, subdued, far
+  behind"); the level's `horizon` stays 0.33.
   Turned down on the way: the goddess smooth and polished or softly painted, darker, a whole backdrop with her big and the
   haze low, rocks laid in by us (`tools/go/far_rocks.py`) or painted too near, too many or below her. No birds over this level (the owner: "take
   those stupid birds out of the third level"). The 3D goddess is out of the plan
