@@ -255,7 +255,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   old sync restarted it every half second, stopping the film each time). A
   touch on the film shows "tap to skip" a while; a second touch while it shows skips (`_ivw_skip_tap`). Code that reads a file raw (`FileAccess`, the `.glb` levels and props)
   needs it kept raw in the pack (`importer="keep"` or the preset's include filter); for imported pictures check with
-  `ResourceLoader.exists`, never `FileAccess.file_exists`. An imported font's raw `.ttf` is not packed even when the
+  `ResourceLoader.exists`, never `FileAccess.file_exists`. A level's `level.glb` must be `importer="keep"` in its
+  `.import`: `godot --import` imports a new one as a scene, and then its raw file is left out of the pack even though
+  the include filter names it (level 3 did not load in the browser, a blue screen, 19/11). Check a build's pack with
+  `tools/pck_list.py <pck> | grep -E "go[a-z]+/level"`: each level's `level.glb` must be listed. An imported font's raw `.ttf` is not packed even when the
   include filter names it: load fonts with `load()` (`_ivw_font_file`); read raw, the Cormorant letters were missing on
   the web and the story fell back to another font (found 18/11). Earlier demos were published to GitHub Pages from the branch
   `claude/solo-game-ideas-balatro-yj6hqw` (`site/<name>/` → https://ndimt.github.io/game/<name>/); pushing there needs
