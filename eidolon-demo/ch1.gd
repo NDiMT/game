@@ -4838,7 +4838,7 @@ func _ivw_life() -> void:
 	# birds: a few small dark V shapes high over the sea, behind the island, drifting across
 	var b := _ivp_basis(); var bx := b.x; var by := b.y; var fwd := -b.z
 	var ref := IV_O + Vector3(float(ce[0]), float(ce[1]), float(ce[2])); var W := float(ivr_eye.width)
-	for i in 3:
+	for i in (0 if go_milos else 3):      # (none over the third level: the owner, 19/11, "take those stupid birds out of the third level")
 		var am := ArrayMesh.new(); var arr := []; arr.resize(Mesh.ARRAY_MAX)
 		var sp := 0.22 + 0.06 * float(i % 2)
 		arr[Mesh.ARRAY_VERTEX] = PackedVector3Array([Vector3(0, 0, -0.03), Vector3(-sp, 0, 0.05), Vector3(0, 0, 0.04), Vector3(0, 0, -0.03), Vector3(0, 0, 0.04), Vector3(sp, 0, 0.05)])

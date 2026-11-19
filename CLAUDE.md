@@ -172,13 +172,17 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   painted alone by Gemini (no horizon line; a band of bright haze at 0.30, `horizon` 0.33 so the sea's glints come in
   below it). The light leaves the statue at the height of her eyes (the owner). The goddess a colossus (the owner: "a
   big statue of Aphrodite"),
-  painted far off in the level's backdrop (the owner, 19/11: "make Aphrodite in Gemini, further back in the background,
-  like low poly but big; don't spoil the background much", then "not low poly, smoother", "a little as painted, like the
-  first time you sent me the third level"): Gemini painted her alone, a smooth Venus de Milo in softly painted marble in
-  the style of the level's concept (given as its reference), lit from the left as the level's rocks, on flat green
-  (`design/level3/goddess_painted.png`; before her `goddess_lowpoly.png`, faceted; a polished smooth one looked like a
-  photograph); `tools/go/backdrop_figure.py` cuts her out and lays her into the plain backdrop (`design/level3/backdrop_plain.jpg`) at the left, her head at 0.085 of
-  its height, her hips going into the bright haze band at 0.335, under a breath of haze; the 3D goddess is out of the plan
+  painted far off in the level's backdrop, which Gemini painted whole, in one piece (the owner, 19/11: "make Aphrodite in
+  Gemini, further back, like low poly but big"; "no, the low poly is better"; "strange rocks in the depth"; "Aphrodite as
+  she is, I liked her; the rocks behind"; "Aphrodite must be in front of the rocks, the rocks much further back; make the
+  whole image in Gemini", not cut and sewn): `gomilos/backdrop.jpg` (source `design/level3/backdrop_whole.jpg`) is
+  Gemini's repainting, in one painting, of the backdrop he liked (the low-poly goddess, `goddess_lowpoly.png`, laid into
+  the plain backdrop by `tools/go/backdrop_figure.py`: at the left, her head at 0.085 of its height, her hips into the
+  bright haze band at about 0.30), "keeping it as it is" and adding, much farther away behind her, a leaning rock, an arch
+  and needles, small, faint, almost swallowed by the haze, no higher than her waist; the level's `horizon` stays 0.33.
+  Turned down on the way: the goddess smooth and polished or softly painted, darker, a whole backdrop with her big and the
+  haze low, rocks laid in by us (`tools/go/far_rocks.py`) or painted too near, too many or below her. No birds over this level (the owner: "take
+  those stupid birds out of the third level"). The 3D goddess is out of the plan
   (`GODDESS` kept in `milos_plan.py` for the record). Her 3D models, all turned down: a painted picture of her on a card
   in the world ("it's bad"), the Tripo P1 model smooth (11,660 faces) and flat with her light baked into its faces (4,200
   and 11,660: `props/statue_goddess.glb`, `tools/go/bake_painted_vc.py`), a Tripo P2 model with her light baked into its
