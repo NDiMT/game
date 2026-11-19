@@ -269,8 +269,19 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   little distance between them"): the glass 2.4 m past the terrace's nearest row (`GAP`, plane 11.4; 0.8 before), the
   eye a little lower (`bottom_room` 0.12). The moving glass (`move_glass_trial.py`, `move_plan.py`, `_ivgl_slide`) is
   kept for the record. For pictures: `IV_BLOCK_AT=<node>`, `IV_GATE_OPEN=1`; `IV_SOL="<nodes>"` plays another way
-  through (a block into a corner, back to the square at the start, and on). Her image in the glass is a black blurred
+  through (a block into a corner, back to the square at the start, and on); `IV_FAST_TO=<step>` plays the way to that
+  step four times faster (a short check clip of one move), `IV_SFX_ONLY=1` keeps the sounds with `IV_NO_MUSIC`.
+  **The block tumbles** here (the owner, 19/11: "would it not be better to tumble it than drag it?"): shoved, it tips
+  over its leading edge onto the next place, turned a quarter, and lands with a knock (`_ivt_tumble`, `IVT_ON`; the
+  edge's grind, the fall's thud without its water, a heel's tap lowered); the square at the start sinks it straight
+  down and raises it where and as it began (`ivt_home`). Levels 2 and 3 still slide it. **The squares' line is thin and
+  sharp but bright** (the owner: "a thinner line, sharp but bright"): a centimetre or so, never under a pixel and a
+  third, its edges a pixel wide, a breath of light at its rim (`IVGL_SQUARE_SH`, `IVGL_PAD_SH`). Her image in the glass is a black blurred
   shadow of her (the owner, 19/11: "if Ione's reflection shows, let it be like a black blurred shadow"; `IVGL_SHADE_SH`).
+  **The image is pale and airy, as its concept has it** (the owner, 19/11: "I don't like this dark after all", after
+  asking for a darker blue): cooled toward a light blue (`img_tint`, `img_tint_k` 0.6, `img_dark` 0.92) and given to the
+  painting's own haze, one colour (`img_mist` 0.76, 0.78, 0.9: never the painting itself, whose face showed through the
+  stones), a third at the glass and more for each metre behind it (`IVGL_IMG_FADE`); her shadow stays a dark blue.
   The sea mirrors the level and has its foam and its gradient as every other sea (the owner, 19/11: "the sea, the
   gradient, the foam and the reflections are not like the other seas we made"): the level's image in the water is back,
   the foam is read about the glass too for the image's stones (`shore_mir`), and its backdrop's sea was painted again in

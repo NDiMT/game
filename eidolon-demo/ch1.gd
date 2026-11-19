@@ -2262,7 +2262,7 @@ uniform float fog_lo = -10.5;
 uniform float fog_ref = 0.0;
 uniform float far_k = 0.0;
 uniform float img_k = 0.0; uniform vec4 img_plane = vec4(0.70710678, 0.0, 0.70710678, 0.0); uniform vec2 img_fade = vec2(0.34, 0.045);
-uniform vec3 img_mist : source_color = vec3(0.27, 0.33, 0.56); uniform vec3 img_tint : source_color = vec3(0.56, 0.66, 1.0); uniform float img_tint_k = 0.7; uniform float img_dark = 0.74;      // (the image a darker blue (the owner, 19/11: "the whole reflection a darker blue"), and its air its own blue, never the painting behind it: the great face in the painting showed through its stones ("why is the head seen over the stone?"))
+uniform vec3 img_mist : source_color = vec3(0.76, 0.78, 0.9); uniform vec3 img_tint : source_color = vec3(0.82, 0.87, 1.0); uniform float img_tint_k = 0.6; uniform float img_dark = 0.92;      // (the image pale and cool, given to the air of the painting's own haze, as its concept has it: the dark blue asked for first was "not liked after all" (the owner, 19/11); its air one colour, never the painting behind it: the great face in the painting showed through its stones ("why is the head seen over the stone?"))
 uniform vec4 img_clip = vec4(-1e6, 1e6, -1e6, 1e6); uniform vec3 img_c0; uniform vec3 img_al = vec3(0.70710678, 0.0, -0.70710678); uniform vec3 img_fwd = vec3(0.0, 0.0, -1.0);      // (the glass's pane: along it from img_c0, and its height; the eye's way)      // (the fourth level: a thing's image beyond the glass, given to the air the further it lies behind it)
 uniform float veins = 0.0;
 uniform float flat_mode = 0.0;
@@ -3640,7 +3640,8 @@ func _ivp_post(dt: float) -> void:
 		var dv: Vector3 = iv_push.d
 		var pr := clampf((pos - (iv_push.start as Vector3)).dot(dv), 0.0, float(iv_push.len))
 		var bp: Vector3 = (iv_push.m0 as Vector3) + dv * pr
-		iv_block_n.global_position = bp
+		if bool(iv_push.get("tumble", false)): bp = iv_push.m0      # (it goes over by itself: her hands to where it stood)
+		else: iv_block_n.global_position = bp
 		if ivp_bshadow != null: ivp_bshadow.global_position = bp + Vector3(0.42, 0.012, -0.18)
 		var face := bp - dv * 0.42 + Vector3(0, 0.66, 0)
 		var sd := Vector3(-dv.z, 0, dv.x) * 0.2
@@ -3916,6 +3917,7 @@ func _play_ivp() -> void:
 			await wait(4.0); tap(Vector2(360, 640)); tap(Vector2(360, 640)); await wait(1.5); _ivw_snap("f1_skip_words"); tap(Vector2(360, 640))      # (the first touch come twice at once: it must not skip)
 		while ivw_intro_on: await get_tree().process_frame
 		await wait(4.0)
+	if OS.get_environment("IV_FAST_TO") != "": Engine.time_scale = 4.0
 	await snap.call("p0_title")
 	if go_wake and not go_veil and OS.get_environment("IV_TEST_PICK") != "" and ivw_pick.size() >= 3:      # (to check the start screen's levels: a touch on one; 2 and 3 lead on into that level, whose own play goes on from its start)
 		var k := clampi(int(OS.get_environment("IV_TEST_PICK")), 1, ivw_pick.size())
@@ -3931,6 +3933,7 @@ func _play_ivp() -> void:
 			if n != null: (n as Node3D).visible = false
 	await snap.call("p1_start")
 	if OS.get_environment("GH_ONLY") == "start": get_tree().quit(); return
+	if OS.get_environment("IV_FAST_TO") != "": Engine.time_scale = 4.0
 	if ivg_on:      # the trial played by swipes, as a player would: each a stroke from her toward the next node
 		var sol: Array = ivg.solution
 		if OS.get_environment("IV_SOL") != "": sol = Array(OS.get_environment("IV_SOL").split(" ", false))      # (another way through, for a test: the block into a corner, back to the square at the start, and on)
@@ -3944,8 +3947,10 @@ func _play_ivp() -> void:
 			await idle.call(); await wait(0.6); await idle.call()
 			print("IV queue test: she is at ", iv_me, " (should be ", sol[1], "), volute ", ivg_v); i0 = 2
 		var i := i0
+		var fast_to := int(OS.get_environment("IV_FAST_TO")) if OS.get_environment("IV_FAST_TO") != "" else -1      # (for a check clip: the way to that step at four times the pace, the step itself as played)
 		while i < sol.size():
 			var tgt := String(sol[i])
+			if fast_to >= 0: Engine.time_scale = 4.0 if i < fast_to else 1.0
 			if go_wake and bool(ivg.get("tutorial", false)) and i < 2:      # (as a new player would: she waits, and the hand shows the swipe)
 				await wait(2.6); await _ivw_snap("w9_hand%d" % i)
 			var at: Vector3 = ivp_nodes[tgt]
@@ -5120,7 +5125,7 @@ func _go_level_music() -> String:
 ## lament shares with its D-minor turns, so none of them strikes against the music wherever the player meets it):
 ## PLAY a low note, each line of the story a woman's sigh, the stones a swell, the gate its passing, a step that cannot be a low pluck
 func _ivw_sfx(name: String, db := -8.0, from := 0.0, pitch := 1.0) -> AudioStreamPlayer:      # (real sounds only: steps, water, the winch, stone on stone, the gate's light; the melodic cues (a note at PLAY, a sigh on each line, a swell for the stones, the gate's rise, a pluck for a swipe where she cannot go) were cut, the owner 18/11: "only normal sound effects")
-	if OS.get_environment("IV_NO_MUSIC") != "" or OS.get_environment("IV_NO_SFX") != "" or not ResourceLoader.exists("res://sfx/%s.ogg" % name): return null
+	if (OS.get_environment("IV_NO_MUSIC") != "" and OS.get_environment("IV_SFX_ONLY") == "") or OS.get_environment("IV_NO_SFX") != "" or not ResourceLoader.exists("res://sfx/%s.ogg" % name): return null      # (IV_SFX_ONLY: a check clip with the sounds and without the music)
 	if OS.get_environment("IV_SFX_LOG") != "": print("SFX ", name, " at ", snappedf(iv_t, 0.01))
 	var p := AudioStreamPlayer.new(); p.stream = _ivw_stream("res://sfx/%s.ogg" % name); p.volume_db = db; p.pitch_scale = pitch; add_child(p); p.play(from)
 	p.finished.connect(p.queue_free)
@@ -6415,7 +6420,7 @@ func _ivr_build() -> void:
 		elif go_milos: rb.modulate = Color(0.66, 0.72, 0.96, 0.98); rbl.modulate = rb.modulate
 		if go_glass:      # (the fourth level, as its concept: no rocks before the eye; a bank of mist at the left, over the glass's edge)
 			rb.visible = false; rbl.visible = false
-			if ResourceLoader.exists("res://goglass/mist_l.png"):
+			if ResourceLoader.exists("res://goglass/mist_l.png") and OS.get_environment("IV_ZOOM") == "":      # (laid on the screen for the game's own eye: not for a close look)
 				var ml := _iv_overlay(cl, "res://goglass/mist_l.png", Vector2(-70 * k, vh * 0.27), Vector2(400, 475) * k); ml.modulate = Color(1, 1, 1, 0.92)
 		if go_veil and not go_milos and not go_glass and ResourceLoader.exists("res://goveil/statue_fg.png"):      # (the second level: a veiled statue standing before the eye at the lower right, blurred, dark against the light, one of the thousand (the owner, 18/11: "fantastic, the blurred statue"); clear of the way, the gate and the rocks in the sea)
 			var sfg := _iv_overlay(cl, "res://goveil/statue_fg.png", Vector2(487 * k, vh - 468 * k), Vector2(341, 532) * k); sfg.modulate = Color(0.55, 0.42, 0.58, 0.95)
@@ -6731,23 +6736,89 @@ func _ivg_push(nb: String, c: String, first := "") -> void:
 	var kp: Vector3 = ivp_nodes[nb]; var qp: Vector3 = ivp_nodes[c]
 	var dv := Vector3(qp.x - kp.x, 0, qp.z - kp.z).normalized()
 	var fp: Vector3 = ivp_nodes[first] if first != "" else qp      # (a block that slides goes with her hands only to the next node; then on by itself)
-	iv_push = {"d": dv, "start": pos, "m0": kp, "len": Vector2(fp.x - kp.x, fp.z - kp.z).length()}
+	var tum := IVT_ON and go_glass and (first == "" or first == c)      # (the fourth level: shoved, it tumbles over onto the next place; the owner, 19/11: "would it not be better to tumble it than drag it?")
+	iv_push = {"d": dv, "start": pos, "m0": kp, "len": Vector2(fp.x - kp.x, fp.z - kp.z).length(), "tumble": tum}
 	print("IV push ", nb, " -> ", c)
-	if go_veil: _ivw_sfx("block_push", IVV_PUSH_DB, 0.0, randf_range(0.95, 1.05))      # (stone dragged on stone)
+	if go_veil and not tum: _ivw_sfx("block_push", IVV_PUSH_DB, 0.0, randf_range(0.95, 1.05))      # (stone dragged on stone)
 	route.clear(); speed_cap = 1.0; face_to = null
 	route.append({"p": kp})
 	var up := tw(); up.set_parallel(); up.tween_property(self, "a_wL", 1.0, 0.3); up.tween_property(self, "a_wR", 1.0, 0.3); up.tween_property(self, "a_lean", 0.16, 0.3)
+	if tum:
+		_ivt_tumble(kp, qp, 0.16)
+		await get_tree().create_timer(0.62, false).timeout      # (her hands come down as it goes over; she follows it)
+		var dw := tw(); dw.set_parallel(); dw.tween_property(self, "a_wL", 0.0, 0.3); dw.tween_property(self, "a_wR", 0.0, 0.3); dw.tween_property(self, "a_lean", 0.0, 0.3)
 	while not route.is_empty(): await get_tree().process_frame
 	iv_push = {}
-	var rest := Vector2(qp.x - iv_block_n.global_position.x, qp.z - iv_block_n.global_position.z).length()
-	var sl := create_tween()
-	if rest > 0.8: sl.tween_property(iv_block_n, "global_position", qp, 0.22 + rest * 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)      # (it slides on, slowing, and comes to rest)
-	else: sl.tween_property(iv_block_n, "global_position", qp, 0.18)
-	await sl.finished
+	if tum:
+		while ivt_busy: await get_tree().process_frame
+	else:
+		var rest := Vector2(qp.x - iv_block_n.global_position.x, qp.z - iv_block_n.global_position.z).length()
+		var sl := create_tween()
+		if rest > 0.8: sl.tween_property(iv_block_n, "global_position", qp, 0.22 + rest * 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)      # (it slides on, slowing, and comes to rest)
+		else: sl.tween_property(iv_block_n, "global_position", qp, 0.18)
+		await sl.finished
 	iv_me = nb; iv_block = c; ivp_wp_cur = kp
 	var dn := tw(); dn.set_parallel(); dn.tween_property(self, "a_wL", 0.0, 0.35); dn.tween_property(self, "a_wR", 0.0, 0.35); dn.tween_property(self, "a_lean", 0.0, 0.35)
 	await dn.finished
 	iv_busy = false
+
+## the block tumbles over its leading edge onto the next place, as a heavy stone shoved over (the owner, 19/11: "would
+## it not be better for the block to tumble rather than be dragged?"): it tips slowly, falls quicker, lands with a knock;
+## turned a quarter each step, its carved faces come up in turn
+const IVT_ON := true
+var ivt_box := AABB()
+var ivt_busy := false
+var ivt_home := Transform3D()      # (where it began, and as it began: the square at her start puts it back so)
+
+func _ivt_box_get() -> AABB:      # (its own box, in its own frame, found once from its meshes)
+	if ivt_box.size != Vector3.ZERO: return ivt_box
+	var inv := iv_block_n.global_transform.affine_inverse()
+	var first := true
+	for m in iv_block_n.find_children("*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		if mi.mesh == null: continue
+		var bb: AABB = (inv * mi.global_transform) * mi.get_aabb()
+		ivt_box = bb if first else ivt_box.merge(bb); first = false
+	return ivt_box
+
+func _ivt_half(b: Basis, w: Vector3, hs: Vector3) -> float:      # (how far the box reaches along w, turned as it is)
+	return absf(w.dot(b.x)) * hs.x + absf(w.dot(b.y)) * hs.y + absf(w.dot(b.z)) * hs.z
+
+func _ivt_tumble(kp: Vector3, qp: Vector3, delay: float) -> void:
+	ivt_busy = true
+	if delay > 0.0: await get_tree().create_timer(delay, false).timeout
+	var bb := _ivt_box_get(); var cl := bb.get_center()
+	var t0 := iv_block_n.global_transform
+	var sc := t0.basis.get_scale(); var b0 := t0.basis.orthonormalized()
+	var hs := bb.size * 0.5 * sc
+	var d := Vector3(qp.x - kp.x, 0, qp.z - kp.z); var ln := d.length(); d = d / maxf(ln, 0.001)
+	var ed := _ivt_half(b0, d, hs); var eu := _ivt_half(b0, Vector3.UP, hs)
+	var c0 := t0 * cl      # (its centre)
+	var y0 := c0.y - eu      # (the floor under it)
+	var ax := Vector3.UP.cross(d).normalized()      # (turned about it, its top goes forward)
+	if go_veil: _ivw_sfx("block_push", IVV_PUSH_DB - 3.0, 0.0, randf_range(1.05, 1.15))      # (its edge grinding as it tips)
+	var t := create_tween()
+	t.tween_method(func(u: float) -> void:
+		var th := PI * 0.5 * u
+		var hx := (ed - ed * cos(th) + eu * sin(th)) / (ed + eu)      # (as a box rolls over its edge, drawn out to the step)
+		var c := Vector3(c0.x, y0, c0.z) + d * (ln * hx) + Vector3.UP * (ed * sin(th) + eu * cos(th) + IVT_HOP * sin(PI * u))
+		var b := Basis(ax, th) * b0
+		var bs := Basis(b.x * sc.x, b.y * sc.y, b.z * sc.z)
+		iv_block_n.global_transform = Transform3D(bs, c - bs * cl), 0.0, 1.0, IVT_DUR).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	if t.is_running(): await t.finished
+	if go_veil:      # (the knock of stone on stone as it lands: the fall's own thud, without its water, and a heel's tap lowered for a phone's speaker)
+		var k1 := _ivw_sfx("block_fall", IVV_FALL_DB - 2.0, 0.27)
+		if k1 != null: create_tween().tween_property(k1, "volume_db", -60.0, 0.2).set_delay(0.18)
+		_ivw_sfx("step_1", -4.0, 0.0, 0.72)
+	var tf := iv_block_n.global_transform
+	var bo := create_tween()      # (it settles: down a hair and up)
+	bo.tween_property(iv_block_n, "global_position:y", tf.origin.y - 0.025, 0.06).set_trans(Tween.TRANS_SINE)
+	bo.tween_property(iv_block_n, "global_position:y", tf.origin.y, 0.12).set_trans(Tween.TRANS_SINE)
+	await bo.finished
+	ivt_busy = false
+
+const IVT_DUR := 0.6
+const IVT_HOP := 0.07
 
 func _ivg_turn_volute() -> void:
 	iv_busy = true
@@ -9912,7 +9983,7 @@ var ivgl_img: Node3D      # (the level's image)
 var ivgl_block: Node3D      # (the block's image, kept to the block each frame)
 var ivgl_plane := Plane()      # (the glass in the world: the real side before it, n.p > d)
 var ivgl_square: MeshInstance3D
-const IVGL_IMG_FADE := Vector2(0.42, 0.05)      # (the image's air: at the glass, and more for each metre behind it)
+const IVGL_IMG_FADE := Vector2(0.34, 0.035)      # (the image's air: at the glass, and more for each metre behind it)
 const IVGL_GLASS_SH := """
 shader_type spatial;
 render_mode unshaded, cull_disabled, shadows_disabled, depth_draw_never, blend_add;
@@ -9931,12 +10002,14 @@ void fragment(){
 const IVGL_SQUARE_SH := """
 shader_type spatial;
 render_mode unshaded, cull_disabled, shadows_disabled, depth_draw_never, blend_add;
-uniform vec3 col : source_color = vec3(1.0, 0.9, 0.7);
+uniform vec3 col : source_color = vec3(1.0, 0.96, 0.88);
 uniform float k = 1.0;
 void fragment(){
 	vec2 p = abs(UV - 0.5) * 2.0; float d = max(p.x, p.y);
-	float ln = 1.0 - smoothstep(0.012, 0.045, abs(d - 0.62));      // (a bright outline of a square (the owner), a little wider than the block's foot)
-	float gw = exp(-pow((d - 0.62) / 0.17, 2.0)) * 0.4;
+	float aa = fwidth(d); float w = max(0.006, aa * 0.65);      // (a thin line, sharp but bright (the owner, 19/11): a centimetre or so, never under a pixel and a third)
+	float e = abs(d - 0.62);
+	float ln = 1.0 - smoothstep(w, w + aa, e);      // (its edges a pixel's width, no softer: no halo round it)
+	float gw = exp(-pow(e / max(0.02, aa * 1.6), 2.0)) * 0.22;      // (only a breath of light at its rim, so it reads as light)
 	ALBEDO = col; ALPHA = clamp((ln + gw) * k, 0.0, 1.0);
 }
 """
@@ -9950,8 +10023,9 @@ uniform float k = 1.0;
 uniform float ga = 0.6;
 void fragment(){
 	vec2 p = abs(UV - 0.5) * 2.0; float d = max(p.x, p.y);
-	float ln = 1.0 - smoothstep(0.014, 0.04, abs(d - 0.62));      // (the same square of light as in the glass, on the white stone: its bright line)
-	float gv = 1.0 - smoothstep(0.035, 0.08, abs(d - 0.62));      // (inlaid in a darker bed, so it reads on the white)
+	float aa = fwidth(d); float w = max(0.007, aa * 0.65); float e = abs(d - 0.62);
+	float ln = 1.0 - smoothstep(w, w + aa, e);      // (the same square of light as in the glass, on the white stone: its thin bright line, sharp)
+	float gv = 1.0 - smoothstep(w * 2.6, w * 2.6 + aa, e);      // (inlaid in a narrow darker bed, so it reads on the white)
 	float on = clamp(k - 1.0, 0.0, 1.0);      // (stepped on: the whole bed lights)
 	ALBEDO = mix(gcol, col, max(ln, on * gv)); ALPHA = clamp(max(ln, gv * ga), 0.0, 1.0);
 }
@@ -10075,6 +10149,8 @@ func _ivgl_setup(lv: Node3D) -> void:
 	var sy := float(ivgl_sq_y[k0]) if ivgl_sq_y.size() > k0 else float(pp[1])      # (it lies on the image's floor under it)
 	iv_root.add_child(ivgl_square); ivgl_square.global_position = IV_O + Vector3(float(pp[0]), sy + 0.03, float(pp[2]))
 	ivgl_b0 = iv_block; ivgl_reset_n = String(ivg.get("reset", "")) if ivg_on else ""
+	ivt_home = iv_block_n.global_transform
+	if ivp_nodes.has(String(ivg.block)) and iv_block != String(ivg.block): ivt_home.origin = ivp_nodes[String(ivg.block)]; ivgl_b0 = String(ivg.block)      # (a picture's block elsewhere: still put back where the trial's block begins)
 	if ivgl_reset_n != "" and ivp_nodes.has(ivgl_reset_n):      # (the same square of light at her start (the owner, 19/11): stepping on it puts the block back where it began)
 		var rm := ShaderMaterial.new(); rm.shader = _ivw_shader(IVGL_PAD_SH)
 		var sq2 := PlaneMesh.new(); sq2.size = Vector2(1.5, 1.5)      # (a little smaller than the one in the glass: clear of the corridor's cut end)
@@ -10107,14 +10183,15 @@ func _ivgl_reset() -> void:      # (she steps on the square of light at her star
 	print("IV the square at her start: the block goes back where it began")
 	var sm := ivgl_reset_sq.material_override as ShaderMaterial
 	create_tween().tween_method(func(v: float) -> void: sm.set_shader_parameter("k", v), 1.0, 2.2, 0.3).set_trans(Tween.TRANS_SINE)
-	var s0 := iv_block_n.scale
+	var sink := 1.25      # (more than its height: the stone under it hides it)
 	if go_veil: _ivw_sfx("block_push", IVV_PUSH_DB - 3.0, 0.0, 0.82)      # (stone on stone, low, as it sinks)
-	var a := create_tween(); a.tween_property(iv_block_n, "scale", Vector3(s0.x, 0.02, s0.z), 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	var a := create_tween(); a.tween_property(iv_block_n, "global_position:y", iv_block_n.global_position.y - sink, 0.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	await a.finished
-	iv_block_n.global_position = ivp_nodes[ivgl_b0]; iv_block = ivgl_b0
+	var home := ivt_home
+	iv_block_n.global_transform = Transform3D(home.basis, home.origin - Vector3(0, sink, 0)); iv_block = ivgl_b0
 	await wait(0.15)
 	if go_veil: _ivw_sfx("block_push", IVV_PUSH_DB - 3.0, 0.0, 0.9)
-	var b := create_tween(); b.tween_property(iv_block_n, "scale", s0, 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	var b := create_tween(); b.tween_property(iv_block_n, "global_position:y", home.origin.y, 0.65).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	await b.finished
 	create_tween().tween_method(func(v: float) -> void: sm.set_shader_parameter("k", v), 2.2, 1.0, 0.8).set_trans(Tween.TRANS_SINE)
 	iv_busy = false
