@@ -503,6 +503,10 @@
   "width": 11.85
  },
  "shore": true,
+ "smooth_normals": [
+  "rock",
+  "marble"
+ ],
  "scenery": [
   [
    "statue",

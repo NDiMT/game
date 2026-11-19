@@ -1170,14 +1170,30 @@ if RC and rock:      # (no tip of the rock through a slab: where it rises a litt
     lo_, hi_, mg_ = float(RC[0]), float(RC[1]), float(RC[2]) if len(RC) > 2 else 0.06
     clear_ = float(RC[3]) if len(RC) > 3 else None      # (and no tall rock in what stands on a floor: where one reaches in over it, near its edge it is cut back to the edge, deeper in it is lifted clear of what goes under it, as the block pushed into a niche; the owner, 18/11: "no rock through things, one in another")
     edge_ = float(RC[4]) if len(RC) > 4 else 0.3
+    front_ = float(RC[5]) if len(RC) > 5 else None      # (and the slab's white side shows whole where it faces the eye: no rock before it over its foot, this far out; the owner, 18/11, of a rock risen before the side of the gate's landing: "the rock goes strangely into the slab")
     fls_ = [(f['h'], [tuple(q) for q in f['xz']]) for f in PLAN['floors'].values()]
-    n_cl = n_out = n_up = 0
+    fe_ = []      # (each floor's sides that face the eye: their ends, their outward normal, their length)
+    for (h_, poly_) in fls_:
+        np_ = len(poly_); ar_ = sum(poly_[i][0] * poly_[(i + 1) % np_][1] - poly_[(i + 1) % np_][0] * poly_[i][1] for i in range(np_)); sg_ = 1 if ar_ > 0 else -1; es_ = []
+        for i in range(np_):
+            (ax_, az_), (bx_, bz_) = poly_[i], poly_[(i + 1) % np_]; L_ = math.hypot(bx_ - ax_, bz_ - az_)
+            if L_ < 1e-6: continue
+            nx_, nz_ = (bz_ - az_) / L_ * sg_, -(bx_ - ax_) / L_ * sg_
+            if (nx_ + nz_) * 0.7071 > 0.2: es_.append((ax_, az_, bx_, bz_, nx_, nz_, L_))
+        fe_.append(es_)
+    n_cl = n_out = n_up = n_fr = 0
     for ob in rock + [o_ for (m_, r_) in RISERS.items() for o_ in (r_[1] or [])]:      # (the stones that rise as well: their own rock under their own slab)
         mw = ob.matrix_world; mi = mw.inverted()
         for v in ob.data.vertices:
             w = mw @ v.co; gx, gz, gy = w.x, -w.y, w.z
-            for (h_, poly_) in fls_:
+            for fi_, (h_, poly_) in enumerate(fls_):
                 ins_ = inside(poly_, (gx, gz)); np_ = len(poly_)
+                if front_ and not ins_ and h_ - 0.6 < gy < h_ + 0.05 and h_ - 0.6 > float(PLAN.get('sea_y', -100.0)) + 0.05:      # (not a floor at the sea: there the water is its foot, and the rocks about it stay)
+                    hit_ = False
+                    for (ax_, az_, bx_, bz_, nx_, nz_, L_) in fe_[fi_]:
+                        t_ = ((gx - ax_) * (bx_ - ax_) + (gz - az_) * (bz_ - az_)) / (L_ * L_); dd_ = (gx - ax_) * nx_ + (gz - az_) * nz_
+                        if 0.0 <= t_ <= 1.0 and 0.0 < dd_ <= front_: hit_ = True; break
+                    if hit_: w.z = h_ - 0.6; v.co = mi @ w; n_fr += 1; break
                 if h_ - lo_ < gy < h_ + hi_ and (ins_ or min(seg_dist((gx, gz), poly_[i], poly_[(i + 1) % np_]) for i in range(np_)) < mg_):
                     w.z = h_ - lo_; v.co = mi @ w; n_cl += 1; break
                 if clear_ is not None and ins_ and h_ + hi_ <= gy < h_ + clear_:
@@ -1192,7 +1208,7 @@ if RC and rock:      # (no tip of the rock through a slab: where it rises a litt
                     else:
                         w.z = h_ + clear_; n_up += 1
                     v.co = mi @ w; break
-    print('ROCK CLAMPED under the floors:', n_cl, 'vertices; cut back to their edges:', n_out, '; lifted clear over them:', n_up)
+    print('ROCK CLAMPED under the floors:', n_cl, 'vertices; cut back to their edges:', n_out, '; lifted clear over them:', n_up, '; sunk before their sides toward the eye:', n_fr)
 CV = PLAN.get('rock_carve') if PLAN else None
 if CV and rock:      # (room cut out of the rock where something stands or goes: the niche cut for the block, the space over a floor; boxes [x0, x1, z0, z1, y0, y1] in the game's axes; the owner, 18/11: "no rock through things, one in another")
     n_cv = 0
@@ -1219,6 +1235,10 @@ RS = []
 for nm_, (m_, r_) in RISERS.items():
     RS.append(join(m_, 'riser_%s_marble' % nm_))
     if r_: RS.append(join(r_, 'riser_%s_rock' % nm_))
+for o_ in RS:      # (the stones that rise smoothed as the rest, for the same painted light)
+    kd_ = 'rock' if o_.name.endswith('_rock') else 'marble'
+    if PLAN and kd_ in PLAN.get('smooth_normals', []):
+        for p_ in o_.data.polygons: p_.use_smooth = True
 if PLAN is not None and PLAN.get('relief'):      # (the small carved stone: on the face of the rock toward the eye, half sunk in it)
     rp = Vector(PLAN['relief']); Wd = RELIEF_W
     for lift in (0.0, 0.25, -0.25, 0.5):

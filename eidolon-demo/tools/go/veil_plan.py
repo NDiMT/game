@@ -101,6 +101,7 @@ def plan():
         'columns': [], 'volute': None, 'head': None, 'relief': None, 'cypress': None,
         'eye': eye_fit(pts, top_room=0.33, bottom_room=0.2, margin=0.8),
         'shore': True,
+        'smooth_normals': ['rock', 'marble'],      # (for the light laid in brushstrokes: smooth normals to mix into the facets' light (the owner, 19/11: "the brushstrokes on the other maps too"))
         'scenery': [['statue', [s[1][0], s[1][1] + s[2] / 2, s[1][2]], [0.46, s[2], 0.46], [0.94, 0.93, 0.9]] for s in statues + sea_statues],      # (placeholders in the blockout's preview)
     }
     return pl, puzzle

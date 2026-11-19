@@ -171,16 +171,16 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   down); its backdrop the concept's own sky and sea
   painted alone by Gemini (no horizon line; a band of bright haze at 0.30, `horizon` 0.33 so the sea's glints come in
   below it). The light leaves the statue at the height of her eyes (the owner). The goddess a colossus (the owner: "a
-  big statue of Aphrodite"): 11 m, rising out of the sea behind the highest rock, which hides where she meets the water,
-  her face turned to the eye (turn -1.2). Her model (`props/statue_goddess.glb`) is her first one, the whole of it
-  (11,660 flat faces: the owner, 18/11, "the first, with more polygons"; before, 4,200), its light and shade baked as
-  painted into the colours of its faces (Cycles, the light from the right of the picture as
-  the concept paints her, a lilac shade), drawn as baked (`baked_k` 2 in IV_SH: the vertex colours as they are; `far_k`
-  0.05, no rim); the game takes that look for any goddess model with vertex colours and no texture. The owner chose it
-  (18/11: "the first Aphrodite"), after "it doesn't even look like Aphrodite, just a blurred shape" and "I wanted a
-  texture with light and shade". Turned down on the way: a painted picture of her on a card ("it's bad"), a smooth P1
-  model (11,660 faces, shaded by the game), a detailed Tripo P2 model with her light baked into its texture (110 credits;
-  its texture needs mipmaps, `_iv_mipped`, or it sparkles in dark specks far off). The story's line crosses her neck at the level's start; the camera's follow lifts the whole
+  big statue of Aphrodite"),
+  painted far off in the level's backdrop (the owner, 19/11: "make Aphrodite in Gemini, further back in the background,
+  like low poly but big; don't spoil the background much"): Gemini painted her alone, a low-poly faceted Venus de Milo lit
+  from the left as the level's rocks, on flat green (`design/level3/goddess_lowpoly.png`); `tools/go/backdrop_figure.py`
+  cuts her out and lays her into the plain backdrop (`design/level3/backdrop_plain.jpg`) at the left, her head at 0.085 of
+  its height, her hips going into the bright haze band at 0.335, under a breath of haze; the 3D goddess is out of the plan
+  (`GODDESS` kept in `milos_plan.py` for the record). Her 3D models, all turned down: a painted picture of her on a card
+  in the world ("it's bad"), the Tripo P1 model smooth (11,660 faces) and flat with her light baked into its faces (4,200
+  and 11,660: `props/statue_goddess.glb`, `tools/go/bake_painted_vc.py`), a Tripo P2 model with her light baked into its
+  texture (a texture read raw from a .glb needs mipmaps, `_iv_mipped`, or it sparkles in dark specks far off). The story's line crosses her neck at the level's start; the camera's follow lifts the whole
   picture about 0.085 of the screen there, so her head is kept under the top by that. Turned down on the way: a smooth
   white island of marching cubes (`tools/go/milos_island.py`, still in the repo), a way of separate crooked stones
   (`node_slabs`), a deep blue-violet sky, a crisp sky with 25 grey rocks in the sea, the white island round slabs on a
@@ -190,17 +190,31 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   for painted light and shade, a trial not yet on by default (the owner asked for "the actual light and shade painted, not
   a texture on the rock"): `IV_PAINT_LIGHT=1 IV_PAINT_AO=0.5` (`paint_light`: the light on smoothed normals in soft
   bands); levels 1 and 2 would need their own rebuild with `smooth_normals`.
-- **The ring before every gate** is a very soft ochre (`dcc495`, a faint glow, `emit` 0.12 in the waking's levels; the
-  owner, 18/11: "ochre, very soft"; a bright yellowish `e3a94a` read as lemon); level 3's unlit ring a light grey-lilac
-  (`d2cee0`; the owner asked twice for it lighter).
+- **The ring before every gate** is a soft white light (`fbf9f4`, `emit` 0.3, a soft white glow; the owner, 19/11: "the
+  ring white light", after a bright yellowish ochre read as lemon and a very soft ochre); level 3's unlit ring a light
+  grey-lilac (`d2cee0`; the owner asked twice for it lighter) that lights to the white.
+- **The levels are painted in brushstrokes** (the owner, 19/11: "softly, as with a brush", "the brushstrokes on the
+  other maps too"; before, "I want the light and shade painted, not a texture on the rock"): in the waking's levels the
+  rock and the slabs (`rock2`, `marble2`) take `paint_light` 1 (the smooth form's light mixed into the facets', its steps
+  soft; the levels are built with `smooth_normals` for it) and `brush_k` (1, the slabs 0.6): strokes laid on the canvas,
+  held to the world (the screen's own axes at each place: the eye never turns), long and near upright, a little aslant,
+  some over others, some ground left bare, their edges soft; each stroke shifts the light where it lies (so the light's
+  steps break in strokes) and has its own tone, the darker a little cooler. The rock's hollows shaded (`ao_k` 0.5).
+  `IV_BRUSH=0` shows the levels as before; `IV_BRUSH=<k>` another strength. Turned down on the way: soft gradients alone
+  ("not like that"), small noisy strokes (they read as a grainy texture), strokes per face (cut at every facet).
 - **No rock through things** (the owner, 18/11: "make sure the rocks are clean, none through objects, one in another"):
   the builder's `rock_clamp` [below, above, margin, clear, edge] sinks rock tips under the floors (the stones that rise
   too: in level 1 their rock lay level with their slabs' tops), cuts tall rock reaching in over a floor back to its edge,
   or lifts it clear deeper in; `rock_carve` boxes are cut out of the rock (level 3: the niche for the block, the space
   over the gate's landing). Check a level with the audits kept in the scratchpad's way: rock over each floor's outline,
   in each stair, in each statue, and through the block's place where it comes to rest (all clear on 18/11; level 2
-  needed nothing). Level 1 rebuilt `ivory_level.py -- gowake/level.glb gowake/level.json 7 32 gowake/plan.json` (keep its
-  old level.json: the new build writes null keys it lacked).
+  needed nothing). A 6th value of `rock_clamp` keeps a slab's white side whole where it faces the eye: no rock before it
+  over its foot that far out, except at a floor in the sea (level 3: the rock that rose before the side of the gate's
+  landing; the owner: "the rock goes strangely into the slab"). Rebuilds: level 1 `ivory_level.py -- gowake/level.glb
+  gowake/level.json 7 32 gowake/plan.json` (keep its old level.json: the new build writes null keys it lacked), level 2
+  `-- goveil/level.glb goveil/level.json 11 48 goveil/plan.json` then `shore_hole.py goveil`; their plans regenerate
+  exactly from `wake_plan.py`, `veil_plan.py`. The smudge on level 3's bridge was there before (the owner: "don't change
+  anything on the slab, the smudge was there before"): left as it is.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are

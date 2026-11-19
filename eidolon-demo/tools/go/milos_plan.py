@@ -58,8 +58,7 @@ def plan():
         'G': {'h': H1, 'xz': [[-3.1, -5.25], [-3.1, -7.6], [-5.9, -7.6], [-5.9, -5.25]]},      # (the gate's rock, over the chasm)
     }
     face = lambda dx, dz: round(math.atan2(-dz, dx), 3)
-    statues = [['standing', [3.2, -1.0, 0.0], 3.4, face(-1.0, 0.0)],      # (she stands in the water before the island, looking up the channel; a placeholder model)
-               GODDESS]
+    statues = [['standing', [3.2, -1.0, 0.0], 3.4, face(-1.0, 0.0)]]      # (she stands in the water before the island, looking up the channel; a placeholder model; the goddess is no longer here: she is painted far off in the backdrop, low poly and big (the owner, 19/11), GODDESS kept for the record)
     puzzle = {
         'nodes': dict(N, **LIGHT), 'edges': edges, 'start': 'S', 'exit': 'R', 'block': 'K', 'holes': [],
         'intro': [[0.0, H0, 4.41], [0.0, H0, 4.4]],      # (no way in: she stands where the light of the second gate let her go)
@@ -96,7 +95,7 @@ def plan():
         'smooth_normals': ['rock', 'marble'],      # (for the painted light: the smooth form's light can be mixed into the facets' (the owner, 18/11: "the light and shade as painted"))
         'rock_carve': [[-6.65, -5.25, -3.65, -2.35, 1.26, 2.45],      # (the niche cut out of the rock for the block: room for it under the rock's roof)
                        [-5.9, -3.1, -7.6, -5.25, 1.26, 3.3]],      # (no rock over the gate's landing)
-        'rock_clamp': [0.04, 0.35, 0.06, 1.15, 0.3],      # (no tip of its aslant rock up through a slab (the owner, 18/11: "grey stone passes through the white"); and no tall rock in what stands on a floor: the niche's roof lifted clear of the block pushed under it, a rock at the gate's landing cut back to its edge ("no rock through things, one in another"))
+        'rock_clamp': [0.04, 0.35, 0.06, 1.15, 0.3, 0.45],      # (no tip of its aslant rock up through a slab (the owner, 18/11: "grey stone passes through the white"); and no tall rock in what stands on a floor: the niche's roof lifted clear of the block pushed under it, a rock at the gate's landing cut back to its edge ("no rock through things, one in another"))
         'bridges': [[-5.0, -4.0, -5.24, -3.76, H1]],      # (a slab over the chasm, nothing under it but the sea; a joint's breadth from each floor)
         'statues': statues, 'pedestals': [], 'shore_statues': ['standing'],      # (the light's statue stands in the water: the sea's thin foam hugs her as it does the rock)
         'rocks': rocks,

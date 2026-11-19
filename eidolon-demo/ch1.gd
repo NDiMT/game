@@ -2169,7 +2169,7 @@ const IV_WAKE_PAL := {      # the waking: dawn over a still sea. Pearl and rose 
 	"phead": ["f3e4df", "dcc4c4", "b9a0ad", "917b93"],
 	"groove": ["e2cac6", "e2cac6", "e2cac6", "e2cac6"],
 	"line": ["fff4ee", "fff4ee", "fff4ee", "fff4ee"],
-	"ring": ["dcc495", "dcc495", "dcc495", "dcc495"],      # (the ring before the gate a very soft ochre (the owner, 18/11: "ochre, very soft"); before, a bright yellowish ochre, and a warm white)
+	"ring": ["fbf9f4", "fbf9f4", "fbf9f4", "fbf9f4"],      # (the ring before the gate a soft white light (the owner, 19/11: "the ring white light"); before, a very soft ochre, a bright yellowish ochre, and a warm white)
 	"bronze": ["f2d398", "d7a660", "9c6e40", "6b4a30"],
 	"silver": ["fff1d2", "f3d9a6", "d2ac72", "9a7548"],      # (a mirror's face: polished bronze, bright)
 	"wood": ["b88d68", "96714f", "74533b", "533b2b"],
@@ -2209,7 +2209,7 @@ const IV_MILOS_PAL := {      # the third level in the colours of its concept, ch
 	"marble2": ["f5f7fb", "e8ebf1", "d3d9e8", "b3bbd6"],      # (its slabs, the stair, the gate: white, a cool blue shade (#eaeff1 #e7e9ed #d6dde8 #ccd2e9))
 	"statue": ["fbfbff", "e8e5f3", "c4bfdb", "9089b3"],
 	"groove": ["d9dcec", "d9dcec", "d9dcec", "d9dcec"],
-	"ring": ["dcc495", "dcc495", "dcc495", "dcc495"],      # (lit: the very soft ochre of every level's ring; unlit, a light grey-lilac stone (_ivm_ring_tick))
+	"ring": ["fbf9f4", "fbf9f4", "fbf9f4", "fbf9f4"],      # (lit: the soft white light of every level's ring; unlit, a light grey-lilac stone (_ivm_ring_tick))
 	"goddess": ["ffffff", "f7f5fc", "c6c0dc", "8a82ad"],      # (the goddess: white in the light, a clear lilac shade, as the concept paints her)
 }
 func _iv_pal(kind: String) -> Array:
@@ -2647,14 +2647,17 @@ func _iv_mat(kind: String, far_k := 0.0, extra := {}) -> ShaderMaterial:
 	m.set_shader_parameter("uv_flip", iv_uvf); m.set_shader_parameter("alb_in_light", iv_alb)
 	if OS.get_environment("IV_DBG") != "": m.set_shader_parameter("dbg", float(OS.get_environment("IV_DBG")))
 	if kind == "line" or kind == "ring" or kind == "groove": m.set_shader_parameter("flat_mode", 1.0)
-	if kind == "ring": m.set_shader_parameter("emit", 0.12 if go_wake else 0.55)      # (the waking's ochre ring: softly lit, not burnt to lemon)
+	if kind == "ring": m.set_shader_parameter("emit", 0.3 if go_wake else 0.55)      # (the waking's ring: a soft white light)
 	if OS.get_environment("IV_PAINT") != "" and not (kind in ["line", "ring", "groove", "statue", "salt"]): m.set_shader_parameter("paint_k", float(OS.get_environment("IV_PAINT")) * (0.5 if kind == "marble2" else 1.0))      # (a try: light and shade as painted; not on the smooth statues and round rocks, gentler on the slabs)
 	for k in extra: m.set_shader_parameter(k, extra[k])
-	if OS.get_environment("IV_PAINT_AO") != "" and kind == "rock2": m.set_shader_parameter("ao_k", float(OS.get_environment("IV_PAINT_AO")))      # (a try: the rock's hollows shaded, as the concept paints them)
-	if OS.get_environment("IV_PAINT_LIGHT") != "" and (kind == "rock2" or kind == "marble2"): m.set_shader_parameter("paint_light", float(OS.get_environment("IV_PAINT_LIGHT")))      # (a try: the painted light)
-	if OS.get_environment("IV_BRUSH") != "" and (kind == "rock2" or kind == "marble2"):      # (a try: the light laid in brushstrokes)
-		m.set_shader_parameter("brush_k", float(OS.get_environment("IV_BRUSH")) * (0.6 if kind == "marble2" else 1.0))
+	var brush_on := go_wake and OS.get_environment("IV_BRUSH") != "0" and (kind == "rock2" or kind == "marble2")      # (the waking's levels painted: the light laid softly in brushstrokes on the rock and the slabs, over the smooth form's light, the rock's hollows shaded (the owner, 19/11: "softly, as with a brush", "the brushstrokes on the other maps too"); IV_BRUSH=0 shows them as before)
+	if brush_on:
+		m.set_shader_parameter("paint_light", 1.0)
+		m.set_shader_parameter("brush_k", (0.6 if kind == "marble2" else 1.0) * (float(OS.get_environment("IV_BRUSH")) if OS.get_environment("IV_BRUSH") != "" else 1.0))
+		if kind == "rock2": m.set_shader_parameter("ao_k", 0.5)
 		if OS.get_environment("IV_BRUSH_SC") != "": m.set_shader_parameter("brush_sc", float(OS.get_environment("IV_BRUSH_SC")))
+	if OS.get_environment("IV_PAINT_AO") != "" and kind == "rock2": m.set_shader_parameter("ao_k", float(OS.get_environment("IV_PAINT_AO")))      # (to try the rock's hollows otherwise)
+	if OS.get_environment("IV_PAINT_LIGHT") != "" and (kind == "rock2" or kind == "marble2"): m.set_shader_parameter("paint_light", float(OS.get_environment("IV_PAINT_LIGHT")))      # (to try the smooth form's light otherwise)
 	iv_mats[key] = m
 	return m
 
@@ -6219,7 +6222,7 @@ func _ivr_build() -> void:
 		var hi := MeshInstance3D.new(); hi.mesh = hm; hi.material_override = _iv_mat("rock2", 0.0, {"fog_hi": -9.0, "fog_lo": -14.0}); hi.position = Vector3(0, 0.012, 0); iv_ring.add_child(hi)
 	var gq := QuadMesh.new(); gq.size = Vector2(1.7, 1.7)
 	var gm := StandardMaterial3D.new(); gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm.albedo_texture = load("res://goiv/glow.png")
-	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm.blend_mode = BaseMaterial3D.BLEND_MODE_MIX if go_moon else BaseMaterial3D.BLEND_MODE_ADD; gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; gm.albedo_color = Color(1.0, 0.76, 0.36, 0.42) if go_moon else (Color(1.0, 0.88, 0.68, 0.3) if go_wake else Color(1.0, 0.96, 0.86, 0.5))      # (on the snow a glow added burns white: drawn over it, golden; at the waking's gates golden too, as the ring's ochre)
+	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm.blend_mode = BaseMaterial3D.BLEND_MODE_MIX if go_moon else BaseMaterial3D.BLEND_MODE_ADD; gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; gm.albedo_color = Color(1.0, 0.76, 0.36, 0.42) if go_moon else (Color(1.0, 0.97, 0.92, 0.38) if go_wake else Color(1.0, 0.96, 0.86, 0.5))      # (on the snow a glow added burns white: drawn over it, golden; at the waking's gates golden too, as the ring's ochre)
 	iv_glow = MeshInstance3D.new(); iv_glow.mesh = gq; iv_glow.material_override = gm; iv_glow.position = Vector3(0, 0.4, 0); iv_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; iv_ring.add_child(iv_glow)
 	if go_quarry: _ivq_decor()
 	if go_moon:
@@ -9513,7 +9516,7 @@ func _ivm_ring_tick() -> void:      # (the ring's stone by its light: a dark lil
 	var off := Color("d2cee0"); var on := Color(String((_iv_pal("ring") as Array)[0]))      # (unlit, a light grey-lilac: off, but not dark (the owner, 18/11: "the unlit ring lighter", twice))
 	var c := off.lerp(on, clampf(ivm_ring_k, 0.0, 1.0))
 	for nm in ["c_top", "c_lit", "c_mid", "c_dark"]: rmm.set_shader_parameter(nm, c)
-	rmm.set_shader_parameter("emit", 0.12 * clampf(ivm_ring_k, 0.0, 1.0))
+	rmm.set_shader_parameter("emit", 0.3 * clampf(ivm_ring_k, 0.0, 1.0))
 	if ivm_ring_k >= 1.0: ivm_ring_done = true
 var ivm_beam: Array = []      # (the beam's straight runs: [core, halo] each)
 var ivm_spark: MeshInstance3D      # (where the light ends on a thing: a bright spot)
