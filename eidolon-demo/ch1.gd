@@ -6121,6 +6121,9 @@ func _ivr_build() -> void:
 	var j0 = JSON.parse_string(FileAccess.get_file_as_string(go_dir + "level.json"))
 	if j0 is Dictionary and (j0 as Dictionary).get("sea_y") != null: ivr_sea_y = float(j0.sea_y)
 	if (go_moon or go_quarry or go_wake) and OS.get_environment("IV_NO_BACKDROP") == "" and ResourceLoader.exists(go_dir + "backdrop.jpg"): iv_bgtex = load(go_dir + "backdrop.jpg")
+	if OS.get_environment("IV_BG_FILE") != "" and iv_bgtex != null:      # (to try another backdrop from a file, unimported)
+		var bgi := Image.load_from_file(OS.get_environment("IV_BG_FILE"))
+		if bgi != null: iv_bgtex = ImageTexture.create_from_image(bgi)
 	var bm := ShaderMaterial.new(); var bs := Shader.new(); bs.code = IV_BG_SH if iv_bgtex == null else IV_BGTEX_SH; bm.shader = bs
 	_iv_sky(bm)
 	if iv_bgtex != null: bm.set_shader_parameter("bg_tex", iv_bgtex); bm.set_shader_parameter("bg_scale", _iv_bg_scale()); bm.set_shader_parameter("uv_flip", iv_uvf); ivr_bgm = bm

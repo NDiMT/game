@@ -213,8 +213,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   landing; the owner: "the rock goes strangely into the slab"). Rebuilds: level 1 `ivory_level.py -- gowake/level.glb
   gowake/level.json 7 32 gowake/plan.json` (keep its old level.json: the new build writes null keys it lacked), level 2
   `-- goveil/level.glb goveil/level.json 11 48 goveil/plan.json` then `shore_hole.py goveil`; their plans regenerate
-  exactly from `wake_plan.py`, `veil_plan.py`. The smudge on level 3's bridge was there before (the owner: "don't change
-  anything on the slab, the smudge was there before"): left as it is.
+  exactly from `wake_plan.py`, `veil_plan.py`. The grey star on level 3's bridge (the owner, 19/11: "remove the smudge"; it was there before the brushstrokes): a
+  slab's corner buried under another stone (a bridge's end on its floor, a pillar's foot) bakes black in the shade of
+  corners, and the faces round it on the white top drew a star; the builder now gives such a corner its face's other
+  corners' shade (all levels rebuilt). `IV_BG_FILE=<png>` tries another backdrop without importing it.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are

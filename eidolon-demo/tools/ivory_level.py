@@ -1374,6 +1374,16 @@ for o in (M, R, O, B, SN, QU, SA, *RS):
             c = ca.data[li].color
             d = dep.data[o.data.loops[li].vertex_index].value if dep is not None else 0.0
             ca.data[li].color = (c[0], min(1.0, d / 4.0), c[2], c[3])
+    if o.name == 'marble' or o.name.endswith('_marble'):      # (a corner buried under another stone (a bridge's end on its floor, a pillar's foot) bakes black, and the faces round it on a white top drew a grey star; such a corner takes its face's other corners' shade (the owner, 19/11: "remove the smudge"))
+        n_fix = 0; r3 = o.matrix_world.to_3x3()
+        for poly in o.data.polygons:
+            if (r3 @ poly.normal).normalized().z < 0.9: continue
+            lis = list(poly.loop_indices); vals = [ca.data[li].color[0] for li in lis]
+            for k, li in enumerate(lis):
+                oth = [vals[j] for j in range(len(lis)) if j != k]
+                if vals[k] < 0.2 and min(oth) > 0.5:
+                    c = ca.data[li].color; ca.data[li].color = (sum(oth) / len(oth), c[1], c[2], c[3]); n_fix += 1
+        print('SHADE: buried corners lifted on', o.name, n_fix)
     print('BAKED', o.name)
 
 bpy.ops.object.select_all(action='SELECT')
