@@ -97,7 +97,8 @@ def plan():
         'columns': [],
         'glass': {'planes': PLANES, 'plate': q_world},
         'rocks': rocks,
-        'rocks_after': [[[0.0, SEA, 3.0], 1.0, SEA + 0.8, {'noimg': True}], [[1.35, SEA, 2.25], 0.55, SEA + 0.38, {'noimg': True}], [[4.45, SEA, -2.25], 0.8, SEA + 0.6, {'noimg': True}]],      # (in the empty sea at the picture's foot, a rock and a smaller one beside it at the left, one at the right (the owner, 19/11: "two, three rocks down in the empty space"); made after all the rest)
+        'rocks_after': [[[0.0, SEA, 3.0], 1.0, SEA + 0.8, {'noimg': True}], [[1.35, SEA, 2.25], 0.55, SEA + 0.38, {'noimg': True}], [[4.45, SEA, -2.25], 0.8, SEA + 0.6, {'noimg': True}],
+                        [[-0.72, SEA, 0.78], 0.44, H0 + 0.22, {'noclamp': True}], [[0.8, SEA, 0.12], 0.4, H0 + 0.16, {'noclamp': True}], [[0.12, SEA, 1.02], 0.32, H0 + 0.08, {'noclamp': True}]],      # (and brown rock rising through the corridor's end where she starts, about the square there (the owner, 19/11: "rocks passing through the starting point"): its front corner, its right side, before it)      # (in the empty sea at the picture's foot, a rock and a smaller one beside it at the left, one at the right (the owner, 19/11: "two, three rocks down in the empty space"); made after all the rest)
         'volute': None, 'head': None, 'relief': None, 'cypress': None,
         'eye': eye_fit(pts, top_room=0.3, bottom_room=0.12, margin=0.7),      # (a little lower than before: the image, further off, stands higher)
         'shore': True,

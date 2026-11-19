@@ -250,7 +250,12 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
 - **Level 4, the glass (`goglass/`, `FLIP=goglass`, in the game since 19/11)**: **now an opposite island, not a glass**
   (the owner, 19/11: "could it be not a glass with a reflection, just an opposite island?"): `IVGL_ISLAND` hides the
   pane, its sheens and its clip; the image is drawn in the level's own colours, only a little given to a grey-blue haze
-  with its distance (`IVGL_ISLE_HAZE`, `IVGL_ISLE_FADE`); her twin over there stays a dark blurred shadow; the glass's
+  with its distance (`IVGL_ISLE_HAZE`, `IVGL_ISLE_FADE`), and laid over with the great face's own gradient, rose high on
+  the screen to light blue at the water (the owner: "besides subdued, that pink to light blue gradient the statue has",
+  then "even more": `IVGL_ISLE_GRAD` 0.88, `img_pink`, `img_blue` over `img_gy` in IV_SH; its haze takes the gradient
+  too); the glass may be implied, but the island must never lie over the face (the owner: "what I don't want is the
+  second island falling on the statue"; a blur and mist over the island was tried and turned down); her twin over there
+  stays a dark blurred shadow; the glass's
   notes below still hold for all else (the turn about x + z + k = 0, the pairs, the square, the gate's light). **Its
   colours brought back to its concept's** (the owner: "fix the colours, you have strayed far from the style"; sampled
   from `design/level4/slide/concept_start.jpg`: a pale grey-blue sea, lum about 0.66, saturation 0.2, where it had
@@ -271,8 +276,12 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   the terrace's back, down the stair's head, then along the front row) and its image stands in it. **The same square of
   light lies at her start** (the owner: "the same bright square at the start too, and if you step on it, it resets the
   block"): stepping back onto it, the block sinks into the stone where it stands and rises where it began
-  (`_ivgl_reset`; on the white stone it is a bright line inlaid in a darker bed, `IVGL_PAD_SH`; its image in the glass a
-  dim blue). Five places the block cannot come out of (the corners), and no true dead end with the square
+  (`_ivgl_reset`). It is made as the ring before the gate is, square, so it stands out at the game's eye (the owner:
+  "the square that resets doesn't stand out"; a bold flat square was "awful"; "brown inside and bright outside, as the
+  circle is"): a frame of the ring's own lit white (`_iv_mat("ring")`, `fbf9f4`, emit 0.3; four round bars and round
+  corners, squashed to 0.62 as the ring's torus is), brown stone within (`rock2`), the ring's soft glow over it
+  (`IVGL_PAD_HALF` 0.39, `IVGL_PAD_TUBE` 0.075); no disc of the way in it, the way's lines stopping at its rim; it flares
+  as it resets; its twin stands on the island. Five places the block cannot come out of (the corners), and no true dead end with the square
   (`tools/go/still_glass_trial.py`, plan `tools/go/still_plan.py`; the level.glb of the moving glass is the same, its
   floors unchanged). **The real place and its image stand a little apart** (the owner: "let the two sections have a
   little distance between them"): the glass 2.4 m past the terrace's nearest row (`GAP`, plane 11.4; 0.8 before), the
@@ -285,13 +294,16 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   edge's grind, the fall's thud without its water, a heel's tap lowered); the square at the start sinks it straight
   down and raises it where and as it began (`ivt_home`). Levels 2 and 3 still slide it. **The squares' line is thin and
   sharp but bright** (the owner: "a thinner line, sharp but bright"): a centimetre or so, never under a pixel and a
-  third, its edges a pixel wide, a breath of light at its rim (`IVGL_SQUARE_SH`, `IVGL_PAD_SH`). Three rocks in the empty
+  third, its edges a pixel wide, a breath of light at its rim (`IVGL_SQUARE_SH`). Three rocks in the empty
   sea at the picture's foot (the owner, 19/11: "two, three rocks down in the empty space"; `rocks_after` in
   `still_plan.py`, made after the rest; rebuilt `ivory_level.py -- goglass/level.glb goglass/level.json 406 24
   goglass/plan.json`, which also makes its shore map); the mist sheets at the lower corners lie just over the water, so
   the rocks stand through them at their foot. The glass shows no image of them (in it they stood in the sky, beyond the
   sea's end): a `rocks_after` entry with `{'noimg': True}` is built with its vertices' alpha 0, and the image's shader
-  leaves out what has it (`COLOR.a`). The sea's gradient (the owner: "can we play a little with the sea's
+  leaves out what has it (`COLOR.a`). Brown rocks pass through her start (the owner, 19/11: "brown rocks passing
+  through the starting point"): three more in `rocks_after` about it, `{'noclamp': True}`, so the builder's
+  `rock_clamp` (which sinks every other rock under a floor) leaves them standing up through the slab's edges, clear of
+  the square and her way. The sea's gradient (the owner: "can we play a little with the sea's
   gradient?"): tints over the painted sea in `IVS_GRADS` (`deep`, `sun`, `mist`), the level's own in `IVS_GRAD_GLASS`;
   `IV_SEA_GRAD=<name>` tries one; `deep` is the level's own until the owner picks. Her image in the glass is a black blurred
   shadow of her (the owner, 19/11: "if Ione's reflection shows, let it be like a black blurred shadow"; `IVGL_SHADE_SH`).
@@ -305,7 +317,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   (`_ivgl_gate_images`, made after the gate), the ring's image lit with it (`ivgl_ring_img_mat`). **The great face is
   painted in the backdrop** (the owner asked "is the statue like a picture?": yes), a little further back since 19/11
   ("the statue a liiittle further back"): Gemini's edit of the backdrop, the face about 85% of its size, lower and paler,
-  nothing else changed (`design/level4/game/backdrop_far.jpg`, its prompt beside it).
+  nothing else changed (`design/level4/game/backdrop_far.jpg`, its prompt beside it); then moved up and to the right,
+  under the sun, so the opposite island never lies over it (`backdrop_moved.jpg`); then further back again (the owner:
+  "the statue further back"): about two thirds of that size and a little higher, its chin clear of the island's top at
+  her start, where the camera's follow sets the island highest on the screen (`backdrop_farther.jpg`; each with its
+  prompt beside it).
   The sea mirrors the level and has its foam and its gradient as every other sea (the owner, 19/11: "the sea, the
   gradient, the foam and the reflections are not like the other seas we made"): the level's image in the water is back,
   the foam is read about the glass too for the image's stones (`shore_mir`), and its backdrop's sea was painted again in
