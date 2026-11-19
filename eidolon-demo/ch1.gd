@@ -2262,7 +2262,8 @@ uniform float fog_lo = -10.5;
 uniform float fog_ref = 0.0;
 uniform float far_k = 0.0;
 uniform float img_k = 0.0; uniform vec4 img_plane = vec4(0.70710678, 0.0, 0.70710678, 0.0); uniform vec2 img_fade = vec2(0.34, 0.045);
-uniform vec3 img_mist : source_color = vec3(0.76, 0.78, 0.9); uniform vec3 img_tint : source_color = vec3(0.82, 0.87, 1.0); uniform float img_tint_k = 0.6; uniform float img_dark = 0.92;      // (the image pale and cool, given to the air of the painting's own haze, as its concept has it: the dark blue asked for first was "not liked after all" (the owner, 19/11); its air one colour, never the painting behind it: the great face in the painting showed through its stones ("why is the head seen over the stone?"))
+uniform vec3 img_mist : source_color = vec3(0.84, 0.8, 0.9); uniform vec3 img_tint : source_color = vec3(0.82, 0.87, 1.0); uniform float img_tint_k = 0.72; uniform float img_dark = 0.95;
+uniform vec3 img_lo : source_color = vec3(0.5, 0.53, 0.8); uniform vec3 img_hi : source_color = vec3(0.98, 0.85, 0.89);      // (the image in the great face's own hue (the owner, 19/11: "the reflection too, this blue-pink of the statue"): its shade the face's blue-lilac, its light its rose)      // (the image pale and cool, given to the air of the painting's own haze, as its concept has it: the dark blue asked for first was "not liked after all" (the owner, 19/11); its air one colour, never the painting behind it: the great face in the painting showed through its stones ("why is the head seen over the stone?"))
 uniform float img_far = 1e6;      // (no image of what lies further behind the glass than this: the rocks far before the real place would stand in the sky)
 uniform vec4 img_clip = vec4(-1e6, 1e6, -1e6, 1e6); uniform vec3 img_c0; uniform vec3 img_al = vec3(0.70710678, 0.0, -0.70710678); uniform vec3 img_fwd = vec3(0.0, 0.0, -1.0);      // (the glass's pane: along it from img_c0, and its height; the eye's way)      // (the fourth level: a thing's image beyond the glass, given to the air the further it lies behind it)
 uniform float veins = 0.0;
@@ -2528,7 +2529,7 @@ void fragment(){
 	float fk = max(1.0 - smoothstep(fog_ref + fog_lo, fog_ref + fog_hi, wy), far_k);
 	if (haze > 0.0) fk = max(fk, haze * 0.22 * smoothstep(44.0, 52.0, -VERTEX.z));      // (VERTEX: from the eye)
 	if (img_k > 0.5 && (COLOR.a < 0.5 || -(dot(wp, img_plane.xyz) + img_plane.w) > img_far)) discard;      // (no image of what the builder marked so (the rocks in the sea at the picture's foot: in the glass they would stand in the sky), nor of what lies further behind it than img_far)
-	if (img_k > 0.5) { c = mix(c, vec3(dot(c, vec3(0.3, 0.55, 0.15))) * img_tint, img_tint_k) * img_dark; fk = max(fk, clamp(img_fade.x + img_fade.y * max(-(dot(wp, img_plane.xyz) + img_plane.w), 0.0), 0.0, 0.9)); }      // (an image: its colour cooled toward silver, and given to the air)
+	if (img_k > 0.5) { c = mix(c, mix(img_lo, img_hi, smoothstep(0.12, 0.95, dot(c, vec3(0.3, 0.55, 0.15)))), img_tint_k) * img_dark; fk = max(fk, clamp(img_fade.x + img_fade.y * max(-(dot(wp, img_plane.xyz) + img_plane.w), 0.0), 0.0, 0.9)); }      // (an image: its colour cooled toward silver, and given to the air)
 	if (lfog > 0.5) {      // (into the mist softly, as mist does: a long fading, its edge in wisps)
 		float lt = clamp((ld - lf_hi) / lf_len, 0.0, 1.0);      // (one clean fade down each face: no wisps, they smudged the rock)
 		fk = max(fk, lt * lt * (3.0 - 2.0 * lt));
@@ -4311,6 +4312,7 @@ void fragment(){      // (the whole opening white, the owner: "in the gates I'd 
 var ivw_gate_m: ShaderMaterial
 var ivw_gate_glow: StandardMaterial3D
 var ivw_gate_p := Vector3.ZERO; var ivw_gate_front := Vector3.FORWARD
+var ivw_gate_glow_n: MeshInstance3D      # (the glow about the gate)
 var ivw_gate_parts: Array = []; var ivw_gate_ax := "x"      # (the gate's light: its white opening, the light on the stone before it, its motes)
 
 ## the end of the waking: she steps through the gate into its light, which flares as she comes and bursts as she is in it;
@@ -4446,7 +4448,7 @@ func _ivw_gate_light(p: Vector3, ax: String) -> void:
 	ivw_gate_glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; ivw_gate_glow.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; ivw_gate_glow.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	ivw_gate_glow.albedo_color = Color(1.0, 0.92, 0.8, 0.32)
 	var gl := MeshInstance3D.new(); gl.mesh = gq; gl.material_override = ivw_gate_glow; gl.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	iv_root.add_child(gl); gl.global_position = IV_O + p + Vector3(0, 0.95, 0) + front * 0.05
+	iv_root.add_child(gl); gl.global_position = IV_O + p + Vector3(0, 0.95, 0) + front * 0.05; ivw_gate_glow_n = gl
 	var fq := QuadMesh.new(); fq.size = Vector2(1.5, 1.5); fq.orientation = PlaneMesh.FACE_Y      # (its light lying on the stone before it)
 	var fm := StandardMaterial3D.new(); fm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; fm.albedo_texture = load("res://goiv/glow.png")
 	fm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; fm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; fm.albedo_color = Color(1.0, 0.92, 0.8, 0.3)
@@ -4464,6 +4466,7 @@ func _ivw_gate_light(p: Vector3, ax: String) -> void:
 	pt.color_ramp = g; pt.emitting = true
 	ivw_gate_parts.append(pt)
 	if go_milos or go_glass: _ivm_gate_shut()      # (the third and fourth levels: the door shut until the ring is lit)
+	if go_glass: _ivgl_gate_images()      # (made after the glass: its light in the glass too)
 
 const IVW_VEIL_SH := """
 shader_type spatial;
@@ -6381,7 +6384,7 @@ func _ivr_build() -> void:
 	iv_ring = Node3D.new(); iv_root.add_child(iv_ring); iv_ring.global_position = ivp_nodes[ivg_exit if ivg_on else "r"]
 	var tm := TorusMesh.new(); tm.inner_radius = 0.3 if ivr_on else 0.36; tm.outer_radius = 0.46; tm.rings = 32; tm.ring_segments = 8
 	var rm := _iv_prim(tm, Vector3(0, 0.06, 0), "ring", iv_ring); rm.scale = Vector3(1, 0.62, 1); rm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	if go_glass: call_deferred("_ivgl_pair", iv_ring)      # (its image in the glass)
+	if go_glass: call_deferred("_ivgl_pair_ring")      # (its image in the glass, lit as it lights)
 	if go_milos or go_glass:      # (the third level: the ring dark, a stone unlit, no glow, until the light reaches it; then the ochre of every ring comes up in it (the owner, 18/11: "before the light falls on it, off, darker"))
 		ivm_ring_gold = rm; rm.material_override = (rm.material_override as ShaderMaterial).duplicate(); _ivm_ring_tick()
 	if ivr_on:
@@ -9783,6 +9786,9 @@ func _ivm_ring_tick() -> void:      # (the ring's stone by its light: a dark lil
 	var c := off.lerp(on, clampf(ivm_ring_k, 0.0, 1.0))
 	for nm in ["c_top", "c_lit", "c_mid", "c_dark"]: rmm.set_shader_parameter(nm, c)
 	rmm.set_shader_parameter("emit", 0.3 * clampf(ivm_ring_k, 0.0, 1.0))
+	if ivgl_ring_img_mat != null:      # (its image in the glass lights with it)
+		for nm in ["c_top", "c_lit", "c_mid", "c_dark"]: ivgl_ring_img_mat.set_shader_parameter(nm, c)
+		ivgl_ring_img_mat.set_shader_parameter("emit", 0.3 * clampf(ivm_ring_k, 0.0, 1.0))
 	if ivm_ring_k >= 1.0: ivm_ring_done = true
 var ivm_beam: Array = []      # (the beam's straight runs: [core, halo] each)
 var ivm_spark: MeshInstance3D      # (where the light ends on a thing: a bright spot)
@@ -9988,6 +9994,7 @@ func _ivm_leaf_mesh(r: float, hs: float, th: float) -> ArrayMesh:
 
 func _ivm_gate_open() -> void:
 	for p in ivw_gate_parts: (p as Node3D).visible = true
+	for p in ivgl_gate_imgs: (p as Node3D).visible = true      # (the fourth level: the gate's light in the glass too (the owner, 19/11: "when the gate opens, light in the reflection too"))
 	if ivw_gate_glow != null:
 		create_tween().tween_property(ivw_gate_glow, "albedo_color:a", 0.32, 1.6).set_trans(Tween.TRANS_SINE)
 	for lf in ivm_leaves:
@@ -10220,6 +10227,27 @@ func _ivgl_reset() -> void:      # (she steps on the square of light at her star
 	await b.finished
 	create_tween().tween_method(func(v: float) -> void: sm.set_shader_parameter("k", v), 2.2, 1.0, 0.8).set_trans(Tween.TRANS_SINE)
 	iv_busy = false
+
+var ivgl_gate_imgs: Array = []      # (the gate's light in the glass: its white opening, the light on the stone before it, its motes, its glow; shown as it opens)
+var ivgl_ring_img_mat: ShaderMaterial
+
+func _ivgl_gate_images() -> void:      # (the same light, its own materials kept (not an image's): it is light, and it follows every change of the real one)
+	var src: Array = ivw_gate_parts.duplicate()
+	if ivw_gate_glow_n != null: src.append(ivw_gate_glow_n)
+	for p in src:
+		var n := p as Node3D
+		var im := _ivgl_pair(n)
+		if im == null: continue
+		if n is MeshInstance3D: (im as MeshInstance3D).material_override = (n as MeshInstance3D).material_override
+		if n == ivw_gate_glow_n: im.visible = true      # (the glow's own light goes by its colour's alpha, shared)
+		else: im.visible = n.visible; ivgl_gate_imgs.append(im)
+
+func _ivgl_pair_ring() -> void:
+	var im := _ivgl_pair(iv_ring)
+	if im == null or ivm_ring_gold == null: return
+	var f := im.find_child(String(ivm_ring_gold.name), true, false)
+	if f is MeshInstance3D: ivgl_ring_img_mat = (f as MeshInstance3D).material_override as ShaderMaterial
+	_ivm_ring_tick()
 
 func _ivgl_demo_open() -> void:
 	ivm_open = true; ivm_ring_k = 1.0

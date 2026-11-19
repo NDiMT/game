@@ -287,9 +287,16 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   `IV_SEA_GRAD=<name>` tries one; `deep` is the level's own until the owner picks. Her image in the glass is a black blurred
   shadow of her (the owner, 19/11: "if Ione's reflection shows, let it be like a black blurred shadow"; `IVGL_SHADE_SH`).
   **The image is pale and airy, as its concept has it** (the owner, 19/11: "I don't like this dark after all", after
-  asking for a darker blue): cooled toward a light blue (`img_tint`, `img_tint_k` 0.6, `img_dark` 0.92) and given to the
-  painting's own haze, one colour (`img_mist` 0.76, 0.78, 0.9: never the painting itself, whose face showed through the
-  stones), a third at the glass and more for each metre behind it (`IVGL_IMG_FADE`); her shadow stays a dark blue.
+  asking for a darker blue), **in the great face's own blue-pink** ("the reflection too, this blue-pink of the
+  statue"): a duotone, its shade the face's blue-lilac (`img_lo`), its light its rose (`img_hi`), `img_tint_k` 0.72,
+  given to a lilac haze of one colour (`img_mist` 0.84, 0.8, 0.9: never the painting itself, whose face showed through
+  the stones), a third at the glass and more for each metre behind it (`IVGL_IMG_FADE`); her shadow stays a dark blue.
+  The gate's light and its ring light in the glass too as it opens (the owner: "when the gate opens, light in the
+  reflection too"): the white opening, the light before it, its motes and glow paired with their own materials
+  (`_ivgl_gate_images`, made after the gate), the ring's image lit with it (`ivgl_ring_img_mat`). **The great face is
+  painted in the backdrop** (the owner asked "is the statue like a picture?": yes), a little further back since 19/11
+  ("the statue a liiittle further back"): Gemini's edit of the backdrop, the face about 85% of its size, lower and paler,
+  nothing else changed (`design/level4/game/backdrop_far.jpg`, its prompt beside it).
   The sea mirrors the level and has its foam and its gradient as every other sea (the owner, 19/11: "the sea, the
   gradient, the foam and the reflections are not like the other seas we made"): the level's image in the water is back,
   the foam is read about the glass too for the image's stones (`shore_mir`), and its backdrop's sea was painted again in
