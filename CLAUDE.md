@@ -252,7 +252,14 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   no dead end, the image needed; a first board of 39 moves was too many for a 4th level, the owner: "a simpler form with
   a mirror"). The glass stands across the screen, the real map below and its image above (the owner: "more room"; side by
   side each half had half a phone's width; `glass_lr` keeps that form): cracks are the only crossings; the stone's image
-  is a stepping stone over a hole of fog, a block on a floor. Next, with the owner's OK: plan, blockout, concept, build.
+  is a stepping stone over a hole of fog, a block on a floor. Plan `tools/go/glass_plan.py` (only the real side is built;
+  the game turns it over about the glass for the image), blockout `tools/go/glass_preview.py`. Concept chosen (the owner,
+  19/11, the third of three): `design/level4/concept.jpg` (prompt beside it): the real place below in warm marble on dark
+  rock, the reflection above pale and silver in mist, fog where it is missing, the ring and the gate only in it, the
+  glass almost invisible with soft vertical gleams, the crack a tall jagged split glowing gold from the terrace, no
+  lightning (the owner: "do we want lightning?"; a crack drawn as an outline was painted as lightning), and no Aphrodite
+  or any statue behind (the owner: "not Aphrodite behind again"; level 3's concept as a reference brought her in). The
+  glass stays across the screen (a slanted one, along the board's lines, `glass_slant`, made the map 1.7 times smaller).
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
