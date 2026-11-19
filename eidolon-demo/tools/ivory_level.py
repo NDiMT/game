@@ -1149,8 +1149,14 @@ else:
         if cw is None: print('CYPRESS dropped: no room off the way')
         else: lv, bk = cypress(cw[0], cp[1], cw[1], ch_); olive += lv; barks += bk
     if QUARRY_ON: quarries += quarry_terrain(PLAN)
-    for (c, r_, top) in PLAN.get('rocks_after', []):      # (rocks added to a level after it was first built: made last, so that nothing made before them comes out otherwise)
-        rock += ledge('ledge', c, r_, top)
+    for ra in PLAN.get('rocks_after', []):      # (rocks added to a level after it was first built: made last, so that nothing made before them comes out otherwise)
+        c, r_, top = ra[0], ra[1], ra[2]
+        obs_ = ledge('ledge', c, r_, top)
+        if len(ra) > 3 and ra[3].get('noimg'):      # (no image of it in the fourth level's glass: it would stand beyond the sea's end there, in the sky; its vertices' alpha 0)
+            for ob in obs_:
+                at_ = ob.data.attributes.new('noimg', 'FLOAT', 'POINT')
+                for dv in at_.data: dv.value = 1.0
+        rock += obs_
     U = Vector((0.7071, 0.0, -0.7071)); W = Vector((0.7071, 0.0, 0.7071)); Y = Vector((0.0, 1.0, 0.0))
     if PLAN.get('relief'): PLAN['relief'] = list(Vector(PLAN['relief']) + W * 0.32)      # (a small carved stone set in the face of the rock: the game puts it there)
     RELIEF_W = W
@@ -1369,11 +1375,13 @@ for o in (M, R, O, B, SN, QU, SA, *RS):
     bpy.ops.object.select_all(action='DESELECT'); o.select_set(True); bpy.context.view_layer.objects.active = o
     bpy.ops.object.bake(type='AO')
     dep = o.data.attributes.get('dep')      # (its depth under its floor, into the green of the same colours: AO stays in the red)
+    noi = o.data.attributes.get('noimg')      # (no image of it in the glass: alpha 0)
     for poly in o.data.polygons:
         for li in poly.loop_indices:
             c = ca.data[li].color
-            d = dep.data[o.data.loops[li].vertex_index].value if dep is not None else 0.0
-            ca.data[li].color = (c[0], min(1.0, d / 4.0), c[2], c[3])
+            vi = o.data.loops[li].vertex_index
+            d = dep.data[vi].value if dep is not None else 0.0
+            ca.data[li].color = (c[0], min(1.0, d / 4.0), c[2], 0.0 if (noi is not None and noi.data[vi].value > 0.5) else 1.0)
     if o.name == 'marble' or o.name.endswith('_marble'):      # (a corner buried under another stone (a bridge's end on its floor, a pillar's foot) bakes black, and the faces round it on a white top drew a grey star; such a corner takes its face's other corners' shade (the owner, 19/11: "remove the smudge"))
         n_fix = 0; r3 = o.matrix_world.to_3x3()
         for poly in o.data.polygons:

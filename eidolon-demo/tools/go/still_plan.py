@@ -97,6 +97,7 @@ def plan():
         'columns': [],
         'glass': {'planes': PLANES, 'plate': q_world},
         'rocks': rocks,
+        'rocks_after': [[[0.0, SEA, 3.0], 1.0, SEA + 0.8, {'noimg': True}], [[1.35, SEA, 2.25], 0.55, SEA + 0.38, {'noimg': True}], [[4.45, SEA, -2.25], 0.8, SEA + 0.6, {'noimg': True}]],      # (in the empty sea at the picture's foot, a rock and a smaller one beside it at the left, one at the right (the owner, 19/11: "two, three rocks down in the empty space"); made after all the rest)
         'volute': None, 'head': None, 'relief': None, 'cypress': None,
         'eye': eye_fit(pts, top_room=0.3, bottom_room=0.12, margin=0.7),      # (a little lower than before: the image, further off, stands higher)
         'shore': True,

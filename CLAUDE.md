@@ -276,7 +276,15 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   edge's grind, the fall's thud without its water, a heel's tap lowered); the square at the start sinks it straight
   down and raises it where and as it began (`ivt_home`). Levels 2 and 3 still slide it. **The squares' line is thin and
   sharp but bright** (the owner: "a thinner line, sharp but bright"): a centimetre or so, never under a pixel and a
-  third, its edges a pixel wide, a breath of light at its rim (`IVGL_SQUARE_SH`, `IVGL_PAD_SH`). Her image in the glass is a black blurred
+  third, its edges a pixel wide, a breath of light at its rim (`IVGL_SQUARE_SH`, `IVGL_PAD_SH`). Three rocks in the empty
+  sea at the picture's foot (the owner, 19/11: "two, three rocks down in the empty space"; `rocks_after` in
+  `still_plan.py`, made after the rest; rebuilt `ivory_level.py -- goglass/level.glb goglass/level.json 406 24
+  goglass/plan.json`, which also makes its shore map); the mist sheets at the lower corners lie just over the water, so
+  the rocks stand through them at their foot. The glass shows no image of them (in it they stood in the sky, beyond the
+  sea's end): a `rocks_after` entry with `{'noimg': True}` is built with its vertices' alpha 0, and the image's shader
+  leaves out what has it (`COLOR.a`). The sea's gradient (the owner: "can we play a little with the sea's
+  gradient?"): tints over the painted sea in `IVS_GRADS` (`deep`, `sun`, `mist`), the level's own in `IVS_GRAD_GLASS`;
+  `IV_SEA_GRAD=<name>` tries one; `deep` is the level's own until the owner picks. Her image in the glass is a black blurred
   shadow of her (the owner, 19/11: "if Ione's reflection shows, let it be like a black blurred shadow"; `IVGL_SHADE_SH`).
   **The image is pale and airy, as its concept has it** (the owner, 19/11: "I don't like this dark after all", after
   asking for a darker blue): cooled toward a light blue (`img_tint`, `img_tint_k` 0.6, `img_dark` 0.92) and given to the
