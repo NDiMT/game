@@ -46,16 +46,30 @@ for o in list(sc.objects):
 stn = PZ['nodes']['T'] if SOLVED else PL['stone']
 bpy.ops.mesh.primitive_cube_add(size=0.72, location=G(stn[0], stn[1] + 0.36, stn[2]))
 st = bpy.context.active_object; st.name = 'stone'; real.append((st, 'stone'))
-r = PL['ring']      # (the gate's ring: real, so the mirror shows it too; unlit until the gate opens)
-bpy.ops.mesh.primitive_torus_add(major_radius=0.38, minor_radius=0.07, location=G(r[0], r[1] + 0.06, r[2]))
-ro = bpy.context.active_object; ro.name = 'ring'; real.append((ro, 'ring'))
-M_REAL['ring'] = mat('ring', (1.0, 1.0, 0.97), emit=2.0) if SOLVED else mat('ring_off', (0.82, 0.8, 0.88))
-M_IMG['ring'] = mat('i_ring', (0.95, 0.96, 1.0), emit=1.2) if SOLVED else mat('i_ring_off', (0.72, 0.74, 0.82))
-gx, gy, gz = PL['arches'][0][0]      # (the gate's door: shut, dark; open, white light)
-bpy.ops.mesh.primitive_plane_add(size=1.0, location=G(gx, gy + 1.15, gz + 0.02)); dr_ = bpy.context.active_object
-dr_.scale = (0.94, 2.3, 1.0); dr_.rotation_euler = (math.radians(90), 0, 0); dr_.name = 'door'; real.append((dr_, 'door'))
-M_REAL['door'] = mat('door', (1.0, 1.0, 0.98), emit=3.0) if SOLVED else mat('door_shut', (0.36, 0.33, 0.38))
-M_IMG['door'] = mat('i_door', (0.95, 0.96, 1.0), emit=2.0) if SOLVED else mat('i_door_shut', (0.5, 0.52, 0.6))
+gx, gy, gz = PL['arches'][0][0]
+only_real = []      # (the gate, its ring and its door: on the real side only; the mirror shows no gate (the owner))
+for o, k in list(real):
+    if k != 'marble': continue
+    bm = bmesh.new(); bm.from_mesh(o.data); bm.transform(o.matrix_world)
+    gate_f = [f for f in bm.faces if abs(f.calc_center_median().x - gx) < 1.15 and abs(f.calc_center_median().y - (-gz)) < 0.45 and f.calc_center_median().z > gy + 0.06]
+    if gate_f:
+        gb = bmesh.new(); vm = {}
+        for f in gate_f:
+            vs_ = []
+            for v in f.verts:
+                if v not in vm: vm[v] = gb.verts.new(v.co)
+                vs_.append(vm[v])
+            try: gb.faces.new(vs_)
+            except ValueError: pass
+        gme = bpy.data.meshes.new('gate'); gb.to_mesh(gme); gb.free()
+        gob = bpy.data.objects.new('gate', gme); sc.collection.objects.link(gob); gme.materials.append(M_REAL['marble']); only_real.append(gob)
+        bmesh.ops.delete(bm, geom=gate_f, context='FACES')
+        faint = bpy.data.materials.new('gate_faint'); faint.use_nodes = True; nt_ = faint.node_tree      # (its reflection: toned down, half seen through)
+        bsd = nt_.nodes['Principled BSDF']; bsd.inputs['Base Color'].default_value = (0.78, 0.8, 0.86, 1); bsd.inputs['Alpha'].default_value = 0.4
+        ime = gme.copy(); ib = bmesh.new(); ib.from_mesh(ime); ib.transform(MIR); bmesh.ops.reverse_faces(ib, faces=ib.faces[:]); ib.to_mesh(ime); ib.free()
+        ime.materials.clear(); ime.materials.append(faint)
+        sc.collection.objects.link(bpy.data.objects.new('img_gate', ime))
+    bm.to_mesh(o.data); bm.free(); o.matrix_world = Matrix.Identity(4)
 
 for o, k in real:      # (the real side only, cut at the glass)
     bm = bmesh.new(); bm.from_mesh(o.data); bm.transform(o.matrix_world)
@@ -70,11 +84,19 @@ for o, k in real:      # (the reflection: the same turned over about the glass)
     io = bpy.data.objects.new('img_' + o.name, me); sc.collection.objects.link(io)
     me.materials.clear(); me.materials.append(M_IMG[k])
 
-pp = PL['glass']['plate']      # (the plate of light, in the reflection only)
-bpy.ops.mesh.primitive_cylinder_add(radius=0.5, depth=0.04, location=G(pp[0], pp[1] + 0.03, pp[2]))
-bpy.context.active_object.data.materials.append(mat('plate', (1.0, 0.86, 0.6), emit=4.0 if SOLVED else 2.2))
-bpy.ops.mesh.primitive_torus_add(major_radius=0.6, minor_radius=0.04, location=G(pp[0], pp[1] + 0.04, pp[2]))
-bpy.context.active_object.data.materials.append(mat('plate_rim', (1.0, 0.9, 0.7), emit=3.0))
+pp = PL['glass']['plate']      # (the square of light where the block's reflection must stand, in the reflection only (the owner: "a bright square"))
+sqm = mat('square', (1.0, 0.9, 0.7), emit=6.0 if SOLVED else 3.5)      # (a bright outline of a square (the owner), the size of the block's foot and a little more)
+for (dx, dz, sx_, sz_) in ((0, 0.46, 0.96, 0.06), (0, -0.46, 0.96, 0.06), (0.46, 0, 0.06, 0.96), (-0.46, 0, 0.06, 0.96)):
+    bpy.ops.mesh.primitive_cube_add(size=1.0, location=G(pp[0] + dx, pp[1] + 0.025, pp[2] + dz)); b_ = bpy.context.active_object
+    b_.scale = (sx_, sz_, 0.04); b_.data.materials.append(sqm)
+r = PL['ring']      # (the gate's ring: unlit at the start; lit, white, when the block's reflection stands on the square)
+bpy.ops.mesh.primitive_torus_add(major_radius=0.38, minor_radius=0.07, location=G(r[0], r[1] + 0.06, r[2]))
+bpy.context.active_object.data.materials.append(mat('ring', (1.0, 1.0, 0.97), emit=2.0) if SOLVED else mat('ring_off', (0.76, 0.75, 0.8)))
+bpy.ops.mesh.primitive_torus_add(major_radius=0.38, minor_radius=0.07, location=MIR @ G(r[0], r[1] + 0.06, r[2]))      # (its reflection, toned down as the gate's)
+bpy.context.active_object.data.materials.append(bpy.data.materials['gate_faint'])
+bpy.ops.mesh.primitive_plane_add(size=1.0, location=G(gx, gy + 1.15, gz + 0.02)); dr_ = bpy.context.active_object      # (the gate's door: shut and dark; open, white light)
+dr_.scale = (0.94, 2.3, 1.0); dr_.rotation_euler = (math.radians(90), 0, 0)
+dr_.data.materials.append(mat('door', (1.0, 1.0, 0.98), emit=3.0) if SOLVED else mat('door_shut', (0.3, 0.28, 0.32)))
 
 # the glass: a sheet in its plane, local x along it, z up
 along = Vector((1, 1, 0)).normalized()

@@ -8,11 +8,15 @@ the reflection and the gate open in the normal view?"): she never crosses the gl
     (along the glass the same way, toward the glass toward it). When the block's reflection stands on the plate (the
     block on the real cell whose reflection the plate is), the gate in the real place opens, and stays open.
   - She moves one node per swipe on the real side only; the block is pushed one node straight on along a level way, if
-    the node beyond is free (never onto the gate's ring, never up or down a stair, never into the glass).
+    the node beyond is free (never onto the gate's ring, never up or down a stair, never into the glass). With 'slide'
+    (the owner, 19/11: "it slides until it stops"), a pushed block slides on until something stops it: a broken column,
+    the floor's end, the glass, a stair, the gate's ring; to bring it to rest on its place it must be stopped there.
   - Reach the gate's ring, open.
 
 A board gives the real side, rows from the top (gy high) down, a character per gx:
   '.' a floor   'S' her start   'B' the block   'T' the floor whose reflection is the plate   'G' the gate's ring
+  'o' a floor with a broken column on it: neither she nor the block may stand there (the owner, 19/11: "not straight
+      there in two pushes; a trick, the block must be stopped somewhere in the real world")
   ' ' nothing; cells on or beyond the glass's line are left blank.
 'cut' lists pairs of neighbouring floors with no way between them; 'stairs' pairs joined by a stair.
 
@@ -27,14 +31,15 @@ BOARDS = {}
 class Trial:
     def __init__(s, b):
         s.k = b['glass']; rows = b['rows']; n = len(rows)
-        s.cells = {}
+        s.cells = {}; s.pillars = set()
         for r, row in enumerate(rows):
             gy = n - 1 - r
             for gx, ch in enumerate(row):
+                if ch == 'o' and gx + gy < s.k: s.pillars.add((gx, gy)); continue
                 if ch != ' ' and gx + gy < s.k: s.cells[(gx, gy)] = ch
         one = lambda ch: [c for c, x in s.cells.items() if x == ch][0]
         s.start, s.stone0, s.target, s.gate = one('S'), one('B'), one('T'), one('G')
-        s.cut = set(); s.stairs = set()
+        s.slide = bool(b.get('slide')); s.cut = set(); s.stairs = set()
         for a, c in b.get('cut', []): s.cut |= {(tuple(a), tuple(c)), (tuple(c), tuple(a))}
         for a, c in b.get('stairs', []): s.stairs |= {(tuple(a), tuple(c)), (tuple(c), tuple(a))}
     def m(s, c): return (s.k - c[1], s.k - c[0])
@@ -47,8 +52,11 @@ class Trial:
             if j == s.gate and not op: continue      # (the gate shut)
             if j == stone:
                 if (me, j) in s.stairs: continue
+                free = lambda a, c: s.way(a, c) and (a, c) not in s.stairs and c != s.gate
                 k = (j[0] + d[0], j[1] + d[1])
-                if not s.way(j, k) or (j, k) in s.stairs or k == s.gate: continue
+                if not free(j, k): continue
+                if s.slide:      # (on until something stops it)
+                    while free(k, (k[0] + d[0], k[1] + d[1])): k = (k[0] + d[0], k[1] + d[1])
                 yield (j, k, op or k == s.target), d, 'push'
                 continue
             yield (j, stone, op), d, 'walk'
@@ -126,6 +134,17 @@ BOARDS['plate'] = {      # (the block up, round it by the left, the block on: it
              'S...G'],
     'cut': [((0, 0), (0, 1))],
 }
+BOARDS['slide'] = {      # (the owner's trick: the block slides until something stops it; the broken column stops its first slide
+    # under the row of its place, the low wall at the corridor's edge its second, the glass its last, on its place)
+    'glass': 6, 'slide': True,
+    'rows': ['      ',
+             '      ',
+             ' ..   ',
+             '.B.o  ',
+             '....T ',
+             'S....G'],
+    'cut': [((0, 0), (0, 1)), ((2, 0), (2, 1)), ((3, 0), (3, 1)), ((4, 0), (4, 1)), ((1, 1), (1, 2))],
+}
 BOARDS['plate_b'] = {      # (the block on, then up twice along its column; 3 pushes)
     'glass': 6,
     'rows': ['      ',
@@ -177,15 +196,22 @@ def draw(specs, out, PW=540, PH=960):
                 x, y = P(cc)
                 dr.ellipse([x - 13 * q, y - 8 * q, x + 13 * q, y + 8 * q], fill=(255, 248, 236) if real else (240, 244, 252),
                            outline=(205, 172, 135) if real else (170, 180, 212), width=max(2, int(3 * q)))
-        x, y = P(t.m(t.target)); lit = t.m(stone) == t.m(t.target)      # (the plate, only in the reflection)
-        for k_ in range(3): dr.ellipse([x - (26 + 6 * k_) * q, y - (15 + 4 * k_) * q, x + (26 + 6 * k_) * q, y + (15 + 4 * k_) * q], outline=(255, 214, 140, 150 - 40 * k_ if lit else 60 - 18 * k_), width=int(3 * q))
-        dr.ellipse([x - 24 * q, y - 14 * q, x + 24 * q, y + 14 * q], fill=(255, 226, 160, 230 if lit else 130), outline=(212, 160, 90), width=int(3 * q))
+        x, y = P(t.m(t.target)); lit = t.m(stone) == t.m(t.target)      # (the bright outline of a square, only in the reflection)
+        for k_, (al, wd) in enumerate(((60, 9), (110, 5), (255, 3))):
+            sq_ = [(x - 30 * q, y), (x, y - 17 * q), (x + 30 * q, y), (x, y + 17 * q)]
+            dr.line(sq_ + [sq_[0]], fill=(255, 214, 140, al if lit else al * 2 // 3), width=int(wd * q))
+        for c in t.pillars:      # (the broken columns: neither she nor the block may stand there)
+            x, y = P(c)
+            dr.polygon([(x - 13 * q, y), (x - 13 * q, y - 46 * q), (x - 4 * q, y - 52 * q), (x + 5 * q, y - 44 * q), (x + 13 * q, y - 49 * q), (x + 13 * q, y)], fill=(236, 226, 214), outline=(150, 128, 110))
+            dr.ellipse([x - 13 * q, y - 6 * q, x + 13 * q, y + 6 * q], fill=(220, 206, 190), outline=(150, 128, 110))
+            x, y = P(t.m(c))
+            dr.polygon([(x - 13 * q, y), (x - 13 * q, y - 46 * q), (x - 4 * q, y - 52 * q), (x + 5 * q, y - 44 * q), (x + 13 * q, y - 49 * q), (x + 13 * q, y)], fill=(222, 228, 244, 170), outline=(150, 160, 196))
         hs = 1.1 * K      # (the glass: a sheet of light across the level)
         for i in range(int(hs)): dr.line([(0, gy_ - i), (PW, gy_ - i)], fill=(255, 255, 255, int(55 * (1 - i / hs) ** 1.5)))
         for k_ in range(5): dr.line([(0, gy_), (PW, gy_)], fill=(255, 255, 255, 40 + 40 * (k_ == 4)), width=int((12 - 2.4 * k_) * q))
         prev_ = path[-2][0]; d = (t.gate[0] - prev_[0], t.gate[1] - prev_[1])      # (the gate, beyond its ring along her last step; and its reflection)
         gp = (t.gate[0] + 0.55 * d[0], t.gate[1] + 0.55 * d[1])
-        x, y = P(t.m(gp)); gate(dr, x, y, q, (238, 242, 252, 150) if op else (150, 156, 186, 150), (170, 180, 210, 160))
+        x, y = P(t.m(gp)); gate(dr, x, y, q, (238, 242, 252, 70) if op else (150, 156, 186, 70), (170, 180, 210, 80))      # (its reflection, toned down (the owner))
         x, y = P(t.gate); dr.ellipse([x - 22 * q, y - 14 * q, x + 22 * q, y + 14 * q], outline=(255, 255, 250) if op else (190, 180, 200), width=int(6 * q))
         if step > 0:
             pts = [P(st[0]) for st in path[:step + 1]]
