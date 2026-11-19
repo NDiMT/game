@@ -46,6 +46,10 @@ for o in list(sc.objects):
 stn = PZ['nodes']['T'] if SOLVED else PL['stone']
 bpy.ops.mesh.primitive_cube_add(size=0.72, location=G(stn[0], stn[1] + 0.36, stn[2]))
 st = bpy.context.active_object; st.name = 'stone'; real.append((st, 'stone'))
+for (pp_, ax_), (ln_, th_, ht_) in [(w_, (1.3, 0.2, 0.1)) for w_ in PL.get('sills', [])] + [(w_, (1.4, 0.3, 0.45)) for w_ in PL.get('walls', [])]:
+    # (a low threshold across a joint, the block stops at it; a low wall where two floors have no way between them)
+    bpy.ops.mesh.primitive_cube_add(size=1.0, location=G(pp_[0], pp_[1] + ht_ / 2, pp_[2])); bx_ = bpy.context.active_object
+    bx_.scale = (ln_, th_, ht_) if ax_ == 'z' else (th_, ln_, ht_); bx_.name = 'sill'; real.append((bx_, 'marble'))
 gx, gy, gz = PL['arches'][0][0]
 only_real = []      # (the gate, its ring and its door: on the real side only; the mirror shows no gate (the owner))
 for o, k in list(real):
@@ -127,7 +131,7 @@ for k, p in PZ['nodes'].items():
     if k == 'R': continue
     bpy.ops.mesh.primitive_cylinder_add(radius=0.16, depth=0.03, location=G(p[0], p[1] + 0.02, p[2]))
     bpy.context.active_object.data.materials.append(mat('node', (0.99, 0.98, 0.96)))
-p = PZ['nodes']['C3'] if SOLVED else PZ['nodes'][PZ['start']]
+p = (PL.get('solved_at') or PZ['nodes']['C3']) if SOLVED else PZ['nodes'][PZ['start']]
 bpy.ops.mesh.primitive_cylinder_add(radius=0.2, depth=0.95, location=G(p[0], p[1] + 0.48, p[2]))
 bpy.context.active_object.data.materials.append(mat('ione', (0.72, 0.28, 0.16)))
 bpy.ops.mesh.primitive_uv_sphere_add(radius=0.13, location=G(p[0], p[1] + 1.05, p[2]))
