@@ -867,6 +867,7 @@ class LmIcons extends Control:
 
 func _process(dt: float) -> void:
 	super._process(dt)
+	if iv_no_old: return      # (the waking's levels: the old chapter's island and its wings are not built)
 	if lm_snap_every > 0:
 		lm_snap_f += 1
 		if lm_snap_f % lm_snap_every == 0: _lm_snap()

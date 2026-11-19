@@ -94,6 +94,21 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
     turns it off for `go_demo`.
   - `IV_HITCH=1` prints long frames, and every 3 s the frame's work, draws and triangles. Script work for the waking,
     measured without a screen: 5.9 → 1.7 ms a frame.
+- **A long way at one swipe** (the owner, 19/11: "on long ways it takes ages with swipes from node to node"): a swipe
+  takes her on along the way while it has only one way on and nothing beside it to work (`_ivg_run_path`), and stops
+  where there is a choice, beside a stone, a mirror or the volute, at a gap, before a shut gate, at the gate's ring, or
+  where her standing changes the trial (level 3: where the light would reach the ring, `_ivm_open_at`); one smooth walk,
+  each node still a move. A swipe during it along the same way is let be; another way stops her at the next node and is
+  done from there (`_ivg_run_keep`). Swipes: level 1 two (the winch, then one to the gate), level 2 six, level 3 eight
+  (were 9, 9, 18). The autoplay follows its solution on by the nodes walked (`ivg_last_run`). `IV_RUN=0`: a node a swipe.
+- **The change of level after the gate** (the owner, 19/11: "a little shorter"): the motes' hold 0.6 s (was 1.6), the
+  end of the vanishing 0.3 (0.8), the light filling the picture 1.0 (1.6), the next level out of it 1.2 (1.8).
+- **The old island is not built in the waking's levels** (`iv_no_old`; `IV_OLD_WORLD=1` builds it): main.gd built the
+  first chapter's whole world (5,409 pieces joined into 178 meshes) under every level, far off and never seen; it was
+  1.5 of the 1.7 s each level took to make on the cloud machine (a phone some seconds, at the start and at each change
+  of level). Now 0.16 s. `IV_HITCH=1` prints how long a level took to make.
+- **The builds leave out what no level opens** (found by tracing the files a whole play opens, film included): the old
+  props and their pictures, the mirrors, the old heads (`WebWake`/`AndroidWake` exclude filter), about 10 of 69 MB.
 - **The camera** holds the whole map and follows her a little, smoothly and a little behind; on larger maps it goes
   with her but shows little past the edges (`_ivr_follow` in `ch1.gd`).
 - **Music per level** (`_go_level_music` in `ch1.gd`): waking Lament, sanctuary Requiem, moon Elegy, quarry Stone,

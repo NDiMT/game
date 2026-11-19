@@ -2087,6 +2087,7 @@ var go_milos := OS.get_environment("FLIP") == "gomilos" or OS.has_feature("gomil
 var go_veil := OS.get_environment("FLIP") == "goveil" or OS.has_feature("goveil") or String(Engine.get_meta("ivw_next", "")) == "goveil" or go_milos      # the second level (or the first's gate has led into it: _ivw_to_veil): the veiled (goveil/), a golden morning on the same still sea: a block pushed into the causeway's gap
 var go_wake := OS.get_environment("FLIP") == "gowake" or OS.has_feature("gowake") or go_veil      # the first level: the waking (gowake/), dawn over a still sea (the second rides its sea, its light, its sounds and its gate; what is the waking's own asks not go_veil)
 var iv_at_sea := go_drown or go_wake      # (a level standing in still water: the sea, the level's image in it)
+var iv_no_old := go_wake and OS.get_environment("IV_OLD_WORLD") == ""      # (the waking's levels: the old chapter's world is not built (IV_OLD_WORLD=1 builds it as before))
 var go_iv := OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or go_drown or go_moon or go_quarry or go_wake
 var go_dir := "res://gomilos/" if go_milos else "res://goveil/" if go_veil else "res://gowake/" if go_wake else ("res://gosea/" if go_drown else ("res://gomoon/" if go_moon else ("res://goquarry/" if go_quarry else "res://goiv/")))      # the level's own folder: its level.glb, level.json, puzzle.json
 const IV_O := Vector3(460.0, 0.0, 0.0)      # (far from the world, and from the courts of the other trial)
@@ -3327,7 +3328,7 @@ func _iv_win() -> void:
 	if go_wake and ivw_gate_m != null:
 		await _ivw_exit()      # (she steps into the gate's light, and is lost in it; its last line comes as she goes)
 		print("IV level done in ", iv_moves, " moves")
-		await wait(5.4 if ivg_on and ivg.has("end") else 1.6)      # (the line read, and gone; with none, the light settles and the motes rise a moment)
+		await wait(5.4 if ivg_on and ivg.has("end") else 0.6)      # (the line read, and gone; with none, the light settles and the motes rise a moment: 1.6 s before the owner's "a little shorter", 19/11)
 		var nxl := _ivw_next_level()
 		if nxl != "": await _ivw_to_next(nxl); return      # (the first goes on into the second, the second into the third; the end screen comes after the last)
 		await _ivw_end_screen()
@@ -3715,14 +3716,66 @@ var ivg_queued := Vector2.ZERO
 func _ivg_swipe(dv: Vector2) -> void:
 	if iv_won or not ivp_intro: return
 	if iv_busy or busy or ivg_turning:
-		if ivg_on: ivg_queued = dv
+		if ivg_on:
+			if ivg_run.size() > 1 and _ivg_run_keep(dv): return      # (a swipe on along the way she is already walking: it is being done)
+			ivg_queued = dv
 		return
+	ivg_last_run = []
 	var n := _ivg_dir_nbr(iv_me, dv)
 	if OS.get_environment("IV_TRACE") != "": print("IV swipe ", dv, " from ", iv_me, " -> ", n)
 	ivg_turning = true
 	if n == "": await _her_no()
 	else: await _ivg_step(n)
 	ivg_turning = false
+
+## a long way at one swipe (the owner, 19/11: "on long ways it takes ages with swipes from node to node"): she goes on
+## along the way while it has only one way on and nothing beside it to work, and stops where there is a choice, beside
+## a stone, a mirror or the volute, at a gap, before a shut gate, at the gate's ring, or where her standing changes the
+## trial (level 3: where the light would reach the ring). Each node is a move, as before. IV_RUN=0: a node a swipe
+var ivg_run_on := OS.get_environment("IV_RUN") != "0"
+var ivg_run: Array = []      # (the nodes of the long walk going on)
+var ivg_last_run: Array = []      # (the nodes her last walk went through: the autoplay follows its solution on by them)
+func _ivg_plain(n: String) -> bool:      # (a step onto n is a step only: nothing there to push, turn, break or wait for)
+	if n == "" or n == "s" or n == iv_block or n == ivg_vol or ivg_mir.has(n): return false
+	if _ivg_face_on(n) >= 0 or n == _ivg_w_node() or _ivv_hole(n): return false
+	if go_milos and n == ivg_exit and not ivm_open: return false
+	return true
+func _ivg_run_path(from: String, first: String) -> Array:
+	var path := [first]
+	if not ivg_run_on or not ivg_faces.is_empty() or ivg_wi >= 0: return path      # (where looks or a walking statue answer each step: a node a swipe)
+	var prev := from; var cur := first
+	for _g in 64:
+		if cur == ivg_exit: break      # (at the gate's ring: the level ends there)
+		if go_milos and not ivm_open and _ivm_open_at(cur): break      # (her standing here lets the light reach the ring: it lights here)
+		var on := []
+		for n in _ivp_nbrs(cur):
+			if n == "s" or n == prev or not _ivw_open(cur, String(n)): continue
+			on.append(String(n))
+		if on.size() != 1 or not _ivg_plain(String(on[0])): break
+		prev = cur; cur = String(on[0]); path.append(cur)
+	return path
+func _ivm_open_at(k: String) -> bool:      # (would the light reach the ring with her standing at k?)
+	if ivm_src == "": return false
+	var was := iv_me; iv_me = k
+	var t := _ivm_trace()
+	iv_me = was
+	return String(t.end) == "ring"
+func _ivg_run_keep(dv: Vector2) -> bool:      # (a swipe during a long walk: on the same way, nothing to do; another way, she stops at the next node and the swipe is done from there)
+	var nk := -1
+	for i in ivg_run.size():
+		var p: Vector3 = ivp_nodes[ivg_run[i]]
+		for r in route:
+			if (r.p as Vector3).is_equal_approx(p): nk = i; break
+		if nk >= 0: break
+	if nk < 0 or nk >= ivg_run.size() - 1: return false
+	var nn := String(ivg_run[nk])
+	if _ivg_dir_nbr(nn, dv) == String(ivg_run[nk + 1]): return true
+	var pn: Vector3 = ivp_nodes[nn]
+	for j in route.size():
+		if (route[j].p as Vector3).is_equal_approx(pn): route.resize(j + 1); break
+	iv_moves -= ivg_run.size() - 1 - nk
+	ivg_run = ivg_run.slice(0, nk + 1); iv_me = nn
+	return false
 
 func _ivg_queue_tick() -> void:      # (her turn over and nothing moving: the kept swipe now)
 	if ivg_queued == Vector2.ZERO or ivg_turning or iv_busy or busy or iv_won: return
@@ -3866,7 +3919,8 @@ func _play_ivp() -> void:
 			_ivg_swipe(d2); print("IV queue test: swiped twice, kept ", ivg_queued)
 			await idle.call(); await wait(0.6); await idle.call()
 			print("IV queue test: she is at ", iv_me, " (should be ", sol[1], "), volute ", ivg_v); i0 = 2
-		for i in range(i0, sol.size()):
+		var i := i0
+		while i < sol.size():
 			var tgt := String(sol[i])
 			if go_wake and bool(ivg.get("tutorial", false)) and i < 2:      # (as a new player would: she waits, and the hand shows the swipe)
 				await wait(2.6); await _ivw_snap("w9_hand%d" % i)
@@ -3874,8 +3928,16 @@ func _play_ivp() -> void:
 			var dv := cam.unproject_position(at) - cam.unproject_position(ivp_nodes[iv_me])
 			_ivg_swipe(dv); await get_tree().process_frame
 			await idle.call(); await wait(0.3)
-			print("IV step %d %s: she is at %s, stone %s, volute %d, statue %s" % [i + 1, tgt, iv_me, iv_block, ivg_v, _ivg_w_node()])
-			if not iv_won: await snap.call("s%02d_%s" % [i + 1, tgt])
+			var j := i
+			if ivg_last_run.size() > 1:      # (a long way walked at one swipe: the solution followed on as far as she went)
+				var same := i + ivg_last_run.size() <= sol.size()
+				for m in ivg_last_run.size():
+					if same and String(sol[i + m]) != String(ivg_last_run[m]): same = false
+				if same: j = i + ivg_last_run.size() - 1
+				else: print("IV the long walk left the solution's way: ", ivg_last_run, " at step ", i + 1)
+			print("IV step %d %s: she is at %s, stone %s, volute %d, statue %s" % [j + 1, String(sol[j]), iv_me, iv_block, ivg_v, _ivg_w_node()])
+			if not iv_won: await snap.call("s%02d_%s" % [j + 1, String(sol[j])])
+			i = j + 1
 		var n3 := 0
 		while not ended and n3 < 900: await get_tree().process_frame; n3 += 1
 		await wait(3.2 if go_wake else 1.5); await snap.call("p9_end")      # (the waking: its end screen held a moment)
@@ -4267,7 +4329,7 @@ func _ivw_exit() -> void:
 	await wait(0.3); await _ivw_snap("x2_flash")
 	await wait(0.4); await _ivw_snap("x4_line")
 	await wait(0.2); await _ivw_snap("x3_gone")
-	await wait(0.8)
+	await wait(0.3)
 
 func _ivw_chain_ok() -> bool: return _ivw_next_level() != ""
 func _ivw_next_level() -> String:      # (the level a gate leads on into: none with IV_ONE=1, a level alone)
@@ -4277,7 +4339,7 @@ func _ivw_next_level() -> String:      # (the level a gate leads on into: none w
 func _ivw_to_next(nx: String) -> void:      # (the gate's light fills the picture, the warm white the next level begins in, and the next is set up behind it)
 	var cl := CanvasLayer.new(); cl.layer = 7; add_child(cl)
 	var fade := ColorRect.new(); fade.color = Color(1.0, 0.95, 0.9, 0.0); fade.set_anchors_preset(Control.PRESET_FULL_RECT); fade.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(fade)
-	var t := create_tween(); t.tween_property(fade, "color:a", 1.0, 1.6).set_trans(Tween.TRANS_SINE)
+	var t := create_tween(); t.tween_property(fade, "color:a", 1.0, 1.0).set_trans(Tween.TRANS_SINE)      # (1.6 s before)
 	await t.finished
 	await get_tree().process_frame
 	print("IV on into the next level: ", nx)
@@ -5246,7 +5308,7 @@ func _ivv_begin() -> void:
 	if not _ivw_music_on(): _ivw_music(_go_level_music(), 3.0, -5.0)      # (come from the first, its music goes on)
 	for f in 2: await get_tree().process_frame      # (a browser copies a long piece's whole sound as it starts it: that moment passes before anything moves)
 	started = true; ivw_line_at = iv_t + 1.4
-	var t := create_tween(); t.tween_property(fade, "color:a", 0.0, 1.8).set_trans(Tween.TRANS_SINE)
+	var t := create_tween(); t.tween_property(fade, "color:a", 0.0, 1.2).set_trans(Tween.TRANS_SINE)      # (1.8 s before)
 	await t.finished
 	cl.queue_free()
 
@@ -6529,6 +6591,7 @@ func _ivg_w_aim(t := 0.4) -> void:
 ## one turn: she acts along the way to nb; then the statue takes its step
 func _ivg_turn(nb: String) -> void:
 	if iv_busy or iv_won: return
+	ivg_last_run = []
 	var me := iv_me
 	var wn := _ivg_w_node()
 	if OS.get_environment("IV_TRACE") != "": print("IV turn ", me, " -> ", nb, "  block ", iv_block, " volute ", ivg_v, " statue ", wn)
@@ -6575,8 +6638,10 @@ func _ivg_turn(nb: String) -> void:
 			elif _ivv_hole(nb): await _her_no(); return      # (still water: no way yet)
 			elif go_milos and nb == ivg_exit and not ivm_open: await _her_no(); return      # (the gate is shut: its threshold will not take her)
 			else:
-				iv_moves += 1
-				await _ivp_walk([nb])
+				var run := _ivg_run_path(me, nb)      # (a long way: one swipe takes her on along it, to where there is something to choose)
+				iv_moves += run.size(); ivg_run = run
+				await _ivp_walk(run)
+				ivg_last_run = ivg_run.duplicate(); ivg_run = []
 		if iv_won: return
 		await _ivg_settle()
 		if _ivg_looked_at(iv_me): await _ivg_fail("struck", iv_me); return
@@ -7488,6 +7553,9 @@ func _cs_deep_pit(sky: String, depth: float) -> void:
 # ---------------------------------------------------------------- the world
 func _world() -> void:
 	mroot = Node3D.new(); mroot.name = "MirrorPool"; mroot.transform = Transform3D(Basis(Vector3(1, 0, 0), Vector3(0, -1, 0), Vector3(0, 0, 1)), Vector3.ZERO); add_child(mroot)
+	if iv_no_old:      # (the waking's levels stand far off on their own: the old chapter's island, never seen there, is not built; it was most of each level's start, on a phone some seconds)
+		pos = HERPL + Vector3(0, 0.17, 0); yaw = 0.0
+		return
 	_harbour(); _causeway(); _basin(); _well(); _fountain(); _forecourt(); _atrium()
 	if match_demo: _match_room()
 	if figure_demo: _fig_build()
@@ -8272,6 +8340,7 @@ func _turn3_build(par: Node, twin: bool) -> void:
 
 # ---------------------------------------------------------------- what can be tapped, and where she can walk
 func _things() -> void:
+	if iv_no_old: return      # (no old island: nothing of it to tap)
 	var hub: Vector3 = N["hub1"]; var hn: Vector3 = N["hubn1"]
 	objs["wheel1"] = {"at": Vector3(hub.x, -hub.y, hub.z), "stand": Vector3(0, 0, MOLE_A - 0.45), "mark": false, "water": "H", "rstand": hub + hn * 0.56,
 		"hits": [Vector3(hub.x, -hub.y - 0.4, hub.z), Vector3(hub.x, -0.1, hub.z), Vector3(hub.x, 0.2, hub.z), Vector3(hub.x, hub.y + 0.3, hub.z)]}
@@ -8334,6 +8403,7 @@ func _things() -> void:
 	blk(Vector3(-0.13, 0, -0.1), Vector3(0.13, 0.03, 0.1), "crim", fold); blk(Vector3(-0.125, 0.03, -0.095), Vector3(0.12, 0.055, 0.095), "crim2", fold); blk(Vector3(-0.13, 0.055, -0.1), Vector3(0.1, 0.08, 0.09), "crim", fold)
 
 func _nav() -> void:
+	if iv_no_old: return      # (no old island: no ways over it)
 	rects["Hq"] = R(HX0 + 0.45, HZ0 + 0.75, HX1 - 0.45, BZ0 - 0.3)      # the quay
 	rects["Hw"] = R(HX0 + 0.45, HZ0 + 0.75, BX0 - 0.3, HZ1 - 0.45); rects["He"] = R(BX1 + 0.3, HZ0 + 0.75, HX1 - 0.45, HZ1 - 0.45); rects["Hs"] = R(HX0 + 0.45, BZ1 + 0.3, HX1 - 0.45, HZ1 - 0.45)
 	rects["Hm"] = R(-MOLE_W + 0.2, BZ0 - 0.35, MOLE_W - 0.2, MOLE_A - 0.3)      # the stub of the mole
@@ -9325,6 +9395,7 @@ func _ground_under(sp: Vector2):
 	return super._ground_under(sp)
 
 func _ready() -> void:
+	var tq0 := Time.get_ticks_msec()
 	super._ready()
 	var args := OS.get_cmdline_user_args()
 	_flip_setup()
@@ -9333,6 +9404,7 @@ func _ready() -> void:
 	if geo_demo: _gh_begin()
 	if "geodemo" in args: hand_play = true; _play_geo()
 	if go_demo: _go_begin()
+	if ivh_on: print("HITCH the level built in ", Time.get_ticks_msec() - tq0, " ms")      # (IV_HITCH=1: how long a level takes to make; the waking's levels 1.9 s before the old island was left out, 0.25 s after, on the cloud machine)
 	if "godemo" in args: hand_play = true; _play_go()
 	if "figuredemo" in args: hand_play = true; _play_figure()
 	if "matchdemo" in args: hand_play = true; _play_match()

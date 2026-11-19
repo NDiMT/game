@@ -747,6 +747,7 @@ func _refl_melt() -> void:
 
 func _process(dt: float) -> void:
 	super._process(dt)
+	if iv_no_old: return      # (the waking's levels: the old chapter's island and its wings are not built)
 	if not refl_out.is_empty() and refl_w == "C2":      # her reflection passes the gap: from there on it belongs to the west tank's world (the two are level, or it could not pass)
 		var hd: Node3D = refl_out.holder
 		var want: Node3D = N["cs2T_mr"] if hd.position.x < (CS2WX0 + CS2WX1) * 0.5 else N["cs2S_mr"]

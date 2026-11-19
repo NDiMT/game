@@ -144,6 +144,7 @@ func _sp_eye_size(to: float, dt: float) -> void:
 ## reflection does at the far end is what matters
 func _process(dt: float) -> void:
 	super._process(dt)
+	if iv_no_old: return      # (the waking's levels: the old chapter's island and its wings are not built)
 	# Her own image on the sea lies under the floors, some three metres down. The pits of the courts with a colossus
 	# are deep enough to show it through their water, as a second reflection far out in the pool: in those courts
 	# it is faded away

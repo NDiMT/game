@@ -494,6 +494,7 @@ func _sh_here(p: Vector3) -> bool:
 
 func _process(dt: float) -> void:
 	super._process(dt)
+	if iv_no_old: return      # (the waking's levels: the old chapter's island and its wings are not built)
 	if not sh_ready: return
 	if not flags.get("sh_arr", false) and started and woke and not busy and not ended and shot == null and pos.z < UZ0 - 0.2 and pos.z > SH_SZ1 - 0.5 and absf(pos.x - SH_X) < 0.9: _sh_arrive()      # (only on the stair behind the Gate: other wings reach as far north)
 	var mine := _sh_here(pos)      # behind the Gate the waters lie at the floor's height: the bodies that mirror her in waters of other levels are put away
