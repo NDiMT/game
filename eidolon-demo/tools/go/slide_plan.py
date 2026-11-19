@@ -97,12 +97,15 @@ def plan():
         'columns': [[col, 1.25]],      # (broken, a little higher than she is)
         'sills': sills, 'walls': walls,
         'glass': {'k': K, 'plane': [1.0, 1.0, PLANE], 'plate': plate},
+        'face': {'model': 'props/iv_head.glb', 'at': [-15.0, SEA - 1.2, -17.0], 'size': 11.0, 'up': 30, 'lean': 30, 'turn': 0,
+                 'alpha': 0.55},      # (the great face far behind in the sea, only its face out of the water, looking 30 up and leaning 30 aside (the owner, 19/11))
         'solved_at': nodes[cell[r['path'][13][0]]],      # (where she stands as the gate opens, for the solved picture)
         'rocks': rocks,
         'volute': None, 'head': None, 'relief': None, 'cypress': None,
         'eye': eye_fit(pts, top_room=0.3, bottom_room=0.16, margin=0.7),
         'shore': True,
-        'smooth_normals': ['rock', 'marble'],
+        'smooth_normals': ['rock', 'marble'],      # (for the light laid in brushstrokes, as on the other maps)
+        'rock_clamp': [0.04, 0.35, 0.06],      # (no rock up through a slab, as on the other maps)
         'scenery': [],
     }
     return pl, puzzle, t, cell

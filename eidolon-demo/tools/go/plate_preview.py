@@ -12,6 +12,8 @@ a = sys.argv[sys.argv.index('--') + 1:]
 GLB, PJ, ZJ, OUT = a[:4]
 PX = int(a[4]) if len(a) > 4 else 720
 SOLVED = len(a) > 5 and a[5] == 'solved'      # (the block on its place: its reflection on the plate, the gate open)
+STATE = a[5].split(':') if len(a) > 5 and a[5].startswith('state:') else None      # (or any moment of the way: 'state:<block node>:<her node>:<0|1>')
+if STATE: SOLVED = STATE[3] == '1'
 PL = json.load(open(PJ)); PZ = json.load(open(ZJ))
 SEA = PL['sea_y']; H0 = PL['heights']['H0']
 K6 = PL['glass']['plane'][2]      # (the glass: x + z + K6 = 0 in the game's axes)
@@ -32,9 +34,9 @@ def mat(name, rgb, emit=0.0, alpha=1.0, rough=0.9):
     return m
 
 
-M_REAL = {'marble': mat('marble', (0.93, 0.89, 0.83)), 'rock': mat('rock', (0.33, 0.27, 0.24)),
+M_REAL = {'marble': mat('marble', (0.92, 0.88, 0.82)), 'rock': mat('rock', (0.26, 0.19, 0.17)),
           'stone': mat('stone', (0.88, 0.8, 0.66))}
-M_IMG = {'marble': mat('i_marble', (0.78, 0.81, 0.88)), 'rock': mat('i_rock', (0.4, 0.43, 0.52)),
+M_IMG = {'marble': mat('i_marble', (0.74, 0.76, 0.86)), 'rock': mat('i_rock', (0.44, 0.45, 0.56)),
          'stone': mat('i_stone', (0.84, 0.84, 0.86))}
 
 bpy.ops.import_scene.gltf(filepath=GLB)
@@ -43,7 +45,7 @@ for o in list(sc.objects):
     if o.type != 'MESH': continue
     k = 'rock' if 'rock' in o.name.lower() else 'marble'
     real.append((o, k))
-stn = PZ['nodes']['T'] if SOLVED else PL['stone']
+stn = PZ['nodes'][STATE[1]] if STATE else (PZ['nodes']['T'] if SOLVED else PL['stone'])
 bpy.ops.mesh.primitive_cube_add(size=0.72, location=G(stn[0], stn[1] + 0.36, stn[2]))
 st = bpy.context.active_object; st.name = 'stone'; real.append((st, 'stone'))
 for (pp_, ax_), (ln_, th_, ht_) in [(w_, (1.3, 0.2, 0.1)) for w_ in PL.get('sills', [])] + [(w_, (1.4, 0.3, 0.45)) for w_ in PL.get('walls', [])]:
@@ -119,7 +121,7 @@ tc = nt.nodes.new('ShaderNodeTexCoord'); sep = nt.nodes.new('ShaderNodeSeparateX
 mr.inputs['From Min'].default_value = SEA; mr.inputs['From Max'].default_value = SEA + 7.0
 ramp = nt.nodes.new('ShaderNodeValToRGB'); bw = nt.nodes.new('ShaderNodeRGBToBW')      # (no line at its foot: it comes up out of the water, and fades into the sky)
 el = ramp.color_ramp.elements; el[0].position = 0.0; el[0].color = (0, 0, 0, 1); el[1].position = 1.0; el[1].color = (0, 0, 0, 1)
-e = el.new(0.25); e.color = (0.1, 0.1, 0.1, 1)
+e = el.new(0.25); e.color = (0.05, 0.05, 0.05, 1)
 nt.links.new(tc.outputs['Object'], sep.inputs['Vector']); nt.links.new(sep.outputs['Z'], mr.inputs['Value'])
 nt.links.new(mr.outputs['Result'], ramp.inputs['Fac']); nt.links.new(ramp.outputs['Color'], bw.inputs['Color'])
 nt.links.new(bw.outputs['Val'], mix.inputs['Fac']); nt.links.new(tr.outputs['BSDF'], mix.inputs[1]); nt.links.new(em.outputs['Emission'], mix.inputs[2])
@@ -131,14 +133,32 @@ for k, p in PZ['nodes'].items():
     if k == 'R': continue
     bpy.ops.mesh.primitive_cylinder_add(radius=0.16, depth=0.03, location=G(p[0], p[1] + 0.02, p[2]))
     bpy.context.active_object.data.materials.append(mat('node', (0.99, 0.98, 0.96)))
-p = (PL.get('solved_at') or PZ['nodes']['C3']) if SOLVED else PZ['nodes'][PZ['start']]
+p = PZ['nodes'][STATE[2]] if STATE else ((PL.get('solved_at') or PZ['nodes']['C3']) if SOLVED else PZ['nodes'][PZ['start']])
 bpy.ops.mesh.primitive_cylinder_add(radius=0.2, depth=0.95, location=G(p[0], p[1] + 0.48, p[2]))
 bpy.context.active_object.data.materials.append(mat('ione', (0.72, 0.28, 0.16)))
 bpy.ops.mesh.primitive_uv_sphere_add(radius=0.13, location=G(p[0], p[1] + 1.05, p[2]))
 bpy.context.active_object.data.materials.append(mat('head', (0.95, 0.92, 0.88)))
 
+FACE = PL.get('face')      # (the great face far behind, deep in the sea, only its face out of the water, faint: the owner's)
+if FACE:
+    before = set(sc.objects)
+    bpy.ops.import_scene.gltf(filepath=FACE['model'])
+    fobs = [o for o in sc.objects if o not in before and o.type == 'MESH']
+    fm = bpy.data.materials.new('face'); fm.use_nodes = True; fnt = fm.node_tree
+    fb = fnt.nodes['Principled BSDF']; fb.inputs['Base Color'].default_value = (0.8, 0.79, 0.88, 1); fb.inputs['Roughness'].default_value = 0.8
+    fb.inputs['Alpha'].default_value = FACE.get('alpha', 0.55)
+    R_ = Matrix.Rotation(math.radians(FACE['turn']), 4, 'Z') @ Matrix.Rotation(math.radians(-FACE['up']), 4, 'Y') @ Matrix.Rotation(math.radians(FACE['lean']), 4, 'X')
+    lo = Vector((1e9,) * 3); hi = Vector((-1e9,) * 3)
+    for o in fobs:
+        for v in o.data.vertices: w_ = o.matrix_world @ v.co; lo = Vector(map(min, lo, w_)); hi = Vector(map(max, hi, w_))
+    c0 = (lo + hi) / 2; sz = max(hi - lo)
+    at = G(*FACE['at'])
+    for o in fobs:
+        o.matrix_world = Matrix.Translation(at) @ Matrix.Scale(FACE['size'] / sz, 4) @ R_ @ Matrix.Translation(-c0) @ o.matrix_world
+        o.data.materials.clear(); o.data.materials.append(fm)
+        for p_ in o.data.polygons: p_.use_smooth = True
 bpy.ops.mesh.primitive_plane_add(size=90, location=G(-3.0, SEA, -3.0))
-bpy.context.active_object.data.materials.append(mat('sea', (0.45, 0.52, 0.58), rough=0.3))
+bpy.context.active_object.data.materials.append(mat('sea', (0.52, 0.52, 0.64), rough=0.9))      # (still, and mirroring nothing: only the glass does)
 
 eye = PL['eye']; c = Vector(eye['centre'])
 yaw = math.radians(45.0); pit = math.radians(eye['pitch'])
@@ -148,15 +168,15 @@ cam_d = bpy.data.cameras.new('eye'); cam_d.type = 'ORTHO'; cam_d.ortho_scale = e
 cam = bpy.data.objects.new('eye', cam_d); sc.collection.objects.link(cam); sc.camera = cam
 cam.location = G(c.x, c.y, c.z) - fwd * 40.0
 cam.rotation_euler = fwd.to_track_quat('-Z', 'Y').to_euler(); cam_d.clip_end = 200.0
-sun = bpy.data.lights.new('sun', 'SUN'); sun.energy = 3.0
+sun = bpy.data.lights.new('sun', 'SUN'); sun.energy = 3.6; sun.color = (1.0, 0.95, 0.88); sun.angle = math.radians(8)
 so = bpy.data.objects.new('sun', sun); sc.collection.objects.link(so)
 so.rotation_euler = Vector((0.62, 0.5, -0.56)).normalized().to_track_quat('Z', 'Y').to_euler()
-sc.render.engine = 'CYCLES'; sc.cycles.device = 'CPU'; sc.cycles.samples = 32; sc.cycles.use_denoising = False
+sc.render.engine = 'CYCLES'; sc.cycles.device = 'CPU'; sc.cycles.samples = 48; sc.cycles.use_denoising = False
 sc.render.resolution_x = PX; sc.render.resolution_y = int(PX * 16 / 9)
 sc.render.filepath = OUT
 w = bpy.data.worlds.new('w'); sc.world = w; w.use_nodes = True
 bg = w.node_tree.nodes.get('Background')
-if bg: bg.inputs['Color'].default_value = (0.78, 0.8, 0.86, 1.0); bg.inputs['Strength'].default_value = 0.85
+if bg: bg.inputs['Color'].default_value = (0.8, 0.78, 0.88, 1.0); bg.inputs['Strength'].default_value = 0.75
 bpy.ops.render.render(write_still=True)
 print('SAVED', OUT)
 

@@ -247,26 +247,27 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   slab's corner buried under another stone (a bridge's end on its floor, a pillar's foot) bakes black in the shade of
   corners, and the faces round it on the white top drew a star; the builder now gives such a corner its face's other
   corners' shade (all levels rebuilt). `IV_BG_FILE=<png>` tries another backdrop without importing it.
-- **Level 4, the glass (being designed, 19/11)**: the owner chose idea A, "the image is stepped on" (the script's truth:
-  a mirror gives no souls, only images). Board `glass` in `tools/go/glass_trial.py` (11 moves, about 7 swipes, one way,
-  no dead end, the image needed; a first board of 39 moves was too many for a 4th level, the owner: "a simpler form with
-  a mirror"). The glass stands across the screen, the real map below and its image above (the owner: "more room"; side by
-  side each half had half a phone's width; `glass_lr` keeps that form): cracks are the only crossings; the stone's image
-  is a stepping stone over a hole of fog, a block on a floor. Plan `tools/go/glass_plan.py` (only the real side is built;
-  the game turns it over about the glass for the image), blockout `tools/go/glass_preview.py`. Concept chosen (the owner,
-  19/11, the third of three): `design/level4/concept.jpg` (prompt beside it): the real place below in warm marble on dark
-  rock, the reflection above pale and silver in mist, fog where it is missing, the ring and the gate only in it, the
-  glass almost invisible with soft vertical gleams, the crack a tall jagged split glowing gold from the terrace, no
-  lightning (the owner: "do we want lightning?"; a crack drawn as an outline was painted as lightning), and no Aphrodite
-  or any statue behind (the owner: "not Aphrodite behind again"; level 3's concept as a reference brought her in). The
-  glass stays across the screen (a slanted one, along the board's lines, `glass_slant`, made the map 1.7 times smaller).
-  Then a great face far behind, faint (the owner: "behind, a big face faintly, for the background"; "we had some 3D
-  models of faces"; "the back of the head in the water, the face coming out of it"; "a little more aslant, turned 30
-  degrees"; "deeper in the water and further back"; he chose B): `props/iv_head.glb` (the classical head with its hair)
-  deep in the sea behind the reflection, only its face out of the water, looking 30 degrees up and leaning 30 degrees to
-  one side (`tools/go/head_in_sea.py -- out.png 30 30 0 0.68 props/iv_head.glb`, `design/level4/face_ref.png`); its
-  concept `design/level4/concept.jpg` (the one without it, `concept_base.jpg`). Turned down on the way: faces painted in
-  the mist (front, eyes closed or open), the back of a head toward us ("why toward us?").
+- **Level 4, the glass (`goglass/`, `FLIP=goglass`, in the game since 19/11)**: the owner's puzzle (19/11: "she does not
+  cross; the block must go somewhere in the reflection and the gate opens in the real view"): a wall of glass stands
+  across the screen in the still sea; before it the real place (a corridor low over the water from her start to the
+  shut gate; a terrace a step above it with the block, a broken column and two low thresholds), beyond it its exact
+  image (only the real side is built: `_ivgl_setup` duplicates the level turned over about the glass, x + z + k = 0 in
+  the level's axes, and gives it to the air the further it lies behind the glass, `img_k`/`img_fade` in IV_SH; the
+  block's image follows the block each frame). In the image alone lies a bright outline of a square (the owner); the
+  ring and the gate are unlit and shut at first (level 3's `_ivm_gate_shut`/`_ivm_open`, shared); the block brought to
+  rest where its image stands in the square lights the ring and opens the gate (`_ivgl_check`). The trick (the owner:
+  "not straight with two pushes, it must catch somewhere in the real world"; he chose "it slides till it stops"): a
+  pushed block slides on till a column, the floor's end, a threshold, a stair or the ring stops it; she steps over the
+  low thresholds, the block stops at them, so it can never be stuck and no reset is needed (the owner asked). Board
+  `slide` in `tools/go/plate_trial.py` (19 moves, three pushes, one way, no dead end, the column needed), plan
+  `tools/go/slide_plan.py` (asserts it is the board), built by `tools/ivory_level.py -- goglass/level.glb
+  goglass/level.json 406 24 goglass/plan.json`. The sea mirrors nothing here, only the glass (the owner: "with what you
+  set up we have two reflections"). **It is made in the other maps' design, in the game itself** (the owner, 19/11, of
+  painted concepts in pale lilac fog: "it has nothing to do with the design of the other maps"; Gemini paints a mirror
+  freely, so its concepts broke the puzzle's logic: "what you sent makes no sense"): judge it by the game's own frames.
+  Its line, still to be settled with the owner: "But a mirror gives no souls, / only images." Its backdrop is still
+  level 1's. Earlier designs kept for the record: `tools/go/glass_trial.py` (cracks to cross), `plate_plan.py`,
+  `design/level4/` (the concepts, the face in the sea, `face_ref.png`).
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are

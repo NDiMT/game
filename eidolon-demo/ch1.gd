@@ -259,7 +259,7 @@ void fragment(){
 	}
 }"""
 var flip_test := OS.get_environment("FLIP") == "1"      # every water turns the picture
-var go_demo := OS.has_feature("godemo") or OS.get_environment("FLIP") == "go" or OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or OS.get_environment("FLIP") == "gosea" or OS.has_feature("gosea") or OS.get_environment("FLIP") == "gomoon" or OS.has_feature("gomoon") or OS.get_environment("FLIP") == "goquarry" or OS.has_feature("goquarry") or OS.get_environment("FLIP") == "gowake" or OS.has_feature("gowake") or OS.get_environment("FLIP") == "goveil" or OS.has_feature("goveil") or OS.get_environment("FLIP") == "gomilos" or OS.has_feature("gomilos")      # the trial played a step at a time (Eidolon GO)
+var go_demo := OS.has_feature("godemo") or OS.get_environment("FLIP") == "go" or OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or OS.get_environment("FLIP") == "gosea" or OS.has_feature("gosea") or OS.get_environment("FLIP") == "gomoon" or OS.has_feature("gomoon") or OS.get_environment("FLIP") == "goquarry" or OS.has_feature("goquarry") or OS.get_environment("FLIP") == "gowake" or OS.has_feature("gowake") or OS.get_environment("FLIP") == "goveil" or OS.has_feature("goveil") or OS.get_environment("FLIP") == "gomilos" or OS.has_feature("gomilos") or OS.get_environment("FLIP") == "goglass" or OS.has_feature("goglass")      # the trial played a step at a time (Eidolon GO)
 var geo_demo := OS.has_feature("geodemo") or OS.get_environment("FLIP") == "geo"      # the trial of the hall of images: ways that join where their pictures join
 var figure_demo := OS.has_feature("figuredemo") or OS.get_environment("FLIP") == "figure"      # the trial of the face in the water: three courts where a picture is made whole in the water
 var match_demo := OS.has_feature("matchdemo") or OS.get_environment("FLIP") == "match"      # the trial of the still water: one new court, where the world and what its water shows are to be made to agree
@@ -2083,13 +2083,14 @@ func _play_go() -> void:
 var go_drown := OS.get_environment("FLIP") == "gosea" or OS.has_feature("gosea")      # the second level: the drowned sanctuary (gosea/), in the same system
 var go_moon := OS.get_environment("FLIP") == "gomoon" or OS.has_feature("gomoon")      # the third level: the moon dial (gomoon/), a sanctuary in the snow at night
 var go_quarry := OS.get_environment("FLIP") == "goquarry" or OS.has_feature("goquarry")      # the fourth level: the quarry (goquarry/), where the faces were cut
+var go_glass := OS.get_environment("FLIP") == "goglass" or OS.has_feature("goglass") or String(Engine.get_meta("ivw_next", "")) == "goglass"      # the fourth level (or the third's gate has led into it): the glass (goglass/), a wall of glass across the level and the level's image beyond it; a block that slides till something stops it, brought to rest where its image stands in a square of light (it rides the second: its sea, its light, its block)
 var go_milos := OS.get_environment("FLIP") == "gomilos" or OS.has_feature("gomilos") or String(Engine.get_meta("ivw_next", "")) == "gomilos"      # the third level (or the second's gate has led into it): the goddess's sanctuary on Milos (gomilos/), the statue's light, the mirror, the stone, the ring that lights and opens the gate (it rides the second: its start, its block, its statues)
-var go_veil := OS.get_environment("FLIP") == "goveil" or OS.has_feature("goveil") or String(Engine.get_meta("ivw_next", "")) == "goveil" or go_milos      # the second level (or the first's gate has led into it: _ivw_to_veil): the veiled (goveil/), a golden morning on the same still sea: a block pushed into the causeway's gap
+var go_veil := OS.get_environment("FLIP") == "goveil" or OS.has_feature("goveil") or String(Engine.get_meta("ivw_next", "")) == "goveil" or go_milos or go_glass      # the second level (or the first's gate has led into it: _ivw_to_veil): the veiled (goveil/), a golden morning on the same still sea: a block pushed into the causeway's gap
 var go_wake := OS.get_environment("FLIP") == "gowake" or OS.has_feature("gowake") or go_veil      # the first level: the waking (gowake/), dawn over a still sea (the second rides its sea, its light, its sounds and its gate; what is the waking's own asks not go_veil)
 var iv_at_sea := go_drown or go_wake      # (a level standing in still water: the sea, the level's image in it)
 var iv_no_old := go_wake and OS.get_environment("IV_OLD_WORLD") == ""      # (the waking's levels: the old chapter's world is not built (IV_OLD_WORLD=1 builds it as before))
 var go_iv := OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or go_drown or go_moon or go_quarry or go_wake
-var go_dir := "res://gomilos/" if go_milos else "res://goveil/" if go_veil else "res://gowake/" if go_wake else ("res://gosea/" if go_drown else ("res://gomoon/" if go_moon else ("res://goquarry/" if go_quarry else "res://goiv/")))      # the level's own folder: its level.glb, level.json, puzzle.json
+var go_dir := "res://goglass/" if go_glass else "res://gomilos/" if go_milos else "res://goveil/" if go_veil else "res://gowake/" if go_wake else ("res://gosea/" if go_drown else ("res://gomoon/" if go_moon else ("res://goquarry/" if go_quarry else "res://goiv/")))      # the level's own folder: its level.glb, level.json, puzzle.json
 const IV_O := Vector3(460.0, 0.0, 0.0)      # (far from the world, and from the courts of the other trial)
 const IV_T := 2.0      # from one node of the way to the next
 const IV_PITCH := 37.0
@@ -2253,6 +2254,7 @@ uniform float fog_hi = -2.6;
 uniform float fog_lo = -10.5;
 uniform float fog_ref = 0.0;
 uniform float far_k = 0.0;
+uniform float img_k = 0.0; uniform vec4 img_plane = vec4(0.70710678, 0.0, 0.70710678, 0.0); uniform vec2 img_fade = vec2(0.34, 0.045);      // (the fourth level: a thing's image beyond the glass, given to the air the further it lies behind it)
 uniform float veins = 0.0;
 uniform float flat_mode = 0.0;
 uniform float emit = 0.0;
@@ -2510,6 +2512,7 @@ void fragment(){
 	float sy = uv_flip > 0.5 ? 1.0 - SCREEN_UV.y : SCREEN_UV.y;
 	float fk = max(1.0 - smoothstep(fog_ref + fog_lo, fog_ref + fog_hi, wy), far_k);
 	if (haze > 0.0) fk = max(fk, haze * 0.22 * smoothstep(44.0, 52.0, -VERTEX.z));      // (VERTEX: from the eye)
+	if (img_k > 0.5) { c = mix(c, vec3(dot(c, vec3(0.3, 0.55, 0.15))) * vec3(0.95, 0.96, 1.03), 0.45); fk = max(fk, clamp(img_fade.x + img_fade.y * max(-(dot(wp, img_plane.xyz) + img_plane.w), 0.0), 0.0, 0.9)); }      // (an image: its colour cooled toward silver, and given to the air)
 	if (lfog > 0.5) {      // (into the mist softly, as mist does: a long fading, its edge in wisps)
 		float lt = clamp((ld - lf_hi) / lf_len, 0.0, 1.0);      // (one clean fade down each face: no wisps, they smudged the rock)
 		fk = max(fk, lt * lt * (3.0 - 2.0 * lt));
@@ -3220,9 +3223,10 @@ func _iv_post(dt: float) -> void:
 		if not String(mk).contains("fog_hi"): (iv_mats[mk] as ShaderMaterial).set_shader_parameter("fog_ref", cam_t.y)
 	if iv_glow == null: return
 	var pl := 0.5 + 0.5 * sin(iv_t * 2.2)
-	(iv_glow.material_override as StandardMaterial3D).albedo_color.a = ((0.16 + 0.14 * pl) if ivp_on else (0.5 + 0.35 * pl)) * (ivm_ring_k if go_milos else 1.0)
+	(iv_glow.material_override as StandardMaterial3D).albedo_color.a = ((0.16 + 0.14 * pl) if ivp_on else (0.5 + 0.35 * pl)) * (ivm_ring_k if (go_milos or go_glass) else 1.0)
 	if go_milos and not ivm_beam.is_empty(): _ivm_draw()
-	if go_milos and ivm_ring_gold != null and ivm_ring_k > 0.0 and ivm_ring_k < 1.001 and not ivm_ring_done: _ivm_ring_tick()
+	if go_glass and ivgl_block != null: _ivgl_tick()
+	if (go_milos or go_glass) and ivm_ring_gold != null and ivm_ring_k > 0.0 and ivm_ring_k < 1.001 and not ivm_ring_done: _ivm_ring_tick()
 	if not iv_won: iv_glow.scale = Vector3.ONE * (0.92 + 0.12 * pl)
 	if iv_leaves != null: iv_leaves.pivot_offset = Vector2.ZERO; iv_leaves.rotation = deg_to_rad(1.3 * sin(iv_t * 0.9) + 0.6 * sin(iv_t * 2.3))
 	if started and ivp_on:
@@ -3739,7 +3743,7 @@ var ivg_last_run: Array = []      # (the nodes her last walk went through: the a
 func _ivg_plain(n: String) -> bool:      # (a step onto n is a step only: nothing there to push, turn, break or wait for)
 	if n == "" or n == "s" or n == iv_block or n == ivg_vol or ivg_mir.has(n): return false
 	if _ivg_face_on(n) >= 0 or n == _ivg_w_node() or _ivv_hole(n): return false
-	if go_milos and n == ivg_exit and not ivm_open: return false
+	if (go_milos or go_glass) and n == ivg_exit and not ivm_open: return false
 	return true
 func _ivg_run_path(from: String, first: String) -> Array:
 	var path := [first]
@@ -3898,7 +3902,7 @@ func _play_ivp() -> void:
 		await wait(4.0)
 	await snap.call("p0_title")
 	if go_wake and not go_veil and OS.get_environment("IV_TEST_PICK") != "" and ivw_pick.size() >= 3:      # (to check the start screen's levels: a touch on one; 2 and 3 lead on into that level, whose own play goes on from its start)
-		var k := clampi(int(OS.get_environment("IV_TEST_PICK")), 1, 3)
+		var k := clampi(int(OS.get_environment("IV_TEST_PICK")), 1, ivw_pick.size())
 		await snap.call("p0_pick"); tap((ivw_pick[k - 1] as Rect2).get_center())
 		if k > 1: return
 	else: tap(Vector2(360, 640))
@@ -4336,8 +4340,8 @@ func _ivw_exit() -> void:
 
 func _ivw_chain_ok() -> bool: return _ivw_next_level() != ""
 func _ivw_next_level() -> String:      # (the level a gate leads on into: none with IV_ONE=1, a level alone)
-	if OS.get_environment("IV_ONE") != "" or go_milos: return ""
-	var nx := "gomilos" if go_veil else "goveil"
+	if OS.get_environment("IV_ONE") != "" or go_glass: return ""
+	var nx := "goglass" if go_milos else ("gomilos" if go_veil else "goveil")
 	return nx if FileAccess.file_exists("res://%s/puzzle.json" % nx) else ""
 func _ivw_to_next(nx: String) -> void:      # (the gate's light fills the picture, the warm white the next level begins in, and the next is set up behind it)
 	var cl := CanvasLayer.new(); cl.layer = 7; add_child(cl)
@@ -4434,7 +4438,7 @@ func _ivw_gate_light(p: Vector3, ax: String) -> void:
 	var g := Gradient.new(); g.offsets = PackedFloat32Array([0.0, 0.25, 1.0]); g.colors = PackedColorArray([Color(1, 0.95, 0.85, 0.0), Color(1, 0.95, 0.85, 0.9), Color(1, 0.95, 0.9, 0.0)])
 	pt.color_ramp = g; pt.emitting = true
 	ivw_gate_parts.append(pt)
-	if go_milos: _ivm_gate_shut()      # (the third level: its door shut until the ring is lit)
+	if go_milos or go_glass: _ivm_gate_shut()      # (the third and fourth levels: the door shut until the ring is lit)
 
 const IVW_VEIL_SH := """
 shader_type spatial;
@@ -5027,12 +5031,13 @@ func _ivw_menu_make() -> void:
 		if f != null: cap.add_theme_font_override("font", f)
 		cap.add_theme_font_size_override("font_size", int(vp.x * 0.042)); cap.add_theme_color_override("font_color", Color(cream, 0.7))
 		cap.size = Vector2(vp.x, vp.x * 0.07); cap.position = Vector2(0.0, vp.y * 0.335); cap.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_menu.add_child(cap)
-		for i in 3:
+		var nl := 4 if FileAccess.file_exists("res://goglass/puzzle.json") else 3      # (the fourth when it is in the build)
+		for i in nl:
 			var lb := Label.new(); lb.text = str(i + 1)
 			lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			if f != null: lb.add_theme_font_override("font", f)
 			lb.add_theme_font_size_override("font_size", int(vp.x * 0.075)); lb.add_theme_color_override("font_color", cream)
-			lb.size = Vector2(bw, bw); lb.position = Vector2(vp.x * 0.5 + (float(i) - 1.0) * vp.x * 0.2 - bw * 0.5, vp.y * 0.405 - bw * 0.5)
+			lb.size = Vector2(bw, bw); lb.position = Vector2(vp.x * 0.5 + (float(i) - float(nl - 1) * 0.5) * vp.x * (0.2 if nl <= 3 else 0.17) - bw * 0.5, vp.y * 0.405 - bw * 0.5)
 			lb.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_menu.add_child(lb)
 			ivw_pick.append(Rect2(lb.position, lb.size).grow(vp.x * 0.02))
 	title_box.hide()
@@ -5314,6 +5319,7 @@ func _ivv_begin() -> void:
 	var t := create_tween(); t.tween_property(fade, "color:a", 0.0, 1.2).set_trans(Tween.TRANS_SINE)      # (1.8 s before)
 	await t.finished
 	cl.queue_free()
+	await _ivw_snap("v0_begun")
 
 ## the veiled ones (the owner: each different): statues of her as he wished her to be, smooth marble softly lit as the
 ## Observer is, each where the plan sets its foot, its height and its turn; those in the sea stand on their pedestals
@@ -6241,7 +6247,7 @@ func _ivr_build() -> void:
 		var kind := "rock2" if nm.contains("rock") else ("olive2" if nm.contains("olive") else ("bark" if nm.contains("bark") else ("snow" if nm.contains("snow") else ("quarry" if nm.contains("quarry") else "marble2"))))
 		mi.material_override = _ivr_mat(kind, 1.0, true); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		if go_milos and (nm.contains("salt") or nm.contains("island")): mi.material_override = _iv_mat("salt", 0.0, _ivm_salt_ex())      # (the island's white sea-worn rock, as the first build had it (the owner: "the first rocks", "like salt"): smooth, softly lit)
-	if iv_at_sea:      # (the level's image in the still water: faint at dusk, clear at dawn)
+	if iv_at_sea and not go_glass:      # (the level's image in the still water: faint at dusk, clear at dawn; not at the glass: there only the glass mirrors (the owner: "with what you set up we have two reflections"))
 		ivw_mirror = _ivs_mirror(lv, func(mi: MeshInstance3D) -> Array:
 			var nm := String(mi.name).to_lower() + "|" + String(mi.get_parent().name).to_lower()
 			var kd := "rock2" if nm.contains("rock") else "marble2"
@@ -6292,6 +6298,7 @@ func _ivr_build() -> void:
 		else: _ivp_volute(ivp_nodes[ivg_vol])
 	elif not ivg_on and j.get("volute") != null: _ivp_volute(V.call(j.volute))
 	if ivg_on: _ivg_build()
+	if go_glass: _ivgl_setup(lv); _ivgl_props(j)
 	if ivg_on and ivg.get("mirrors") != null:
 		for mm in (ivg.mirrors as Array): _ivq_mirror(String(mm.node), int(mm.turn))
 		_ivg_gaze_all()
@@ -6317,7 +6324,7 @@ func _ivr_build() -> void:
 	iv_ring = Node3D.new(); iv_root.add_child(iv_ring); iv_ring.global_position = ivp_nodes[ivg_exit if ivg_on else "r"]
 	var tm := TorusMesh.new(); tm.inner_radius = 0.3 if ivr_on else 0.36; tm.outer_radius = 0.46; tm.rings = 32; tm.ring_segments = 8
 	var rm := _iv_prim(tm, Vector3(0, 0.06, 0), "ring", iv_ring); rm.scale = Vector3(1, 0.62, 1); rm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	if go_milos:      # (the third level: the ring dark, a stone unlit, no glow, until the light reaches it; then the ochre of every ring comes up in it (the owner, 18/11: "before the light falls on it, off, darker"))
+	if go_milos or go_glass:      # (the third level: the ring dark, a stone unlit, no glow, until the light reaches it; then the ochre of every ring comes up in it (the owner, 18/11: "before the light falls on it, off, darker"))
 		ivm_ring_gold = rm; rm.material_override = (rm.material_override as ShaderMaterial).duplicate(); _ivm_ring_tick()
 	if ivr_on:
 		var hm := CylinderMesh.new(); hm.top_radius = 0.31; hm.bottom_radius = 0.31; hm.height = 0.02; hm.radial_segments = 28; hm.rings = 1
@@ -6377,7 +6384,7 @@ func _ivr_build() -> void:
 			rbl.texture = load("res://gomilos/rock_bl.png"); rbl.modulate = Color.WHITE; rbl.size = Vector2(259, 259) * k; rbl.position = Vector2(0.0, vh - 259 * k)
 			rb.texture = load("res://gomilos/rock_br.png"); rb.modulate = Color.WHITE; rb.size = Vector2(216, 258) * k; rb.position = Vector2(720 * k - 216 * k, vh - 258 * k)
 		elif go_milos: rb.modulate = Color(0.66, 0.72, 0.96, 0.98); rbl.modulate = rb.modulate
-		if go_veil and not go_milos and ResourceLoader.exists("res://goveil/statue_fg.png"):      # (the second level: a veiled statue standing before the eye at the lower right, blurred, dark against the light, one of the thousand (the owner, 18/11: "fantastic, the blurred statue"); clear of the way, the gate and the rocks in the sea)
+		if go_veil and not go_milos and not go_glass and ResourceLoader.exists("res://goveil/statue_fg.png"):      # (the second level: a veiled statue standing before the eye at the lower right, blurred, dark against the light, one of the thousand (the owner, 18/11: "fantastic, the blurred statue"); clear of the way, the gate and the rocks in the sea)
 			var sfg := _iv_overlay(cl, "res://goveil/statue_fg.png", Vector2(487 * k, vh - 468 * k), Vector2(341, 532) * k); sfg.modulate = Color(0.55, 0.42, 0.58, 0.95)
 		vg.colors = PackedColorArray([Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0.05), Color(0.26, 0.16, 0.3, 0.2)])      # (a soft darkening at the edges: the eye drawn in)
 		_ivw_hand_make(cl)
@@ -6620,11 +6627,20 @@ func _ivg_turn(nb: String) -> void:
 			var c := _ivg_cont(me, nb)
 			if c == "" or c == ivg_vol or _ivg_face_on(c) >= 0 or c == wn: await _her_no(); return
 			if bool(ivg.get("plinths", false)) and (_ivg_plinth(c) or c == ivg_exit): await _her_no(); return
-			if go_milos and c == ivg_exit: await _her_no(); return      # (never onto the ring)
+			if (go_milos or go_glass) and c == ivg_exit: await _her_no(); return      # (never onto the ring)
+			var c1 := c
+			if go_glass:      # (the fourth level: it slides on till something stops it: a column, the floor's end, a threshold, a stair, the ring)
+				if _ivgl_sill(nb, c): await _her_no(); return      # (a threshold before it: it will not go over)
+				var pv := nb
+				while true:
+					var c2 := _ivg_cont(pv, c)
+					if c2 == "" or c2 == ivg_exit or c2 == wn or c2 == ivg_vol or _ivgl_sill(c, c2) or _ivv_hole(c2) or _ivg_face_on(c2) >= 0: break
+					pv = c; c = c2
 			iv_moves += 1
 			if _ivv_hole(c): await _ivv_push_in(nb, c)      # (into the gap in the way: it falls in, and its top is the way)
-			else: await _ivg_push(nb, c)
+			else: await _ivg_push(nb, c, c1)
 			_ivg_gaze_all()
+			if go_glass: await _ivgl_check()
 		else:
 			var fi := _ivg_face_on(nb)
 			if fi >= 0:      # onto a face: from before it she is struck; from anywhere else it falls
@@ -6639,7 +6655,7 @@ func _ivg_turn(nb: String) -> void:
 				await _ivg_w_break()
 				await _ivp_walk([nb])
 			elif _ivv_hole(nb): await _her_no(); return      # (still water: no way yet)
-			elif go_milos and nb == ivg_exit and not ivm_open: await _her_no(); return      # (the gate is shut: its threshold will not take her)
+			elif (go_milos or go_glass) and nb == ivg_exit and not ivm_open: await _her_no(); return      # (the gate is shut: its threshold will not take her)
 			else:
 				var run := _ivg_run_path(me, nb)      # (a long way: one swipe takes her on along it, to where there is something to choose)
 				iv_moves += run.size(); ivg_run = run
@@ -6676,11 +6692,12 @@ func _ivg_w_step() -> void:
 	_ivg_w_aim(0.45)
 	if _ivg_looked_at(nx): await _ivg_w_break()
 
-func _ivg_push(nb: String, c: String) -> void:
+func _ivg_push(nb: String, c: String, first := "") -> void:
 	iv_busy = true
 	var kp: Vector3 = ivp_nodes[nb]; var qp: Vector3 = ivp_nodes[c]
 	var dv := Vector3(qp.x - kp.x, 0, qp.z - kp.z).normalized()
-	iv_push = {"d": dv, "start": pos, "m0": kp, "len": Vector2(qp.x - kp.x, qp.z - kp.z).length()}
+	var fp: Vector3 = ivp_nodes[first] if first != "" else qp      # (a block that slides goes with her hands only to the next node; then on by itself)
+	iv_push = {"d": dv, "start": pos, "m0": kp, "len": Vector2(fp.x - kp.x, fp.z - kp.z).length()}
 	print("IV push ", nb, " -> ", c)
 	if go_veil: _ivw_sfx("block_push", IVV_PUSH_DB, 0.0, randf_range(0.95, 1.05))      # (stone dragged on stone)
 	route.clear(); speed_cap = 1.0; face_to = null
@@ -6688,7 +6705,11 @@ func _ivg_push(nb: String, c: String) -> void:
 	var up := tw(); up.set_parallel(); up.tween_property(self, "a_wL", 1.0, 0.3); up.tween_property(self, "a_wR", 1.0, 0.3); up.tween_property(self, "a_lean", 0.16, 0.3)
 	while not route.is_empty(): await get_tree().process_frame
 	iv_push = {}
-	var sl := create_tween(); sl.tween_property(iv_block_n, "global_position", qp, 0.18); await sl.finished
+	var rest := Vector2(qp.x - iv_block_n.global_position.x, qp.z - iv_block_n.global_position.z).length()
+	var sl := create_tween()
+	if rest > 0.8: sl.tween_property(iv_block_n, "global_position", qp, 0.22 + rest * 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)      # (it slides on, slowing, and comes to rest)
+	else: sl.tween_property(iv_block_n, "global_position", qp, 0.18)
+	await sl.finished
 	iv_me = nb; iv_block = c; ivp_wp_cur = kp
 	var dn := tw(); dn.set_parallel(); dn.tween_property(self, "a_wL", 0.0, 0.35); dn.tween_property(self, "a_wR", 0.0, 0.35); dn.tween_property(self, "a_lean", 0.0, 0.35)
 	await dn.finished
@@ -8729,7 +8750,7 @@ func tap(sp: Vector2) -> void:
 	if go_demo and not started and go_wake and ivw_menu != null:
 		if ivw_menu_on:
 			for i in ivw_pick.size():
-				if i > 0 and (ivw_pick[i] as Rect2).has_point(sp): _ivw_jump(["goveil", "gomilos"][i - 1]); return      # (a later level, for the tests)
+				if i > 0 and (ivw_pick[i] as Rect2).has_point(sp): _ivw_jump(["goveil", "gomilos", "goglass"][i - 1]); return      # (a later level, for the tests)
 			_ivw_play()
 		return
 	if go_demo and not started:      # (the trial played a step at a time: the eye draws back to hold the board)
@@ -9843,3 +9864,122 @@ func _ivm_gate_open() -> void:
 		var swing := func(k: float) -> void: hn.basis = Basis(Vector3.UP, ang * k) * b0
 		create_tween().tween_method(swing, 0.0, 1.0, 1.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
+
+# ---------------------------------------------------------------- the glass (goglass/): the fourth level
+## A wall of glass stands across the level, square to the eye, in the still sea. Only the real side is built; the glass
+## shows its image, the same turned over about it (the plan's glass: x + z + k = 0 in the level's own axes), given to
+## the air the further it lies behind it. The sea mirrors nothing here: only the glass does (the owner: "with what you set
+## up we have two reflections"). In the image alone lies a square of light: the block brought to rest where its image
+## stands in it lights the ring and opens the gate.
+var ivgl_T := Transform3D()      # (the turn about the glass, in the world)
+var ivgl_img: Node3D      # (the level's image)
+var ivgl_block: Node3D      # (the block's image, kept to the block each frame)
+var ivgl_plane := Plane()      # (the glass in the world: the real side before it, n.p > d)
+var ivgl_square: MeshInstance3D
+const IVGL_IMG_FADE := Vector2(0.42, 0.05)      # (the image's air: at the glass, and more for each metre behind it)
+const IVGL_GLASS_SH := """
+shader_type spatial;
+render_mode unshaded, cull_disabled, shadows_disabled, depth_draw_never, blend_add;
+uniform float k = 1.0;
+float gl(float u, float v, float c, float w, float s, float v0, float v1) { return s * exp(-pow((u - c) / w, 2.0)) * pow(clamp((v - v0 * 0.5) / (v0 * 0.5 + 0.1), 0.0, 1.0), 1.5) * clamp((v1 - v) / 0.25, 0.0, 1.0); }
+void fragment(){
+	float u = (UV.x - 0.5) * 28.0; float v = 1.0 - UV.y;      // (metres along the glass; 0 at the water, 1 at its top)
+	float a = gl(u, v, -2.7, 0.05, 0.15, 0.25, 0.85) + gl(u, v, -1.9, 0.26, 0.06, 0.1, 1.0) + gl(u, v, 1.35, 0.06, 0.2, 0.3, 0.95)
+		+ gl(u, v, 2.25, 0.34, 0.06, 0.15, 0.8) + gl(u, v, 4.85, 0.08, 0.17, 0.2, 1.0) + gl(u, v, 5.7, 0.035, 0.1, 0.4, 0.9);      // (soft gleams rising out of the water, fading before the top: nothing marks its edges)
+	a += 0.025 * clamp(v / 0.35, 0.0, 1.0) * clamp((1.0 - v) / 0.3, 0.0, 1.0);
+	ALBEDO = vec3(1.0, 0.98, 0.95); ALPHA = clamp(a * k, 0.0, 1.0);
+}
+"""
+const IVGL_SQUARE_SH := """
+shader_type spatial;
+render_mode unshaded, cull_disabled, shadows_disabled, depth_draw_never, blend_add;
+uniform vec3 col : source_color = vec3(1.0, 0.9, 0.7);
+uniform float k = 1.0;
+void fragment(){
+	vec2 p = abs(UV - 0.5) * 2.0; float d = max(p.x, p.y);
+	float ln = 1.0 - smoothstep(0.012, 0.045, abs(d - 0.62));      // (a bright outline of a square (the owner), a little wider than the block's foot)
+	float gw = exp(-pow((d - 0.62) / 0.17, 2.0)) * 0.4;
+	ALBEDO = col; ALPHA = clamp((ln + gw) * k, 0.0, 1.0);
+}
+"""
+
+func _ivgl_img_mat(src: Material) -> Material:      # (a thing's image: its own look, in the air)
+	if not (src is ShaderMaterial): return src
+	var m := (src as ShaderMaterial).duplicate() as ShaderMaterial
+	m.set_shader_parameter("img_k", 1.0); m.set_shader_parameter("img_plane", Vector4(ivgl_plane.normal.x, ivgl_plane.normal.y, ivgl_plane.normal.z, -ivgl_plane.d))
+	m.set_shader_parameter("img_fade", IVGL_IMG_FADE); m.set_shader_parameter("shadow_k", 0.0)
+	return m
+
+func _ivgl_imaged(n: Node) -> void:      # (every mesh under a thing's image: an image's material, casting no shadow)
+	var ms: Array = n.find_children("*", "MeshInstance3D", true, false)
+	if n is MeshInstance3D: ms.append(n)
+	for m in ms:
+		var mi := m as MeshInstance3D
+		mi.material_override = _ivgl_img_mat(mi.material_override); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+func _ivgl_setup(lv: Node3D) -> void:
+	var mr: Dictionary = (ivg.get("mirror", {}) as Dictionary) if ivg_on else {}
+	var k := float((mr.get("plane", [1.0, 1.0, 9.8]) as Array)[2])
+	var b := Basis(Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(-1, 0, 0))      # (x to -z, z to -x: turned over about x + z = 0)
+	ivgl_T = Transform3D(b, IV_O - b * IV_O + Vector3(-k, 0, -k))
+	var n := Vector3(1, 0, 1).normalized()
+	ivgl_plane = Plane(n, n.dot(IV_O + Vector3(-k * 0.5, 0, -k * 0.5)))
+	ivgl_img = lv.duplicate() as Node3D; lv.get_parent().add_child(ivgl_img)
+	ivgl_img.global_transform = ivgl_T * lv.global_transform
+	_ivgl_imaged(ivgl_img)
+	if iv_block_n != null and iv_block_n.visible:
+		ivgl_block = iv_block_n.duplicate() as Node3D; iv_block_n.get_parent().add_child(ivgl_block)
+		_ivgl_imaged(ivgl_block); _ivgl_tick()
+	var gh := 10.5
+	var q := QuadMesh.new(); q.size = Vector2(28.0, gh)
+	var gm := ShaderMaterial.new(); gm.shader = _ivw_shader(IVGL_GLASS_SH)
+	var gi := MeshInstance3D.new(); gi.mesh = q; gi.material_override = gm; gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	iv_root.add_child(gi)
+	var al := Vector3(1, 0, -1).normalized()
+	gi.global_transform = Transform3D(Basis(al, Vector3.UP, n), IV_O + Vector3(-k * 0.5, ivr_sea_y + gh * 0.5, -k * 0.5))
+	var pp: Array = mr.get("plate", [0.0, 0.0, 0.0])
+	var sq := PlaneMesh.new(); sq.size = Vector2(1.7, 1.7)
+	var sm := ShaderMaterial.new(); sm.shader = _ivw_shader(IVGL_SQUARE_SH)
+	ivgl_square = MeshInstance3D.new(); ivgl_square.mesh = sq; ivgl_square.material_override = sm; ivgl_square.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	iv_root.add_child(ivgl_square); ivgl_square.global_position = IV_O + Vector3(float(pp[0]), float(pp[1]) + 0.03, float(pp[2]))
+
+func _ivgl_tick() -> void:      # (the block's image goes with the block)
+	ivgl_block.global_transform = ivgl_T * iv_block_n.global_transform
+
+func _ivgl_sill(a: String, b: String) -> bool:      # (a low threshold across the joint between two nodes: she steps over it; the block stops at it)
+	if not go_glass or not ivg_on: return false
+	for sl in (ivg.get("sills", []) as Array):
+		if (String(sl[0]) == a and String(sl[1]) == b) or (String(sl[0]) == b and String(sl[1]) == a): return true
+	return false
+
+func _ivgl_check() -> void:      # (the block at rest where its image stands in the square of light: the ring lights, the gate opens, and stays open)
+	if ivm_open or not ivg_on: return
+	var po := String((ivg.get("mirror", {}) as Dictionary).get("plate_of", ""))
+	if po == "" or iv_block != po: return
+	print("IV the block's image stands in the square of light: the ring lights, and the gate opens")
+	if ivgl_square != null:
+		var sm := ivgl_square.material_override as ShaderMaterial
+		create_tween().tween_method(func(v: float) -> void: sm.set_shader_parameter("k", v), 1.0, 1.8, 0.6).set_trans(Tween.TRANS_SINE)
+	await _ivm_open()
+
+func _ivgl_both(mi: MeshInstance3D) -> void:      # (a thing added to the real side, and its image)
+	var im := mi.duplicate() as MeshInstance3D; mi.get_parent().add_child(im)
+	im.global_transform = ivgl_T * mi.global_transform
+	_ivgl_imaged(im)
+
+func _ivgl_props(j: Dictionary) -> void:      # (the low thresholds across the way, and the low walls where two floors have no way between them)
+	var mat := _ivr_mat("marble2", 1.0, true)
+	for sl in (ivg.get("sills", []) as Array):
+		var a: Vector3 = ivp_nodes[String(sl[0])]; var b: Vector3 = ivp_nodes[String(sl[1])]
+		var bx := BoxMesh.new(); bx.size = Vector3(1.24, 0.1, 0.2)
+		var mi := MeshInstance3D.new(); mi.mesh = bx; mi.material_override = mat; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON; iv_root.add_child(mi)
+		var d := Vector3(b.x - a.x, 0, b.z - a.z).normalized()
+		mi.global_transform = Transform3D(Basis(Vector3.UP.cross(d), Vector3.UP, d), (a + b) * 0.5 + Vector3(0, 0.05, 0))
+		_ivgl_both(mi)
+	for w in (j.get("walls", []) as Array):
+		if not (w is Array) or (w as Array).size() < 2: continue
+		var p: Array = w[0]
+		var bx := BoxMesh.new(); bx.size = Vector3(0.3, 0.42, 1.36) if String(w[1]) == "x" else Vector3(1.36, 0.42, 0.3)      # ('x': the two floors side by side along x, the wall along z)
+		var mi := MeshInstance3D.new(); mi.mesh = bx; mi.material_override = mat; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON; iv_root.add_child(mi)
+		mi.global_position = IV_O + Vector3(float(p[0]), float(p[1]) + 0.21, float(p[2]))
+		_ivgl_both(mi)
