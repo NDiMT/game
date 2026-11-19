@@ -61,7 +61,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   small waves come in slowly over 0.22 of the screen below the haze (`far_w` in `IV_SEA_SH`), so no line marks where the
   sea begins.
 - **Start screen**: plum dark, cream EIDOLON and PLAY, a subdued veiled statue behind (`ui/start_statue.jpg`); the
-  film opens and closes in the same plum.
+  film opens and closes in the same plum. **For the tests** (the owner, 19/11: "while we test it, a choice at the start
+  of which level I begin from"): under PLAY, "level" and the numbers 1 2 3 in the story's letter; 1 is PLAY, 2 and 3 go
+  through a warm white straight into that level (`_ivw_jump`, as a gate leads on); a touch anywhere else is PLAY.
+  `IVW_LEVEL_PICK` false takes them away for the game itself. `IV_TEST_PICK=<n>` makes the autoplay touch one.
 - **Play it in a browser**: https://ndimt.github.io/game/eidolon-waking/ (the owner OK'd publishing there).
 - **Sounds** (`sfx/`, `_ivw_sfx`): **only real sound effects** (the owner, 18/11: "cut the melodic sounds, only normal
   sound effects"). The Lyria cues (a note at PLAY, a sigh on each story line, a swell for the stones, the gate's rise, a

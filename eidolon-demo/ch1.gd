@@ -3841,7 +3841,12 @@ func _play_ivp() -> void:
 		while ivw_intro_on: await get_tree().process_frame
 		await wait(4.0)
 	await snap.call("p0_title")
-	tap(Vector2(360, 640)); await wait(1.0)
+	if go_wake and not go_veil and OS.get_environment("IV_TEST_PICK") != "" and ivw_pick.size() >= 3:      # (to check the start screen's levels: a touch on one; 2 and 3 lead on into that level, whose own play goes on from its start)
+		var k := clampi(int(OS.get_environment("IV_TEST_PICK")), 1, 3)
+		await snap.call("p0_pick"); tap((ivw_pick[k - 1] as Rect2).get_center())
+		if k > 1: return
+	else: tap(Vector2(360, 640))
+	await wait(1.0)
 	while go_wake and not ivw_awake and not ended: await get_tree().process_frame      # (PLAY takes the eye down to her first: then she wakes)
 	await idle.call(); await wait(0.6)
 	if OS.get_environment("IV_CLEAN") != "": await wait(7.0)      # (for the look alone: after the line has gone)
@@ -4863,6 +4868,8 @@ func _ivw_life() -> void:
 ## PLAY; PLAY takes the eye down to her where she lies, and she wakes
 var ivw_menu: Control
 var ivw_menu_on := false
+const IVW_LEVEL_PICK := true      # (for the tests: the start screen lets one begin at any level; false for the game itself)
+var ivw_pick: Array = []      # (where the levels' numbers are on the start screen)
 var ivw_intro_box: Control
 ## the intro film, drawn by the game (the owner: "the film inside Godot", the video was too poor): the turning amphora of
 ## eidolon-world/dev/intro/amphora/tools/vase.py, its pieces baked by tools/intro_vase_bake.py into intro/vase/, turned,
@@ -4947,6 +4954,22 @@ func _ivw_menu_make() -> void:
 	var pl: TextureRect = put.call("res://ui/play.png", pw, vp.y * 0.27, cream)      # (PLAY under it, the same)
 	var pt := pl.create_tween().set_loops()      # (PLAY breathes, slowly; the tween is the word's own, so it ends with it, never spinning on a freed one)
 	pt.tween_property(pl, "modulate:a", 0.55, 1.4).set_trans(Tween.TRANS_SINE); pt.tween_property(pl, "modulate:a", 1.0, 1.4).set_trans(Tween.TRANS_SINE)
+	ivw_pick.clear()
+	if IVW_LEVEL_PICK:      # (for the tests: under PLAY, the levels by their numbers; a touch on one starts there (the owner, 19/11: "while we test it, a choice at the start of which level I begin from"))
+		var f := _ivw_vfont(IVW_CORM, 520.0); var bw := vp.x * 0.15      # (the story's own letter)
+		if f is FontVariation: (f as FontVariation).opentype_features = {"lnum": 1}      # (its lining figures: its own old-style 1 reads as an I)
+		var cap := Label.new(); cap.text = "level"; cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		if f != null: cap.add_theme_font_override("font", f)
+		cap.add_theme_font_size_override("font_size", int(vp.x * 0.042)); cap.add_theme_color_override("font_color", Color(cream, 0.7))
+		cap.size = Vector2(vp.x, vp.x * 0.07); cap.position = Vector2(0.0, vp.y * 0.335); cap.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_menu.add_child(cap)
+		for i in 3:
+			var lb := Label.new(); lb.text = str(i + 1)
+			lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			if f != null: lb.add_theme_font_override("font", f)
+			lb.add_theme_font_size_override("font_size", int(vp.x * 0.075)); lb.add_theme_color_override("font_color", cream)
+			lb.size = Vector2(bw, bw); lb.position = Vector2(vp.x * 0.5 + (float(i) - 1.0) * vp.x * 0.2 - bw * 0.5, vp.y * 0.405 - bw * 0.5)
+			lb.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_menu.add_child(lb)
+			ivw_pick.append(Rect2(lb.position, lb.size).grow(vp.x * 0.02))
 	title_box.hide()
 	ivw_close = 0.0      # (the whole level behind the name)
 	ivw_menu_on = true; ivr_fo = Vector2.ZERO; ivr_fv = Vector2.ZERO      # (the start screen holds the level's own eye)
@@ -5188,6 +5211,17 @@ func _ivw_intro_end() -> void:      # (at its end, or at a tap: the film fades i
 	ivw_intro_box.get_parent().queue_free(); ivw_intro_box = null; ivf_vid = null; ivf_mat = null; ivf_rect = null; ivf_tex.clear(); ivw_skip_lb = null
 	if ivw_film_audio != null: ivw_film_audio.queue_free(); ivw_film_audio = null; ivw_streams.erase("res://intro/intro_audio.ogg")
 	if not ivw_theme_on: ivw_theme_on = true; _ivw_music("res://music/theme.ogg", 2.5)      # (skipped early: the theme now; at its end it came in already, and goes on)
+
+func _ivw_jump(nx: String) -> void:      # (for the tests: from the start screen straight into a later level, as its gate would lead there)
+	ivw_menu_on = false
+	var cl := CanvasLayer.new(); cl.layer = 7; add_child(cl)
+	var fade := ColorRect.new(); fade.color = Color(1.0, 0.95, 0.9, 0.0); fade.set_anchors_preset(Control.PRESET_FULL_RECT); fade.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(fade)      # (the warm white the level begins in)
+	var t := create_tween(); t.tween_property(fade, "color:a", 1.0, 0.8).set_trans(Tween.TRANS_SINE)
+	await t.finished
+	if OS.get_environment("IV_NO_MUSIC") == "": get_tree().create_timer(14.0).timeout.connect(_ivw_radio().drop.bind("res://music/theme.ogg"))      # (the theme let go once the level's piece has taken over, as after PLAY)
+	print("IV start at the level: ", nx)
+	Engine.set_meta("ivw_next", nx)
+	get_tree().reload_current_scene()
 
 func _ivw_play() -> void:      # (PLAY: the name and the haze go, the eye goes down to her where she lies, and she wakes)
 	ivw_menu_on = false
@@ -8620,7 +8654,10 @@ func _self() -> void:
 func tap(sp: Vector2) -> void:
 	if go_demo and not started and go_wake and ivw_intro_on: _ivw_skip_tap(); return      # (a tap during the film: "tap to skip" a while; a second one skips it)
 	if go_demo and not started and go_wake and ivw_menu != null:
-		if ivw_menu_on: _ivw_play()
+		if ivw_menu_on:
+			for i in ivw_pick.size():
+				if i > 0 and (ivw_pick[i] as Rect2).has_point(sp): _ivw_jump(["goveil", "gomilos"][i - 1]); return      # (a later level, for the tests)
+			_ivw_play()
 		return
 	if go_demo and not started:      # (the trial played a step at a time: the eye draws back to hold the board)
 		started = true
