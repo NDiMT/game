@@ -18,7 +18,9 @@ A board gives the real side, rows from the top (gy high) down, a character per g
   'o' a floor with a broken column on it: neither she nor the block may stand there (the owner, 19/11: "not straight
       there in two pushes; a trick, the block must be stopped somewhere in the real world")
   ' ' nothing; cells on or beyond the glass's line are left blank.
-'cut' lists pairs of neighbouring floors with no way between them; 'stairs' pairs joined by a stair.
+'cut' lists pairs of neighbouring floors with no way between them; 'stairs' pairs joined by a stair; 'sills' pairs with
+a low threshold stone between them: she steps over it, the block stops at it (so it is never lost in a corner, the
+owner asked for no setting back).
 
 usage: python3 -I tools/go/plate_trial.py [board] [--draw out.png [board@]step:caption ...]
 """
@@ -39,7 +41,8 @@ class Trial:
                 if ch != ' ' and gx + gy < s.k: s.cells[(gx, gy)] = ch
         one = lambda ch: [c for c, x in s.cells.items() if x == ch][0]
         s.start, s.stone0, s.target, s.gate = one('S'), one('B'), one('T'), one('G')
-        s.slide = bool(b.get('slide')); s.cut = set(); s.stairs = set()
+        s.slide = bool(b.get('slide')); s.cut = set(); s.stairs = set(); s.sills = set()
+        for a, c in b.get('sills', []): s.sills |= {(tuple(a), tuple(c)), (tuple(c), tuple(a))}
         for a, c in b.get('cut', []): s.cut |= {(tuple(a), tuple(c)), (tuple(c), tuple(a))}
         for a, c in b.get('stairs', []): s.stairs |= {(tuple(a), tuple(c)), (tuple(c), tuple(a))}
     def m(s, c): return (s.k - c[1], s.k - c[0])
@@ -52,7 +55,7 @@ class Trial:
             if j == s.gate and not op: continue      # (the gate shut)
             if j == stone:
                 if (me, j) in s.stairs: continue
-                free = lambda a, c: s.way(a, c) and (a, c) not in s.stairs and c != s.gate
+                free = lambda a, c: s.way(a, c) and (a, c) not in s.stairs and (a, c) not in s.sills and c != s.gate
                 k = (j[0] + d[0], j[1] + d[1])
                 if not free(j, k): continue
                 if s.slide:      # (on until something stops it)
@@ -144,6 +147,8 @@ BOARDS['slide'] = {      # (the owner's trick: the block slides until something 
              '....T ',
              'S....G'],
     'cut': [((0, 0), (0, 1)), ((2, 0), (2, 1)), ((3, 0), (3, 1)), ((4, 0), (4, 1)), ((1, 1), (1, 2))],
+    'stairs': [((1, 0), (1, 1))],      # (the terrace a step above the corridor; its edge stops the block)
+    'sills': [((0, 2), (1, 2)), ((2, 2), (2, 3))],      # (two low thresholds: the block is never lost in a corner (the owner: no setting back))
 }
 BOARDS['plate_b'] = {      # (the block on, then up twice along its column; 3 pushes)
     'glass': 6,
@@ -200,6 +205,11 @@ def draw(specs, out, PW=540, PH=960):
         for k_, (al, wd) in enumerate(((60, 9), (110, 5), (255, 3))):
             sq_ = [(x - 30 * q, y), (x, y - 17 * q), (x + 30 * q, y), (x, y + 17 * q)]
             dr.line(sq_ + [sq_[0]], fill=(255, 214, 140, al if lit else al * 2 // 3), width=int(wd * q))
+        for a_, b_ in {tuple(sorted(e)) for e in t.sills}:      # (the low thresholds, across the way)
+            (x0, y0), (x1, y1) = P(a_), P(b_); mx, my = (x0 + x1) / 2, (y0 + y1) / 2; dx, dy = (x1 - x0), (y1 - y0); L = (dx * dx + dy * dy) ** 0.5
+            nx, ny = -dy / L * 18 * q, dx / L * 18 * q
+            dr.line([(mx - nx, my - ny), (mx + nx, my + ny)], fill=(150, 118, 90), width=int(7 * q))
+            dr.line([(mx - nx, my - ny - 2 * q), (mx + nx, my + ny - 2 * q)], fill=(236, 220, 196), width=int(3 * q))
         for c in t.pillars:      # (the broken columns: neither she nor the block may stand there)
             x, y = P(c)
             dr.polygon([(x - 13 * q, y), (x - 13 * q, y - 46 * q), (x - 4 * q, y - 52 * q), (x + 5 * q, y - 44 * q), (x + 13 * q, y - 49 * q), (x + 13 * q, y)], fill=(236, 226, 214), outline=(150, 128, 110))
