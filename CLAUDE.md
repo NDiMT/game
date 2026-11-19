@@ -173,9 +173,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   below it). The light leaves the statue at the height of her eyes (the owner). The goddess a colossus (the owner: "a
   big statue of Aphrodite"),
   painted far off in the level's backdrop (the owner, 19/11: "make Aphrodite in Gemini, further back in the background,
-  like low poly but big; don't spoil the background much"): Gemini painted her alone, a low-poly faceted Venus de Milo lit
-  from the left as the level's rocks, on flat green (`design/level3/goddess_lowpoly.png`); `tools/go/backdrop_figure.py`
-  cuts her out and lays her into the plain backdrop (`design/level3/backdrop_plain.jpg`) at the left, her head at 0.085 of
+  like low poly but big; don't spoil the background much", then "not low poly, smoother", "a little as painted, like the
+  first time you sent me the third level"): Gemini painted her alone, a smooth Venus de Milo in softly painted marble in
+  the style of the level's concept (given as its reference), lit from the left as the level's rocks, on flat green
+  (`design/level3/goddess_painted.png`; before her `goddess_lowpoly.png`, faceted; a polished smooth one looked like a
+  photograph); `tools/go/backdrop_figure.py` cuts her out and lays her into the plain backdrop (`design/level3/backdrop_plain.jpg`) at the left, her head at 0.085 of
   its height, her hips going into the bright haze band at 0.335, under a breath of haze; the 3D goddess is out of the plan
   (`GODDESS` kept in `milos_plan.py` for the record). Her 3D models, all turned down: a painted picture of her on a card
   in the world ("it's bad"), the Tripo P1 model smooth (11,660 faces) and flat with her light baked into its faces (4,200
