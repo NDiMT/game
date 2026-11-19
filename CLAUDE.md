@@ -250,19 +250,26 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
 - **Level 4, the glass (`goglass/`, `FLIP=goglass`, in the game since 19/11)**: the owner's puzzle (19/11: "she does not
   cross; the block must go somewhere in the reflection and the gate opens in the real view"): a wall of glass stands
   across the screen in the still sea; before it the real place (a corridor low over the water from her start to the
-  shut gate; a terrace a step above it with the block and a winch), beyond it its exact image (only the real side is
+  shut gate; a terrace a step above it with the block), beyond it its exact image (only the real side is
   built: `_ivgl_setup` turns the level over about the glass, x + z + k = 0 in the level's axes, gives it to the air the
   further it lies behind the glass, `img_k`/`img_fade` in IV_SH, and draws it only through the pane, `img_clip`; every
   moving thing's image follows it, `_ivgl_pair`/`_ivgl_tick`). In the image alone a bright outline of a square (the
   owner) hangs still; the ring and the gate are unlit and shut until the block's image stands in it (level 3's
-  `_ivm_gate_shut`/`_ivm_open`, shared; `_ivgl_check`). **The trick: the glass moves** (19/11, after a sliding block
-  stopped by low thresholds was turned down: "the rock that sticks on raised little steps, I don't like it; can you think
-  of something else?"): the square hangs one step beyond the image of the terrace's corner; pushed to the corner, the
-  block's image falls one step short; the winch (where the column stood) slides the glass back one step and the whole
-  image slides with it, twice as far, as in any mirror (`_ivgl_slide`, `_ivgl_set_plane`): the block's image enters the
-  square. One way, no dead end, no thresholds (`tools/go/move_glass_trial.py`, plan `tools/go/move_plan.py`, built by
-  `tools/ivory_level.py -- goglass/level.glb goglass/level.json 406 24 goglass/plan.json`). For pictures:
-  `IV_GLASS_K=1` (the glass moved), `IV_BLOCK_AT=<node>`, `IV_GATE_OPEN=1`. Her image in the glass is a black blurred
+  `_ivm_gate_shut`/`_ivm_open`, shared; `_ivgl_check`). **As the owner settled it (19/11): the glass stands still and
+  there is no winch** ("take the winch out"; a glass slid or hauled by a winch was not understood: "why should the glass
+  need pulling? I don't understand"; before it, a sliding block stopped by low thresholds was turned down): the square
+  lies on the image of the terrace's corner by the glass; push the block there (four pushes, two ways; the block from
+  the terrace's back, down the stair's head, then along the front row) and its image stands in it. **The same square of
+  light lies at her start** (the owner: "the same bright square at the start too, and if you step on it, it resets the
+  block"): stepping back onto it, the block sinks into the stone where it stands and rises where it began
+  (`_ivgl_reset`; on the white stone it is a bright line inlaid in a darker bed, `IVGL_PAD_SH`; its image in the glass a
+  dim blue). Five places the block cannot come out of (the corners), and no true dead end with the square
+  (`tools/go/still_glass_trial.py`, plan `tools/go/still_plan.py`; the level.glb of the moving glass is the same, its
+  floors unchanged). **The real place and its image stand a little apart** (the owner: "let the two sections have a
+  little distance between them"): the glass 2.4 m past the terrace's nearest row (`GAP`, plane 11.4; 0.8 before), the
+  eye a little lower (`bottom_room` 0.12). The moving glass (`move_glass_trial.py`, `move_plan.py`, `_ivgl_slide`) is
+  kept for the record. For pictures: `IV_BLOCK_AT=<node>`, `IV_GATE_OPEN=1`; `IV_SOL="<nodes>"` plays another way
+  through (a block into a corner, back to the square at the start, and on). Her image in the glass is a black blurred
   shadow of her (the owner, 19/11: "if Ione's reflection shows, let it be like a black blurred shadow"; `IVGL_SHADE_SH`).
   The sea mirrors the level and has its foam and its gradient as every other sea (the owner, 19/11: "the sea, the
   gradient, the foam and the reflections are not like the other seas we made"): the level's image in the water is back,
@@ -278,7 +285,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   levels' from `backdrop_concept.jpg`; horizon 0.38), its palette sampled from it (`IV_GLASS_PAL`: slabs of a lilac white, dark plum-grey
   rock; a blue-lilac shade), the glass a pane whose left edge and top are seen (`IVGL_PANE`; the image is drawn only
   through it, `img_clip`), a bank of mist at the left over the pane's edge (`goglass/mist_l.png`), no rocks before the
-  eye. But never the painting itself as the level: Gemini paints a mirror freely, so its concepts broke the puzzle's
+  eye. **More atmospheric** (the owner, 19/11): soft banks of mist standing on the water before the glass and two sheets
+  lying on the open sea at the picture's lower corners (`IVGL_MISTS`, `IVGL_MIST_SH`: drifting billows, thinning to
+  nothing at the water; a mist painted on the glass itself ended on a hard line at its foot), the glass's light in wide
+  slanting sheens (its thin upright streaks read as lines over the story's words), no birds (they stood by the line as
+  specks). But never the painting itself as the level: Gemini paints a mirror freely, so its concepts broke the puzzle's
   logic (the owner: "what you sent makes no sense"); the game's exact image is the mirror. Its line, still to be settled
   with the owner: "But a mirror gives no souls, / only images." A pearl-white backdrop
   (`design/level4/game/backdrop_painted.jpg`) was tried and is not the one.
