@@ -260,6 +260,13 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   lightning (the owner: "do we want lightning?"; a crack drawn as an outline was painted as lightning), and no Aphrodite
   or any statue behind (the owner: "not Aphrodite behind again"; level 3's concept as a reference brought her in). The
   glass stays across the screen (a slanted one, along the board's lines, `glass_slant`, made the map 1.7 times smaller).
+  Then a great face far behind, faint (the owner: "behind, a big face faintly, for the background"; "we had some 3D
+  models of faces"; "the back of the head in the water, the face coming out of it"; "a little more aslant, turned 30
+  degrees"; "deeper in the water and further back"; he chose B): `props/iv_head.glb` (the classical head with its hair)
+  deep in the sea behind the reflection, only its face out of the water, looking 30 degrees up and leaning 30 degrees to
+  one side (`tools/go/head_in_sea.py -- out.png 30 30 0 0.68 props/iv_head.glb`, `design/level4/face_ref.png`); its
+  concept `design/level4/concept.jpg` (the one without it, `concept_base.jpg`). Turned down on the way: faces painted in
+  the mist (front, eyes closed or open), the back of a head toward us ("why toward us?").
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
