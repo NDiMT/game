@@ -95,12 +95,14 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   - `IV_HITCH=1` prints long frames, and every 3 s the frame's work, draws and triangles. Script work for the waking,
     measured without a screen: 5.9 → 1.7 ms a frame.
 - **A long way at one swipe** (the owner, 19/11: "on long ways it takes ages with swipes from node to node"): a swipe
-  takes her on along the way while it has only one way on and nothing beside it to work (`_ivg_run_path`), and stops
-  where there is a choice, beside a stone, a mirror or the volute, at a gap, before a shut gate, at the gate's ring, or
-  where her standing changes the trial (level 3: where the light would reach the ring, `_ivm_open_at`); one smooth walk,
-  each node still a move. A swipe during it along the same way is let be; another way stops her at the next node and is
-  done from there (`_ivg_run_keep`). Swipes: level 1 two (the winch, then one to the gate), level 2 six, level 3 eight
-  (were 9, 9, 18). The autoplay follows its solution on by the nodes walked (`ivg_last_run`). `IV_RUN=0`: a node a swipe.
+  takes her on **straight** along the way while it has only one way on and nothing beside it to work (`_ivg_run_path`),
+  and stops where it turns, where there is a choice, beside a stone, a mirror or the volute, at a gap, before a shut
+  gate, at the gate's ring, or where her standing changes the trial (level 3: where the light would reach the ring,
+  `_ivm_open_at`); one smooth walk, each node still a move. Round the corners too, at first, it walked level 1 to the
+  gate at one swipe: "if she walks the whole way by herself the game has no point" (the owner). A swipe during it along
+  the same way is let be; another way stops her at the next node and is done from there (`_ivg_run_keep`). Swipes:
+  level 1 four, level 2 seven, level 3 eleven (a node a swipe: 9, 9, 18). The autoplay follows its solution on by the
+  nodes walked (`ivg_last_run`). `IV_RUN=0`: a node a swipe.
 - **The change of level after the gate** (the owner, 19/11: "a little shorter"): the motes' hold 0.6 s (was 1.6), the
   end of the vanishing 0.3 (0.8), the light filling the picture 1.0 (1.6), the next level out of it 1.2 (1.8).
 - **The old island is not built in the waking's levels** (`iv_no_old`; `IV_OLD_WORLD=1` builds it): main.gd built the

@@ -3729,9 +3729,10 @@ func _ivg_swipe(dv: Vector2) -> void:
 	ivg_turning = false
 
 ## a long way at one swipe (the owner, 19/11: "on long ways it takes ages with swipes from node to node"): she goes on
-## along the way while it has only one way on and nothing beside it to work, and stops where there is a choice, beside
-## a stone, a mirror or the volute, at a gap, before a shut gate, at the gate's ring, or where her standing changes the
-## trial (level 3: where the light would reach the ring). Each node is a move, as before. IV_RUN=0: a node a swipe
+## straight along the way while it has only one way on and nothing beside it to work, and stops where it turns, where
+## there is a choice, beside a stone, a mirror or the volute, at a gap, before a shut gate, at the gate's ring, or where
+## her standing changes the trial (level 3: where the light would reach the ring). Each node is a move, as before.
+## IV_RUN=0: a node a swipe. (Round the corners too, at first: "then she walks the whole way by herself", the owner)
 var ivg_run_on := OS.get_environment("IV_RUN") != "0"
 var ivg_run: Array = []      # (the nodes of the long walk going on)
 var ivg_last_run: Array = []      # (the nodes her last walk went through: the autoplay follows its solution on by them)
@@ -3752,6 +3753,8 @@ func _ivg_run_path(from: String, first: String) -> Array:
 			if n == "s" or n == prev or not _ivw_open(cur, String(n)): continue
 			on.append(String(n))
 		if on.size() != 1 or not _ivg_plain(String(on[0])): break
+		var a: Vector3 = ivp_nodes[prev]; var b: Vector3 = ivp_nodes[cur]; var c: Vector3 = ivp_nodes[String(on[0])]
+		if Vector2(b.x - a.x, b.z - a.z).normalized().dot(Vector2(c.x - b.x, c.z - b.z).normalized()) < 0.94: break      # (the way turns: she stops at the corner, and the turn is the player's own swipe (the owner, 19/11: "if she walks the whole way by herself the game has no point"))
 		prev = cur; cur = String(on[0]); path.append(cur)
 	return path
 func _ivm_open_at(k: String) -> bool:      # (would the light reach the ring with her standing at k?)
