@@ -55,12 +55,12 @@ def from_screen(lines):
     return rows
 
 
-def parse(rows, k=None):
+def parse(rows, k=None, ax=None):
     n = len(rows); cells = {}
     for r, row in enumerate(rows):
         gy = n - 1 - r
         for gx, ch in enumerate(row):
-            d = gx - gy if k is None else gx + gy - k      # (how far beyond the glass: the real side is below 0)
+            d = (gx - ax[1] if ax[0] == 'x' else gy - ax[1]) if ax else (gx - gy if k is None else gx + gy - k)      # (how far beyond the glass: the real side is below 0)
             if ch == ' ' or d > 0: continue
             if d == 0 and ch != 'X': continue
             cells[(gx, gy)] = ch
@@ -70,7 +70,8 @@ def parse(rows, k=None):
 class Trial:
     def __init__(s, b, image=True):
         s.k = b.get('glass')      # (the glass across the screen, gx + gy = k; None: up the middle, gx = gy)
-        cells = parse(b['rows'], s.k) if 'rows' in b else dict(b['cells'])
+        s.ax = tuple(b['glass_axis']) if b.get('glass_axis') else None      # (or along a line of the board, slanted on the screen as every wall: ('x', c) is gx = c, ('y', c) is gy = c)
+        cells = parse(b['rows'], s.k, s.ax) if 'rows' in b else dict(b['cells'])
         s.N = len(b['rows']) if 'rows' in b else b['N']
         s.kind = {}      # (gx, gy) -> 'real' | 'image' | 'crack'
         for c, ch in cells.items():
@@ -90,10 +91,13 @@ class Trial:
         s.cut = cut
         s.use_image = image
     def m(s, c):      # (a cell turned over about the glass)
-        c = tuple(c); return (c[1], c[0]) if s.k is None else (s.k - c[1], s.k - c[0])
+        c = tuple(c)
+        if s.ax: return (2 * s.ax[1] - c[0], c[1]) if s.ax[0] == 'x' else (c[0], 2 * s.ax[1] - c[1])
+        return (c[1], c[0]) if s.k is None else (s.k - c[1], s.k - c[0])
     def way(s, p, q): return p in s.kind and q in s.kind and (p, q) not in s.cut
     def side(s, c):
-        d = c[0] - c[1] if s.k is None else c[0] + c[1] - s.k
+        if s.ax: d = c[0] - s.ax[1] if s.ax[0] == 'x' else c[1] - s.ax[1]
+        else: d = c[0] - c[1] if s.k is None else c[0] + c[1] - s.k
         return -1 if d < 0 else (1 if d > 0 else 0)
     def image_of(s, stone):
         if not s.use_image: return None
@@ -173,8 +177,8 @@ def ascii(t, st=None):
 def screen(t, st=None):      # (as the eye sees it: the board turned 45 degrees, the glass across it or up the middle)
     me, stone = st if st else (t.start, t.stone0); img = t.image_of(stone)
     us = [c[0] - c[1] for c in t.kind]; vs = [c[0] + c[1] for c in t.kind]
-    on_glass = (lambda u, v: u == 0) if t.k is None else (lambda u, v: v == t.k)
-    gl = '|' if t.k is None else '-'
+    if t.ax: on_glass = lambda u, v: (u + v) % 2 == 0 and (((v + u) // 2 if t.ax[0] == 'x' else (v - u) // 2) == t.ax[1]); gl = '/'
+    else: on_glass = (lambda u, v: u == 0) if t.k is None else (lambda u, v: v == t.k); gl = '|' if t.k is None else '-'
     lines = []
     for v in range(max(vs), min(vs) - 1, -1):
         row = ''
@@ -217,6 +221,19 @@ BOARDS['glass'] = {      # (the fourth level: step into the cracked glass, push 
              'rS.. '],
     'cut': [((0, 0), (1, 0)), ((1, 0), (1, 1)), ((2, 0), (2, 1))],
 }
+BOARDS['glass_slant'] = {      # (the glass along a line of the board, gy = 4, slanted on the screen as every wall: the real side below it on the right, the image above it on the left; two cracks side by side, the stone at the second's foot)
+    'glass_axis': ('y', 4),
+    'rows': ['    ',
+             '    ',
+             '    ',
+             '    ',
+             '  XX',
+             '  .B',
+             '  ..',
+             '  .hr',
+             '  S '],
+    'cut': [((2, 3), (3, 3)), ((2, 2), (3, 2)), ((2, 1), (3, 1))],
+}
 BOARDS['glass_lr'] = {      # (the same trial with the glass up the middle, side by side: turned to 'glass' by (gx, gy) -> (gx, 4 - gy))
     'rows': ['rS.. ',
              'h.BX ',
@@ -246,15 +263,19 @@ def draw(specs, out, PW=540, PH=960):
         top_, bot_ = -max(ws) * 0.5 * K - 1.6 * K, -min(ws) * 0.5 * K + 0.5 * K      # (the board's height, its gate on top)
         oy = (190 + PH - 40) / 2 - (top_ + bot_) / 2
         P = lambda c: (ox + (c[0] - c[1]) * K * 0.87, oy - (c[0] + c[1]) * K * 0.5)
-        across = t.k is not None
+        across = t.k is not None and not t.ax; slant = t.ax is not None
         gy_ = oy - (t.k if across else 0) * K * 0.5      # (the glass's line on the screen, when it runs across)
+        if slant:      # (the glass's line on the screen, when it runs along the board: two far points of it)
+            a0, a1 = (P((-60, t.ax[1])), P((60, t.ax[1]))) if t.ax[0] == 'y' else (P((t.ax[1], -60)), P((t.ax[1], 60)))
+            lx = lambda y: a0[0] + (y - a0[1]) * (a1[0] - a0[0]) / (a1[1] - a0[1])
         warm, cool = (232, 214, 220), (214, 220, 236)
         for y in range(PH):
             f = y / PH
             if across:
                 col = cool if y < gy_ else warm; dr.line([(0, y), (PW, y)], fill=tuple(int(col[i] - 22 * f) for i in range(3)))
             else:
-                for x0, x1, col in ((0, ox, warm), (ox, PW, cool)):
+                xm = lx(y) if slant else ox; img_left = slant and t.ax[0] == 'y'
+                for x0, x1, col in ((0, xm, cool if img_left else warm), (xm, PW, warm if img_left else cool)):
                     dr.line([(x0, y), (x1, y)], fill=tuple(int(col[i] - 22 * f) for i in range(3)))
         me, stone = path[step]; img = t.image_of(stone)
         for c in t.kind:      # (the ways: real ones warm, the image's silver)
@@ -273,17 +294,18 @@ def draw(specs, out, PW=540, PH=960):
                 im_side = k == 'image'
                 dr.ellipse([x - 13 * q, y - 8 * q, x + 13 * q, y + 8 * q], fill=(240, 244, 252) if im_side else (255, 248, 236),
                            outline=(170, 180, 212) if im_side else (205, 172, 135), width=max(2, int(3 * q)))
-        if across:      # (the glass: a sheet of light standing across the level, facing the eye; the image is seen through it)
+        if across or slant:      # (the glass: a sheet of light standing up from its line; across, it faces the eye; along the board, it is seen aslant)
             hs = 1.25 * K
+            b0, b1 = ((0, gy_), (PW, gy_)) if across else (a0, a1)
             for i in range(int(hs)):
-                dr.line([(0, gy_ - i), (PW, gy_ - i)], fill=(255, 255, 255, int(70 * (1 - i / hs) ** 1.5)))
-            for k in range(5): dr.line([(0, gy_), (PW, gy_)], fill=(255, 255, 255, 40 + 40 * (k == 4)), width=int((12 - 2.4 * k) * q))
+                dr.line([(b0[0], b0[1] - i), (b1[0], b1[1] - i)], fill=(255, 255, 255, int(70 * (1 - i / hs) ** 1.5)))
+            for k in range(5): dr.line([b0, b1], fill=(255, 255, 255, 40 + 40 * (k == 4)), width=int((12 - 2.4 * k) * q))
         else:
             ys = [P(c)[1] for c in t.kind]; top, bot = min(ys) - 110 * q, max(ys) + 60 * q
             for k in range(7): dr.line([(ox, top), (ox, bot)], fill=(255, 255, 255, 40 + 30 * (k == 3)), width=int((14 - 2 * k) * q))
         for c, k in t.kind.items():      # (the crack: an opening of light in the glass)
             if k != 'crack': continue
-            x, y = P(c); hh = 1.25 * K if across else 46 * q
+            x, y = P(c); hh = 1.25 * K if (across or slant) else 46 * q
             dr.polygon([(x - 18 * q, y + 8 * q), (x - 7 * q, y - 0.85 * hh), (x + 6 * q, y - 0.3 * hh), (x + 15 * q, y - hh), (x + 20 * q, y + 8 * q)],
                        fill=(255, 252, 240, 225), outline=(255, 255, 255))
         if step > 0:
