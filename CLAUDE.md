@@ -262,11 +262,20 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   `slide` in `tools/go/plate_trial.py` (19 moves, three pushes, one way, no dead end, the column needed), plan
   `tools/go/slide_plan.py` (asserts it is the board), built by `tools/ivory_level.py -- goglass/level.glb
   goglass/level.json 406 24 goglass/plan.json`. The sea mirrors nothing here, only the glass (the owner: "with what you
-  set up we have two reflections"). **It is made in the other maps' design, in the game itself** (the owner, 19/11, of
-  painted concepts in pale lilac fog: "it has nothing to do with the design of the other maps"; Gemini paints a mirror
-  freely, so its concepts broke the puzzle's logic: "what you sent makes no sense"): judge it by the game's own frames.
-  Its line, still to be settled with the owner: "But a mirror gives no souls, / only images." Its backdrop is still
-  level 1's. Earlier designs kept for the record: `tools/go/glass_trial.py` (cracks to cross), `plate_plan.py`,
+  set up we have two reflections"). **It is built in the game in its Gemini concept's style** (the owner, 19/11: "we had a
+  nice blue atmosphere with a statue", "why did you ruin it?", "I want it set up in Gemini's style"; a version in level
+  1's pink dawn was "ruined"): the concepts' (`design/level4/concept.jpg`, `slide/concept_start.jpg`) blue-lilac haze,
+  their backdrop painted alone by Gemini from the concept (the sky, the soft sun at the upper right, the great face
+  lying in the misty sea; `goglass/backdrop.jpg`, source `design/level4/game/backdrop_concept.jpg`; horizon 0.46 so the
+  sea plane ends under the face), its palette sampled from it (`IV_GLASS_PAL`: slabs of a lilac white, dark plum-grey
+  rock; a blue-lilac shade), the glass a pane whose left edge and top are seen (`IVGL_PANE`; the image is drawn only
+  through it, `img_clip`), a bank of mist at the left over the pane's edge (`goglass/mist_l.png`), no rocks before the
+  eye. But never the painting itself as the level: Gemini paints a mirror freely, so its concepts broke the puzzle's
+  logic (the owner: "what you sent makes no sense"); the game's exact image is the mirror. Her own image in the glass
+  is left out as the concept has it (`IV_GLASS_HER=1` shows it). Its line, still to be settled with the owner: "But a
+  mirror gives no souls, / only images." A pearl-white backdrop (`design/level4/game/backdrop_painted.jpg`) was tried and
+  is not the one.
+  Earlier designs kept for the record: `tools/go/glass_trial.py` (cracks to cross), `plate_plan.py`,
   `design/level4/` (the concepts, the face in the sea, `face_ref.png`).
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 

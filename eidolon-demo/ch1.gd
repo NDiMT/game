@@ -2214,7 +2214,14 @@ const IV_MILOS_PAL := {      # the third level in the colours of its concept, ch
 	"ring": ["fbf9f4", "fbf9f4", "fbf9f4", "fbf9f4"],      # (lit: the soft white light of every level's ring; unlit, a light grey-lilac stone (_ivm_ring_tick))
 	"goddess": ["ffffff", "f7f5fc", "c6c0dc", "8a82ad"],      # (the goddess: white in the light, a clear lilac shade, as the concept paints her)
 }
+const IV_GLASS_PAL := {      # the fourth level in the colours of its concept (design/level4/concept.jpg, sampled; the owner, 19/11: "we had a nice blue atmosphere with a statue", "I want it set up in Gemini's style"): a blue-lilac haze, slabs of a lilac white, dark plum-grey rock
+	"marble2": ["f2ebf0", "e4dbe1", "cbc2cd", "958ca6"],      # (its slabs: #e6dde4 #e0d4d9 lit, #d5d1d8 #c8bfc5, a lilac shade)
+	"rock2": ["8d7d84", "6b5d6d", "4c4052", "35293b"],      # (its rock: #8a7878 lit, #493d4d #43384a, #36293a in the shade)
+	"groove": ["d8d0da", "d8d0da", "d8d0da", "d8d0da"],
+	"ring": ["fbf9f4", "fbf9f4", "fbf9f4", "fbf9f4"],
+}
 func _iv_pal(kind: String) -> Array:
+	if go_glass and IV_GLASS_PAL.has(kind): return IV_GLASS_PAL[kind] as Array
 	if go_milos and IV_MILOS_PAL.has(kind): return IV_MILOS_PAL[kind] as Array
 	if go_wake and IV_WAKE_PAL.has(kind): return IV_WAKE_PAL[kind] as Array
 	if go_quarry and IV_QUARRY_PAL.has(kind): return IV_QUARRY_PAL[kind] as Array
@@ -2254,7 +2261,8 @@ uniform float fog_hi = -2.6;
 uniform float fog_lo = -10.5;
 uniform float fog_ref = 0.0;
 uniform float far_k = 0.0;
-uniform float img_k = 0.0; uniform vec4 img_plane = vec4(0.70710678, 0.0, 0.70710678, 0.0); uniform vec2 img_fade = vec2(0.34, 0.045);      // (the fourth level: a thing's image beyond the glass, given to the air the further it lies behind it)
+uniform float img_k = 0.0; uniform vec4 img_plane = vec4(0.70710678, 0.0, 0.70710678, 0.0); uniform vec2 img_fade = vec2(0.34, 0.045);
+uniform vec4 img_clip = vec4(-1e6, 1e6, -1e6, 1e6); uniform vec3 img_c0; uniform vec3 img_al = vec3(0.70710678, 0.0, -0.70710678); uniform vec3 img_fwd = vec3(0.0, 0.0, -1.0);      // (the glass's pane: along it from img_c0, and its height; the eye's way)      // (the fourth level: a thing's image beyond the glass, given to the air the further it lies behind it)
 uniform float veins = 0.0;
 uniform float flat_mode = 0.0;
 uniform float emit = 0.0;
@@ -2360,6 +2368,11 @@ vec2 brush(vec2 sp, float px){      // (the strokes at this place of the canvas,
 void fragment(){
 	if (clip_k > 0.5 && wp.y < clip_y) discard;
 	if (mirror_k > 0.5 && wp.y > mirror_y) discard;
+	if (img_k > 0.5) {      // (an image is seen only through the glass: where the eye's ray to it crosses the plane outside the pane, nothing)
+		float sd = dot(wp, img_plane.xyz) + img_plane.w; vec3 q = wp - img_fwd * (sd / dot(img_fwd, img_plane.xyz));
+		float qu = dot(q - img_c0, img_al);
+		if (qu < img_clip.x || qu > img_clip.y || q.y > img_clip.w) discard;
+	}
 	vec3 fn = normalize(cross(dFdx(wp), dFdy(wp)));
 	if (dot(fn, INV_VIEW_MATRIX[2].xyz) < 0.0) fn = -fn;
 	if (mirror_k > 0.5) fn.y = -fn.y;      // (in the water: each face as lit as it is above)
@@ -2634,7 +2647,8 @@ func _iv_mat(kind: String, far_k := 0.0, extra := {}) -> ShaderMaterial:
 		m.set_shader_parameter("shade_tint", Color(0.74, 0.79, 0.9)); m.set_shader_parameter("clip_k", 1.0); m.set_shader_parameter("clip_y", IV_O.y + ivr_sea_y)
 	if go_wake:      # (dawn: the shade lilac; what lies under the still water is not drawn, its image is)
 		m.set_shader_parameter("shade_tint", Color(0.68, 0.6, 0.78)); m.set_shader_parameter("ao_tint", Color(0.86, 0.78, 0.86)); m.set_shader_parameter("vein_tint", Color(0.93, 0.88, 0.9))      # (cast shadows that read, a deep lilac: the way Lara Croft GO gives its places depth)
-		if go_milos: m.set_shader_parameter("shade_tint", Color(0.72, 0.71, 0.9)); m.set_shader_parameter("ao_tint", Color(0.86, 0.85, 0.96))      # (the third level: its shade a pale blue-lilac (the owner: "light blue, lilac"))
+		if go_milos: m.set_shader_parameter("shade_tint", Color(0.72, 0.71, 0.9)); m.set_shader_parameter("ao_tint", Color(0.86, 0.85, 0.96))
+		if go_glass: m.set_shader_parameter("shade_tint", Color(0.68, 0.67, 0.86)); m.set_shader_parameter("ao_tint", Color(0.84, 0.82, 0.95))      # (the fourth level: its concept's blue-lilac shade)      # (the third level: its shade a pale blue-lilac (the owner: "light blue, lilac"))
 		m.set_shader_parameter("clip_k", 1.0); m.set_shader_parameter("clip_y", IV_O.y + ivr_sea_y); m.set_shader_parameter("sea_c", Color("c9c3ea") if go_milos else Color("ead2cf"))      # (an image in the water dims toward the pearl of the sea, not toward blue; at Milos toward its pale blue-lilac sea)
 		m.set_shader_parameter("wline_k", 0.6); m.set_shader_parameter("mirror_fade", 2.0); m.set_shader_parameter("mirror_wob", 0.035)
 		if not ivr_eye.is_empty():      # (its mist held to the world, as the sea is: the eye close on her shows no pale shapes where images fade)
@@ -3203,7 +3217,7 @@ func _iv_pre(_dt: float) -> void:
 func _iv_post(dt: float) -> void:
 	for dct in [H, SHP]:
 		for hk in dct:
-			if String(hk) != "main": (dct[hk].holder as Node3D).visible = false
+			if String(hk) != "main" and String(hk) != "glass": (dct[hk].holder as Node3D).visible = false      # (the fourth level: her image in the glass stays)
 	for nd in iv_hidden: (nd as Node3D).visible = false
 	if iv_root == null: return
 	if ivp_on: _ivp_post(dt)
@@ -6384,6 +6398,10 @@ func _ivr_build() -> void:
 			rbl.texture = load("res://gomilos/rock_bl.png"); rbl.modulate = Color.WHITE; rbl.size = Vector2(259, 259) * k; rbl.position = Vector2(0.0, vh - 259 * k)
 			rb.texture = load("res://gomilos/rock_br.png"); rb.modulate = Color.WHITE; rb.size = Vector2(216, 258) * k; rb.position = Vector2(720 * k - 216 * k, vh - 258 * k)
 		elif go_milos: rb.modulate = Color(0.66, 0.72, 0.96, 0.98); rbl.modulate = rb.modulate
+		if go_glass:      # (the fourth level, as its concept: no rocks before the eye; a bank of mist at the left, over the glass's edge)
+			rb.visible = false; rbl.visible = false
+			if ResourceLoader.exists("res://goglass/mist_l.png"):
+				var ml := _iv_overlay(cl, "res://goglass/mist_l.png", Vector2(-70 * k, vh * 0.27), Vector2(400, 475) * k); ml.modulate = Color(1, 1, 1, 0.92)
 		if go_veil and not go_milos and not go_glass and ResourceLoader.exists("res://goveil/statue_fg.png"):      # (the second level: a veiled statue standing before the eye at the lower right, blurred, dark against the light, one of the thousand (the owner, 18/11: "fantastic, the blurred statue"); clear of the way, the gate and the rocks in the sea)
 			var sfg := _iv_overlay(cl, "res://goveil/statue_fg.png", Vector2(487 * k, vh - 468 * k), Vector2(341, 532) * k); sfg.modulate = Color(0.55, 0.42, 0.58, 0.95)
 		vg.colors = PackedColorArray([Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0.05), Color(0.26, 0.16, 0.3, 0.2)])      # (a soft darkening at the edges: the eye drawn in)
@@ -9880,13 +9898,15 @@ const IVGL_IMG_FADE := Vector2(0.42, 0.05)      # (the image's air: at the glass
 const IVGL_GLASS_SH := """
 shader_type spatial;
 render_mode unshaded, cull_disabled, shadows_disabled, depth_draw_never, blend_add;
-uniform float k = 1.0;
+uniform float k = 1.0; uniform float u0 = -14.0; uniform float uw = 28.0; uniform float gh = 10.5;
 float gl(float u, float v, float c, float w, float s, float v0, float v1) { return s * exp(-pow((u - c) / w, 2.0)) * pow(clamp((v - v0 * 0.5) / (v0 * 0.5 + 0.1), 0.0, 1.0), 1.5) * clamp((v1 - v) / 0.25, 0.0, 1.0); }
 void fragment(){
-	float u = (UV.x - 0.5) * 28.0; float v = 1.0 - UV.y;      // (metres along the glass; 0 at the water, 1 at its top)
+	float u = u0 + UV.x * uw; float v = 1.0 - UV.y;      // (metres along the glass; 0 at the water, 1 at its top)
 	float a = gl(u, v, -2.7, 0.05, 0.15, 0.25, 0.85) + gl(u, v, -1.9, 0.26, 0.06, 0.1, 1.0) + gl(u, v, 1.35, 0.06, 0.2, 0.3, 0.95)
 		+ gl(u, v, 2.25, 0.34, 0.06, 0.15, 0.8) + gl(u, v, 4.85, 0.08, 0.17, 0.2, 1.0) + gl(u, v, 5.7, 0.035, 0.1, 0.4, 0.9);      // (soft gleams rising out of the water, fading before the top: nothing marks its edges)
-	a += 0.025 * clamp(v / 0.35, 0.0, 1.0) * clamp((1.0 - v) / 0.3, 0.0, 1.0);
+	a += 0.05 * clamp(v / 0.35, 0.0, 1.0);      // (the pane a little lighter than the air beside it, as its concept has it)
+	float eu = (u - u0) * 60.0; float ev = (1.0 - v) * gh * 60.0;      // (its fine edges, at the left and the top, a little bright: the pane is seen)
+	a += 0.42 * exp(-eu * eu * 0.5) * clamp(v / 0.25, 0.0, 1.0) + 0.3 * exp(-ev * ev * 0.5);
 	ALBEDO = vec3(1.0, 0.98, 0.95); ALPHA = clamp(a * k, 0.0, 1.0);
 }
 """
@@ -9903,11 +9923,16 @@ void fragment(){
 }
 """
 
-func _ivgl_img_mat(src: Material) -> Material:      # (a thing's image: its own look, in the air)
+const IVGL_PANE := Vector3(-2.9, 15.0, 12.6)      # (the pane: from this far along the glass (left of the middle of its plane's point under the eye) to that, and this high over the sea; its left edge and top seen, as its concept has them)
+var ivgl_c0 := Vector3.ZERO      # (the point of the glass's plane on the sea, from where it is measured along)
+
+func _ivgl_img_mat(src: Material) -> Material:      # (a thing's image: its own look, in the air, and only through the pane)
 	if not (src is ShaderMaterial): return src
 	var m := (src as ShaderMaterial).duplicate() as ShaderMaterial
 	m.set_shader_parameter("img_k", 1.0); m.set_shader_parameter("img_plane", Vector4(ivgl_plane.normal.x, ivgl_plane.normal.y, ivgl_plane.normal.z, -ivgl_plane.d))
 	m.set_shader_parameter("img_fade", IVGL_IMG_FADE); m.set_shader_parameter("shadow_k", 0.0)
+	m.set_shader_parameter("img_clip", Vector4(IVGL_PANE.x, IVGL_PANE.y, -1e6, ivgl_c0.y + IVGL_PANE.z)); m.set_shader_parameter("img_c0", ivgl_c0)
+	m.set_shader_parameter("img_al", Vector3(1, 0, -1).normalized()); m.set_shader_parameter("img_fwd", -_ivp_basis().z)
 	return m
 
 func _ivgl_imaged(n: Node) -> void:      # (every mesh under a thing's image: an image's material, casting no shadow)
@@ -9924,24 +9949,38 @@ func _ivgl_setup(lv: Node3D) -> void:
 	ivgl_T = Transform3D(b, IV_O - b * IV_O + Vector3(-k, 0, -k))
 	var n := Vector3(1, 0, 1).normalized()
 	ivgl_plane = Plane(n, n.dot(IV_O + Vector3(-k * 0.5, 0, -k * 0.5)))
+	ivgl_c0 = IV_O + Vector3(-k * 0.5, ivr_sea_y, -k * 0.5)
 	ivgl_img = lv.duplicate() as Node3D; lv.get_parent().add_child(ivgl_img)
 	ivgl_img.global_transform = ivgl_T * lv.global_transform
 	_ivgl_imaged(ivgl_img)
 	if iv_block_n != null and iv_block_n.visible:
 		ivgl_block = iv_block_n.duplicate() as Node3D; iv_block_n.get_parent().add_child(ivgl_block)
 		_ivgl_imaged(ivgl_block); _ivgl_tick()
-	var gh := 10.5
-	var q := QuadMesh.new(); q.size = Vector2(28.0, gh)
-	var gm := ShaderMaterial.new(); gm.shader = _ivw_shader(IVGL_GLASS_SH)
+	var gh := IVGL_PANE.z; var gw := IVGL_PANE.y - IVGL_PANE.x
+	var q := QuadMesh.new(); q.size = Vector2(gw, gh)
+	var gm := ShaderMaterial.new(); gm.shader = _ivw_shader(IVGL_GLASS_SH); gm.set_shader_parameter("u0", IVGL_PANE.x); gm.set_shader_parameter("uw", gw); gm.set_shader_parameter("gh", gh)
 	var gi := MeshInstance3D.new(); gi.mesh = q; gi.material_override = gm; gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	iv_root.add_child(gi)
 	var al := Vector3(1, 0, -1).normalized()
-	gi.global_transform = Transform3D(Basis(al, Vector3.UP, n), IV_O + Vector3(-k * 0.5, ivr_sea_y + gh * 0.5, -k * 0.5))
+	gi.global_transform = Transform3D(Basis(al, Vector3.UP, n), ivgl_c0 + al * (IVGL_PANE.x + gw * 0.5) + Vector3(0, gh * 0.5, 0))
 	var pp: Array = mr.get("plate", [0.0, 0.0, 0.0])
 	var sq := PlaneMesh.new(); sq.size = Vector2(1.7, 1.7)
 	var sm := ShaderMaterial.new(); sm.shader = _ivw_shader(IVGL_SQUARE_SH)
 	ivgl_square = MeshInstance3D.new(); ivgl_square.mesh = sq; ivgl_square.material_override = sm; ivgl_square.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	iv_root.add_child(ivgl_square); ivgl_square.global_position = IV_O + Vector3(float(pp[0]), float(pp[1]) + 0.03, float(pp[2]))
+	if hero_real and H.has("main") and OS.get_environment("IV_GLASS_HER") == "1":      # (her image in the glass, as a mirror has it: a body of hers turned over about it, doing as she does; off, as its concept has it (the owner wants it in its concept's style): IV_GLASS_HER=1 shows it)
+		var hr := Node3D.new(); add_child(hr); hr.global_transform = ivgl_T
+		var e: Dictionary = spawn_her(hr, "mirror"); H["glass"] = e
+		if e.sk != null:
+			var hm := HerMod.new(); hm.main = self; (e.sk as Skeleton3D).add_child(hm)
+		if e.ap != null: (e.ap as AnimationPlayer).play("idle")
+		for m in (e.holder as Node).find_children("*", "MeshInstance3D", true, false):
+			var mi := m as MeshInstance3D; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			for si in mi.get_surface_override_material_count():
+				var hsm := mi.get_surface_override_material(si) as ShaderMaterial
+				if hsm != null:      # (her own colours, a little cooled and given to the air, as the rest of the image)
+					hsm.set_shader_parameter("tint", Vector3(0.94, 0.95, 1.02)); hsm.set_shader_parameter("mist_col", Color(0.86, 0.85, 0.92))
+					hsm.set_shader_parameter("centre", IV_O + Vector3(900, 0, -900)); hsm.set_shader_parameter("mist_r", 7.0); hsm.set_shader_parameter("mist_k", 0.55)
 
 func _ivgl_tick() -> void:      # (the block's image goes with the block)
 	ivgl_block.global_transform = ivgl_T * iv_block_n.global_transform

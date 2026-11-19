@@ -1,0 +1,7 @@
+This is a painting of a game level. Paint only its background, as a separate plate, in exactly the same painting style, colours and light.
+
+Keep exactly as they are: the soft lilac and pale pink sky, the soft sun with its warm halo at the upper right, the haze, and the great pale stone face lying far behind in the misty sea, only its face out of the water, faint in the haze, at the same place and the same size.
+
+Remove everything in front of them: the white marble terraces, the dark rocks, the sandy block, the columns, the stairs, the gate, the small figure, the tall glass pane with its vertical light streaks, and the pale reflected terrace behind the glass with its glowing square. Where they were, continue the calm, still, misty lilac-grey sea and the soft low banks of mist, seamlessly, so the plate reads as one painting.
+
+There must be no horizon line anywhere: the sea fades into the haze of the sky with no line. No text, no frame.
