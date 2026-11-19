@@ -2262,6 +2262,7 @@ uniform float fog_lo = -10.5;
 uniform float fog_ref = 0.0;
 uniform float far_k = 0.0;
 uniform float img_k = 0.0; uniform vec4 img_plane = vec4(0.70710678, 0.0, 0.70710678, 0.0); uniform vec2 img_fade = vec2(0.34, 0.045);
+uniform vec3 img_mist : source_color = vec3(0.27, 0.33, 0.56); uniform vec3 img_tint : source_color = vec3(0.56, 0.66, 1.0); uniform float img_tint_k = 0.7; uniform float img_dark = 0.74;      // (the image a darker blue (the owner, 19/11: "the whole reflection a darker blue"), and its air its own blue, never the painting behind it: the great face in the painting showed through its stones ("why is the head seen over the stone?"))
 uniform vec4 img_clip = vec4(-1e6, 1e6, -1e6, 1e6); uniform vec3 img_c0; uniform vec3 img_al = vec3(0.70710678, 0.0, -0.70710678); uniform vec3 img_fwd = vec3(0.0, 0.0, -1.0);      // (the glass's pane: along it from img_c0, and its height; the eye's way)      // (the fourth level: a thing's image beyond the glass, given to the air the further it lies behind it)
 uniform float veins = 0.0;
 uniform float flat_mode = 0.0;
@@ -2525,7 +2526,7 @@ void fragment(){
 	float sy = uv_flip > 0.5 ? 1.0 - SCREEN_UV.y : SCREEN_UV.y;
 	float fk = max(1.0 - smoothstep(fog_ref + fog_lo, fog_ref + fog_hi, wy), far_k);
 	if (haze > 0.0) fk = max(fk, haze * 0.22 * smoothstep(44.0, 52.0, -VERTEX.z));      // (VERTEX: from the eye)
-	if (img_k > 0.5) { c = mix(c, vec3(dot(c, vec3(0.3, 0.55, 0.15))) * vec3(0.95, 0.96, 1.03), 0.45); fk = max(fk, clamp(img_fade.x + img_fade.y * max(-(dot(wp, img_plane.xyz) + img_plane.w), 0.0), 0.0, 0.9)); }      // (an image: its colour cooled toward silver, and given to the air)
+	if (img_k > 0.5) { c = mix(c, vec3(dot(c, vec3(0.3, 0.55, 0.15))) * img_tint, img_tint_k) * img_dark; fk = max(fk, clamp(img_fade.x + img_fade.y * max(-(dot(wp, img_plane.xyz) + img_plane.w), 0.0), 0.0, 0.9)); }      // (an image: its colour cooled toward silver, and given to the air)
 	if (lfog > 0.5) {      // (into the mist softly, as mist does: a long fading, its edge in wisps)
 		float lt = clamp((ld - lf_hi) / lf_len, 0.0, 1.0);      // (one clean fade down each face: no wisps, they smudged the rock)
 		fk = max(fk, lt * lt * (3.0 - 2.0 * lt));
@@ -2542,6 +2543,7 @@ void fragment(){
 		mist = texture(bg_tex, clamp(muv, vec2(0.001), vec2(0.999))).rgb;
 	}
 	if (sea_k > 0.0) mist = mix(mist, sea_c, smoothstep(0.21, 0.38, sy) * (1.0 - smoothstep(0.5, 0.92, sy)) * 0.9 * sea_k);
+	if (img_k > 0.5) mist = img_mist;
 	EMISSION = mist * fk + c_top * emit;
 	if (dbg > 0.5) { ALBEDO = vec3(0.0); EMISSION = dbg > 3.5 ? vec3(fk) : (dbg > 2.5 ? c : (dbg > 1.5 ? vec3(d * 0.5 + 0.5) : fn * 0.5 + 0.5)); }
 }
@@ -10092,7 +10094,7 @@ func _ivgl_props(j: Dictionary) -> void:      # (the low thresholds across the w
 const IVGL_SHADE_SH := """
 shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, shadows_disabled, blend_mix;
-uniform vec3 col : source_color = vec3(0.06, 0.05, 0.09);
+uniform vec3 col : source_color = vec3(0.07, 0.11, 0.27);      // (a dark blue (the owner, 19/11: "the shadow a darker blue"))
 uniform float k = 0.6; uniform float grow = 0.0; uniform float edge = 0.55;
 void vertex(){ VERTEX += NORMAL * grow; VERTEX.x += sin(VERTEX.y * 11.0 + TIME * 1.7) * 0.008; }
 void fragment(){
