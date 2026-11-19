@@ -1379,10 +1379,11 @@ for o in (M, R, O, B, SN, QU, SA, *RS):
         for poly in o.data.polygons:
             if (r3 @ poly.normal).normalized().z < 0.9: continue
             lis = list(poly.loop_indices); vals = [ca.data[li].color[0] for li in lis]
+            lit_ = [v for v in vals if v > 0.5]      # (a top's corner this dark is under stone: a corner in the open is never; one face may have two along a bridge's end)
+            if not lit_: continue
             for k, li in enumerate(lis):
-                oth = [vals[j] for j in range(len(lis)) if j != k]
-                if vals[k] < 0.2 and min(oth) > 0.5:
-                    c = ca.data[li].color; ca.data[li].color = (sum(oth) / len(oth), c[1], c[2], c[3]); n_fix += 1
+                if vals[k] < 0.2:
+                    c = ca.data[li].color; ca.data[li].color = (sum(lit_) / len(lit_), c[1], c[2], c[3]); n_fix += 1
         print('SHADE: buried corners lifted on', o.name, n_fix)
     print('BAKED', o.name)
 
