@@ -250,31 +250,38 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
 - **Level 4, the glass (`goglass/`, `FLIP=goglass`, in the game since 19/11)**: the owner's puzzle (19/11: "she does not
   cross; the block must go somewhere in the reflection and the gate opens in the real view"): a wall of glass stands
   across the screen in the still sea; before it the real place (a corridor low over the water from her start to the
-  shut gate; a terrace a step above it with the block, a broken column and two low thresholds), beyond it its exact
-  image (only the real side is built: `_ivgl_setup` duplicates the level turned over about the glass, x + z + k = 0 in
-  the level's axes, and gives it to the air the further it lies behind the glass, `img_k`/`img_fade` in IV_SH; the
-  block's image follows the block each frame). In the image alone lies a bright outline of a square (the owner); the
-  ring and the gate are unlit and shut at first (level 3's `_ivm_gate_shut`/`_ivm_open`, shared); the block brought to
-  rest where its image stands in the square lights the ring and opens the gate (`_ivgl_check`). The trick (the owner:
-  "not straight with two pushes, it must catch somewhere in the real world"; he chose "it slides till it stops"): a
-  pushed block slides on till a column, the floor's end, a threshold, a stair or the ring stops it; she steps over the
-  low thresholds, the block stops at them, so it can never be stuck and no reset is needed (the owner asked). Board
-  `slide` in `tools/go/plate_trial.py` (19 moves, three pushes, one way, no dead end, the column needed), plan
-  `tools/go/slide_plan.py` (asserts it is the board), built by `tools/ivory_level.py -- goglass/level.glb
-  goglass/level.json 406 24 goglass/plan.json`. The sea mirrors nothing here, only the glass (the owner: "with what you
+  shut gate; a terrace a step above it with the block and a winch), beyond it its exact image (only the real side is
+  built: `_ivgl_setup` turns the level over about the glass, x + z + k = 0 in the level's axes, gives it to the air the
+  further it lies behind the glass, `img_k`/`img_fade` in IV_SH, and draws it only through the pane, `img_clip`; every
+  moving thing's image follows it, `_ivgl_pair`/`_ivgl_tick`). In the image alone a bright outline of a square (the
+  owner) hangs still; the ring and the gate are unlit and shut until the block's image stands in it (level 3's
+  `_ivm_gate_shut`/`_ivm_open`, shared; `_ivgl_check`). **The trick: the glass moves** (19/11, after a sliding block
+  stopped by low thresholds was turned down: "the rock that sticks on raised little steps, I don't like it; can you think
+  of something else?"): the square hangs one step beyond the image of the terrace's corner; pushed to the corner, the
+  block's image falls one step short; the winch (where the column stood) slides the glass back one step and the whole
+  image slides with it, twice as far, as in any mirror (`_ivgl_slide`, `_ivgl_set_plane`): the block's image enters the
+  square. One way, no dead end, no thresholds (`tools/go/move_glass_trial.py`, plan `tools/go/move_plan.py`, built by
+  `tools/ivory_level.py -- goglass/level.glb goglass/level.json 406 24 goglass/plan.json`). For pictures:
+  `IV_GLASS_K=1` (the glass moved), `IV_BLOCK_AT=<node>`, `IV_GATE_OPEN=1`. Her image in the glass is a black blurred
+  shadow of her (the owner, 19/11: "if Ione's reflection shows, let it be like a black blurred shadow"; `IVGL_SHADE_SH`).
+  The sea mirrors the level and has its foam and its gradient as every other sea (the owner, 19/11: "the sea, the
+  gradient, the foam and the reflections are not like the other seas we made"): the level's image in the water is back,
+  the foam is read about the glass too for the image's stones (`shore_mir`), and its backdrop's sea was painted again in
+  the other levels' style (`design/level4/game/backdrop_sea.jpg`); its sea reads the painting where the painting lies
+  (`bg_off`, `world_uv` 0), so the face is never seen twice at the sea's far edge. The sliding trial (`plate_trial.py`
+  `slide`, `slide_plan.py`) is kept for the record. The sea mirrored nothing for a while (the owner, earlier: "with what you
   set up we have two reflections"). **It is built in the game in its Gemini concept's style** (the owner, 19/11: "we had a
   nice blue atmosphere with a statue", "why did you ruin it?", "I want it set up in Gemini's style"; a version in level
   1's pink dawn was "ruined"): the concepts' (`design/level4/concept.jpg`, `slide/concept_start.jpg`) blue-lilac haze,
   their backdrop painted alone by Gemini from the concept (the sky, the soft sun at the upper right, the great face
-  lying in the misty sea; `goglass/backdrop.jpg`, source `design/level4/game/backdrop_concept.jpg`; horizon 0.46 so the
-  sea plane ends under the face), its palette sampled from it (`IV_GLASS_PAL`: slabs of a lilac white, dark plum-grey
+  lying in the sea; `goglass/backdrop.jpg`, source `design/level4/game/backdrop_sea.jpg`, its sea repainted as the other
+  levels' from `backdrop_concept.jpg`; horizon 0.38), its palette sampled from it (`IV_GLASS_PAL`: slabs of a lilac white, dark plum-grey
   rock; a blue-lilac shade), the glass a pane whose left edge and top are seen (`IVGL_PANE`; the image is drawn only
   through it, `img_clip`), a bank of mist at the left over the pane's edge (`goglass/mist_l.png`), no rocks before the
   eye. But never the painting itself as the level: Gemini paints a mirror freely, so its concepts broke the puzzle's
-  logic (the owner: "what you sent makes no sense"); the game's exact image is the mirror. Her own image in the glass
-  is left out as the concept has it (`IV_GLASS_HER=1` shows it). Its line, still to be settled with the owner: "But a
-  mirror gives no souls, / only images." A pearl-white backdrop (`design/level4/game/backdrop_painted.jpg`) was tried and
-  is not the one.
+  logic (the owner: "what you sent makes no sense"); the game's exact image is the mirror. Its line, still to be settled
+  with the owner: "But a mirror gives no souls, / only images." A pearl-white backdrop
+  (`design/level4/game/backdrop_painted.jpg`) was tried and is not the one.
   Earlier designs kept for the record: `tools/go/glass_trial.py` (cracks to cross), `plate_plan.py`,
   `design/level4/` (the concepts, the face in the sea, `face_ref.png`).
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).

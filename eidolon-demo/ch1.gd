@@ -3239,7 +3239,7 @@ func _iv_post(dt: float) -> void:
 	var pl := 0.5 + 0.5 * sin(iv_t * 2.2)
 	(iv_glow.material_override as StandardMaterial3D).albedo_color.a = ((0.16 + 0.14 * pl) if ivp_on else (0.5 + 0.35 * pl)) * (ivm_ring_k if (go_milos or go_glass) else 1.0)
 	if go_milos and not ivm_beam.is_empty(): _ivm_draw()
-	if go_glass and ivgl_block != null: _ivgl_tick()
+	if go_glass and not ivgl_pairs.is_empty(): _ivgl_tick()
 	if (go_milos or go_glass) and ivm_ring_gold != null and ivm_ring_k > 0.0 and ivm_ring_k < 1.001 and not ivm_ring_done: _ivm_ring_tick()
 	if not iv_won: iv_glow.scale = Vector3.ONE * (0.92 + 0.12 * pl)
 	if iv_leaves != null: iv_leaves.pivot_offset = Vector2.ZERO; iv_leaves.rotation = deg_to_rad(1.3 * sin(iv_t * 0.9) + 0.6 * sin(iv_t * 2.3))
@@ -4079,6 +4079,7 @@ func _ivr_cam(dt := -1.0) -> void:
 	var held := go_wake and OS.get_environment("IV_ZOOM") == ""      # (the waking's painting, sea and mist go together with the level)
 	if ivr_bgm != null: ivr_bgm.set_shader_parameter("bg_off", Vector2(ivr_fo.x / vw, -ivr_fo.y / vh) if held else Vector2.ZERO)
 	if held: for sm in ivs_sea_mats: (sm as ShaderMaterial).set_shader_parameter("hz_v", ivr_hz + ivr_fo.y / vh)
+	if held and go_glass: for sm in ivs_sea_mats: (sm as ShaderMaterial).set_shader_parameter("bg_off", Vector2(ivr_fo.x / vw, -ivr_fo.y / vh))      # (the fourth level: its sea reads the painting just where the painting lies)
 	if go_wake and ivw_close > 0.001:      # (the waking: the eye close on her, drawn back as she stands)
 		var u := ivw_close * ivw_close * (3.0 - 2.0 * ivw_close)
 		c = c.lerp(pos + Vector3(0, 0.5, 0), u); w = lerpf(w, 3.6, u)
@@ -4571,8 +4572,9 @@ func _ivw_open(a: String, b: String) -> bool:
 ## the winch: a drum of marble on a plinth, banded in bronze, its chain wound on it; four bars of wood through its head.
 ## It turns about its upright (its own z, as the capstan's), and the chain runs from it over the threshold's edge into the
 ## water, to the stones lying under it
+var ivw_winch_base: Node3D
 func _ivw_winch(p: Vector3) -> void:
-	var base := Node3D.new(); iv_root.add_child(base); base.global_position = p
+	var base := Node3D.new(); iv_root.add_child(base); base.global_position = p; ivw_winch_base = base
 	var M := func(mesh: Mesh, kind: String, at: Vector3, par: Node3D, rot: Vector3) -> MeshInstance3D:
 		var mi := MeshInstance3D.new(); mi.mesh = mesh; mi.material_override = _ivr_mat(kind, 0.0); mi.position = at; mi.rotation = rot
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON; par.add_child(mi); return mi
@@ -5540,12 +5542,13 @@ uniform vec3 glint_c : source_color = vec3(0.99, 0.87, 0.76);
 uniform vec2 sun = vec2(0.305, 0.19);
 uniform float sea_a = 1.0;      // (the surface: how much of the sea's own colour; the rest is what lies under it, the images in the water)
 uniform sampler2D bg_tex : source_color, filter_linear, repeat_disable;      // (a painted sea: its colour, and the sun's path on it, are the backdrop's)
-uniform float bg_tex_k = 0.0; uniform vec2 bg_scale = vec2(1.0); uniform float uv_flip = 0.0;
+uniform float bg_tex_k = 0.0; uniform vec2 bg_scale = vec2(1.0); uniform float uv_flip = 0.0; uniform vec2 bg_off = vec2(0.0);      // (read as the painting itself lies, with the eye's follow: no seam where the sea ends)
 uniform float world_uv = 0.0; uniform vec3 eye_c; uniform vec3 eye_bx; uniform vec3 eye_by; uniform float eye_w = 11.0;      // (where the painting lies under the level's own eye)
 uniform sampler2D shore_tex : filter_linear, repeat_disable;      // (how far each spot of the water lies from the stone in it: red what stands for good, green the stones that rise)
 uniform vec4 shore_rect = vec4(0.0, 0.0, 1.0, 1.0); uniform float shore_k = 0.0; uniform float shore_d = 1.6; uniform float riser_up = 0.0;
 uniform vec3 foam_c : source_color = vec3(1.0, 0.98, 0.96);
 uniform float hz_v = -1.0;      // (where the sea melts into the sky, on the screen: nothing is drawn on the water near it)
+uniform float shore_mir = 0.0; uniform vec3 mir_o; uniform float mir_k = 9.8;      // (the fourth level: the shore map read again at the point turned over about the glass, x + z + k = 0 about mir_o, so the image's stones have their foam too)
 uniform float wave_k = 0.0;      // (small soft waves aslant, here and there, each coming and going: the surface only)
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
@@ -5559,7 +5562,7 @@ void fragment(){
 	float rip = sin(wp.x * 2.3 + wp.z * 1.7) * sin(wp.z * 3.1 - wp.x * 0.9);
 	if (bg_tex_k > 0.5) {
 		float sy = uv_flip > 0.5 ? 1.0 - s : s;
-		vec2 suv = vec2(0.5 + (SCREEN_UV.x - 0.5) * bg_scale.x, 0.5 + (sy - 0.5) * bg_scale.y);
+		vec2 suv = vec2(0.5 + (SCREEN_UV.x + bg_off.x - 0.5) * bg_scale.x, 0.5 + (sy + bg_off.y - 0.5) * bg_scale.y);
 		if (world_uv > 0.5) { vec3 r = wp - eye_c; suv = vec2(0.5 + dot(r, eye_bx) / eye_w, 0.5 - dot(r, eye_by) / (eye_w * 16.0 / 9.0)); }
 		c = texture(bg_tex, clamp(suv, vec2(0.001), vec2(0.999))).rgb;
 		float far_w = smoothstep(hz_v, hz_v + 0.22, SCREEN_UV.y);      // (the water's glints and small waves come in slowly down from the haze: no line where the sea begins (the owner: "no horizon"))
@@ -5595,6 +5598,11 @@ void fragment(){
 		float inb = step(0.0, su.x) * step(su.x, 1.0) * step(0.0, su.y) * step(su.y, 1.0);
 		float d = min((1.0 - sm.r) * shore_d, mix(shore_d, (1.0 - sm.g) * shore_d, riser_up));
 		d = mix(shore_d, d, inb);
+		if (shore_mir > 0.5) {
+			vec3 lp = wp - mir_o; vec2 su2 = (vec2(-lp.z - mir_k, -lp.x - mir_k) + mir_o.xz - shore_rect.xy) * shore_rect.zw;
+			float inb2 = step(0.0, su2.x) * step(su2.x, 1.0) * step(0.0, su2.y) * step(su2.y, 1.0);
+			d = min(d, mix(shore_d, (1.0 - texture(shore_tex, clamp(su2, vec2(0.001), vec2(0.999))).r) * shore_d, inb2));
+		}
 		float nz = sin(wp.x * 3.7 + wp.z * 2.9 + TIME * 0.4) * 0.5 + sin(wp.z * 5.3 - wp.x * 1.9 - TIME * 0.3) * 0.5;      // (a little unevenness: no line drawn with a compass)
 		float dd = d + nz * 0.03;
 		float patch = sin(wp.x * 1.7 + TIME * 0.13) * sin(wp.z * 1.3 - TIME * 0.11) + 0.5 * sin((wp.x + wp.z) * 2.9 + TIME * 0.2);
@@ -5631,7 +5639,7 @@ func _ivs_sea(sea_y: float) -> void:
 	# same part of the screen: where nothing is in the water the sea looks as before, where an image is it shows)
 	if go_wake and iv_bgtex != null:
 		m.set_shader_parameter("bg_tex", iv_bgtex); m.set_shader_parameter("bg_tex_k", 1.0); m.set_shader_parameter("bg_scale", _iv_bg_scale()); m.set_shader_parameter("uv_flip", iv_uvf)
-		m.set_shader_parameter("world_uv", 1.0); m.set_shader_parameter("eye_c", ref); m.set_shader_parameter("eye_bx", bx); m.set_shader_parameter("eye_by", by); m.set_shader_parameter("eye_w", float(ivr_eye.width))
+		m.set_shader_parameter("world_uv", 0.0 if go_glass else 1.0); m.set_shader_parameter("eye_c", ref); m.set_shader_parameter("eye_bx", bx); m.set_shader_parameter("eye_by", by); m.set_shader_parameter("eye_w", float(ivr_eye.width))      # (the fourth level: its painting's sea read where the painting itself lies on the screen, so the great face in it never shows twice at the sea's far edge when the eye follows her)
 	var mf := m.duplicate() as ShaderMaterial
 	m.set_shader_parameter("sea_a", 0.5 if go_wake else 0.7)
 	if go_wake: m.set_shader_parameter("wave_k", 1.0)      # (the small waves aslant: on the surface, not on the floor under it)
@@ -5640,6 +5648,8 @@ func _ivs_sea(sea_y: float) -> void:
 		var rc: Array = ivr_shore.rect
 		m.set_shader_parameter("shore_tex", load(go_dir + "shore.png")); m.set_shader_parameter("shore_k", 1.0); m.set_shader_parameter("shore_d", float(ivr_shore.get("D", 1.6)))
 		m.set_shader_parameter("shore_rect", Vector4(IV_O.x + float(rc[0]), IV_O.z + float(rc[1]), 1.0 / (float(rc[2]) - float(rc[0])), 1.0 / (float(rc[3]) - float(rc[1]))))
+		if go_glass and ivg_on and ivg.get("mirror") != null:      # (the image's stones have their foam too)
+			m.set_shader_parameter("shore_mir", 1.0); m.set_shader_parameter("mir_o", IV_O); m.set_shader_parameter("mir_k", ivgl_k)
 		m.set_shader_parameter("riser_up", 1.0 if ivw_up > 0.5 else 0.0)
 	ivs_sea_mat = m; ivs_sea_mats = [m, mf]
 	for pass_i in 2:
@@ -6261,7 +6271,7 @@ func _ivr_build() -> void:
 		var kind := "rock2" if nm.contains("rock") else ("olive2" if nm.contains("olive") else ("bark" if nm.contains("bark") else ("snow" if nm.contains("snow") else ("quarry" if nm.contains("quarry") else "marble2"))))
 		mi.material_override = _ivr_mat(kind, 1.0, true); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		if go_milos and (nm.contains("salt") or nm.contains("island")): mi.material_override = _iv_mat("salt", 0.0, _ivm_salt_ex())      # (the island's white sea-worn rock, as the first build had it (the owner: "the first rocks", "like salt"): smooth, softly lit)
-	if iv_at_sea and not go_glass:      # (the level's image in the still water: faint at dusk, clear at dawn; not at the glass: there only the glass mirrors (the owner: "with what you set up we have two reflections"))
+	if iv_at_sea:      # (the level's image in the still water: faint at dusk, clear at dawn; at the glass too, as every other sea (the owner, 19/11: "the reflections are not like the other seas we made"))
 		ivw_mirror = _ivs_mirror(lv, func(mi: MeshInstance3D) -> Array:
 			var nm := String(mi.name).to_lower() + "|" + String(mi.get_parent().name).to_lower()
 			var kd := "rock2" if nm.contains("rock") else "marble2"
@@ -6303,6 +6313,7 @@ func _ivr_build() -> void:
 	iv_me = "s"; iv_block = String(ivg.block) if ivg_on else "b0"
 	iv_block_n = _ivr_block()
 	if go_veil: iv_block_n.scale = Vector3.ONE * IVV_BLOCK_SCALE      # (made at its size: 0.9 m square, 1.04 m high)
+	if go_glass and OS.get_environment("IV_BLOCK_AT") != "": iv_block = OS.get_environment("IV_BLOCK_AT")      # (for a picture: the block at that node from the first)
 	if ivp_nodes.has(iv_block): iv_block_n.global_position = ivp_nodes[iv_block]
 	else: iv_block_n.visible = false; iv_block_n.global_position = IV_O + Vector3(0, -60, 0)      # (a trial without the stone)
 	if ivg_vol != "":
@@ -6338,6 +6349,7 @@ func _ivr_build() -> void:
 	iv_ring = Node3D.new(); iv_root.add_child(iv_ring); iv_ring.global_position = ivp_nodes[ivg_exit if ivg_on else "r"]
 	var tm := TorusMesh.new(); tm.inner_radius = 0.3 if ivr_on else 0.36; tm.outer_radius = 0.46; tm.rings = 32; tm.ring_segments = 8
 	var rm := _iv_prim(tm, Vector3(0, 0.06, 0), "ring", iv_ring); rm.scale = Vector3(1, 0.62, 1); rm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if go_glass: call_deferred("_ivgl_pair", iv_ring)      # (its image in the glass)
 	if go_milos or go_glass:      # (the third level: the ring dark, a stone unlit, no glow, until the light reaches it; then the ochre of every ring comes up in it (the owner, 18/11: "before the light falls on it, off, darker"))
 		ivm_ring_gold = rm; rm.material_override = (rm.material_override as ShaderMaterial).duplicate(); _ivm_ring_tick()
 	if ivr_on:
@@ -6647,7 +6659,7 @@ func _ivg_turn(nb: String) -> void:
 			if bool(ivg.get("plinths", false)) and (_ivg_plinth(c) or c == ivg_exit): await _her_no(); return
 			if (go_milos or go_glass) and c == ivg_exit: await _her_no(); return      # (never onto the ring)
 			var c1 := c
-			if go_glass:      # (the fourth level: it slides on till something stops it: a column, the floor's end, a threshold, a stair, the ring)
+			if go_glass and bool(ivg.get("slide", false)):      # (a trial of sliding blocks: it slides on till something stops it: a column, the floor's end, a threshold, a stair, the ring)
 				if _ivgl_sill(nb, c): await _her_no(); return      # (a threshold before it: it will not go over)
 				var pv := nb
 				while true:
@@ -6750,7 +6762,8 @@ func _ivg_turn_volute() -> void:
 	if go_wake: _ivw_sfx("winch_turn", IVW_WINCH_DB)      # (a click at each tooth as the wheel passes it, slow, quick, slow, as the wheel goes round once in 1.6 s; a clank as it holds)
 	for f in ivg_faces:
 		if f.alive: _ivg_face_aim(f, 1.0)
-	if go_wake: await _ivw_raise(ivg_v == 1)      # (the chains draw the stones up out of the water)
+	if go_wake and not go_glass: await _ivw_raise(ivg_v == 1)      # (the chains draw the stones up out of the water)
+	if go_glass: await _ivgl_slide(ivg_v)      # (the fourth level: the winch slides the glass to its other place; the whole image goes with it)
 	if sp.is_running(): await sp.finished      # (a tween already done sends no signal again)
 	var dn := tw(); dn.set_parallel(); dn.tween_property(self, "a_wL", 0.0, 0.35); dn.tween_property(self, "a_wR", 0.0, 0.35); dn.tween_property(self, "a_lean", 0.0, 0.35)
 	await dn.finished
@@ -9851,6 +9864,7 @@ func _ivm_gate_shut() -> void:
 		var b0 := Basis(xd, Vector3.UP, xd.cross(Vector3.UP))
 		hn.basis = b0
 		var mi := MeshInstance3D.new(); mi.mesh = mesh; mi.material_override = mat; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON; hn.add_child(mi)
+		if go_glass: _ivgl_pair(hn)      # (the fourth level: its leaves seen in the glass too)
 		var ang := 1.62      # (it swings in, away from her and from the veil, its free edge going into the gate)
 		if (Basis(Vector3.UP, ang) * xd).dot(ivw_gate_front) > 0.0: ang = -ang
 		ivm_leaves.append([hn, b0, ang])
@@ -9933,6 +9947,7 @@ func _ivgl_img_mat(src: Material) -> Material:      # (a thing's image: its own 
 	m.set_shader_parameter("img_fade", IVGL_IMG_FADE); m.set_shader_parameter("shadow_k", 0.0)
 	m.set_shader_parameter("img_clip", Vector4(IVGL_PANE.x, IVGL_PANE.y, -1e6, ivgl_c0.y + IVGL_PANE.z)); m.set_shader_parameter("img_c0", ivgl_c0)
 	m.set_shader_parameter("img_al", Vector3(1, 0, -1).normalized()); m.set_shader_parameter("img_fwd", -_ivp_basis().z)
+	ivgl_mats.append(m)
 	return m
 
 func _ivgl_imaged(n: Node) -> void:      # (every mesh under a thing's image: an image's material, casting no shadow)
@@ -9942,48 +9957,95 @@ func _ivgl_imaged(n: Node) -> void:      # (every mesh under a thing's image: an
 		var mi := m as MeshInstance3D
 		mi.material_override = _ivgl_img_mat(mi.material_override); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
-func _ivgl_setup(lv: Node3D) -> void:
-	var mr: Dictionary = (ivg.get("mirror", {}) as Dictionary) if ivg_on else {}
-	var k := float((mr.get("plane", [1.0, 1.0, 9.8]) as Array)[2])
+var ivgl_planes: Array = []      # (the glass's places: k in x + z + k = 0, the level's own axes)
+var ivgl_k := 9.8
+var ivgl_pairs: Array = []      # ([a thing, its image]: the image kept turned over about the glass, as the thing moves or the glass)
+var ivgl_mats: Array = []      # (every image's material: told where the glass is)
+var ivgl_pane: MeshInstance3D
+var ivgl_her_root: Node3D
+var ivgl_sq_y: Array = []
+
+func _ivgl_set_plane(k: float) -> void:      # (the glass at x + z + k = 0: the turn about it, and all that hangs on it)
+	ivgl_k = k
 	var b := Basis(Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(-1, 0, 0))      # (x to -z, z to -x: turned over about x + z = 0)
 	ivgl_T = Transform3D(b, IV_O - b * IV_O + Vector3(-k, 0, -k))
 	var n := Vector3(1, 0, 1).normalized()
 	ivgl_plane = Plane(n, n.dot(IV_O + Vector3(-k * 0.5, 0, -k * 0.5)))
 	ivgl_c0 = IV_O + Vector3(-k * 0.5, ivr_sea_y, -k * 0.5)
-	ivgl_img = lv.duplicate() as Node3D; lv.get_parent().add_child(ivgl_img)
-	ivgl_img.global_transform = ivgl_T * lv.global_transform
-	_ivgl_imaged(ivgl_img)
-	if iv_block_n != null and iv_block_n.visible:
-		ivgl_block = iv_block_n.duplicate() as Node3D; iv_block_n.get_parent().add_child(ivgl_block)
-		_ivgl_imaged(ivgl_block); _ivgl_tick()
+	for pr in ivgl_pairs:
+		if is_instance_valid(pr[0]) and is_instance_valid(pr[1]): (pr[1] as Node3D).global_transform = ivgl_T * (pr[0] as Node3D).global_transform
+	for m in ivgl_mats:
+		(m as ShaderMaterial).set_shader_parameter("img_plane", Vector4(n.x, n.y, n.z, -ivgl_plane.d)); (m as ShaderMaterial).set_shader_parameter("img_c0", ivgl_c0)
+	if ivgl_pane != null:
+		var al := Vector3(1, 0, -1).normalized(); var gw := IVGL_PANE.y - IVGL_PANE.x
+		ivgl_pane.global_transform = Transform3D(Basis(al, Vector3.UP, n), ivgl_c0 + al * (IVGL_PANE.x + gw * 0.5) + Vector3(0, IVGL_PANE.z * 0.5, 0))
+	if ivgl_her_root != null: ivgl_her_root.global_transform = ivgl_T
+	for sm in ivs_sea_mats: (sm as ShaderMaterial).set_shader_parameter("mir_k", k)
+
+func _ivgl_pair(src: Node3D) -> Node3D:      # (a thing's image: a copy of it turned over about the glass, kept so)
+	if src == null or not is_instance_valid(src): return null
+	var im := src.duplicate() as Node3D; src.get_parent().add_child(im)
+	_ivgl_imaged(im)
+	ivgl_pairs.append([src, im]); im.global_transform = ivgl_T * src.global_transform
+	return im
+
+func _ivgl_setup(lv: Node3D) -> void:
+	var mr: Dictionary = (ivg.get("mirror", {}) as Dictionary) if ivg_on else {}
+	ivgl_planes = (mr.get("planes", [float((mr.get("plane", [1.0, 1.0, 9.8]) as Array)[2])]) as Array).duplicate()
+	var k0 := int(mr.get("k0", 0))
+	if OS.get_environment("IV_GLASS_K") != "": k0 = clampi(int(OS.get_environment("IV_GLASS_K")), 0, ivgl_planes.size() - 1)      # (for a picture: the glass at that place from the first)
+	ivg_v = k0      # (the winch's turn is the glass's place)
+	ivgl_sq_y = (mr.get("plate_y", []) as Array).duplicate()
+	_ivgl_set_plane(float(ivgl_planes[k0]))
+	ivgl_img = _ivgl_pair(lv)
+	if ivw_mirror != null: _ivgl_pair(ivw_mirror)      # (the level's image in the water, seen in the glass too)
+	if iv_block_n != null and iv_block_n.visible: ivgl_block = _ivgl_pair(iv_block_n)
+	if ivw_winch_base != null: _ivgl_pair(ivw_winch_base)
+	if iv_wheel != null and ivg_vol != "": _ivgl_pair(iv_wheel)
 	var gh := IVGL_PANE.z; var gw := IVGL_PANE.y - IVGL_PANE.x
 	var q := QuadMesh.new(); q.size = Vector2(gw, gh)
 	var gm := ShaderMaterial.new(); gm.shader = _ivw_shader(IVGL_GLASS_SH); gm.set_shader_parameter("u0", IVGL_PANE.x); gm.set_shader_parameter("uw", gw); gm.set_shader_parameter("gh", gh)
-	var gi := MeshInstance3D.new(); gi.mesh = q; gi.material_override = gm; gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	iv_root.add_child(gi)
-	var al := Vector3(1, 0, -1).normalized()
-	gi.global_transform = Transform3D(Basis(al, Vector3.UP, n), ivgl_c0 + al * (IVGL_PANE.x + gw * 0.5) + Vector3(0, gh * 0.5, 0))
+	gm.render_priority = 20      # (drawn over the sea beyond it: the sea lies behind the glass, so no line where the sea ends)
+	ivgl_pane = MeshInstance3D.new(); ivgl_pane.mesh = q; ivgl_pane.material_override = gm; ivgl_pane.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	iv_root.add_child(ivgl_pane)
 	var pp: Array = mr.get("plate", [0.0, 0.0, 0.0])
 	var sq := PlaneMesh.new(); sq.size = Vector2(1.7, 1.7)
 	var sm := ShaderMaterial.new(); sm.shader = _ivw_shader(IVGL_SQUARE_SH)
 	ivgl_square = MeshInstance3D.new(); ivgl_square.mesh = sq; ivgl_square.material_override = sm; ivgl_square.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	iv_root.add_child(ivgl_square); ivgl_square.global_position = IV_O + Vector3(float(pp[0]), float(pp[1]) + 0.03, float(pp[2]))
-	if hero_real and H.has("main") and OS.get_environment("IV_GLASS_HER") == "1":      # (her image in the glass, as a mirror has it: a body of hers turned over about it, doing as she does; off, as its concept has it (the owner wants it in its concept's style): IV_GLASS_HER=1 shows it)
-		var hr := Node3D.new(); add_child(hr); hr.global_transform = ivgl_T
-		var e: Dictionary = spawn_her(hr, "mirror"); H["glass"] = e
+	var sy := float(ivgl_sq_y[k0]) if ivgl_sq_y.size() > k0 else float(pp[1])      # (it lies on the image's floor under it)
+	iv_root.add_child(ivgl_square); ivgl_square.global_position = IV_O + Vector3(float(pp[0]), sy + 0.03, float(pp[2]))
+	if hero_real and H.has("main") and OS.get_environment("IV_GLASS_HER") != "0":      # (her image in the glass, as a mirror has it: a body of hers turned over about it, doing as she does; a black blurred shadow of her (the owner, 19/11: "if Ione's reflection shows, let it be like a black blurred shadow"); IV_GLASS_HER=0 leaves it out)
+		ivgl_her_root = Node3D.new(); add_child(ivgl_her_root)
+		var e: Dictionary = spawn_her(ivgl_her_root, "mirror"); H["glass"] = e
 		if e.sk != null:
 			var hm := HerMod.new(); hm.main = self; (e.sk as Skeleton3D).add_child(hm)
 		if e.ap != null: (e.ap as AnimationPlayer).play("idle")
 		for m in (e.holder as Node).find_children("*", "MeshInstance3D", true, false):
 			var mi := m as MeshInstance3D; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			for si in mi.get_surface_override_material_count():
-				var hsm := mi.get_surface_override_material(si) as ShaderMaterial
-				if hsm != null:      # (her own colours, a little cooled and given to the air, as the rest of the image)
-					hsm.set_shader_parameter("tint", Vector3(0.94, 0.95, 1.02)); hsm.set_shader_parameter("mist_col", Color(0.86, 0.85, 0.92))
-					hsm.set_shader_parameter("centre", IV_O + Vector3(900, 0, -900)); hsm.set_shader_parameter("mist_r", 7.0); hsm.set_shader_parameter("mist_k", 0.55)
+			for si in mi.get_surface_override_material_count(): mi.set_surface_override_material(si, _ivgl_shade_mat())
+	_ivgl_set_plane(ivgl_k)
+	if OS.get_environment("IV_GATE_OPEN") == "1": call_deferred("_ivgl_demo_open")      # (for a picture: the ring lit and the gate open from the first)
 
-func _ivgl_tick() -> void:      # (the block's image goes with the block)
-	ivgl_block.global_transform = ivgl_T * iv_block_n.global_transform
+func _ivgl_demo_open() -> void:
+	ivm_open = true; ivm_ring_k = 1.0
+	if ivm_ring_gold != null: _ivm_ring_tick()
+	_ivm_gate_open()
+	if ivgl_square != null: (ivgl_square.material_override as ShaderMaterial).set_shader_parameter("k", 1.8)
+
+func _ivgl_tick() -> void:      # (the images of what moves go with it: the block, the winch's wheel, the gate's leaves)
+	for pr in ivgl_pairs:
+		if is_instance_valid(pr[0]) and is_instance_valid(pr[1]): (pr[1] as Node3D).global_transform = ivgl_T * (pr[0] as Node3D).global_transform
+
+func _ivgl_slide(i: int) -> void:      # (the glass slides to its place: the whole image goes with it, twice as far, as in any mirror)
+	var k0 := ivgl_k; var k1 := float(ivgl_planes[clampi(i, 0, ivgl_planes.size() - 1)])
+	var y0 := ivgl_square.global_position.y
+	var y1 := (IV_O.y + float(ivgl_sq_y[i]) + 0.03) if ivgl_sq_y.size() > i else y0
+	print("IV the glass slides to its place ", i)
+	var t := create_tween()
+	t.tween_method(func(u: float) -> void:
+		_ivgl_set_plane(lerpf(k0, k1, u)); ivgl_square.global_position.y = lerpf(y0, y1, u), 0.0, 1.0, 1.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	if t.is_running(): await t.finished
+	await _ivgl_check()
 
 func _ivgl_sill(a: String, b: String) -> bool:      # (a low threshold across the joint between two nodes: she steps over it; the block stops at it)
 	if not go_glass or not ivg_on: return false
@@ -9993,7 +10055,8 @@ func _ivgl_sill(a: String, b: String) -> bool:      # (a low threshold across th
 
 func _ivgl_check() -> void:      # (the block at rest where its image stands in the square of light: the ring lights, the gate opens, and stays open)
 	if ivm_open or not ivg_on: return
-	var po := String((ivg.get("mirror", {}) as Dictionary).get("plate_of", ""))
+	var pv = (ivg.get("mirror", {}) as Dictionary).get("plate_of", "")
+	var po := (String((pv as Array)[ivg_v]) if (pv as Array).size() > ivg_v else "") if pv is Array else String(pv)      # (with the glass at its place: the node whose image lies in the square)
 	if po == "" or iv_block != po: return
 	print("IV the block's image stands in the square of light: the ring lights, and the gate opens")
 	if ivgl_square != null:
@@ -10015,10 +10078,34 @@ func _ivgl_props(j: Dictionary) -> void:      # (the low thresholds across the w
 		var d := Vector3(b.x - a.x, 0, b.z - a.z).normalized()
 		mi.global_transform = Transform3D(Basis(Vector3.UP.cross(d), Vector3.UP, d), (a + b) * 0.5 + Vector3(0, 0.05, 0))
 		_ivgl_both(mi)
-	for w in (j.get("walls", []) as Array):
+	var wl = j.get("walls")      # (a level.json made by the builder may hold null here)
+	for w in (wl if wl is Array else []):
 		if not (w is Array) or (w as Array).size() < 2: continue
 		var p: Array = w[0]
 		var bx := BoxMesh.new(); bx.size = Vector3(0.3, 0.42, 1.36) if String(w[1]) == "x" else Vector3(1.36, 0.42, 0.3)      # ('x': the two floors side by side along x, the wall along z)
 		var mi := MeshInstance3D.new(); mi.mesh = bx; mi.material_override = mat; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON; iv_root.add_child(mi)
 		mi.global_position = IV_O + Vector3(float(p[0]), float(p[1]) + 0.21, float(p[2]))
 		_ivgl_both(mi)
+
+## her image in the glass: a black shadow of her, blurred: dark, more see-through toward its edges, and two soft shells
+## round it fainter still, trembling a little
+const IVGL_SHADE_SH := """
+shader_type spatial;
+render_mode unshaded, cull_disabled, depth_draw_never, shadows_disabled, blend_mix;
+uniform vec3 col : source_color = vec3(0.06, 0.05, 0.09);
+uniform float k = 0.6; uniform float grow = 0.0; uniform float edge = 0.55;
+void vertex(){ VERTEX += NORMAL * grow; VERTEX.x += sin(VERTEX.y * 11.0 + TIME * 1.7) * 0.008; }
+void fragment(){
+	float f = abs(dot(normalize(NORMAL), normalize(VIEW)));
+	ALBEDO = col; ALPHA = k * smoothstep(0.0, edge, f);
+}
+"""
+var ivgl_shade: ShaderMaterial
+func _ivgl_shade_mat() -> ShaderMaterial:
+	if ivgl_shade != null: return ivgl_shade
+	var sh := _ivw_shader(IVGL_SHADE_SH)
+	ivgl_shade = ShaderMaterial.new(); ivgl_shade.shader = sh
+	var m1 := ShaderMaterial.new(); m1.shader = sh; m1.set_shader_parameter("grow", 0.03); m1.set_shader_parameter("k", 0.2); m1.set_shader_parameter("edge", 0.9)
+	var m2 := ShaderMaterial.new(); m2.shader = sh; m2.set_shader_parameter("grow", 0.065); m2.set_shader_parameter("k", 0.09); m2.set_shader_parameter("edge", 1.0)
+	ivgl_shade.next_pass = m1; m1.next_pass = m2
+	return ivgl_shade
