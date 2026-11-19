@@ -65,7 +65,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   of which level I begin from"): under PLAY, "level" and the numbers 1 2 3 in the story's letter; 1 is PLAY, 2 and 3 go
   through a warm white straight into that level (`_ivw_jump`, as a gate leads on); a touch anywhere else is PLAY.
   `IVW_LEVEL_PICK` false takes them away for the game itself. `IV_TEST_PICK=<n>` makes the autoplay touch one.
-- **Play it in a browser**: https://ndimt.github.io/game/eidolon-waking/ (the owner OK'd publishing there).
+- **Play it in a browser**: https://ndimt.github.io/game/eidolon-waking/ (the owner OK'd publishing there). **Upload
+  each new build there without asking** (the owner, 19/11: "don't ask me every time, upload it"); check it in a headless
+  browser first (every level it can reach), and say it is up.
 - **Sounds** (`sfx/`, `_ivw_sfx`): **only real sound effects** (the owner, 18/11: "cut the melodic sounds, only normal
   sound effects"). The Lyria cues (a note at PLAY, a sigh on each story line, a swell for the stones, the gate's rise, a
   pluck for a swipe where she cannot go) are no longer played and are left out of the builds (the presets' exclude
@@ -261,15 +263,15 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   `tools/pck_list.py <pck> | grep -E "go[a-z]+/level"`: each level's `level.glb` must be listed. An imported font's raw `.ttf` is not packed even when the
   include filter names it: load fonts with `load()` (`_ivw_font_file`); read raw, the Cormorant letters were missing on
   the web and the story fell back to another font (found 18/11). Earlier demos were published to GitHub Pages from the branch
-  `claude/solo-game-ideas-balatro-yj6hqw` (`site/<name>/` → https://ndimt.github.io/game/<name>/); pushing there needs
-  the owner's explicit OK each time.
+  `claude/solo-game-ideas-balatro-yj6hqw` (`site/<name>/` → https://ndimt.github.io/game/<name>/); the owner (19/11)
+  lets new builds of the game go up there without asking each time (only the game's own folder, `site/eidolon-waking/`).
 - APK: preset `AndroidWake` (arm64, the browser build's filters, `com.eidolon.waking`) →
   `godot --headless --path eidolon-demo --export-debug "AndroidWake" build/android/eidolon-waking.apk` (~92 MB). A new
   machine needs: the 4.5.1 templates' `android_debug.apk`/`android_release.apk` (from `export_templates.tpz` at
   downloads.godotengine.org) in `~/.local/share/godot/export_templates/4.5.1.stable/`; `build-tools_r35.0.1_linux.zip`
   and `platform-tools` from dl.google.com in `/root/Android/Sdk/`; a debug keystore made with `keytool` at
   `~/.local/share/godot/keystores/debug.keystore`. Google Drive takes only 10 MB from here: the owner gets the APK from
-  the site, https://ndimt.github.io/game/eidolon-waking/EIDOLON-waking.apk (pushing there still needs the owner's OK).
+  the site, https://ndimt.github.io/game/eidolon-waking/EIDOLON-waking.apk (it goes up with the web build, without asking).
 - The cloud machine has 4 cores and no GPU: about 1 s per 720x1280 frame, so a 50 s level video takes ~35 min.
   Drive every motion by the game's time (`iv_t`, shader `TIME`), never the wall clock, or it races in recordings.
   Faster options: cheaper render settings for recordings; splitting a video over parallel cloud sessions; a machine
