@@ -10213,7 +10213,7 @@ func _ivgl_setup(lv: Node3D) -> void:
 		var gm2 := StandardMaterial3D.new(); gm2.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm2.albedo_texture = load("res://goiv/glow.png")
 		gm2.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm2.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; gm2.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; gm2.albedo_color = Color(1.0, 0.97, 0.92, 0.26)
 		ivgl_reset_glow = MeshInstance3D.new(); ivgl_reset_glow.mesh = gq2; ivgl_reset_glow.material_override = gm2; ivgl_reset_glow.position = Vector3(0, 0.22, 0); ivgl_reset_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; ivgl_reset_sq.add_child(ivgl_reset_glow)
-		_ivgl_pair(ivgl_reset_sq)      # (its twin on the island over the water)
+		# (no twin of it on the island over the water (the owner, 19/11: "the shadow doesn't need a start square"))
 	if hero_real and H.has("main") and OS.get_environment("IV_GLASS_HER") != "0":      # (her image in the glass, as a mirror has it: a body of hers turned over about it, doing as she does; a black blurred shadow of her (the owner, 19/11: "if Ione's reflection shows, let it be like a black blurred shadow"); IV_GLASS_HER=0 leaves it out)
 		ivgl_her_root = Node3D.new(); add_child(ivgl_her_root)
 		var e: Dictionary = spawn_her(ivgl_her_root, "mirror"); H["glass"] = e
@@ -10337,12 +10337,12 @@ func _ivgl_props(j: Dictionary) -> void:      # (the low thresholds across the w
 		mi.global_position = IV_O + Vector3(float(p[0]), float(p[1]) + 0.21, float(p[2]))
 		_ivgl_both(mi)
 
-## her image in the glass: a black shadow of her, blurred: dark, more see-through toward its edges, and two soft shells
+## her image in the glass: a shadow of her, blurred: grey-blue, more see-through toward its edges, and two soft shells
 ## round it fainter still, trembling a little
 const IVGL_SHADE_SH := """
 shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, shadows_disabled, blend_mix;
-uniform vec3 col : source_color = vec3(0.11, 0.13, 0.25);      // (a dark blue (the owner, 19/11: "the shadow a darker blue"), a little greyer with the concept's colours)
+uniform vec3 col : source_color = vec3(0.42, 0.48, 0.62);      // (set from IVGL_SHADE_COL)
 uniform float k = 0.6; uniform float grow = 0.0; uniform float edge = 0.55;
 void vertex(){ VERTEX += NORMAL * grow; VERTEX.x += sin(VERTEX.y * 11.0 + TIME * 1.7) * 0.008; }
 void fragment(){
@@ -10358,4 +10358,9 @@ func _ivgl_shade_mat() -> ShaderMaterial:
 	var m1 := ShaderMaterial.new(); m1.shader = sh; m1.set_shader_parameter("grow", 0.03); m1.set_shader_parameter("k", 0.2); m1.set_shader_parameter("edge", 0.9)
 	var m2 := ShaderMaterial.new(); m2.shader = sh; m2.set_shader_parameter("grow", 0.065); m2.set_shader_parameter("k", 0.09); m2.set_shader_parameter("edge", 1.0)
 	ivgl_shade.next_pass = m1; m1.next_pass = m2
+	var sc := IVGL_SHADE_COL
+	var ev := OS.get_environment("IV_SHADE_COL").split(",")
+	if ev.size() == 3: sc = Color(float(ev[0]), float(ev[1]), float(ev[2]))
+	for m in [ivgl_shade, m1, m2]: (m as ShaderMaterial).set_shader_parameter("col", sc)
 	return ivgl_shade
+const IVGL_SHADE_COL := Color(0.42, 0.48, 0.62)      # (her shadow over there grey-blue, not black (the owner, 19/11: "the reflection's shadow more grey-blue, not black"; a dark blue before); IV_SHADE_COL="r,g,b" tries another)

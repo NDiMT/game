@@ -255,7 +255,7 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   then "even more": `IVGL_ISLE_GRAD` 0.88, `img_pink`, `img_blue` over `img_gy` in IV_SH; its haze takes the gradient
   too); the glass may be implied, but the island must never lie over the face (the owner: "what I don't want is the
   second island falling on the statue"; a blur and mist over the island was tried and turned down); her twin over there
-  stays a dark blurred shadow; the glass's
+  stays a blurred shadow, grey-blue; the glass's
   notes below still hold for all else (the turn about x + z + k = 0, the pairs, the square, the gate's light). **Its
   colours brought back to its concept's** (the owner: "fix the colours, you have strayed far from the style"; sampled
   from `design/level4/slide/concept_start.jpg`: a pale grey-blue sea, lum about 0.66, saturation 0.2, where it had
@@ -281,7 +281,7 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   circle is"): a frame of the ring's own lit white (`_iv_mat("ring")`, `fbf9f4`, emit 0.3; four round bars and round
   corners, squashed to 0.62 as the ring's torus is), brown stone within (`rock2`), the ring's soft glow over it
   (`IVGL_PAD_HALF` 0.39, `IVGL_PAD_TUBE` 0.075); no disc of the way in it, the way's lines stopping at its rim; it flares
-  as it resets; its twin stands on the island. Five places the block cannot come out of (the corners), and no true dead end with the square
+  as it resets; it has no twin on the island (the owner, 19/11: "the shadow doesn't need a start square"). Five places the block cannot come out of (the corners), and no true dead end with the square
   (`tools/go/still_glass_trial.py`, plan `tools/go/still_plan.py`; the level.glb of the moving glass is the same, its
   floors unchanged). **The real place and its image stand a little apart** (the owner: "let the two sections have a
   little distance between them"): the glass 2.4 m past the terrace's nearest row (`GAP`, plane 11.4; 0.8 before), the
@@ -305,13 +305,15 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   `rock_clamp` (which sinks every other rock under a floor) leaves them standing up through the slab's edges, clear of
   the square and her way. The sea's gradient (the owner: "can we play a little with the sea's
   gradient?"): tints over the painted sea in `IVS_GRADS` (`deep`, `sun`, `mist`), the level's own in `IVS_GRAD_GLASS`;
-  `IV_SEA_GRAD=<name>` tries one; `deep` is the level's own until the owner picks. Her image in the glass is a black blurred
-  shadow of her (the owner, 19/11: "if Ione's reflection shows, let it be like a black blurred shadow"; `IVGL_SHADE_SH`).
+  `IV_SEA_GRAD=<name>` tries one; `deep` is the level's own until the owner picks. Her image in the glass is a blurred
+  shadow of her (the owner, 19/11: "if Ione's reflection shows, let it be like a black blurred shadow"; `IVGL_SHADE_SH`),
+  grey-blue since (the owner, 19/11: "the reflection's shadow more grey-blue, not black": `IVGL_SHADE_COL` 0.42, 0.48,
+  0.62; a lighter 0.52, 0.58, 0.72 read too faint; `IV_SHADE_COL="r,g,b"` tries another).
   **The image is pale and airy, as its concept has it** (the owner, 19/11: "I don't like this dark after all", after
   asking for a darker blue), **in the great face's own blue-pink** ("the reflection too, this blue-pink of the
   statue"): a duotone, its shade the face's blue-lilac (`img_lo`), its light its rose (`img_hi`), `img_tint_k` 0.72,
   given to a lilac haze of one colour (`img_mist` 0.84, 0.8, 0.9: never the painting itself, whose face showed through
-  the stones), a third at the glass and more for each metre behind it (`IVGL_IMG_FADE`); her shadow stays a dark blue.
+  the stones), a third at the glass and more for each metre behind it (`IVGL_IMG_FADE`); her shadow is grey-blue.
   The gate's light and its ring light in the glass too as it opens (the owner: "when the gate opens, light in the
   reflection too"): the white opening, the light before it, its motes and glow paired with their own materials
   (`_ivgl_gate_images`, made after the gate), the ring's image lit with it (`ivgl_ring_img_mat`). **The great face is
