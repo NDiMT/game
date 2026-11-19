@@ -111,13 +111,13 @@ nt.links.new(mr.outputs['Result'], ramp.inputs['Fac']); nt.links.new(ramp.output
 nt.links.new(bw.outputs['Val'], mix.inputs['Fac']); nt.links.new(tr.outputs['BSDF'], mix.inputs[1]); nt.links.new(em.outputs['Emission'], mix.inputs[2])
 nt.links.new(mix.outputs['Shader'], out.inputs['Surface'])
 go.data.materials.append(gl)
-edge = mat('edge', (1.0, 0.97, 0.9), emit=6.0)      # (the crack's edge of light)
-for i in range(len(CRACK) - 1):
-    (s0, t0), (s1, t1) = CRACK[i], CRACK[i + 1]
-    p0 = CO + along * (s_c + s0) + Vector((0, 0, t0)); p1 = CO + along * (s_c + s1) + Vector((0, 0, t1))
-    mid = (p0 + p1) / 2; ln = (p1 - p0).length
-    bpy.ops.mesh.primitive_cylinder_add(radius=0.022, depth=ln, location=mid)
-    c = bpy.context.active_object; c.rotation_euler = (p1 - p0).to_track_quat('Z', 'Y').to_euler(); c.data.materials.append(edge)
+bm = bmesh.new()      # (the crack: an opening in the glass filled with light from the other side, not an outline: an outline read as lightning)
+for k_, (sh, gl_k) in enumerate(((1.0, 1.6), (0.62, 4.0))):      # (a soft halo about it, and the light in it)
+    pts = [CO + along * (s_c + s0 * sh) + Vector((0, 0, H1 + (t0 - H1) * (0.98 if sh < 1 else 1.04))) - NRM * (0.02 + 0.01 * k_) for s0, t0 in CRACK]
+    f = bm.faces.new([bm.verts.new(p) for p in pts]); f.material_index = k_
+cm = bpy.data.meshes.new('crack'); bm.to_mesh(cm); bm.free()
+co_ = bpy.data.objects.new('crack', cm); sc.collection.objects.link(co_)
+cm.materials.append(mat('crack_halo', (1.0, 0.95, 0.86), emit=1.6, alpha=0.6)); cm.materials.append(mat('crack', (1.0, 0.98, 0.93), emit=5.0))
 
 # the ring and the gate, in the image only
 r = PZ['nodes']['R']
