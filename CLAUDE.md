@@ -247,7 +247,16 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   slab's corner buried under another stone (a bridge's end on its floor, a pillar's foot) bakes black in the shade of
   corners, and the faces round it on the white top drew a star; the builder now gives such a corner its face's other
   corners' shade (all levels rebuilt). `IV_BG_FILE=<png>` tries another backdrop without importing it.
-- **Level 4, the glass (`goglass/`, `FLIP=goglass`, in the game since 19/11)**: the owner's puzzle (19/11: "she does not
+- **Level 4, the glass (`goglass/`, `FLIP=goglass`, in the game since 19/11)**: **now an opposite island, not a glass**
+  (the owner, 19/11: "could it be not a glass with a reflection, just an opposite island?"): `IVGL_ISLAND` hides the
+  pane, its sheens and its clip; the image is drawn in the level's own colours, only a little given to a grey-blue haze
+  with its distance (`IVGL_ISLE_HAZE`, `IVGL_ISLE_FADE`); her twin over there stays a dark blurred shadow; the glass's
+  notes below still hold for all else (the turn about x + z + k = 0, the pairs, the square, the gate's light). **Its
+  colours brought back to its concept's** (the owner: "fix the colours, you have strayed far from the style"; sampled
+  from `design/level4/slide/concept_start.jpg`: a pale grey-blue sea, lum about 0.66, saturation 0.2, where it had
+  become a dark saturated indigo): the painted sea graded to it in the sea's shader (`grade_k` 0.88, `grade_far`,
+  `grade_near`, its light and dark kept about them, nothing at the far rim; `IV_SEA_GRADE=0` shows the painting as it
+  is), no tint gradient (`IVS_GRAD_GLASS` empty). The owner's puzzle (19/11: "she does not
   cross; the block must go somewhere in the reflection and the gate opens in the real view"): a wall of glass stands
   across the screen in the still sea; before it the real place (a corridor low over the water from her start to the
   shut gate; a terrace a step above it with the block), beyond it its exact image (only the real side is

@@ -5563,6 +5563,7 @@ uniform vec3 foam_c : source_color = vec3(1.0, 0.98, 0.96);
 uniform float hz_v = -1.0;      // (where the sea melts into the sky, on the screen: nothing is drawn on the water near it)
 uniform float shore_mir = 0.0; uniform vec3 mir_o; uniform float mir_k = 9.8;      // (the fourth level: the shore map read again at the point turned over about the glass, x + z + k = 0 about mir_o, so the image's stones have their foam too)
 uniform float wave_k = 0.0;      // (small soft waves aslant, here and there, each coming and going: the surface only)
+uniform float grade_k = 0.0; uniform vec3 grade_far = vec3(0.74, 0.77, 0.86); uniform vec3 grade_near = vec3(0.58, 0.63, 0.72); uniform vec2 grade_y = vec2(0.45, 1.0); uniform float grade_keep = 0.6;      // (the painted sea brought to a concept's own colours, its light and dark kept about them)
 uniform float grad_k = 0.0; uniform vec3 grad_far = vec3(1.0); uniform vec3 grad_near = vec3(1.0); uniform vec3 grad_sun = vec3(1.0); uniform vec4 grad_y = vec4(0.45, 1.0, 0.0, 0.0);      // (a gradient laid over the painted sea, as a tint keeping its painting: from the far water down to the picture's foot (grad_y.xy on the screen), and aslant toward the sun's side (grad_y.z))
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
@@ -5579,6 +5580,12 @@ void fragment(){
 		vec2 suv = vec2(0.5 + (SCREEN_UV.x + bg_off.x - 0.5) * bg_scale.x, 0.5 + (sy + bg_off.y - 0.5) * bg_scale.y);
 		if (world_uv > 0.5) { vec3 r = wp - eye_c; suv = vec2(0.5 + dot(r, eye_bx) / eye_w, 0.5 - dot(r, eye_by) / (eye_w * 16.0 / 9.0)); }
 		c = texture(bg_tex, clamp(suv, vec2(0.001), vec2(0.999))).rgb;
+		if (grade_k > 0.0) {      // (the fourth level: its sea as its concept's, pale and grey-blue (the owner, 19/11: "you have strayed far from the style"); nothing at the far rim, where it meets the painting)
+			float gl = dot(c, vec3(0.3, 0.55, 0.15));
+			vec3 tg = mix(grade_far, grade_near, smoothstep(grade_y.x, grade_y.y, s));
+			vec3 gc = tg * (1.0 + (gl - 0.62) * grade_keep);
+			c = mix(c, gc, grade_k * smoothstep(hz_v, hz_v + 0.16, s));
+		}
 		if (grad_k > 0.0) {      // (the owner, 19/11: "can we play a little with the sea's gradient?")
 			vec3 g = mix(grad_far, grad_near, smoothstep(grad_y.x, grad_y.y, s));
 			g = mix(g, grad_sun, clamp((SCREEN_UV.x - 0.35) * 1.4 + (0.75 - s) * 1.2, 0.0, 1.0) * grad_y.z);
@@ -5672,6 +5679,8 @@ func _ivs_sea(sea_y: float) -> void:
 			m.set_shader_parameter("shore_mir", 1.0); m.set_shader_parameter("mir_o", IV_O); m.set_shader_parameter("mir_k", ivgl_k)
 		m.set_shader_parameter("riser_up", 1.0 if ivw_up > 0.5 else 0.0)
 	ivs_sea_mat = m; ivs_sea_mats = [m, mf]
+	if go_glass and OS.get_environment("IV_SEA_GRADE") != "0":
+		for sm in [m, mf]: (sm as ShaderMaterial).set_shader_parameter("grade_k", 0.88)
 	var gk := OS.get_environment("IV_SEA_GRAD") if OS.get_environment("IV_SEA_GRAD") != "" else (IVS_GRAD_GLASS if go_glass else "")
 	if IVS_GRADS.has(gk):
 		var gv: Array = IVS_GRADS[gk]
@@ -5694,7 +5703,7 @@ const IVS_GRADS := {
 	"sun": [Vector3(1.05, 1.0, 0.98), Vector3(0.78, 0.84, 1.04), Vector3(1.22, 1.02, 0.85), Vector4(0.45, 1.0, 1.0, 0.0)],      # (cool at the lower left, warming to a rose peach under the sun at the upper right)
 	"mist": [Vector3(1.2, 1.18, 1.13), Vector3(0.97, 0.97, 1.0), Vector3(1.0, 1.0, 1.0), Vector4(0.45, 1.0, 0.0, 0.0)],      # (paler and misty, as the concept's sea)
 }
-const IVS_GRAD_GLASS := "deep"      # (the fourth level's own: light by the glass, deepening to an indigo at the picture's foot; the others shown to the owner, 19/11)
+const IVS_GRAD_GLASS := ""      # (none: its sea graded to the concept's own instead (grade_k); the deep indigo strayed from the style (the owner, 19/11))
 
 ## far off over the sea, where the concept (gosea/concept.png) has each thing: the colossal face of the one who was
 ## drowned, lying in the water by the causeway; an island with a colonnade and a tall statue on its crown, the low
@@ -10014,6 +10023,9 @@ var ivgl_img: Node3D      # (the level's image)
 var ivgl_block: Node3D      # (the block's image, kept to the block each frame)
 var ivgl_plane := Plane()      # (the glass in the world: the real side before it, n.p > d)
 var ivgl_square: MeshInstance3D
+const IVGL_ISLAND := true      # (the owner, 19/11: "could it be not a glass with a reflection, just an opposite island?": the same place turned over, standing across the water; no pane, its own colours; what moves here moves there)
+const IVGL_ISLE_HAZE := Color(0.8, 0.82, 0.9)      # (the concept's haze: its far half pale and grey-blue)
+const IVGL_ISLE_FADE := Vector2(0.3, 0.028)
 const IVGL_IMG_FAR := 1e6      # (no cut by distance: the three rocks in the sea at the picture's foot are marked by the builder instead (alpha 0), as the real place's own rocks lie as far out)
 const IVGL_IMG_FADE := Vector2(0.34, 0.035)      # (the image's air: at the glass, and more for each metre behind it)
 const IVGL_GLASS_SH := """
@@ -10111,7 +10123,10 @@ func _ivgl_img_mat(src: Material) -> Material:      # (a thing's image: its own 
 	var m := (src as ShaderMaterial).duplicate() as ShaderMaterial
 	m.set_shader_parameter("img_k", 1.0); m.set_shader_parameter("img_plane", Vector4(ivgl_plane.normal.x, ivgl_plane.normal.y, ivgl_plane.normal.z, -ivgl_plane.d))
 	m.set_shader_parameter("img_fade", IVGL_IMG_FADE); m.set_shader_parameter("shadow_k", 0.0); m.set_shader_parameter("img_far", IVGL_IMG_FAR)
-	m.set_shader_parameter("img_clip", Vector4(IVGL_PANE.x, IVGL_PANE.y, -1e6, ivgl_c0.y + IVGL_PANE.z)); m.set_shader_parameter("img_c0", ivgl_c0)
+	if IVGL_ISLAND:      # (an island over the water, not an image in a glass: its own colours, only a little given to the air with its distance; no pane to be seen through)
+		m.set_shader_parameter("img_tint_k", 0.0); m.set_shader_parameter("img_dark", 1.0); m.set_shader_parameter("img_mist", IVGL_ISLE_HAZE)
+		m.set_shader_parameter("img_fade", IVGL_ISLE_FADE)
+	m.set_shader_parameter("img_clip", Vector4(-1e6, 1e6, -1e6, 1e6) if IVGL_ISLAND else Vector4(IVGL_PANE.x, IVGL_PANE.y, -1e6, ivgl_c0.y + IVGL_PANE.z)); m.set_shader_parameter("img_c0", ivgl_c0)
 	m.set_shader_parameter("img_al", Vector3(1, 0, -1).normalized()); m.set_shader_parameter("img_fwd", -_ivp_basis().z)
 	ivgl_mats.append(m)
 	return m
@@ -10173,6 +10188,7 @@ func _ivgl_setup(lv: Node3D) -> void:
 	var gm := ShaderMaterial.new(); gm.shader = _ivw_shader(IVGL_GLASS_SH); gm.set_shader_parameter("u0", IVGL_PANE.x); gm.set_shader_parameter("uw", gw); gm.set_shader_parameter("gh", gh)
 	gm.render_priority = 20      # (drawn over the sea beyond it: the sea lies behind the glass, so no line where the sea ends)
 	ivgl_pane = MeshInstance3D.new(); ivgl_pane.mesh = q; ivgl_pane.material_override = gm; ivgl_pane.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ivgl_pane.visible = not IVGL_ISLAND
 	iv_root.add_child(ivgl_pane)
 	var pp: Array = mr.get("plate", [0.0, 0.0, 0.0])
 	var sq := PlaneMesh.new(); sq.size = Vector2(1.7, 1.7)
@@ -10191,7 +10207,7 @@ func _ivgl_setup(lv: Node3D) -> void:
 		var ri := _ivgl_pair(ivgl_reset_sq)      # (its image in the glass, as everything real has: dim, in the image's blue)
 		if ri != null:
 			var rim := (ri as MeshInstance3D).material_override as ShaderMaterial
-			rim.set_shader_parameter("col", Color(0.62, 0.7, 1.0)); rim.set_shader_parameter("gcol", Color(0.13, 0.17, 0.36)); rim.set_shader_parameter("ga", 0.45)
+			if not IVGL_ISLAND: rim.set_shader_parameter("col", Color(0.62, 0.7, 1.0)); rim.set_shader_parameter("gcol", Color(0.13, 0.17, 0.36)); rim.set_shader_parameter("ga", 0.45)      # (in a glass, a dim blue; on the opposite island the same as here)
 	if hero_real and H.has("main") and OS.get_environment("IV_GLASS_HER") != "0":      # (her image in the glass, as a mirror has it: a body of hers turned over about it, doing as she does; a black blurred shadow of her (the owner, 19/11: "if Ione's reflection shows, let it be like a black blurred shadow"); IV_GLASS_HER=0 leaves it out)
 		ivgl_her_root = Node3D.new(); add_child(ivgl_her_root)
 		var e: Dictionary = spawn_her(ivgl_her_root, "mirror"); H["glass"] = e
@@ -10315,7 +10331,7 @@ func _ivgl_props(j: Dictionary) -> void:      # (the low thresholds across the w
 const IVGL_SHADE_SH := """
 shader_type spatial;
 render_mode unshaded, cull_disabled, depth_draw_never, shadows_disabled, blend_mix;
-uniform vec3 col : source_color = vec3(0.07, 0.11, 0.27);      // (a dark blue (the owner, 19/11: "the shadow a darker blue"))
+uniform vec3 col : source_color = vec3(0.11, 0.13, 0.25);      // (a dark blue (the owner, 19/11: "the shadow a darker blue"), a little greyer with the concept's colours)
 uniform float k = 0.6; uniform float grow = 0.0; uniform float edge = 0.55;
 void vertex(){ VERTEX += NORMAL * grow; VERTEX.x += sin(VERTEX.y * 11.0 + TIME * 1.7) * 0.008; }
 void fragment(){
