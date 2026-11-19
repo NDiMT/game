@@ -247,6 +247,12 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   slab's corner buried under another stone (a bridge's end on its floor, a pillar's foot) bakes black in the shade of
   corners, and the faces round it on the white top drew a star; the builder now gives such a corner its face's other
   corners' shade (all levels rebuilt). `IV_BG_FILE=<png>` tries another backdrop without importing it.
+- **Level 4, the glass (being designed, 19/11)**: the owner chose idea A, "the image is stepped on" (the script's truth:
+  a mirror gives no souls, only images). Board `glass` in `tools/go/glass_trial.py` (11 moves, about 7 swipes, one way,
+  no dead end, the image needed; a first board of 39 moves was too many for a 4th level, the owner: "a simpler form with
+  a mirror"). The glass stands across the screen, the real map below and its image above (the owner: "more room"; side by
+  side each half had half a phone's width; `glass_lr` keeps that form): cracks are the only crossings; the stone's image
+  is a stepping stone over a hole of fog, a block on a floor. Next, with the owner's OK: plan, blockout, concept, build.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
