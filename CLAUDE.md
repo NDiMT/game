@@ -39,7 +39,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   `sin` in it, which a phone's graphics can take so loosely that every cell comes out foam; and then, still "a strange
   flash like a glint": the shore map holds all the rising stones' outlines as one, so as the first broke the water its
   foam ran out as a white line round the stones still under; now each stone's foam keeps to the water nearer it than the
-  others' middles, `others` in `IVW_CHURN_SH`, `_ivw_riser_middles`); she climbs to the
+  others' middles, `others` in `IVW_CHURN_SH`, `_ivw_riser_middles`; and then "they start dark and make a strange
+  flash": wet, darker and cooler, they came up grey-blue and whitened all at once as they dried; now they are never wet,
+  `wet_k` 0, and come up in their own colours, only the foam on the water and a little on them); she climbs to the
   glowing gate, steps into its light, and is lost in it in a flash (the gate alone lights) and rising motes; a
   moment's hold, then the light fills the picture and level 2 begins in it (`_ivw_to_veil`: the scene reloads with
   `Engine` meta `ivw_next`; `IV_ONE=1` stops after level 1). The dark end screen (EIDOLON alone: no "tap to ..." words,
@@ -161,8 +163,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   shade of the same stone, not terracotta (the owner) (`props/block_meander.glb`, `tools/go/block_meander.py`, kept for
   the record). **Since 20/11 a true cube that tumbles, as level 4's** (the owner: "this holds for maps 2 and 3 with the
   cube too"): `props/block_cube.glb`, 0.92 m, its own colours, beige since 20/11 in every level (the owner: "not gold but beige"; then, of an outline of a smaller
-  square in place of the meander, made and turned down the same day: "leave it with the meander, just make it beige"),
-  its meander a darker beige, its veins as discreet as before (`block`, `meander` in `IV_WAKE_PAL`, `IV_GLASS_PAL`); it tumbles over onto the next place, and into the gap
+  square in place of the meander, made and turned down the same day: "leave it with the meander, just make it beige";
+  then "a more brown beige", "and the meander a little lighter"), its meander a darker shade of that brown beige, its veins as discreet as before (`block`, `meander` in `IV_WAKE_PAL`, `IV_GLASS_PAL`); it tumbles over onto the next place, and into the gap
   too, as at every push (the owner, 20/11: "the same movement as the basic push"): shoved to its stone's edge, it rises
   onto that edge and goes over, out and down into the water (`_ivt_over_into`), a small splash as it breaks the water
   (`_ivv_splash`; the owner: "a small splash"), its top flush with the way (`_ivv_bside`); its foam is laid round the
@@ -378,7 +380,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   `IV_SEA_GRAD=<name>` tries one; `deep` is the level's own until the owner picks. Her image in the glass is a blurred
   shadow of her (the owner, 19/11: "if Ione's reflection shows, let it be like a black blurred shadow"; `IVGL_SHADE_SH`),
   grey-blue since (the owner, 19/11: "the reflection's shadow more grey-blue, not black": `IVGL_SHADE_COL` 0.42, 0.48,
-  0.62; a lighter 0.52, 0.58, 0.72 read too faint; `IV_SHADE_COL="r,g,b"` tries another). It is drawn after the sea
+  0.62; a lighter 0.52, 0.58, 0.72 read too faint; `IV_SHADE_COL="r,g,b"` tries another). When the puzzle is solved it
+  goes in a puff and does not come back (the owner, 20/11: "when the puzzle is solved the shadow goes poof and
+  disappears"; `_ivgl_shade_poof`, a breath after the square flares): it swells a little as it fades, and a cloud of
+  large soft puffs in its grey-blue, lighter (`IVGL_POOF_COL`, the dust's own material), bursts out of it and thins in
+  about a second; small puffs read as dots. It is drawn after the sea
   (`render_priority` 6, as the foam and the lights; so are the island's square and the start square's glow): drawn
   without depth at 0, the transparent sea was laid over it wherever only sky and sea lay behind it, and as she walked
   to the gate her shadow was cut off along the island's edge (the owner, 20/11: "the shadow passes under the

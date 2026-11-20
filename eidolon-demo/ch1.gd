@@ -2172,8 +2172,8 @@ const IV_WAKE_PAL := {      # the waking: dawn over a still sea. Pearl and rose 
 	"rock2": ["c39f98", "93727c", "684a57", "4a3140"],
 	"observer": ["f5e7e1", "decdd0", "c6b0bc", "9d8599"],
 	"statue": ["fcf5f1", "f4e6e1", "d8c2c8", "ae96a9"],      # (the Observer as the concepts paint their statues: white marble warmed by the dawn on its lit side, a light rose-lilac shade; the user: "smoother and better lit")      # (the lighter stone's own: the white marble of the slabs; the user's ask)      # (the rock's own hues, its shade a little lighter so her face under the veil still reads)      # (her shade soft: the face under the veil must never fall into a dark hole)
-	"block": ["f2eade", "e9dfd1", "d1c4b7", "ab9f96"],      # (the cube beige, not gold (the owner, 20/11: "leave it with the meander, just make it beige"); before, a sandier marble, "f6e6d0", "ecd8c0", "d3bba4", "ae968a")      # (the uncut block: a warmer, sandier marble than the slabs, as stone fresh from the quarry is; the owner: "a little different in shade"; a grey-blue was tried and turned down, 18/11: "leave it yellowish as it was, with a few discreet marble veins")
-	"meander": ["bfb3a4", "ada294", "94897e", "756c64"],      # (its meander a darker shade of its beige, as it was of its sand ("cbb497", "baa386", "9e886f", "7a6756"); an outline of a smaller square in its place was made and turned down the same day)      # (its meander the block's own sandy stone, darker; the owner, after a pink and a terracotta: "not terracotta, just darker than the stone's colour")
+	"block": ["dbcbb6", "ccbaa3", "b29f89", "8f7e6f"],      # (the cube a brown beige (the owner, 20/11: "leave it with the meander, just make it beige", then "a more brown beige"); a paler beige "f2eade", "e9dfd1", "d1c4b7", "ab9f96" before it, and a sandier marble, "f6e6d0", "ecd8c0", "d3bba4", "ae968a")      # (the uncut block: a warmer, sandier marble than the slabs, as stone fresh from the quarry is; the owner: "a little different in shade"; a grey-blue was tried and turned down, 18/11: "leave it yellowish as it was, with a few discreet marble veins")
+	"meander": ["baa58d", "a8937d", "8f7c6b", "706155"],      # (its meander a darker shade of its brown beige, a little lighter than first made ("a38f79"...; the owner: "and the meander a little lighter"), as it was of its sand ("cbb497", "baa386", "9e886f", "7a6756"); an outline of a smaller square in its place was made and turned down the same day)      # (its meander the block's own sandy stone, darker; the owner, after a pink and a terracotta: "not terracotta, just darker than the stone's colour")
 	"phead": ["f3e4df", "dcc4c4", "b9a0ad", "917b93"],
 	"groove": ["e2cac6", "e2cac6", "e2cac6", "e2cac6"],
 	"line": ["fff4ee", "fff4ee", "fff4ee", "fff4ee"],
@@ -2225,8 +2225,8 @@ const IV_GLASS_PAL := {      # the fourth level in the colours of its concept (d
 	"rock2": ["8d7d84", "6b5d6d", "4c4052", "35293b"],      # (its rock: #8a7878 lit, #493d4d #43384a, #36293a in the shade)
 	"groove": ["d8d0da", "d8d0da", "d8d0da", "d8d0da"],
 	"ring": ["fbf9f4", "fbf9f4", "fbf9f4", "fbf9f4"],
-	"block": ["f7eee2", "f0e3d5", "d9c9bb", "b2a49b"],      # (beige as in the other levels, a touch warmer as its concept's; before "fbe9d6", "f2d8c2", "dcbba4", "b4968b")      # (its cube a little lighter and warmer, as the concept's #e7ccb8 lit, #b2988f in the shade; the same sandy marble)
-	"meander": ["dbcfc3", "ccbfb3", "b2a59a", "91867e"],      # (its meander beige too, softer than the other levels' as it was ("e5d1ba", "d9c0a7", "c0a48c", "9a8173"))      # (its meander softer than the second level's, a little over half way to the cube's own stone (the owner, 20/11: "can we make the meander on the cube less intense?"))
+	"block": ["e3d2bf", "d6c3ae", "baa591", "968577"],      # (a brown beige as in the other levels, a touch lighter here as its concept's; before "f7eee2", "f0e3d5", "d9c9bb", "b2a49b", and "fbe9d6", "f2d8c2", "dcbba4", "b4968b")      # (its cube a little lighter and warmer, as the concept's #e7ccb8 lit, #b2988f in the shade; the same sandy marble)
+	"meander": ["d4c1ae", "c4b19d", "ab9887", "8c7c70"],      # (its meander a brown beige too, a little lighter as in the other levels, softer than theirs as it was ("e5d1ba", "d9c0a7", "c0a48c", "9a8173"))      # (its meander softer than the second level's, a little over half way to the cube's own stone (the owner, 20/11: "can we make the meander on the cube less intense?"))
 }
 func _iv_pal(kind: String) -> Array:
 	if go_glass and IV_GLASS_PAL.has(kind): return IV_GLASS_PAL[kind] as Array
@@ -4634,7 +4634,7 @@ func _ivw_risers_find(lv: Node3D, mn: Node3D) -> void:
 		var nm := String(mi.name).to_lower()
 		mi.material_override = _ivr_mat("rock2" if nm.contains("rock") else "marble2", 1.0, true).duplicate() as ShaderMaterial
 		(mi.material_override as ShaderMaterial).set_shader_parameter("clip_k", 0.0); (mi.material_override as ShaderMaterial).set_shader_parameter("under_k", 1.0)
-		(mi.material_override as ShaderMaterial).set_shader_parameter("wet_k", 1.0); (mi.material_override as ShaderMaterial).set_shader_parameter("dry_y", 1000.0)      # (wet while it lies under the water, so nothing changes at once as it comes up)
+		(mi.material_override as ShaderMaterial).set_shader_parameter("wet_k", 0.0)      # (it comes up in its own colours: wet, darker and cooler, it came up dark and lightened as it dried, which read as a flash (the owner, 20/11: "they start dark and make a strange flash"))
 		var img: MeshInstance3D = null
 		if mn != null:
 			var f := mn.find_children(String(mi.name), "MeshInstance3D", true, false)
@@ -4725,9 +4725,6 @@ func _ivw_emerge(r: Array) -> void:
 		if q.size() > 5 and String(q[5]) == String(r[5]):
 			var qm := (q[0] as MeshInstance3D).material_override as ShaderMaterial
 			if qm == null: continue
-			qm.set_shader_parameter("wet_k", 1.0); qm.set_shader_parameter("dry_y", bb.end.y + 0.6)      # (wet already under the water (_ivw_risers_find): nothing about it changes at once as it breaks the surface)
-			var tw := create_tween(); tw.tween_interval(0.6)
-			tw.tween_method(func(v: float) -> void: qm.set_shader_parameter("dry_y", v), bb.end.y + 0.6, sea - 0.15, 2.8).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
 			qm.set_shader_parameter("foam_y", bb.end.y + 0.4)      # (it comes up with the sea's foam on it, which drains off its top and down its sides: coming in over a moment, never at once)
 			var tf := create_tween().set_parallel(true)
 			tf.tween_method(func(v: float) -> void: qm.set_shader_parameter("foam_k", v), 0.0, 1.0, 0.35).set_trans(Tween.TRANS_SINE)
@@ -10554,6 +10551,7 @@ func _ivgl_demo_open() -> void:
 	if ivm_ring_gold != null: _ivm_ring_tick()
 	_ivm_gate_open()
 	if ivgl_square_mat != null: ivgl_square_mat.set_shader_parameter("emit", 0.9)
+	if ivgl_her_root != null: ivgl_her_root.visible = false; ivgl_her_root.process_mode = Node.PROCESS_MODE_DISABLED      # (solved: her shadow over there is gone)
 
 func _ivgl_tick() -> void:      # (the images of what moves go with it: the block, the winch's wheel, the gate's leaves)
 	for pr in ivgl_pairs:
@@ -10588,7 +10586,43 @@ func _ivgl_check() -> void:      # (the block at rest where its image stands in 
 		var sm := ivgl_square_mat; var gm := ivgl_square_glow
 		var tw := create_tween(); tw.tween_method(func(v: float) -> void: sm.set_shader_parameter("emit", v); gm.albedo_color.a = 0.22 + v * 0.5, 0.3, 1.2, 0.35).set_trans(Tween.TRANS_SINE)
 		tw.tween_method(func(v: float) -> void: sm.set_shader_parameter("emit", v); gm.albedo_color.a = 0.22 + v * 0.5, 1.2, 0.9, 0.9).set_trans(Tween.TRANS_SINE)
+	get_tree().create_timer(IVGL_POOF_AT, false).timeout.connect(_ivgl_shade_poof)      # (and her shadow over there goes in a puff (the owner, 20/11: "when the puzzle is solved, the shadow goes poof and disappears"))
 	await _ivm_open()
+
+const IVGL_POOF_AT := 0.3      # (a breath after the square flares)
+const IVGL_POOF_COL := Color(0.62, 0.67, 0.8)      # (the puff: her shadow's own grey-blue, lighter, thinning into the island's mist)
+var ivgl_poof: StandardMaterial3D
+func _ivgl_poof_mat() -> StandardMaterial3D:      # (the dust's own material in her shadow's colour: the same shader, so nothing new to build as it is first drawn)
+	if ivgl_poof == null: ivgl_poof = _ivt_dust_material().duplicate() as StandardMaterial3D; ivgl_poof.albedo_color = IVGL_POOF_COL
+	return ivgl_poof
+
+func _ivgl_shade_poof() -> void:      # (her shadow in the image swells a little and is gone in a puff of grey-blue mist that bursts out of it and thins; it does not come back)
+	if ivgl_her_root == null or not ivgl_her_root.visible or ivgl_shade == null: return
+	print("IV her shadow goes in a puff")
+	var at := ivgl_T * pos
+	var p := CPUParticles3D.new(); add_child(p); p.global_position = at + Vector3(0, 0.85, 0)
+	p.one_shot = true; p.amount = 24; p.lifetime = 1.4; p.explosiveness = 0.95; p.local_coords = false
+	var q := QuadMesh.new(); q.size = Vector2(1.5, 1.5); q.material = _ivgl_poof_mat(); p.mesh = q      # (large soft puffs that run together: a cloud, never dots)
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX; p.emission_box_extents = Vector3(0.18, 0.72, 0.18)      # (out of her whole body)
+	p.direction = Vector3.UP; p.spread = 180.0; p.initial_velocity_min = 0.15; p.initial_velocity_max = 0.55
+	p.damping_min = 1.3; p.damping_max = 2.4; p.gravity = Vector3(0, 0.14, 0)      # (it bursts out, slows, and drifts up a little as smoke does)
+	p.scale_amount_min = 0.6; p.scale_amount_max = 1.1
+	var sc := Curve.new(); sc.add_point(Vector2(0.0, 0.5)); sc.add_point(Vector2(1.0, 2.0)); p.scale_amount_curve = sc
+	var g := Gradient.new(); g.set_color(0, Color(1, 1, 1, 0.0)); g.set_color(1, Color(1, 1, 1, 0.0)); g.add_point(0.06, Color(1, 1, 1, 0.55)); g.add_point(0.4, Color(1, 1, 1, 0.26)); p.color_ramp = g
+	p.emitting = true
+	get_tree().create_timer(2.2, false).timeout.connect(p.queue_free)
+	var ms: Array = [ivgl_shade]
+	while (ms[-1] as ShaderMaterial).next_pass != null: ms.append((ms[-1] as ShaderMaterial).next_pass)
+	var k0: Array = []; var g0: Array = []
+	for m in ms:
+		var kv = (m as ShaderMaterial).get_shader_parameter("k"); var gv = (m as ShaderMaterial).get_shader_parameter("grow")      # (null where never set: the shader's own defaults)
+		k0.append(float(kv) if kv != null else 0.6); g0.append(float(gv) if gv != null else 0.0)
+	var tw := create_tween()
+	tw.tween_method(func(u: float) -> void:
+		for i in ms.size():
+			(ms[i] as ShaderMaterial).set_shader_parameter("k", float(k0[i]) * (1.0 - u))
+			(ms[i] as ShaderMaterial).set_shader_parameter("grow", float(g0[i]) + 0.14 * u), 0.0, 1.0, 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func() -> void: ivgl_her_root.visible = false; ivgl_her_root.process_mode = Node.PROCESS_MODE_DISABLED)      # (gone; nothing of it posed any more)
 
 var ivgl_mea_on := false
 func _ivgl_meander(on: bool) -> void:      # (the block's meander lights white while it stands where its image is in the square, and its image's with it (the owner, 20/11: "when the cube reaches the square, the meander lights up white"))
