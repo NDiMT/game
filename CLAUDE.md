@@ -31,7 +31,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   the owner found the video poor; see the skill) → start screen (faded level, black thin EIDOLON logo and PLAY, the Theme) → PLAY → the Lament. Ione
   kneels facing her way, both hands on the front knee, back and head bowed; after a second of stone stillness she
   rises in moments (8 s clip: breath, hands to the knee, weight forward, push, lunge, step, back up, head last).
-  She turns the winch; the stones come up out of the water with foam on the water and on them; she climbs to the
+  She turns the winch; the stones come up out of the water with foam on the water and on them (each stone's foam round
+  its own slab, `box_k` in `IVW_CHURN_SH`; the owner, 20/11: "when the rocks come out of the water they make a strange
+  flash": read from the shore map, it drew the outline all three stones' rock has at the water once all are up, one
+  blob, so as the first broke the water white lines leapt out over the others still under it); she climbs to the
   glowing gate, steps into its light, and is lost in it in a flash (the gate alone lights) and rising motes; a
   moment's hold, then the light fills the picture and level 2 begins in it (`_ivw_to_veil`: the scene reloads with
   `Engine` meta `ivw_next`; `IV_ONE=1` stops after level 1). The dark end screen (EIDOLON alone: no "tap to ..." words,
@@ -203,7 +206,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   about 0.33), with only the prompt he asked for, "Add a few strange rock formations far in the distance, behind the
   statue, subdued and faded into the haze. Keep everything else exactly as it is." (`design/level3/backdrop_prompt.txt`;
   the owner: "send the sky with the Aphrodite I liked as a picture and just tell it to add strange rocks, subdued, far
-  behind"); the level's `horizon` stays 0.33.
+  behind"); the level's `horizon` stays 0.33. **Since 20/11 the goddess in it is the painted one, a little bigger and
+  lower** (the owner: "in map 3 and map 4 the statue not low poly, but painted"; "Aphrodite a little bigger and a little
+  lower"): `python3 -I tools/go/backdrop_figure.py design/level3/goddess_painted.png design/level3/backdrop_plain.jpg
+  gomilos/backdrop.jpg 0.25 0.105 0.395 0.2 1 --onto design/level3/backdrop_whole.jpg 70,130,458,1240` (laid on the plain
+  backdrop, then only the box about her, its edge feathered, set into the whole one, so its far rocks stay as they are).
   Turned down on the way: the goddess smooth and polished or softly painted, darker, a whole backdrop with her big and the
   haze low, rocks laid in by us (`tools/go/far_rocks.py`) or painted too near, too many or below her. No birds over this level (the owner: "take
   those stupid birds out of the third level"). The 3D goddess is out of the plan
@@ -222,7 +229,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   bands); levels 1 and 2 would need their own rebuild with `smooth_normals`.
 - **The ring before every gate** is a soft white light (`fbf9f4`, `emit` 0.3, a soft white glow; the owner, 19/11: "the
   ring white light", after a bright yellowish ochre read as lemon and a very soft ochre); level 3's unlit ring a light
-  grey-lilac (`d2cee0`; the owner asked twice for it lighter) that lights to the white.
+  grey-lilac (`d2cee0`; the owner asked twice for it lighter) that lights to the white; the brown stone within it. A
+  terracotta disc within and a terracotta ring round it were tried for a day (20/11) and the owner had it back "exactly
+  as it was".
 - **The levels are painted in brushstrokes** (the owner, 19/11: "softly, as with a brush", "the brushstrokes on the
   other maps too"; before, "I want the light and shade painted, not a texture on the rock"): in the waking's levels the
   rock and the slabs (`rock2`, `marble2`) take `paint_light` 1 (the smooth form's light mixed into the facets', its steps
@@ -250,12 +259,26 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
 - **Level 4, the glass (`goglass/`, `FLIP=goglass`, in the game since 19/11)**: **now an opposite island, not a glass**
   (the owner, 19/11: "could it be not a glass with a reflection, just an opposite island?"): `IVGL_ISLAND` hides the
   pane, its sheens and its clip; the image is drawn in the level's own colours, only a little given to a grey-blue haze
-  with its distance (`IVGL_ISLE_HAZE`, `IVGL_ISLE_FADE`), and laid over with the great face's own gradient, rose high on
-  the screen to light blue at the water (the owner: "besides subdued, that pink to light blue gradient the statue has",
-  then "even more": `IVGL_ISLE_GRAD` 0.88, `img_pink`, `img_blue` over `img_gy` in IV_SH; its haze takes the gradient
-  too); the glass may be implied, but the island must never lie over the face (the owner: "what I don't want is the
-  second island falling on the statue"; a blur and mist over the island was tried and turned down); her twin over there
-  stays a blurred shadow, grey-blue; the glass's
+  with its distance. **In the concept's colours and blurred** (the owner, 20/11: "I don't like the reflection's colours at
+  all; I want it blurred, but colour-wise we're a bit off our style"; before, the great face's pink-to-light-blue
+  gradient was laid over it, `IVGL_ISLE_GRAD` 0.88, now 0): its colours drawn to the concept's image beyond the glass
+  (about `bfbece`, `b4b9cc`, sampled region by region): a cool grey duotone (`IVGL_ISLE_TINT` 0.6, `IVGL_ISLE_LO`,
+  `IVGL_ISLE_HI`, `IVGL_ISLE_DARK` 0.9) given to a pale grey-lilac haze (`IVGL_ISLE_HAZE`, `IVGL_ISLE_FADE`; `IV_ISLE_TINT`,
+  `_LO`, `_HI`, `_DARK`, `_MIST`, `_FADE`, `_GRAD` try others); and seen as through frosted glass (`_ivgl_veil`,
+  `IVGL_VEIL_SH`, `IVGL_VEIL_PX` 6 px at 720 wide, `IV_ISLE_BLUR=<px>`, 0 none): a pane on the glass's plane, as tall as the
+  island reaches up the screen, reads the screen and the depth and blurs only what lies behind the plane near the island
+  (its edges soften into the sky), never what stands before it (the real place) nor the painting away from it (the great
+  head stays sharp). The screen copy holds only what was drawn opaque (the transparent sea is not in it), so it is drawn
+  after the sea (priority 5) and under her shadow, the square and the lights (6), which stay clear over it. **Then in
+  mist, not blurred** (the owner, 20/11: "the blurred back is too grey"; "I said mist, not blurred; look here, I want such
+  colours", showing `design/level4/slide/concept_solved.jpg`; "just a little more intense, the reflection and the statue,
+  with better, more spread-out mist"): no blur (`IVGL_VEIL_PX` 0) and no duotone (`IVGL_ISLE_TINT` 0): the island in its
+  own colours given to the concept's white-lavender mist (`IVGL_ISLE_HAZE`, `IVGL_ISLE_FADE`), its foot dissolving into
+  it (`IVGL_ISLE_FOOT`: from the sea up 1.9 m, 0.82 of it at the water; `img_foot` in IV_SH), a little stronger than the
+  concept's image; the near mists (`IVGL_MISTS`) larger and denser (`IV_MIST_DBG=1` draws each in its own colour: sheets
+  lying on the water behind the glass are under the island, unseen). The glass may
+  be implied, but the island must never lie over the face (the owner: "what I don't want is the second island falling on
+  the statue"); her twin over there stays a blurred shadow, grey-blue; the glass's
   notes below still hold for all else (the turn about x + z + k = 0, the pairs, the square, the gate's light). **Its
   colours brought back to its concept's** (the owner: "fix the colours, you have strayed far from the style"; sampled
   from `design/level4/slide/concept_start.jpg`: a pale grey-blue sea, lum about 0.66, saturation 0.2, where it had
@@ -281,7 +304,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   circle is"): a frame of the ring's own lit white (`_iv_mat("ring")`, `fbf9f4`, emit 0.3; four round bars and round
   corners, squashed to 0.62 as the ring's torus is), brown stone within (`rock2`), the ring's soft glow over it
   (`IVGL_PAD_HALF` 0.39, `IVGL_PAD_TUBE` 0.075); no disc of the way in it, the way's lines stopping at its rim; it flares
-  as it resets; it has no twin on the island (the owner, 19/11: "the shadow doesn't need a start square"). Five places the block cannot come out of (the corners), and no true dead end with the square
+  as it resets. **Since 20/11 both squares, the one at her start and the one in the image, have a square of the same
+  brown stone round their light too** (the owner asked for a golden light with terracotta in and round it, then kept the
+  form and not its colours: "I like the square as it became; make it with white light and replace the terracotta with the
+  colour you had"): the white frame, `rock2` within, a low square of `rock2` round it (`IVGL_PAD_OUT` 0.53); the square in
+  the image the same in its shader (`IVGL_SQUARE_SH`: a sharp white line, its stone given a little to the island's haze); it has no twin on the island (the owner, 19/11: "the shadow doesn't need a start square"). Five places the block cannot come out of (the corners), and no true dead end with the square
   (`tools/go/still_glass_trial.py`, plan `tools/go/still_plan.py`; the level.glb of the moving glass is the same, its
   floors unchanged). **The real place and its image stand a little apart** (the owner: "let the two sections have a
   little distance between them"): the glass 2.4 m past the terrace's nearest row (`GAP`, plane 11.4; 0.8 before), the
@@ -289,10 +316,24 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   kept for the record. For pictures: `IV_BLOCK_AT=<node>`, `IV_GATE_OPEN=1`; `IV_SOL="<nodes>"` plays another way
   through (a block into a corner, back to the square at the start, and on); `IV_FAST_TO=<step>` plays the way to that
   step four times faster (a short check clip of one move), `IV_SFX_ONLY=1` keeps the sounds with `IV_NO_MUSIC`.
-  **The block tumbles** here (the owner, 19/11: "would it not be better to tumble it than drag it?"): shoved, it tips
-  over its leading edge onto the next place, turned a quarter, and lands with a knock (`_ivt_tumble`, `IVT_ON`; the
-  edge's grind, the fall's thud without its water, a heel's tap lowered); the square at the start sinks it straight
-  down and raises it where and as it began (`ivt_home`). Levels 2 and 3 still slide it. **The squares' line is thin and
+  **The block tumbles** here (the owner, 19/11: "would it not be better to tumble it than drag it?"), **a true cube**
+  (20/11: "the cube looks rectangular rather than square, not the same height on every side"): `props/block_cube.glb`
+  (`python3.11 -I tools/go/block_cube.py -- props/block_cube.glb 0.92 11`), 0.92 m on every side, the same uneven carved
+  sandy marble as level 2's block, its square-spiral meander cut into all six faces, so it looks the same however it
+  lands, a few corners broken; a little lighter and warmer here, as the concept's `e7ccb8` (`block` in `IV_GLASS_PAL`); its meander softer than the
+  second level's, a little over half way to the cube's own stone (`meander` in `IV_GLASS_PAL`; the owner, 20/11: "can we
+  make the meander on the cube less intense?").
+  Levels 2 and 3 keep theirs (`block_meander.glb`, 0.9 m square, 1.04 m high: it falls into a gap and a niche at that
+  height) and slide it. **It goes over as a heavy stone shoved** (20/11: "a little more natural when it rolls", "and a
+  little dust"; `_ivt_tumble`, `IVT_ON`): it slides first what the step (1.5 m) is longer than the cube (`IVT_SLIDE`,
+  her hands with it), rises slowly onto its leading edge, slowing as it comes to balance (`IVT_RISE`), falls faster and
+  faster onto its next face (`IVT_FALL`), never lifted off that edge, lands with a knock (the fall's thud without its
+  water, a heel's tap lowered), rocks back a hair (`IVT_ROCK`) and is still; a little dust where its edge scrapes, and a
+  puff out from under it all round as it lands (`_ivt_dust`: soft puffs of `goiv/glow.png`, `IVT_DUST_COL`, after the
+  sea). The square at the start sinks it straight down and raises it where and as it began (`ivt_home`). **Its meander
+  lights white** while it stands where its image is in the square, on the block and on its image, the ring's own soft
+  white light (`_ivgl_meander`, `IVGL_MEA_EMIT`; the owner, 20/11: "when the cube reaches the square, the meander lights
+  up white"); pushed off, it goes out. **The squares' line is thin and
   sharp but bright** (the owner: "a thinner line, sharp but bright"): a centimetre or so, never under a pixel and a
   third, its edges a pixel wide, a breath of light at its rim (`IVGL_SQUARE_SH`). Three rocks in the empty
   sea at the picture's foot (the owner, 19/11: "two, three rocks down in the empty space"; `rocks_after` in
@@ -301,9 +342,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   the rocks stand through them at their foot. The glass shows no image of them (in it they stood in the sky, beyond the
   sea's end): a `rocks_after` entry with `{'noimg': True}` is built with its vertices' alpha 0, and the image's shader
   leaves out what has it (`COLOR.a`). Brown rocks pass through her start (the owner, 19/11: "brown rocks passing
-  through the starting point"): three more in `rocks_after` about it, `{'noclamp': True}`, so the builder's
-  `rock_clamp` (which sinks every other rock under a floor) leaves them standing up through the slab's edges, clear of
-  the square and her way. The sea's gradient (the owner: "can we play a little with the sea's
+  through the starting point"; **meant about it, never through the slab**: the owner, 20/11, "I've told you a hundred
+  times, no brown rocks through the slab"; for a day they stood up through its edges, let through by `noclamp`, which is
+  never to be used): three more in `rocks_after` about it, sunk under the slab by the builder's `rock_clamp` as every
+  rock is. The sea's gradient (the owner: "can we play a little with the sea's
   gradient?"): tints over the painted sea in `IVS_GRADS` (`deep`, `sun`, `mist`), the level's own in `IVS_GRAD_GLASS`;
   `IV_SEA_GRAD=<name>` tries one; `deep` is the level's own until the owner picks. Her image in the glass is a blurred
   shadow of her (the owner, 19/11: "if Ione's reflection shows, let it be like a black blurred shadow"; `IVGL_SHADE_SH`),
@@ -327,7 +369,25 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   under the sun, so the opposite island never lies over it (`backdrop_moved.jpg`); then further back again (the owner:
   "the statue further back"): about two thirds of that size and a little higher, its chin clear of the island's top at
   her start, where the camera's follow sets the island highest on the screen (`backdrop_farther.jpg`; each with its
-  prompt beside it).
+  prompt beside it). **Then much better, bigger and more solid** (the owner, 20/11: "a much better statue head in the
+  background, more visible and bigger"; "can the head look a bit more 3D?"): a new painting in five steps
+  (`design/level4/game/backdrop_head_prompt.txt`, source `backdrop_head.jpg`): a beautifully carved colossal head of a
+  young goddess, grey-white marble, modelled strongly in light and shade (warm light on its brow, nose and hair from the
+  sun behind it at the upper right, cool blue-lilac shadow in the eye sockets and on its far side), high at the right,
+  its waterline just above the opposite island's top (it moves with the level, so that holds as the eye follows her); the
+  story's line crosses its hair at the start and fades. Gemini made the head huge and low when asked to repaint freely;
+  so: the painting with the head, the same without it, the head laid on that plate at its size and place by hand, then
+  Gemini asked only to make it one seamless painting, and to model it more strongly, each step checked by a
+  cross-correlation that the head had not moved. In the game's file the pinks of its haze are pulled toward the
+  concept's lavender. A low-poly look for it was asked and then turned down the same day ("in map 3 and map 4 the
+  statue not low poly, 3D but painted"): it stays painted. **Then laid back into its haze** (the owner, 20/11: "the
+  statue less intense, about as it is in the first frame", the concept; of three strengths, "10% more intense than the
+  third and we're done"): `tools/go/backdrop_haze.py` lays the painting back toward its clean plate within the head's
+  mask, keeping 0.46 of its own light and shade (`design/level4/game/`: `backdrop_head_game.jpg` the strong one as it
+  was in the game, `backdrop_plate.jpg` the plate without the head, `head_mask.png`). **No darkening at the screen's edges here** (`vr` hidden for `go_glass`): its concept is clear to
+  the corners, and the waking's plum vignette turned its sky pink there. The slabs a touch warmer (`marble2`, the
+  concept's `ddcfd4` lit) and the near sea a little lighter (`grade_near`, its `99a6bb`), measured against the concept
+  region by region (sky, sea, the image's stones, slabs, rock, block, mist).
   The sea mirrors the level and has its foam and its gradient as every other sea (the owner, 19/11: "the sea, the
   gradient, the foam and the reflections are not like the other seas we made"): the level's image in the water is back,
   the foam is read about the glass too for the image's stones (`shore_mir`), and its backdrop's sea was painted again in

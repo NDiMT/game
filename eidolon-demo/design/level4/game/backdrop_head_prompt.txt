@@ -1,0 +1,31 @@
+The fourth level's backdrop with the great head made bigger, better and more solid (the owner, 20/11: 'a much better statue head in the background, more visible and bigger'; 'can the head look a bit more 3D?'). Made with gemini-3-pro-image in five steps:
+
+1. A new painting from a layout guide (the old backdrop, its head enlarged into its place, its colours drawn to the concept) and the two concepts (slide/concept_start.jpg, concept.jpg) as references:
+The first picture is a rough layout of a background plate for our mobile game. The second and third pictures are the painted concept of the same level: use them for the style, the colours and the light.
+
+Paint the background plate anew, as one finished painting, in exactly the style, colours and light of the second and third pictures: their pale silver-blue and soft lilac-grey haze, their calm, still, pale grey-blue sea, their soft low sun with a gentle warm-white halo at the upper right. No pink in the sky, no strong colours: soft, pale, silvery.
+
+Keep the layout of the first picture exactly: the sun where it is, and the great stone face where it is and as large as it is, lying far off in the sea, leaning to one side, only the face and the front of the head out of the water, the still water at its cheek and chin.
+
+Paint the face much better than in the first picture: a colossal classical marble head of a young woman, a goddess, beautifully carved, with clear and calm features (the eyes, the straight nose, the full lips, the soft waves of the hair), as in the second and third pictures: pale grey-white marble with cool blue-lilac shadows and a soft warm light on it from the sun. It must be clearly visible and well drawn, not lost in the haze, yet soft and painterly, far off in the misty air, with its faint reflection in the still water under it.
+
+Nothing else in the picture: no level, no terraces, no rocks, no glass, no figures, no text. There must be no horizon line anywhere: the far sea melts into the haze of the sky. Same size and framing as the first picture.
+
+2. The same painting without the head (a clean plate of sky and sea):
+Keep this painting exactly as it is and change only one thing: take away the great stone face and its reflection in the water. Where they were, continue the same calm, still, pale sea and the same soft haze of the sky, seamlessly, with the same colours and the same soft light, so the painting reads as one plate of sky and sea. Keep the sky, the sun with its soft halo, the sea, the colours and the gradient exactly as they are. There must be no horizon line anywhere: the far sea melts into the haze of the sky. Nothing added. Same size and framing.
+
+3. The new head cut from step 1 and laid on the plate at 0.6 of its size, high at the right, its waterline above the opposite island's top (tools: a scratch script); then made one painting again:
+Keep this painting exactly as it is: the great marble head stays exactly where it is and exactly as large as it is, with the same features, the same pose and the same colours; the sky, the sun, the sea and all the colours stay as they are.
+
+Change only one thing: the picture was put together from two pieces, so make it one seamless painting. There must be no lighter or darker patch, no edge and no seam around the head or around its reflection: the haze, the sky and the sea flow evenly around them, as in the second picture. The soft sun glows from behind the top of the head, its warm halo softly around the hair. The head's reflection in the still water under it is soft and faint.
+
+There must be no horizon line anywhere: the far sea melts into the haze of the sky. No text, nothing added. Same size and framing as the first picture.
+
+4. Modelled more strongly in light and shade (this file is its result):
+Keep this painting exactly as it is: the great marble head stays exactly where it is and exactly as large as it is, with the same features, the same pose, the same expression; the sky, the sun, the sea and their colours stay as they are.
+
+Change only one thing: make the head read clearly as a solid, three-dimensional carved marble sculpture, with stronger modelling in light and shade. The soft low sun at the upper right lights the right side of the face, the brow, the nose's ridge, the cheekbone and the top of the hair with a warm pale light; the other side of the face, the eye sockets, the side of the nose, under the lips and the chin, the neck and the deep waves of the hair turn away into cool blue-lilac shadow, with clear, clean edges of form between light and shade and soft reflected light in the shadows. Its marble should feel heavy and real, with volume and depth, like a colossal carved head lit by a low sun, while staying soft and painterly and a little veiled by the far misty air, not harsh and not like a photograph. Its reflection in the still water under it follows the same light, soft and faint.
+
+There must be no horizon line anywhere. No text, nothing added. Same size and framing as the picture.
+
+5. In the game's file (goglass/backdrop.jpg) the pinks of its haze are pulled toward the concept's lavender (hues 262-342 turned 34 degrees toward blue, a little less saturated); the sun's warm core is kept.

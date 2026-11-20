@@ -98,12 +98,12 @@ def plan():
         'glass': {'planes': PLANES, 'plate': q_world},
         'rocks': rocks,
         'rocks_after': [[[0.0, SEA, 3.0], 1.0, SEA + 0.8, {'noimg': True}], [[1.35, SEA, 2.25], 0.55, SEA + 0.38, {'noimg': True}], [[4.45, SEA, -2.25], 0.8, SEA + 0.6, {'noimg': True}],
-                        [[-0.72, SEA, 0.78], 0.44, H0 + 0.22, {'noclamp': True}], [[0.8, SEA, 0.12], 0.4, H0 + 0.16, {'noclamp': True}], [[0.12, SEA, 1.02], 0.32, H0 + 0.08, {'noclamp': True}]],      # (and brown rock rising through the corridor's end where she starts, about the square there (the owner, 19/11: "rocks passing through the starting point"): its front corner, its right side, before it)      # (in the empty sea at the picture's foot, a rock and a smaller one beside it at the left, one at the right (the owner, 19/11: "two, three rocks down in the empty space"); made after all the rest)
+                        [[-0.72, SEA, 0.78], 0.44, H0 + 0.22], [[0.8, SEA, 0.12], 0.4, H0 + 0.16], [[0.12, SEA, 1.02], 0.32, H0 + 0.08]],      # (and brown rock about the corridor's end where she starts (the owner, 19/11: "I'd like brown rocks at the starting point"): its front corner, its right side, before it; sunk under the slab as every rock is, never up through it (the owner, 20/11: "I've told you a hundred times, no brown rocks through the slab"; for a day they stood up through its edges, let through by a 'noclamp' that is not to be used))      # (in the empty sea at the picture's foot, a rock and a smaller one beside it at the left, one at the right (the owner, 19/11: "two, three rocks down in the empty space"); made after all the rest)
         'volute': None, 'head': None, 'relief': None, 'cypress': None,
         'eye': eye_fit(pts, top_room=0.3, bottom_room=0.12, margin=0.7),      # (a little lower than before: the image, further off, stands higher)
         'shore': True,
         'smooth_normals': ['rock', 'marble'],
-        'rock_clamp': [0.04, 0.35, 0.06],
+        'rock_clamp': [0.04, 0.35, 0.06, 1.15, 0.3],      # (and the tall rock reaching in over a floor cut back to its edge, as the third level's: the terrace's rock came 0.23 m in over the corridor at her start, 0.35 m over it (the owner, 20/11: "no brown rocks through the slab"))
         'scenery': [],
     }
     return pl, puzzle, r

@@ -7,11 +7,22 @@ the sea at another, under a breath of the haze; the rest of the backdrop as it i
       gomilos/backdrop.jpg 0.25 0.085 0.335 0.2
 
 usage: backdrop_figure.py <figure on green> <backdrop> <out> <centre x> <top y> <haze band y> [haze, 0.22] [dark, 1]
+                          [--onto <finished backdrop> x0,y0,x1,y1]
 (x and y as shares of the backdrop's width and height; the figure's hips, 0.6 of its height, go into the band)
+
+--onto: the figure laid on the plain backdrop, then only the box about her (pixels, its edge feathered) set into a
+finished backdrop, so what was painted into that one elsewhere (the third level's far rocks) stays as it is. The third
+level's painted goddess, a little bigger and lower (the owner, 20/11: "Aphrodite a little bigger and a little lower"):
+
+  python3 -I tools/go/backdrop_figure.py design/level3/goddess_painted.png design/level3/backdrop_plain.jpg \
+      gomilos/backdrop.jpg 0.25 0.105 0.395 0.2 1 --onto design/level3/backdrop_whole.jpg 70,130,458,1240
 """
 import sys
 import numpy as np
 from PIL import Image, ImageFilter
+onto = None
+if '--onto' in sys.argv:
+    k = sys.argv.index('--onto'); onto = (sys.argv[k + 1], [int(v) for v in sys.argv[k + 2].split(',')]); del sys.argv[k:k + 3]
 src, bd, out, cx, top, band = sys.argv[1], sys.argv[2], sys.argv[3], float(sys.argv[4]), float(sys.argv[5]), float(sys.argv[6])
 haze = float(sys.argv[7]) if len(sys.argv) > 7 else 0.22
 dark = float(sys.argv[8]) if len(sys.argv) > 8 else 1.0      # (her tone: under 1 darker than painted, a cool slate in her shade, so she stands out of the light sky; the owner, 19/11: "she must not get lost in the background, darker")
@@ -44,5 +55,11 @@ if dark < 1.0:
 col = fig * (1.0 - k[..., None]) + reg * k[..., None]
 alp = s[..., 3:4] / 255.0
 bg[ya:yb, xa:xb] = reg * (1.0 - alp) + col * alp
+if onto is not None:      # (only the box about her, into the finished backdrop)
+    fin = np.asarray(Image.open(onto[0]).convert('RGB').resize((W, H), Image.LANCZOS)).astype(np.float32)
+    x0b, y0b, x1b, y1b = onto[1]
+    m = np.zeros((H, W), np.float32); m[y0b:y1b, x0b:x1b] = 1.0
+    m = np.asarray(Image.fromarray((m * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(9))).astype(np.float32) / 255.0
+    bg = fin * (1.0 - m[..., None]) + bg * m[..., None]
 Image.fromarray(np.clip(bg, 0, 255).astype(np.uint8)).save(out, quality=95)
 print('laid at', px, py, 'size', w_, h_)

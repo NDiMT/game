@@ -2215,10 +2215,12 @@ const IV_MILOS_PAL := {      # the third level in the colours of its concept, ch
 	"goddess": ["ffffff", "f7f5fc", "c6c0dc", "8a82ad"],      # (the goddess: white in the light, a clear lilac shade, as the concept paints her)
 }
 const IV_GLASS_PAL := {      # the fourth level in the colours of its concept (design/level4/concept.jpg, sampled; the owner, 19/11: "we had a nice blue atmosphere with a statue", "I want it set up in Gemini's style"): a blue-lilac haze, slabs of a lilac white, dark plum-grey rock
-	"marble2": ["f2ebf0", "e4dbe1", "cbc2cd", "958ca6"],      # (its slabs: #e6dde4 #e0d4d9 lit, #d5d1d8 #c8bfc5, a lilac shade)
+	"marble2": ["f3e9ec", "e6d9dd", "cdc0c8", "978aa0"],      # (its slabs: #e6dde4 #e0d4d9 lit, #d5d1d8 #c8bfc5, a lilac shade; a touch warmer on 20/11, as the concept's #ddcfd4 lit)
 	"rock2": ["8d7d84", "6b5d6d", "4c4052", "35293b"],      # (its rock: #8a7878 lit, #493d4d #43384a, #36293a in the shade)
 	"groove": ["d8d0da", "d8d0da", "d8d0da", "d8d0da"],
 	"ring": ["fbf9f4", "fbf9f4", "fbf9f4", "fbf9f4"],
+	"block": ["fbe9d6", "f2d8c2", "dcbba4", "b4968b"],      # (its cube a little lighter and warmer, as the concept's #e7ccb8 lit, #b2988f in the shade; the same sandy marble)
+	"meander": ["e5d1ba", "d9c0a7", "c0a48c", "9a8173"],      # (its meander softer than the second level's, a little over half way to the cube's own stone (the owner, 20/11: "can we make the meander on the cube less intense?"))
 }
 func _iv_pal(kind: String) -> Array:
 	if go_glass and IV_GLASS_PAL.has(kind): return IV_GLASS_PAL[kind] as Array
@@ -2262,6 +2264,7 @@ uniform float fog_lo = -10.5;
 uniform float fog_ref = 0.0;
 uniform float far_k = 0.0;
 uniform float img_k = 0.0; uniform vec4 img_plane = vec4(0.70710678, 0.0, 0.70710678, 0.0); uniform vec2 img_fade = vec2(0.34, 0.045);
+uniform vec3 img_foot = vec3(0.0, 1.0, 0.0);      // (an image's foot in the mist: the sea's height, how high the mist reaches over it, how much of it it takes)
 uniform vec3 img_mist : source_color = vec3(0.84, 0.8, 0.9); uniform vec3 img_tint : source_color = vec3(0.82, 0.87, 1.0); uniform float img_tint_k = 0.72; uniform float img_dark = 0.95;
 uniform vec3 img_lo : source_color = vec3(0.5, 0.53, 0.8); uniform vec3 img_hi : source_color = vec3(0.98, 0.85, 0.89);      // (the image in the great face's own hue (the owner, 19/11: "the reflection too, this blue-pink of the statue"): its shade the face's blue-lilac, its light its rose)      // (the image pale and cool, given to the air of the painting's own haze, as its concept has it: the dark blue asked for first was "not liked after all" (the owner, 19/11); its air one colour, never the painting behind it: the great face in the painting showed through its stones ("why is the head seen over the stone?"))
 uniform float img_grad = 0.0; uniform vec3 img_pink : source_color = vec3(0.99, 0.79, 0.86); uniform vec3 img_blue : source_color = vec3(0.64, 0.77, 0.98); uniform vec2 img_gy = vec2(0.14, 0.55);      // (the opposite island in the great face's own gradient (the owner, 19/11: "besides subdued, that pink to light blue gradient the statue has"): rose at its far top, light blue down at the water, by its height on the screen)
@@ -2532,7 +2535,7 @@ void fragment(){
 	if (img_k > 0.5 && (COLOR.a < 0.5 || -(dot(wp, img_plane.xyz) + img_plane.w) > img_far)) discard;      // (no image of what the builder marked so (the rocks in the sea at the picture's foot: in the glass they would stand in the sky), nor of what lies further behind it than img_far)
 	vec3 img_g = mix(img_pink, img_blue, smoothstep(img_gy.x, img_gy.y, sy));
 	if (img_k > 0.5 && img_grad > 0.0) c = mix(c, img_g * (0.6 + 0.48 * dot(c, vec3(0.3, 0.55, 0.15))), img_grad);
-	if (img_k > 0.5) { c = mix(c, mix(img_lo, img_hi, smoothstep(0.12, 0.95, dot(c, vec3(0.3, 0.55, 0.15)))), img_tint_k) * img_dark; fk = max(fk, clamp(img_fade.x + img_fade.y * max(-(dot(wp, img_plane.xyz) + img_plane.w), 0.0), 0.0, 0.9)); }      // (an image: its colour cooled toward silver, and given to the air)
+	if (img_k > 0.5) { c = mix(c, mix(img_lo, img_hi, smoothstep(0.12, 0.95, dot(c, vec3(0.3, 0.55, 0.15)))), img_tint_k) * img_dark; fk = max(fk, clamp(img_fade.x + img_fade.y * max(-(dot(wp, img_plane.xyz) + img_plane.w), 0.0), 0.0, 0.9)); fk = max(fk, img_foot.z * (1.0 - smoothstep(img_foot.x, img_foot.x + img_foot.y, wp.y))); }      // (an image: its colour cooled toward silver, and given to the air; its foot to the mist)
 	if (lfog > 0.5) {      // (into the mist softly, as mist does: a long fading, its edge in wisps)
 		float lt = clamp((ld - lf_hi) / lf_len, 0.0, 1.0);      // (one clean fade down each face: no wisps, they smudged the rock)
 		fk = max(fk, lt * lt * (3.0 - 2.0 * lt));
@@ -3646,7 +3649,7 @@ func _ivp_post(dt: float) -> void:
 		var dv: Vector3 = iv_push.d
 		var pr := clampf((pos - (iv_push.start as Vector3)).dot(dv), 0.0, float(iv_push.len))
 		var bp: Vector3 = (iv_push.m0 as Vector3) + dv * pr
-		if bool(iv_push.get("tumble", false)): bp = iv_push.m0      # (it goes over by itself: her hands to where it stood)
+		if bool(iv_push.get("tumble", false)): bp = iv_push.get("bp", iv_push.m0)      # (shoved, it slides before her hands, then goes over by itself: her hands to where it was)
 		else: iv_block_n.global_position = bp
 		if ivp_bshadow != null: ivp_bshadow.global_position = bp + Vector3(0.42, 0.012, -0.18)
 		var face := bp - dv * 0.42 + Vector3(0, 0.66, 0)
@@ -4732,7 +4735,7 @@ uniform sampler2D shore_tex : filter_linear, repeat_disable;
 uniform vec4 shore_rect = vec4(0.0, 0.0, 1.0, 1.0); uniform float shore_d = 1.6;
 uniform float boil = 0.0; uniform float churn = 0.0; uniform float spread = 0.05;
 uniform vec2 centre; uniform float rad = 0.5;
-uniform float box_k = 0.0; uniform vec2 box_half = vec2(0.45);      // (or round a square stone set down in the water, not one in the shore's map: the block fallen into its hole)
+uniform float box_k = 0.0; uniform vec2 box_half = vec2(0.45); uniform float box_r = 0.0;      // (or round a square stone set down in the water, not one in the shore's map: the block fallen into its hole; a rising stone's own slab, its corners rounded by box_r)
 uniform vec3 foam_c : source_color = vec3(1.0, 0.985, 0.97);
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
@@ -4751,7 +4754,7 @@ float bub(vec2 p, float rk){      // (round bubbles of a few sizes, some cells e
 void fragment(){
 	vec2 su = (wp.xz - shore_rect.xy) * shore_rect.zw;
 	float d = (1.0 - texture(shore_tex, clamp(su, vec2(0.001), vec2(0.999))).g) * shore_d;      // (how far from the stone's edge: nothing over it)
-	if (box_k > 0.5) { vec2 bq = abs(wp.xz - centre) - box_half; d = length(max(bq, vec2(0.0))); }
+	if (box_k > 0.5) { vec2 bq = abs(wp.xz - centre) - (box_half - vec2(box_r)); d = max(length(max(bq, vec2(0.0))) - box_r, 0.0); }
 	float onw = step(0.0005, d);      // (on the water only: over the stone nothing, it has its own)
 	float nz = vn(wp.xz * 3.5 + vec2(TIME * 0.3, -TIME * 0.24)) * 0.6 + vn(wp.xz * 8.0 - vec2(TIME * 0.42, -TIME * 0.18)) * 0.4;      // (broad and slow: the edges drawn clean and uneven, as the sea's own lip is; never a fine glitter)
 	float dd = d + (nz - 0.5) * 0.06;
@@ -4771,14 +4774,16 @@ void fragment(){
 func _ivw_churn_make(r: Array) -> MeshInstance3D:
 	if ivs_sea_mat == null or ivs_sea_mat.get_shader_parameter("shore_tex") == null: return null
 	var bb := AABB(); var first := true
-	for q in ivw_risers:      # (the whole stone: its rock and its slab)
-		if q.size() > 5 and String(q[5]) == String(r[5]):
+	for q in ivw_risers:      # (the stone's slab: what breaks the water first)
+		if q.size() > 5 and String(q[5]) == String(r[5]) and String((q[0] as MeshInstance3D).name).to_lower().contains("marble"):
 			var qb := (q[0] as MeshInstance3D).global_transform * (q[0] as MeshInstance3D).get_aabb()
 			bb = qb if first else bb.merge(qb); first = false
-	var sea := IV_O.y + ivr_sea_y; var c := bb.get_center(); var rad := maxf(bb.size.x, bb.size.z) * 0.5
+	if first: return null
+	var sea := IV_O.y + ivr_sea_y; var c := bb.get_center(); var hf := Vector2(bb.size.x, bb.size.z) * 0.5; var rad := maxf(hf.x, hf.y) * 1.42
 	var m := ShaderMaterial.new(); m.shader = _ivw_shader(IVW_CHURN_SH); m.render_priority = 6
 	for k in ["shore_tex", "shore_rect", "shore_d"]: m.set_shader_parameter(k, ivs_sea_mat.get_shader_parameter(k))
 	m.set_shader_parameter("centre", Vector2(c.x, c.z)); m.set_shader_parameter("rad", rad)
+	m.set_shader_parameter("box_k", 1.0); m.set_shader_parameter("box_half", hf); m.set_shader_parameter("box_r", minf(0.14, minf(hf.x, hf.y) * 0.3))      # (round its own slab only (the owner, 20/11: "when the rocks come out of the water they make a strange flash"): read from the shore map, the foam followed the outline all the stones' rock will have at the water once all are up, one blob, so as the first broke the water white lines leapt out over the others still under it)
 	var pm := PlaneMesh.new(); var ext := (rad + 1.2) * 2.0; pm.size = Vector2(ext, ext)
 	var mi := MeshInstance3D.new(); mi.mesh = pm; mi.material_override = m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(mi)
 	mi.global_position = Vector3(c.x, sea + 0.006, c.z)
@@ -5570,7 +5575,7 @@ uniform vec3 foam_c : source_color = vec3(1.0, 0.98, 0.96);
 uniform float hz_v = -1.0;      // (where the sea melts into the sky, on the screen: nothing is drawn on the water near it)
 uniform float shore_mir = 0.0; uniform vec3 mir_o; uniform float mir_k = 9.8;      // (the fourth level: the shore map read again at the point turned over about the glass, x + z + k = 0 about mir_o, so the image's stones have their foam too)
 uniform float wave_k = 0.0;      // (small soft waves aslant, here and there, each coming and going: the surface only)
-uniform float grade_k = 0.0; uniform vec3 grade_far = vec3(0.74, 0.77, 0.86); uniform vec3 grade_near = vec3(0.58, 0.63, 0.72); uniform vec2 grade_y = vec2(0.45, 1.0); uniform float grade_keep = 0.6;      // (the painted sea brought to a concept's own colours, its light and dark kept about them)
+uniform float grade_k = 0.0; uniform vec3 grade_far = vec3(0.75, 0.77, 0.86); uniform vec3 grade_near = vec3(0.605, 0.655, 0.745); uniform vec2 grade_y = vec2(0.45, 1.0); uniform float grade_keep = 0.6;      // (the painted sea brought to a concept's own colours, its light and dark kept about them)
 uniform float grad_k = 0.0; uniform vec3 grad_far = vec3(1.0); uniform vec3 grad_near = vec3(1.0); uniform vec3 grad_sun = vec3(1.0); uniform vec4 grad_y = vec4(0.45, 1.0, 0.0, 0.0);      // (a gradient laid over the painted sea, as a tint keeping its painting: from the far water down to the picture's foot (grad_y.xy on the screen), and aslant toward the sun's side (grad_y.z))
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
@@ -6283,7 +6288,7 @@ func _ivr_block() -> Node3D:
 		for m in b0.find_children("*", "MeshInstance3D", true, false): (m as MeshInstance3D).material_override = _ivr_mat("marble2", 0.0)
 		return b0
 	var st := GLTFState.new(); var doc := GLTFDocument.new()
-	var bf := "res://props/block_meander.glb" if go_veil else "res://goiv/block.glb"      # (the second level: the carved cube made rougher, its faces out of true, corners broken, its meander uneven as cut by hand and apart, to be coloured (tools/go/block_meander.py))
+	var bf := "res://props/block_cube.glb" if go_glass else ("res://props/block_meander.glb" if go_veil else "res://goiv/block.glb")      # (the fourth level: a true cube, its meander on all six faces, as it tumbles (the owner, 20/11: "the cube looks rectangular rather than square"; tools/go/block_cube.py))      # (the second level: the carved cube made rougher, its faces out of true, corners broken, its meander uneven as cut by hand and apart, to be coloured (tools/go/block_meander.py))
 	doc.append_from_buffer(FileAccess.get_file_as_bytes(bf), "", st)
 	var n := Node3D.new(); iv_root.add_child(n)
 	n.add_child(doc.generate_scene(st))
@@ -6463,11 +6468,12 @@ func _ivr_build() -> void:
 		elif go_milos: rb.modulate = Color(0.66, 0.72, 0.96, 0.98); rbl.modulate = rb.modulate
 		if go_glass:      # (the fourth level, as its concept: no rocks before the eye; a bank of mist at the left, over the glass's edge)
 			rb.visible = false; rbl.visible = false
-			if ResourceLoader.exists("res://goglass/mist_l.png") and OS.get_environment("IV_ZOOM") == "":      # (laid on the screen for the game's own eye: not for a close look)
+			if ResourceLoader.exists("res://goglass/mist_l.png") and OS.get_environment("IV_ZOOM") == "" and OS.get_environment("IV_MIST_L") == "1":      # (laid on the screen for the game's own eye: not for a close look; off since 20/11: a flat white blot over the island's end ("the mist arranged better"), a bank of cloud standing on the water in its place; IV_MIST_L=1 brings it back)
 				var ml := _iv_overlay(cl, "res://goglass/mist_l.png", Vector2(-70 * k, vh * 0.27), Vector2(400, 475) * k); ml.modulate = Color(1, 1, 1, 0.92)
 		if go_veil and not go_milos and not go_glass and ResourceLoader.exists("res://goveil/statue_fg.png"):      # (the second level: a veiled statue standing before the eye at the lower right, blurred, dark against the light, one of the thousand (the owner, 18/11: "fantastic, the blurred statue"); clear of the way, the gate and the rocks in the sea)
 			var sfg := _iv_overlay(cl, "res://goveil/statue_fg.png", Vector2(487 * k, vh - 468 * k), Vector2(341, 532) * k); sfg.modulate = Color(0.55, 0.42, 0.58, 0.95)
 		vg.colors = PackedColorArray([Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0.05), Color(0.26, 0.16, 0.3, 0.2)])      # (a soft darkening at the edges: the eye drawn in)
+		if go_glass: vr.visible = false      # (the fourth level: none; its concept is clear to the corners, and the plum darkening turned its sky pink there (the owner, 20/11: "fix the colours well and very carefully, look at the Gemini sample"))
 		_ivw_hand_make(cl)
 		_ivw_life()
 		if go_veil: _ivv_begin()
@@ -6788,7 +6794,7 @@ func _ivg_push(nb: String, c: String, first := "") -> void:
 	var up := tw(); up.set_parallel(); up.tween_property(self, "a_wL", 1.0, 0.3); up.tween_property(self, "a_wR", 1.0, 0.3); up.tween_property(self, "a_lean", 0.16, 0.3)
 	if tum:
 		_ivt_tumble(kp, qp, 0.16)
-		await get_tree().create_timer(0.62, false).timeout      # (her hands come down as it goes over; she follows it)
+		await get_tree().create_timer(0.16 + IVT_SLIDE + IVT_RISE * 0.8, false).timeout      # (her hands come down as it goes over; she follows it)
 		var dw := tw(); dw.set_parallel(); dw.tween_property(self, "a_wL", 0.0, 0.3); dw.tween_property(self, "a_wR", 0.0, 0.3); dw.tween_property(self, "a_lean", 0.0, 0.3)
 	while not route.is_empty(): await get_tree().process_frame
 	iv_push = {}
@@ -6827,7 +6833,7 @@ func _ivt_box_get() -> AABB:      # (its own box, in its own frame, found once f
 func _ivt_half(b: Basis, w: Vector3, hs: Vector3) -> float:      # (how far the box reaches along w, turned as it is)
 	return absf(w.dot(b.x)) * hs.x + absf(w.dot(b.y)) * hs.y + absf(w.dot(b.z)) * hs.z
 
-func _ivt_tumble(kp: Vector3, qp: Vector3, delay: float) -> void:
+func _ivt_tumble(kp: Vector3, qp: Vector3, delay: float) -> void:      # (as a heavy stone is shoved over (the owner, 20/11: "a little more natural when it rolls", "and a little dust"): shoved, it first slides what the step is longer than the cube; then it rises slowly onto its leading edge, slowing as it comes to balance there; past it, it falls faster and faster onto its next face, lands with a knock and a puff of dust, rocks back a hair and is still; never lifted off its edge)
 	ivt_busy = true
 	if delay > 0.0: await get_tree().create_timer(delay, false).timeout
 	var bb := _ivt_box_get(); var cl := bb.get_center()
@@ -6838,30 +6844,72 @@ func _ivt_tumble(kp: Vector3, qp: Vector3, delay: float) -> void:
 	var ed := _ivt_half(b0, d, hs); var eu := _ivt_half(b0, Vector3.UP, hs)
 	var c0 := t0 * cl      # (its centre)
 	var y0 := c0.y - eu      # (the floor under it)
+	var dy := qp.y - kp.y      # (a step to another floor's height, if ever)
 	var ax := Vector3.UP.cross(d).normalized()      # (turned about it, its top goes forward)
-	if go_veil: _ivw_sfx("block_push", IVV_PUSH_DB - 3.0, 0.0, randf_range(1.05, 1.15))      # (its edge grinding as it tips)
-	var t := create_tween()
-	t.tween_method(func(u: float) -> void:
-		var th := PI * 0.5 * u
-		var hx := (ed - ed * cos(th) + eu * sin(th)) / (ed + eu)      # (as a box rolls over its edge, drawn out to the step)
-		var c := Vector3(c0.x, y0, c0.z) + d * (ln * hx) + Vector3.UP * (ed * sin(th) + eu * cos(th) + IVT_HOP * sin(PI * u))
-		var b := Basis(ax, th) * b0
+	var sl := maxf(ln - (ed + eu), 0.0)
+	if go_veil: _ivw_sfx("block_push", IVV_PUSH_DB - 3.0, 0.0, randf_range(1.05, 1.15))      # (its grinding as it is shoved, and as it tips)
+	if sl > 0.01:
+		_ivt_dust(Vector3(c0.x, y0, c0.z) + d * ed, ed * 0.6, 9, 1.2, 0.9)      # (a little dust off the stone where its leading edge scrapes)
+		var ts := create_tween()
+		ts.tween_method(func(u: float) -> void:
+			var c := c0 + d * (sl * u)
+			iv_block_n.global_transform = Transform3D(t0.basis, c - t0.basis * cl)
+			if not iv_push.is_empty(): iv_push["bp"] = Vector3(c.x, y0, c.z), 0.0, 1.0, IVT_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		if ts.is_running(): await ts.finished
+	var c1 := c0 + d * sl
+	var pv := Vector3(c1.x, y0, c1.z) + d * ed      # (the edge it goes over)
+	var rel := c1 - pv
+	var tb := atan2(ed, eu)      # (where it balances on that edge)
+	var put := func(th: float) -> void:
+		var r := Basis(ax, th)
+		var b := r * b0
 		var bs := Basis(b.x * sc.x, b.y * sc.y, b.z * sc.z)
-		iv_block_n.global_transform = Transform3D(bs, c - bs * cl), 0.0, 1.0, IVT_DUR).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	if t.is_running(): await t.finished
+		var c := pv + r * rel + Vector3.UP * (dy * clampf(th / (PI * 0.5), 0.0, 1.0))
+		iv_block_n.global_transform = Transform3D(bs, c - bs * cl)
+	var t1 := create_tween()      # (up onto its edge, slowing as it comes to balance)
+	t1.tween_method(put, 0.0, tb, IVT_RISE).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	if t1.is_running(): await t1.finished
+	var t2 := create_tween()      # (and over: it falls faster and faster)
+	t2.tween_method(put, tb, PI * 0.5, IVT_FALL).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	if t2.is_running(): await t2.finished
 	if go_veil:      # (the knock of stone on stone as it lands: the fall's own thud, without its water, and a heel's tap lowered for a phone's speaker)
 		var k1 := _ivw_sfx("block_fall", IVV_FALL_DB - 2.0, 0.27)
 		if k1 != null: create_tween().tween_property(k1, "volume_db", -60.0, 0.2).set_delay(0.18)
 		_ivw_sfx("step_1", -4.0, 0.0, 0.72)
-	var tf := iv_block_n.global_transform
-	var bo := create_tween()      # (it settles: down a hair and up)
-	bo.tween_property(iv_block_n, "global_position:y", tf.origin.y - 0.025, 0.06).set_trans(Tween.TRANS_SINE)
-	bo.tween_property(iv_block_n, "global_position:y", tf.origin.y, 0.12).set_trans(Tween.TRANS_SINE)
-	await bo.finished
+	var cq := pv + Basis(ax, PI * 0.5) * rel + Vector3.UP * dy
+	_ivt_dust(Vector3(cq.x, y0 + dy, cq.z), ed * 1.02, 36, 3.2, 1.6)      # (a puff of dust out from under it all round)
+	var t3 := create_tween()      # (it rocks back a hair on the edge it came over, and is still)
+	t3.tween_method(put, PI * 0.5, PI * 0.5 - IVT_ROCK, 0.08).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	t3.tween_method(put, PI * 0.5 - IVT_ROCK, PI * 0.5, 0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	if t3.is_running(): await t3.finished
+	put.call(PI * 0.5)
 	ivt_busy = false
 
-const IVT_DUR := 0.6
-const IVT_HOP := 0.07
+const IVT_SLIDE := 0.34      # (the shove: it slides what the step is longer than the cube)
+const IVT_RISE := 0.36      # (up onto its edge, slowing to balance)
+const IVT_FALL := 0.21      # (over, faster and faster)
+const IVT_ROCK := 0.045      # (how far it rocks back on landing, radians)
+
+var ivt_dust_mat: StandardMaterial3D
+func _ivt_dust(at: Vector3, r: float, n: int, push: float, life: float) -> void:      # (dust thrown out low from under the stone, soft puffs that spread, rise a little, thin and go)
+	if ivt_dust_mat == null:
+		ivt_dust_mat = StandardMaterial3D.new(); ivt_dust_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		ivt_dust_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; ivt_dust_mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES; ivt_dust_mat.billboard_keep_scale = true
+		ivt_dust_mat.vertex_color_use_as_albedo = true; ivt_dust_mat.albedo_texture = load("res://goiv/glow.png"); ivt_dust_mat.albedo_color = IVT_DUST_COL
+		ivt_dust_mat.render_priority = 6      # (after the sea, as every light and foam over it)
+	var cp := CPUParticles3D.new(); add_child(cp); cp.global_position = at + Vector3(0, 0.04, 0)
+	cp.one_shot = true; cp.explosiveness = 0.92; cp.amount = n; cp.lifetime = life; cp.local_coords = false
+	var q := QuadMesh.new(); q.size = Vector2(0.55, 0.55); q.material = ivt_dust_mat; cp.mesh = q
+	cp.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING; cp.emission_ring_axis = Vector3.UP; cp.emission_ring_radius = r; cp.emission_ring_inner_radius = r * 0.85; cp.emission_ring_height = 0.02
+	cp.direction = Vector3.UP; cp.spread = 35.0; cp.initial_velocity_min = 0.15; cp.initial_velocity_max = 0.42
+	cp.radial_accel_min = push * 0.6; cp.radial_accel_max = push      # (out from the stone all round)
+	cp.damping_min = 2.2; cp.damping_max = 3.2; cp.gravity = Vector3(0, 0.06, 0)      # (it hangs and rises a little, as fine dust does)
+	cp.scale_amount_min = 0.55; cp.scale_amount_max = 1.0
+	var sc := Curve.new(); sc.add_point(Vector2(0.0, 0.55)); sc.add_point(Vector2(1.0, 2.1)); cp.scale_amount_curve = sc
+	var g := Gradient.new(); g.set_color(0, Color(1, 1, 1, 0.0)); g.set_color(1, Color(1, 1, 1, 0.0)); g.add_point(0.08, Color(1, 1, 1, 0.95)); g.add_point(0.4, Color(1, 1, 1, 0.55)); cp.color_ramp = g
+	cp.emitting = true
+	get_tree().create_timer(life + 0.4, false).timeout.connect(cp.queue_free)
+const IVT_DUST_COL := Color(0.72, 0.65, 0.57)      # (the stone's own dust, a warm grey a little darker than the white slabs, so it reads on them)
 
 func _ivg_turn_volute() -> void:
 	iv_busy = true
@@ -10031,9 +10079,19 @@ var ivgl_block: Node3D      # (the block's image, kept to the block each frame)
 var ivgl_plane := Plane()      # (the glass in the world: the real side before it, n.p > d)
 var ivgl_square: MeshInstance3D
 const IVGL_ISLAND := true      # (the owner, 19/11: "could it be not a glass with a reflection, just an opposite island?": the same place turned over, standing across the water; no pane, its own colours; what moves here moves there)
-const IVGL_ISLE_GRAD := 0.88      # (how much of the face's gradient over the island's own colours: "even more pink-blue gradient in the reflection" (the owner, 19/11))
-const IVGL_ISLE_HAZE := Color(0.8, 0.82, 0.9)      # (the concept's haze: its far half pale and grey-blue)
-const IVGL_ISLE_FADE := Vector2(0.4, 0.034)      # (in mist (the owner, 19/11: "let the opposite island be hazy, and in mist"))
+const IVGL_ISLE_GRAD := 0.0      # (the face's pink-to-blue gradient over it: 0.88 on 19/11 ("even more pink-blue"), then the owner, 20/11: "I don't like the reflection's colours at all ... colour-wise we're off our style": none)
+const IVGL_ISLE_TINT := 0.0      # (its colours drawn to the concept's image: a cool grey duotone, its shade a grey-blue, its light a pale lilac grey; sampled from design/level4/slide/concept_start.jpg, where the image beyond the glass is about bfbece and b4b9cc)
+const IVGL_ISLE_LO := Color(0.56, 0.58, 0.69)
+const IVGL_ISLE_HI := Color(0.87, 0.86, 0.92)
+const IVGL_ISLE_DARK := 1.0
+const IVGL_ISLE_HAZE := Color(0.87, 0.865, 0.915)      # (the concept's mist, e8e7ee to c9c8d6 (design/level4/slide/concept_solved.jpg, the owner, 20/11: "I want such colours"): the island in its own colours, white slabs and plum rock, given to a white-lavender mist the more the further it lies)
+const IVGL_ISLE_FOOT := Vector2(1.9, 0.82)      # (its foot in the mist: from the sea up this far, and as much as this at the water (the owner, 20/11: "better, more spread-out mist"; the concept's island dissolves into its mist below))
+const IVGL_ISLE_FADE := Vector2(0.4, 0.024)      # (in mist (the owner, 19/11: "let the opposite island be hazy, and in mist"))
+func _ivgl_ef(e: String, v: float) -> float: return float(OS.get_environment(e)) if OS.get_environment(e) != "" else v
+func _ivgl_ec(e: String, v: Color) -> Color:      # ("r,g,b" from the environment, to try another)
+	var p := OS.get_environment(e).split(",")
+	if OS.get_environment(e) == "" or p.size() < 2: return v
+	return Color(float(p[0]), float(p[1]), float(p[2]) if p.size() > 2 else 0.0)
 const IVGL_IMG_FAR := 1e6      # (no cut by distance: the three rocks in the sea at the picture's foot are marked by the builder instead (alpha 0), as the real place's own rocks lie as far out)
 const IVGL_IMG_FADE := Vector2(0.34, 0.035)      # (the image's air: at the glass, and more for each metre behind it)
 const IVGL_GLASS_SH := """
@@ -10053,53 +10111,135 @@ void fragment(){
 """
 const IVGL_SQUARE_SH := """
 shader_type spatial;
-render_mode unshaded, cull_disabled, shadows_disabled, depth_draw_never, blend_add;
-uniform vec3 col : source_color = vec3(1.0, 0.96, 0.88);
+render_mode unshaded, cull_disabled, shadows_disabled, depth_draw_never, blend_mix;
+uniform vec3 col : source_color = vec3(1.0, 0.96, 0.88);      // (its light, white as the ring's)
+uniform vec3 tile : source_color = vec3(0.5, 0.45, 0.5);      // (the brown stone within it and round it, given to the island's mist)
 uniform float k = 1.0;
-void fragment(){
+void fragment(){      // (the square in the image: a thin line of white light, sharp but bright (the owner, 19/11), the brown stone within it and a square of it round it (20/11))
 	vec2 p = abs(UV - 0.5) * 2.0; float d = max(p.x, p.y);
-	float aa = fwidth(d); float w = max(0.006, aa * 0.65);      // (a thin line, sharp but bright (the owner, 19/11): a centimetre or so, never under a pixel and a third)
+	float aa = fwidth(d); float w = max(0.012, aa * 0.9);
 	float e = abs(d - 0.62);
-	float ln = 1.0 - smoothstep(w, w + aa, e);      // (its edges a pixel's width, no softer: no halo round it)
-	float gw = exp(-pow(e / max(0.02, aa * 1.6), 2.0)) * 0.22;      // (only a breath of light at its rim, so it reads as light)
-	ALBEDO = col; ALPHA = clamp((ln + gw) * k, 0.0, 1.0);
+	float ln = 1.0 - smoothstep(w, w + aa, e);
+	float gw = exp(-pow(e / max(0.03, aa * 2.0), 2.0)) * 0.5;      // (a glow at its rim, so it reads as light)
+	float inner = 1.0 - smoothstep(0.62 - w - 0.05 - aa, 0.62 - w - 0.05, d);
+	float band = smoothstep(0.7 - aa, 0.7, d) * (1.0 - smoothstep(0.79, 0.79 + aa, d));
+	float tl = max(inner, band) * 0.92;
+	float g = clamp(gw * min(k, 1.4), 0.0, 1.0); float l = clamp(ln * min(k, 1.4), 0.0, 1.0);
+	vec3 core = mix(vec3(1.0, 0.98, 0.94), vec3(1.0, 1.0, 1.0), clamp(k - 1.0, 0.0, 1.0));      // (its heart white, whiter as the block's image stands in it)
+	float a1 = g + tl * (1.0 - g); vec3 c1 = (col * g + tile * tl * (1.0 - g)) / max(a1, 0.001);      // (the glow over the terracotta, then the line over both)
+	float a2 = l + a1 * (1.0 - l); vec3 c2 = (core * l + c1 * a1 * (1.0 - l)) / max(a2, 0.001);
+	ALBEDO = c2; ALPHA = clamp(a2, 0.0, 1.0);
 }
 """
+
+const IVGL_VEIL_SH := """
+shader_type spatial;
+render_mode unshaded, cull_disabled, shadows_disabled, depth_draw_never, blend_mix, fog_disabled;
+uniform sampler2D scr : hint_screen_texture, filter_linear, repeat_disable;
+uniform sampler2D dep : hint_depth_texture, filter_nearest, repeat_disable;
+uniform float rad_px = 6.0;      // (how wide the blur, in pixels of a screen 720 wide)
+uniform float deep = 35.0;      // (how far behind the glass the island reaches: beyond, the painting)
+void fragment(){      // (what lies behind the glass's plane, the island and her shadow, seen as through frosted glass; never what stands before it, nor the painting far off away from the island)
+	vec2 px = 1.0 / VIEWPORT_SIZE;
+	float r = rad_px * VIEWPORT_SIZE.x / 720.0;
+	float vd = -VERTEX.z;
+	vec3 acc = vec3(0.0); float ws = 0.0; float isl = 0.0;
+	for (int i = 0; i < 14; i++) {
+		float fi = float(i);
+		float rr = sqrt((fi + 0.5) / 14.0) * r;
+		float a = fi * 2.39996;
+		vec2 uv = SCREEN_UV + vec2(cos(a), sin(a)) * rr * px;
+		float dz = texture(dep, uv).r;
+		vec4 vv = INV_PROJECTION_MATRIX * vec4(uv * 2.0 - 1.0, dz * 2.0 - 1.0, 1.0);
+		float d = -vv.z / vv.w;
+		if (d < vd - 0.2) continue;      // (the real place before the glass: never smeared into the image)
+		acc += texture(scr, uv).rgb; ws += 1.0;
+		isl += step(d, vd + deep);
+	}
+	float m = smoothstep(0.5, 4.5, isl);
+	if (ws < 0.5 || m < 0.003) discard;
+	ALBEDO = acc / ws; ALPHA = m;
+}
+"""
+const IVGL_VEIL_PX := 0.0      # (none: the owner, 20/11, after it was blurred: "I said mist, not blurred"; IV_ISLE_BLUR=<px> blurs it as through frosted glass, kept for the record)
+var ivgl_veil: MeshInstance3D
+func _ivgl_veil() -> void:      # (a pane on the glass's plane, as tall as the island reaches up the screen: it blurs what the eye sees behind it)
+	var al := Vector3(1, 0, -1).normalized(); var n := ivgl_plane.normal
+	var tp := tan(deg_to_rad(35.0))
+	var u0 := 1e9; var u1 := -1e9; var hm := 0.0
+	for m in ivgl_img.find_children("*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		if mi.mesh == null: continue
+		var bb: AABB = mi.global_transform * mi.get_aabb()
+		for i in 8:
+			var p := bb.get_endpoint(i)
+			var u := (p - ivgl_c0).dot(al); var sb := maxf(ivgl_plane.d - n.dot(p), 0.0)
+			u0 = minf(u0, u); u1 = maxf(u1, u); hm = maxf(hm, (p.y - ivgl_c0.y) + sb * tp)
+	if u0 > u1: return
+	u0 -= 2.0; u1 += 2.0; hm += 4.0
+	var q := QuadMesh.new(); q.size = Vector2(u1 - u0, hm + 0.6)
+	var vm := ShaderMaterial.new(); vm.shader = _ivw_shader(IVGL_VEIL_SH); vm.render_priority = 5      # (after the sea; before her shadow and the lights, which stay clear over it)
+	vm.set_shader_parameter("rad_px", _ivgl_ef("IV_ISLE_BLUR", IVGL_VEIL_PX))
+	ivgl_veil = MeshInstance3D.new(); ivgl_veil.mesh = q; ivgl_veil.material_override = vm; ivgl_veil.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	iv_root.add_child(ivgl_veil)
+	ivgl_veil.global_transform = Transform3D(Basis(al, Vector3.UP, n), ivgl_c0 + al * ((u0 + u1) * 0.5) + Vector3(0, (hm + 0.6) * 0.5 - 0.6, 0) - n * 0.05)
 
 const IVGL_MIST_SH := """
 shader_type spatial;
 render_mode unshaded, cull_disabled, shadows_disabled, depth_draw_never, blend_mix, fog_disabled;
-uniform vec3 col : source_color = vec3(0.92, 0.91, 0.98);
+uniform vec3 col : source_color = vec3(0.97, 0.96, 1.0);      // (its lit tops)
+uniform vec3 col_lo : source_color = vec3(0.8, 0.79, 0.9);      // (its underside, in its own shade: the concept's lavender grey)
 uniform float a = 0.7;
 uniform float seed = 0.0;
 uniform float drift = 0.012;
 uniform float lie = 0.0;      // (1: a sheet lying on the water, not a bank standing on it)
+uniform float asp = 2.0;      // (the bank's width over its height)
 float h21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
 float vn(vec2 p) { vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
 	return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), f.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), f.x), f.y); }
 float fbm(vec2 p) { float s = 0.0; float w = 0.5; for (int i = 0; i < 5; i++) { s += w * vn(p); p = p * 2.03 + vec2(1.7, 9.2); w *= 0.5; } return s; }
 void fragment(){
 	vec2 uv = UV; float t = TIME * drift;
-	vec2 q = lie > 0.5 ? (uv - 0.5) * 2.0 : (uv - vec2(0.5, 0.72)) * vec2(2.0, 2.6);      // (a bank on the water: broad, low, its top in soft billows; or a sheet lying on it, soft all round)
-	float m = 1.0 - smoothstep(0.25, 1.0, length(q));
-	float n = fbm(vec2(uv.x * 3.2 + t + seed, uv.y * 2.2 + seed * 0.37));
-	float n2 = fbm(vec2(uv.x * 7.0 - t * 1.6 + seed * 2.1, uv.y * 5.0 + seed));
-	float d = m * smoothstep(0.3, 0.72, n * 0.75 + n2 * 0.25 + m * 0.42);
-	if (lie < 0.5) d *= smoothstep(0.0, 0.32, 1.0 - uv.y);      // (thinning to nothing at the water: never a line where it meets it)
-	ALBEDO = col; ALPHA = clamp(d * a, 0.0, 1.0);
+	if (lie > 0.5) {      // (a sheet lying on the water, soft all round, thin)
+		vec2 q = (uv - 0.5) * 2.0;
+		float m = 1.0 - smoothstep(0.25, 1.0, length(q));
+		float n = fbm(vec2(uv.x * 3.2 + t + seed, uv.y * 2.2 + seed * 0.37)); float n2 = fbm(vec2(uv.x * 7.0 - t * 1.6 + seed * 2.1, uv.y * 5.0 + seed));
+		float d = m * smoothstep(0.3, 0.72, n * 0.75 + n2 * 0.25 + m * 0.42);
+		ALBEDO = mix(col_lo, col, 0.55 + 0.3 * n); ALPHA = clamp(d * a, 0.0, 1.0);
+	} else {      // (a bank of cloud standing on the water: its top in round billows, lit at their tops and lavender under them, dense above and thinning to nothing at the water)
+		float X = uv.x * asp; float Y = 1.0 - uv.y;
+		float top = 0.0; float near = 0.0;
+		for (int k = 0; k < 7; k++) {
+			float fk = float(k);
+			float cx = (fk + 0.5) / 7.0 * asp + (h21(vec2(fk, seed)) - 0.5) * asp * 0.08 + sin(t * 6.0 + fk) * 0.03;
+			float r = 0.2 + 0.16 * h21(vec2(fk * 3.1, seed + 1.0));
+			float cy = 0.36 + 0.16 * h21(vec2(fk * 7.7, seed + 2.0)) - 0.5 * pow(abs((fk + 0.5) / 7.0 - 0.5) * 2.0, 2.0) * 0.6;      // (higher in its middle, lower at its ends)
+			float dx = X - cx;
+			float h = cy + sqrt(max(r * r - dx * dx, 0.0));
+			if (h > top) { top = h; near = clamp(dx / r, -1.0, 1.0); }
+		}
+		float wob = (fbm(vec2(X * 4.0 + seed, Y * 3.0 - t)) - 0.5) * 0.08;
+		float body = 1.0 - smoothstep(top - 0.09, top + 0.01, Y + wob);      // (its round top, its edge soft)
+		float dens = body * smoothstep(0.0, 0.3, Y) * smoothstep(0.0, 0.12, uv.x) * smoothstep(0.0, 0.12, 1.0 - uv.x);
+		float lit = smoothstep(top - 0.42, top - 0.03, Y) * (0.82 + 0.18 * near) + 0.12 * fbm(vec2(X * 6.0 + seed, Y * 6.0));      // (the sun from the right lights each billow's top and its right side)
+		ALBEDO = mix(col_lo, col, clamp(lit, 0.0, 1.0)); ALPHA = clamp(dens * a, 0.0, 1.0);
+	}
 }
 """
 
-const IVGL_MISTS := [[-2.3, 0.4, 7.0, 3.2, 0.85, 0.0, 0], [7.8, 0.4, 4.2, 2.2, 0.6, 3.1, 0], [-3.9, 10.9, 7.5, 5.0, 0.55, 5.7, 1], [6.8, 10.2, 7.5, 3.6, 0.36, 8.3, 1]]      # (banks of mist on the still water before the glass, clear of the real place and of the square and the image's gate; and two sheets lying on the open sea before the real place, at the picture's lower corners, as the concept's mist lies: along the glass from its point under the eye, before it, wide, high (or deep), thick, their own billows, lying)
+const IVGL_MISTS := [[-6.4, 0.9, 9.5, 5.6, 0.92, 0.0, 0], [8.8, 0.6, 5.0, 2.4, 0.6, 3.1, 0], [0.5, 1.3, 27.0, 3.0, 0.55, 4.4, 1], [1.0, -1.0, 32.0, 2.2, 0.6, 6.1, 2], [1.0, -18.0, 46.0, 3.4, 0.72, 2.7, 2], [-4.6, 11.2, 10.0, 6.5, 0.72, 5.7, 1], [7.4, 10.6, 10.0, 5.0, 0.6, 8.3, 1]]      # (as the concept has its mist, the owner, 20/11: "the mist arranged better": a bank of cloud at the left, standing on the water before the glass, framing the island's end without lying over it; a smaller one by the gates; a thin sheet lying in the strait between the two islands; two sheets on the open sea at the picture's lower corners; then (20/11, "better, more spread-out mist") the near ones larger and denser (two broad sheets beside the island were tried: the island lay over them, unseen). Each [along the glass, before it, width, height (or depth), alpha, seed, lies])
 
 func _ivgl_mists() -> void:
 	var al := Vector3(1, 0, -1).normalized(); var n := Vector3(1, 0, 1).normalized()
 	var sh := _ivw_shader(IVGL_MIST_SH)
 	for b in IVGL_MISTS:
-		var lie := int(b[6]) == 1
+		var lie := int(b[6]) == 1; var band := int(b[6]) == 2      # (2: a band of mist standing on the water, soft all round: at the island's foot, and far behind it, where it veils the great head's foot and the far sea)
 		var q := QuadMesh.new(); q.size = Vector2(float(b[2]), float(b[3]))
-		var m := ShaderMaterial.new(); m.shader = sh; m.set_shader_parameter("a", float(b[4])); m.set_shader_parameter("seed", float(b[5])); m.set_shader_parameter("lie", 1.0 if lie else 0.0)
+		var m := ShaderMaterial.new(); m.shader = sh; m.set_shader_parameter("a", float(b[4])); m.set_shader_parameter("seed", float(b[5])); m.set_shader_parameter("lie", 1.0 if (lie or band) else 0.0); m.set_shader_parameter("asp", float(b[2]) / maxf(float(b[3]), 0.01))
 		m.render_priority = 21      # (over the glass's own light: the mist lies before it)
+		if OS.get_environment("IV_MIST_DBG") != "":      # (to see where each lies: each its own colour, solid)
+			var dc := Color.from_hsv(float(IVGL_MISTS.find(b)) / float(IVGL_MISTS.size()), 0.9, 1.0)
+			m.set_shader_parameter("col", dc); m.set_shader_parameter("col_lo", dc.darkened(0.3)); m.set_shader_parameter("a", 1.0)
 		var mi := MeshInstance3D.new(); mi.mesh = q; mi.material_override = m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		iv_root.add_child(mi)
 		var at := ivgl_c0 + al * float(b[0]) + n * float(b[1])
@@ -10115,8 +10255,13 @@ func _ivgl_img_mat(src: Material) -> Material:      # (a thing's image: its own 
 	m.set_shader_parameter("img_k", 1.0); m.set_shader_parameter("img_plane", Vector4(ivgl_plane.normal.x, ivgl_plane.normal.y, ivgl_plane.normal.z, -ivgl_plane.d))
 	m.set_shader_parameter("img_fade", IVGL_IMG_FADE); m.set_shader_parameter("shadow_k", 0.0); m.set_shader_parameter("img_far", IVGL_IMG_FAR)
 	if IVGL_ISLAND:      # (an island over the water, not an image in a glass: its own colours, only a little given to the air with its distance; no pane to be seen through)
-		m.set_shader_parameter("img_tint_k", 0.0); m.set_shader_parameter("img_dark", 1.0); m.set_shader_parameter("img_mist", IVGL_ISLE_HAZE)
-		m.set_shader_parameter("img_fade", IVGL_ISLE_FADE); m.set_shader_parameter("img_grad", IVGL_ISLE_GRAD)
+		m.set_shader_parameter("img_tint_k", _ivgl_ef("IV_ISLE_TINT", IVGL_ISLE_TINT)); m.set_shader_parameter("img_dark", _ivgl_ef("IV_ISLE_DARK", IVGL_ISLE_DARK))
+		m.set_shader_parameter("img_lo", _ivgl_ec("IV_ISLE_LO", IVGL_ISLE_LO)); m.set_shader_parameter("img_hi", _ivgl_ec("IV_ISLE_HI", IVGL_ISLE_HI))
+		m.set_shader_parameter("img_mist", _ivgl_ec("IV_ISLE_MIST", IVGL_ISLE_HAZE))
+		var fe := _ivgl_ec("IV_ISLE_FADE", Color(IVGL_ISLE_FADE.x, IVGL_ISLE_FADE.y, 0.0))
+		m.set_shader_parameter("img_fade", Vector2(fe.r, fe.g)); m.set_shader_parameter("img_grad", _ivgl_ef("IV_ISLE_GRAD", IVGL_ISLE_GRAD))
+		var ft := _ivgl_ec("IV_ISLE_FOOT", Color(IVGL_ISLE_FOOT.x, IVGL_ISLE_FOOT.y, 0.0))
+		m.set_shader_parameter("img_foot", Vector3(IV_O.y + ivr_sea_y - 0.2, ft.r, ft.g))
 	m.set_shader_parameter("img_clip", Vector4(-1e6, 1e6, -1e6, 1e6) if IVGL_ISLAND else Vector4(IVGL_PANE.x, IVGL_PANE.y, -1e6, ivgl_c0.y + IVGL_PANE.z)); m.set_shader_parameter("img_c0", ivgl_c0)
 	m.set_shader_parameter("img_al", Vector3(1, 0, -1).normalized()); m.set_shader_parameter("img_fwd", -_ivp_basis().z)
 	ivgl_mats.append(m)
@@ -10184,6 +10329,7 @@ func _ivgl_setup(lv: Node3D) -> void:
 	var pp: Array = mr.get("plate", [0.0, 0.0, 0.0])
 	var sq := PlaneMesh.new(); sq.size = Vector2(1.7, 1.7)
 	var sm := ShaderMaterial.new(); sm.shader = _ivw_shader(IVGL_SQUARE_SH); sm.render_priority = 6
+	sm.set_shader_parameter("tile", Color(String((_iv_pal("rock2") as Array)[1])).lerp(IVGL_ISLE_HAZE, 0.35))
 	ivgl_square = MeshInstance3D.new(); ivgl_square.mesh = sq; ivgl_square.material_override = sm; ivgl_square.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var sy := float(ivgl_sq_y[k0]) if ivgl_sq_y.size() > k0 else float(pp[1])      # (it lies on the image's floor under it)
 	iv_root.add_child(ivgl_square); ivgl_square.global_position = IV_O + Vector3(float(pp[0]), sy + 0.03, float(pp[2]))
@@ -10197,7 +10343,7 @@ func _ivgl_setup(lv: Node3D) -> void:
 		ivgl_reset_mat = (_iv_mat("ring", 0.0) as ShaderMaterial).duplicate() as ShaderMaterial
 		var lit := Color(String((_iv_pal("ring") as Array)[0]))
 		for nm in ["c_top", "c_lit", "c_mid", "c_dark"]: ivgl_reset_mat.set_shader_parameter(nm, lit)
-		ivgl_reset_mat.set_shader_parameter("emit", 0.3)      # (lit, as the ring once its gate is open)
+		ivgl_reset_mat.set_shader_parameter("emit", 0.3)      # (lit, as the ring once its gate is open: a golden light was tried a day and the owner kept its form, its light white again (20/11: "make it with white light"))
 		for k in 4:      # (its four sides, round in section as the ring's tube)
 			var bar := CylinderMesh.new(); bar.top_radius = tr; bar.bottom_radius = tr; bar.height = ha * 2.0; bar.radial_segments = 10; bar.rings = 1
 			var bi := MeshInstance3D.new(); bi.mesh = bar; bi.material_override = ivgl_reset_mat; bi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; fr.add_child(bi)
@@ -10208,7 +10354,14 @@ func _ivgl_setup(lv: Node3D) -> void:
 				var sp := SphereMesh.new(); sp.radius = tr; sp.height = tr * 2.0; sp.radial_segments = 10; sp.rings = 5
 				var si := MeshInstance3D.new(); si.mesh = sp; si.material_override = ivgl_reset_mat; si.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; fr.add_child(si); si.position = Vector3(sx * ha, 0, sz * ha)
 		var inn := BoxMesh.new(); inn.size = Vector3((ha - tr * 0.6) * 2.0, 0.02, (ha - tr * 0.6) * 2.0)      # (the brown stone within, as the ring's)
-		var ii := MeshInstance3D.new(); ii.mesh = inn; ii.material_override = _iv_mat("rock2", 0.0, {"fog_hi": -9.0, "fog_lo": -14.0}); ii.position = Vector3(0, 0.012, 0); ivgl_reset_sq.add_child(ii)
+		var ii := MeshInstance3D.new(); ii.mesh = inn; ii.material_override = _iv_mat("rock2", 0.0, {"fog_hi": -9.0, "fog_lo": -14.0}); ii.position = Vector3(0, 0.012, 0); ivgl_reset_sq.add_child(ii)      # (the brown stone within)
+		var fo := Node3D.new(); fo.position = Vector3(0, 0.022, 0); fo.scale = Vector3(1, 0.3, 1); ivgl_reset_sq.add_child(fo)      # (and round it another square of the same stone, low, inlaid (the owner, 20/11: "the square I like as it became ... replace the terracotta with the colour you had"))
+		var ho := IVGL_PAD_OUT; var to := IVGL_PAD_OUT_TUBE
+		for k in 4:
+			var ob := CylinderMesh.new(); ob.top_radius = to; ob.bottom_radius = to; ob.height = ho * 2.0 + to * 2.0; ob.radial_segments = 8; ob.rings = 1
+			var obi := MeshInstance3D.new(); obi.mesh = ob; obi.material_override = _iv_mat("rock2", 0.0, {"fog_hi": -9.0, "fog_lo": -14.0}); obi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; fo.add_child(obi)
+			var oang := PI * 0.5 * float(k)
+			obi.basis = Basis(Vector3.UP, oang) * Basis(Vector3(0, 0, 1), PI * 0.5); obi.position = Basis(Vector3.UP, oang) * Vector3(0, 0, ho)
 		var gq2 := QuadMesh.new(); gq2.size = Vector2(1.3, 1.3)      # (and its soft glow, as the ring's)
 		var gm2 := StandardMaterial3D.new(); gm2.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm2.albedo_texture = load("res://goiv/glow.png")
 		gm2.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm2.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; gm2.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; gm2.albedo_color = Color(1.0, 0.97, 0.92, 0.26); gm2.render_priority = 6
@@ -10225,6 +10378,7 @@ func _ivgl_setup(lv: Node3D) -> void:
 			for si in mi.get_surface_override_material_count(): mi.set_surface_override_material(si, _ivgl_shade_mat())
 	_ivgl_set_plane(ivgl_k)
 	_ivgl_mists()
+	if IVGL_ISLAND and _ivgl_ef("IV_ISLE_BLUR", IVGL_VEIL_PX) > 0.0 and ivgl_img != null: _ivgl_veil()
 	if OS.get_environment("IV_GATE_OPEN") == "1": call_deferred("_ivgl_demo_open")      # (for a picture: the ring lit and the gate open from the first)
 
 var ivgl_reset_sq: Node3D
@@ -10232,6 +10386,8 @@ var ivgl_reset_mat: ShaderMaterial
 var ivgl_reset_glow: MeshInstance3D
 const IVGL_PAD_HALF := 0.39      # (half the frame's side along its tube's middle: as wide as the ring)
 const IVGL_PAD_TUBE := 0.075
+const IVGL_PAD_OUT := 0.53      # (the square of brown stone round it: half its side, and its tube)
+const IVGL_PAD_OUT_TUBE := 0.05
 var ivgl_reset_n := ""
 var ivgl_b0 := ""      # (where the block began)
 
@@ -10277,6 +10433,7 @@ func _ivgl_pair_ring() -> void:
 	_ivm_ring_tick()
 
 func _ivgl_demo_open() -> void:
+	if OS.get_environment("IV_BLOCK_AT") != "": _ivgl_meander(true)      # (for a picture: the block where it opens the gate, its meander lit)
 	ivm_open = true; ivm_ring_k = 1.0
 	if ivm_ring_gold != null: _ivm_ring_tick()
 	_ivm_gate_open()
@@ -10304,15 +10461,43 @@ func _ivgl_sill(a: String, b: String) -> bool:      # (a low threshold across th
 	return false
 
 func _ivgl_check() -> void:      # (the block at rest where its image stands in the square of light: the ring lights, the gate opens, and stays open)
-	if ivm_open or not ivg_on: return
+	if not ivg_on: return
 	var pv = (ivg.get("mirror", {}) as Dictionary).get("plate_of", "")
 	var po := (String((pv as Array)[ivg_v]) if (pv as Array).size() > ivg_v else "") if pv is Array else String(pv)      # (with the glass at its place: the node whose image lies in the square)
+	_ivgl_meander(po != "" and iv_block == po)
+	if ivm_open: return
 	if po == "" or iv_block != po: return
 	print("IV the block's image stands in the square of light: the ring lights, and the gate opens")
 	if ivgl_square != null:
 		var sm := ivgl_square.material_override as ShaderMaterial
 		create_tween().tween_method(func(v: float) -> void: sm.set_shader_parameter("k", v), 1.0, 1.8, 0.6).set_trans(Tween.TRANS_SINE)
 	await _ivm_open()
+
+var ivgl_mea_on := false
+func _ivgl_meander(on: bool) -> void:      # (the block's meander lights white while it stands where its image is in the square, and its image's with it (the owner, 20/11: "when the cube reaches the square, the meander lights up white"))
+	if on == ivgl_mea_on or iv_block_n == null: return
+	ivgl_mea_on = on
+	var ms: Array = []
+	var holders: Array = [iv_block_n]
+	for pr in ivgl_pairs:
+		if pr[0] == iv_block_n and is_instance_valid(pr[1]): holders.append(pr[1])
+	for h in holders:
+		for m in (h as Node).find_children("*", "MeshInstance3D", true, false):
+			if String(m.name).to_lower().contains("meander") and (m as MeshInstance3D).material_override is ShaderMaterial: ms.append((m as MeshInstance3D).material_override)
+	var lit := Color(String((_iv_pal("ring") as Array)[0]))      # (the ring's own soft white light)
+	for mm in ms:
+		var sm := mm as ShaderMaterial
+		if not sm.has_meta("mea0"):
+			var e0 = sm.get_shader_parameter("emit"); var f0 = sm.get_shader_parameter("flat_mode")      # (null where never set: the shader's own default, 0)
+			sm.set_meta("mea0", [sm.get_shader_parameter("c_top"), sm.get_shader_parameter("c_lit"), sm.get_shader_parameter("c_mid"), sm.get_shader_parameter("c_dark"), float(e0) if e0 != null else 0.0, float(f0) if f0 != null else 0.0])
+		var c0: Array = sm.get_meta("mea0")
+		var go := func(u: float) -> void:
+			var nm := ["c_top", "c_lit", "c_mid", "c_dark"]
+			for i in 4: sm.set_shader_parameter(nm[i], (c0[i] as Color).lerp(lit, u))
+			sm.set_shader_parameter("emit", lerpf(float(c0[4]), IVGL_MEA_EMIT, u)); sm.set_shader_parameter("flat_mode", lerpf(float(c0[5]), 1.0, u))
+		create_tween().tween_method(go, 0.0 if on else 1.0, 1.0 if on else 0.0, 0.9 if on else 0.5).set_trans(Tween.TRANS_SINE)
+	if on: print("IV the meander lights white")
+const IVGL_MEA_EMIT := 0.5
 
 func _ivgl_both(mi: MeshInstance3D) -> void:      # (a thing added to the real side, and its image)
 	var im := mi.duplicate() as MeshInstance3D; mi.get_parent().add_child(im)
