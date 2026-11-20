@@ -1152,8 +1152,6 @@ else:
     for ra in PLAN.get('rocks_after', []):      # (rocks added to a level after it was first built: made last, so that nothing made before them comes out otherwise)
         c, r_, top = ra[0], ra[1], ra[2]
         obs_ = ledge('ledge', c, r_, top)
-        if len(ra) > 3 and ra[3].get('noclamp'):      # (a rock that is to rise through a floor's edge (the fourth level's start: the owner, 19/11, "rocks passing through the starting point"): left out of the clamp that sinks rock under the floors)
-            for ob in obs_: ob['noclamp'] = True
         if len(ra) > 3 and ra[3].get('noimg'):      # (no image of it in the fourth level's glass: it would stand beyond the sea's end there, in the sky; its vertices' alpha 0)
             for ob in obs_:
                 at_ = ob.data.attributes.new('noimg', 'FLOAT', 'POINT')
@@ -1191,7 +1189,6 @@ if RC and rock:      # (no tip of the rock through a slab: where it rises a litt
         fe_.append(es_)
     n_cl = n_out = n_up = n_fr = 0
     for ob in rock + [o_ for (m_, r_) in RISERS.items() for o_ in (r_[1] or [])]:      # (the stones that rise as well: their own rock under their own slab)
-        if ob.get('noclamp'): continue
         mw = ob.matrix_world; mi = mw.inverted()
         for v in ob.data.vertices:
             w = mw @ v.co; gx, gz, gy = w.x, -w.y, w.z

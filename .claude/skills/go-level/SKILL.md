@@ -248,6 +248,7 @@ The levels are many, in one system. A new level is made in this order (the secon
   - The rock under a flight is flush with its sides: the stair continues the rock.
 - **The marble is in thick chunks set into the brown rock** (the user: "the white parts are thicker chunks bound inside the brown stone").
   - Under a slab the rock is mostly flush with its side: white above, brown below, no recess (a recess makes a floating table).
+  - **Never rock up through a slab** (the owner, again and again: "I've told you a hundred times, no brown rocks through the slab"). The builder's `rock_clamp` [below, above, margin, clear, edge, front] sinks rock under every floor; give a level the 4th and 5th values too, or a tall rock beside a floor (a terrace's rock beside the corridor under it) reaches in over the lower floor untouched. Its `noclamp` exception is never to be used: "rocks passing through the starting point" meant brown rock about the start, never through its slab. After each build run the audit (`rock over each floor's outline, more than a few cm in from its edges`) and look at the place up close in the game.
   - Here and there a broad block of rock beside the floor, its top 0.1–0.3 m under the floor's, most often on the sides the eye sees.
   - Beside each flight, chunks of rock (as broad as long, never planks) stepping up with it; a deep white band under its steps.
 - **Rock under a floor** (`blocks`): soft low-poly, as the picture's.
