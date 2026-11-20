@@ -10183,7 +10183,7 @@ func _ivgl_setup(lv: Node3D) -> void:
 	iv_root.add_child(ivgl_pane)
 	var pp: Array = mr.get("plate", [0.0, 0.0, 0.0])
 	var sq := PlaneMesh.new(); sq.size = Vector2(1.7, 1.7)
-	var sm := ShaderMaterial.new(); sm.shader = _ivw_shader(IVGL_SQUARE_SH)
+	var sm := ShaderMaterial.new(); sm.shader = _ivw_shader(IVGL_SQUARE_SH); sm.render_priority = 6
 	ivgl_square = MeshInstance3D.new(); ivgl_square.mesh = sq; ivgl_square.material_override = sm; ivgl_square.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var sy := float(ivgl_sq_y[k0]) if ivgl_sq_y.size() > k0 else float(pp[1])      # (it lies on the image's floor under it)
 	iv_root.add_child(ivgl_square); ivgl_square.global_position = IV_O + Vector3(float(pp[0]), sy + 0.03, float(pp[2]))
@@ -10211,7 +10211,7 @@ func _ivgl_setup(lv: Node3D) -> void:
 		var ii := MeshInstance3D.new(); ii.mesh = inn; ii.material_override = _iv_mat("rock2", 0.0, {"fog_hi": -9.0, "fog_lo": -14.0}); ii.position = Vector3(0, 0.012, 0); ivgl_reset_sq.add_child(ii)
 		var gq2 := QuadMesh.new(); gq2.size = Vector2(1.3, 1.3)      # (and its soft glow, as the ring's)
 		var gm2 := StandardMaterial3D.new(); gm2.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm2.albedo_texture = load("res://goiv/glow.png")
-		gm2.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm2.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; gm2.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; gm2.albedo_color = Color(1.0, 0.97, 0.92, 0.26)
+		gm2.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm2.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; gm2.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; gm2.albedo_color = Color(1.0, 0.97, 0.92, 0.26); gm2.render_priority = 6
 		ivgl_reset_glow = MeshInstance3D.new(); ivgl_reset_glow.mesh = gq2; ivgl_reset_glow.material_override = gm2; ivgl_reset_glow.position = Vector3(0, 0.22, 0); ivgl_reset_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; ivgl_reset_sq.add_child(ivgl_reset_glow)
 		# (no twin of it on the island over the water (the owner, 19/11: "the shadow doesn't need a start square"))
 	if hero_real and H.has("main") and OS.get_environment("IV_GLASS_HER") != "0":      # (her image in the glass, as a mirror has it: a body of hers turned over about it, doing as she does; a black blurred shadow of her (the owner, 19/11: "if Ione's reflection shows, let it be like a black blurred shadow"); IV_GLASS_HER=0 leaves it out)
@@ -10361,6 +10361,8 @@ func _ivgl_shade_mat() -> ShaderMaterial:
 	var sc := IVGL_SHADE_COL
 	var ev := OS.get_environment("IV_SHADE_COL").split(",")
 	if ev.size() == 3: sc = Color(float(ev[0]), float(ev[1]), float(ev[2]))
-	for m in [ivgl_shade, m1, m2]: (m as ShaderMaterial).set_shader_parameter("col", sc)
+	for m in [ivgl_shade, m1, m2]:
+		(m as ShaderMaterial).set_shader_parameter("col", sc)
+		(m as ShaderMaterial).render_priority = 6      # (after the sea, as every light and foam over it: drawn without depth, at 0 the sea was laid over her wherever only sky and sea lay behind her (the owner, 20/11: "the shadow passes under the background"))
 	return ivgl_shade
 const IVGL_SHADE_COL := Color(0.42, 0.48, 0.62)      # (her shadow over there grey-blue, not black (the owner, 19/11: "the reflection's shadow more grey-blue, not black"; a dark blue before); IV_SHADE_COL="r,g,b" tries another)

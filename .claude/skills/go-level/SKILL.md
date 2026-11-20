@@ -299,6 +299,7 @@ The levels are many, in one system. A new level is made in this order (the secon
   - Nothing under the water is drawn. The surface lets a little through (alpha 0.7) over a deep floor of the same colours, and what stands in the water has its image there: a copy turned over about the sea level, shaded with its own faces' light, dimming as it goes down (`_ivs_mirror`).
   - A great thing in the water (the colossal face) is solid, with its own light and shade, a shadow and its image in the water; the user did not want it faded.
   - A sky with four stops (high, a warm band at the horizon, the haze under it, the mist at the bottom), and a low sun drawn on it.
+  - The sea is a transparent sheet. Anything drawn without depth writes that stands over it must be drawn after it (`render_priority` 6, as the foam and the lights): a figure's soft shadow, a glow, motes. At 0 they are sorted by distance, and what lies further than the sea's middle is drawn first, so the sea is laid over it wherever only sky and sea lie behind it. Level 4's shadow beyond the glass was cut off along the island's edge, its head gone into the sky (the owner: "the shadow passes under the background").
 - **A level in the snow at night** (`gomoon/`):
   - Snow is the top tone of everything outside, rock included.
   - Each floor's edge carries a soft roll of snow (`snow_lip` in the builder, scene `moon`), with its own palette: white, its shade a soft blue.

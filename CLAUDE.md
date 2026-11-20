@@ -308,7 +308,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   `IV_SEA_GRAD=<name>` tries one; `deep` is the level's own until the owner picks. Her image in the glass is a blurred
   shadow of her (the owner, 19/11: "if Ione's reflection shows, let it be like a black blurred shadow"; `IVGL_SHADE_SH`),
   grey-blue since (the owner, 19/11: "the reflection's shadow more grey-blue, not black": `IVGL_SHADE_COL` 0.42, 0.48,
-  0.62; a lighter 0.52, 0.58, 0.72 read too faint; `IV_SHADE_COL="r,g,b"` tries another).
+  0.62; a lighter 0.52, 0.58, 0.72 read too faint; `IV_SHADE_COL="r,g,b"` tries another). It is drawn after the sea
+  (`render_priority` 6, as the foam and the lights; so are the island's square and the start square's glow): drawn
+  without depth at 0, the transparent sea was laid over it wherever only sky and sea lay behind it, and as she walked
+  to the gate her shadow was cut off along the island's edge (the owner, 20/11: "the shadow passes under the
+  background").
   **The image is pale and airy, as its concept has it** (the owner, 19/11: "I don't like this dark after all", after
   asking for a darker blue), **in the great face's own blue-pink** ("the reflection too, this blue-pink of the
   statue"): a duotone, its shade the face's blue-lilac (`img_lo`), its light its rose (`img_hi`), `img_tint_k` 0.72,
