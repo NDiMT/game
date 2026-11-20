@@ -164,7 +164,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   the record). **Since 20/11 a true cube that tumbles, as level 4's** (the owner: "this holds for maps 2 and 3 with the
   cube too"): `props/block_cube.glb`, 0.92 m, its own colours, beige since 20/11 in every level (the owner: "not gold but beige"; then, of an outline of a smaller
   square in place of the meander, made and turned down the same day: "leave it with the meander, just make it beige";
-  then "a more brown beige", "and the meander a little lighter"), its meander a darker shade of that brown beige, its veins as discreet as before (`block`, `meander` in `IV_WAKE_PAL`, `IV_GLASS_PAL`); it tumbles over onto the next place, and into the gap
+  then "a more brown beige", "and the meander a little lighter"; and "in all levels the cube with the meander like the
+  first": the fourth level's own lighter, softer colours for it are gone, it is the second level's), its meander a darker shade of that brown beige, its veins as discreet as before (`block`, `meander` in `IV_WAKE_PAL`, `IV_GLASS_PAL`); it tumbles over onto the next place, and into the gap
   too, as at every push (the owner, 20/11: "the same movement as the basic push"): shoved to its stone's edge, it rises
   onto that edge and goes over, out and down into the water (`_ivt_over_into`), a small splash as it breaks the water
   (`_ivv_splash`; the owner: "a small splash"), its top flush with the way (`_ivv_bside`); its foam is laid round the
@@ -394,8 +395,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   statue"): a duotone, its shade the face's blue-lilac (`img_lo`), its light its rose (`img_hi`), `img_tint_k` 0.72,
   given to a lilac haze of one colour (`img_mist` 0.84, 0.8, 0.9: never the painting itself, whose face showed through
   the stones), a third at the glass and more for each metre behind it (`IVGL_IMG_FADE`); her shadow is grey-blue.
-  The gate's light and its ring light in the glass too as it opens (the owner: "when the gate opens, light in the
-  reflection too"): the white opening, the light before it, its motes and glow paired with their own materials
+  **Since 20/11 the image has no gate** (the owner: "in 4 the reflection without a gate"): the arch is in the level's
+  marble, so a box about it is cut out of the marble's image and of its image in the image's water (`img_cut_lo`,
+  `img_cut_hi` in IV_SH, in the mesh's own axes; `_ivgl_cut_gate`), the floor under it kept; its leaves and its light have
+  no image; its ring's image stays and lights. Before, the gate's light and its ring lit in the glass too as it opened
+  (the owner: "when the gate opens, light in the reflection too"): the white opening, the light before it, its motes and glow paired with their own materials
   (`_ivgl_gate_images`, made after the gate), the ring's image lit with it (`ivgl_ring_img_mat`). **The great face is
   painted in the backdrop** (the owner asked "is the statue like a picture?": yes), a little further back since 19/11
   ("the statue a liiittle further back"): Gemini's edit of the backdrop, the face about 85% of its size, lower and paler,

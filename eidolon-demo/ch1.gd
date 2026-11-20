@@ -2225,8 +2225,7 @@ const IV_GLASS_PAL := {      # the fourth level in the colours of its concept (d
 	"rock2": ["8d7d84", "6b5d6d", "4c4052", "35293b"],      # (its rock: #8a7878 lit, #493d4d #43384a, #36293a in the shade)
 	"groove": ["d8d0da", "d8d0da", "d8d0da", "d8d0da"],
 	"ring": ["fbf9f4", "fbf9f4", "fbf9f4", "fbf9f4"],
-	"block": ["e3d2bf", "d6c3ae", "baa591", "968577"],      # (a brown beige as in the other levels, a touch lighter here as its concept's; before "f7eee2", "f0e3d5", "d9c9bb", "b2a49b", and "fbe9d6", "f2d8c2", "dcbba4", "b4968b")      # (its cube a little lighter and warmer, as the concept's #e7ccb8 lit, #b2988f in the shade; the same sandy marble)
-	"meander": ["d4c1ae", "c4b19d", "ab9887", "8c7c70"],      # (its meander a brown beige too, a little lighter as in the other levels, softer than theirs as it was ("e5d1ba", "d9c0a7", "c0a48c", "9a8173"))      # (its meander softer than the second level's, a little over half way to the cube's own stone (the owner, 20/11: "can we make the meander on the cube less intense?"))
+	# (its cube as the second level's, block and meander (the owner, 20/11: "in all levels the cube with the meander like the first"); its own, lighter and softer, were "e3d2bf"... and "d4c1ae"...)
 }
 func _iv_pal(kind: String) -> Array:
 	if go_glass and IV_GLASS_PAL.has(kind): return IV_GLASS_PAL[kind] as Array
@@ -2275,6 +2274,7 @@ uniform vec3 img_mist : source_color = vec3(0.84, 0.8, 0.9); uniform vec3 img_ti
 uniform vec3 img_lo : source_color = vec3(0.5, 0.53, 0.8); uniform vec3 img_hi : source_color = vec3(0.98, 0.85, 0.89);      // (the image in the great face's own hue (the owner, 19/11: "the reflection too, this blue-pink of the statue"): its shade the face's blue-lilac, its light its rose)      // (the image pale and cool, given to the air of the painting's own haze, as its concept has it: the dark blue asked for first was "not liked after all" (the owner, 19/11); its air one colour, never the painting behind it: the great face in the painting showed through its stones ("why is the head seen over the stone?"))
 uniform float img_grad = 0.0; uniform vec3 img_pink : source_color = vec3(0.99, 0.79, 0.86); uniform vec3 img_blue : source_color = vec3(0.64, 0.77, 0.98); uniform vec2 img_gy = vec2(0.14, 0.55);      // (the opposite island in the great face's own gradient (the owner, 19/11: "besides subdued, that pink to light blue gradient the statue has"): rose at its far top, light blue down at the water, by its height on the screen)
 uniform float img_far = 1e6;      // (no image of what lies further behind the glass than this: the rocks far before the real place would stand in the sky)
+uniform vec3 img_cut_lo = vec3(1e6); uniform vec3 img_cut_hi = vec3(-1e6);      // (a box, in the mesh's own axes, of which no image is drawn: the fourth level's gate (the owner, 20/11: "in 4 the reflection without a gate"))
 uniform vec4 img_clip = vec4(-1e6, 1e6, -1e6, 1e6); uniform vec3 img_c0; uniform vec3 img_al = vec3(0.70710678, 0.0, -0.70710678); uniform vec3 img_fwd = vec3(0.0, 0.0, -1.0);      // (the glass's pane: along it from img_c0, and its height; the eye's way)      // (the fourth level: a thing's image beyond the glass, given to the air the further it lies behind it)
 uniform float veins = 0.0;
 uniform float flat_mode = 0.0;
@@ -2539,7 +2539,7 @@ void fragment(){
 	float sy = uv_flip > 0.5 ? 1.0 - SCREEN_UV.y : SCREEN_UV.y;
 	float fk = max(1.0 - smoothstep(fog_ref + fog_lo, fog_ref + fog_hi, wy), far_k);
 	if (haze > 0.0) fk = max(fk, haze * 0.22 * smoothstep(44.0, 52.0, -VERTEX.z));      // (VERTEX: from the eye)
-	if (img_k > 0.5 && (COLOR.a < 0.5 || -(dot(wp, img_plane.xyz) + img_plane.w) > img_far)) discard;      // (no image of what the builder marked so (the rocks in the sea at the picture's foot: in the glass they would stand in the sky), nor of what lies further behind it than img_far)
+	if (img_k > 0.5 && (COLOR.a < 0.5 || -(dot(wp, img_plane.xyz) + img_plane.w) > img_far || (lpos.x > img_cut_lo.x && lpos.y > img_cut_lo.y && lpos.z > img_cut_lo.z && lpos.x < img_cut_hi.x && lpos.y < img_cut_hi.y && lpos.z < img_cut_hi.z))) discard;      // (no image of what the builder marked so (the rocks in the sea at the picture's foot: in the glass they would stand in the sky), nor of what lies further behind it than img_far)
 	vec3 img_g = mix(img_pink, img_blue, smoothstep(img_gy.x, img_gy.y, sy));
 	if (img_k > 0.5 && img_grad > 0.0) c = mix(c, img_g * (0.6 + 0.48 * dot(c, vec3(0.3, 0.55, 0.15))), img_grad);
 	if (img_k > 0.5) { c = mix(c, mix(img_lo, img_hi, smoothstep(0.12, 0.95, dot(c, vec3(0.3, 0.55, 0.15)))), img_tint_k) * img_dark; fk = max(fk, clamp(img_fade.x + img_fade.y * max(-(dot(wp, img_plane.xyz) + img_plane.w), 0.0), 0.0, 0.9)); fk = max(fk, img_foot.z * (1.0 - smoothstep(img_foot.x, img_foot.x + img_foot.y, wp.y))); }      // (an image: its colour cooled toward silver, and given to the air; its foot to the mist)
@@ -4483,7 +4483,7 @@ func _ivw_gate_light(p: Vector3, ax: String) -> void:
 	pt.color_ramp = g; pt.emitting = true
 	ivw_gate_parts.append(pt)
 	if go_milos or go_glass: _ivm_gate_shut()      # (the third and fourth levels: the door shut until the ring is lit)
-	if go_glass: _ivgl_gate_images()      # (made after the glass: its light in the glass too)
+	# (no image of the gate's light in the glass: the image has no gate (the owner, 20/11: "in 4 the reflection without a gate"); _ivgl_gate_images made it)
 
 const IVW_VEIL_SH := """
 shader_type spatial;
@@ -6448,7 +6448,7 @@ func _ivr_build() -> void:
 		else: _ivp_volute(ivp_nodes[ivg_vol])
 	elif not ivg_on and j.get("volute") != null: _ivp_volute(V.call(j.volute))
 	if ivg_on: _ivg_build()
-	if go_glass: _ivgl_setup(lv); _ivgl_props(j)
+	if go_glass: _ivgl_setup(lv); _ivgl_cut_gate(j); _ivgl_props(j)
 	if ivg_on and ivg.get("mirrors") != null:
 		for mm in (ivg.mirrors as Array): _ivq_mirror(String(mm.node), int(mm.turn))
 		_ivg_gaze_all()
@@ -10155,7 +10155,6 @@ func _ivm_gate_shut() -> void:
 		var b0 := Basis(xd, Vector3.UP, xd.cross(Vector3.UP))
 		hn.basis = b0
 		var mi := MeshInstance3D.new(); mi.mesh = mesh; mi.material_override = mat; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON; hn.add_child(mi)
-		if go_glass: _ivgl_pair(hn)      # (the fourth level: its leaves seen in the glass too)
 		var ang := 1.62      # (it swings in, away from her and from the veil, its free edge going into the gate)
 		if (Basis(Vector3.UP, ang) * xd).dot(ivw_gate_front) > 0.0: ang = -ang
 		ivm_leaves.append([hn, b0, ang])
@@ -10526,6 +10525,22 @@ func _ivgl_reset() -> void:      # (she steps on the square of light at her star
 
 var ivgl_gate_imgs: Array = []      # (the gate's light in the glass: its white opening, the light on the stone before it, its motes, its glow; shown as it opens)
 var ivgl_ring_img_mat: ShaderMaterial
+
+func _ivgl_cut_gate(j: Dictionary) -> void:      # (the image without its gate (the owner, 20/11: "in 4 the reflection without a gate"): the arch is in the level's marble, so its box is cut out of the marble's image and of its image in the image's water; the floor under it stays)
+	var srcs: Array = []
+	for pr in ivgl_pairs:
+		if pr[1] == ivgl_img or (ivw_mirror != null and pr[0] == ivw_mirror): srcs.append(pr[1])
+	for ar in (j.get("arches", []) as Array):
+		var p := Vector3(float(ar[0][0]), float(ar[0][1]), float(ar[0][2]))
+		var e := Vector3(0.95, 0.0, 0.35) if String(ar[1]) == "x" else Vector3(0.35, 0.0, 0.95)      # (across it its cornice's reach, through it its mouldings')
+		var lo := p + Vector3(-e.x, 0.005, -e.z); var hi := p + Vector3(e.x, 2.75, e.z)      # (from just over the floor it stands on, to over its cornice)
+		for n in srcs:
+			for m in (n as Node).find_children("*", "MeshInstance3D", true, false):
+				if not String(m.name).to_lower().contains("marble"): continue
+				var sm := (m as MeshInstance3D).material_override as ShaderMaterial
+				if sm != null: sm.set_shader_parameter("img_cut_lo", lo); sm.set_shader_parameter("img_cut_hi", hi)
+		print("IV the image without its gate: cut ", lo, " to ", hi)
+		break
 
 func _ivgl_gate_images() -> void:      # (the same light, its own materials kept (not an image's): it is light, and it follows every change of the real one)
 	var src: Array = ivw_gate_parts.duplicate()
