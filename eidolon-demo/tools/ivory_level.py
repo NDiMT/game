@@ -1134,8 +1134,11 @@ else:
         marble += column(cw[0], p[1], cw[1], h)
     for (cx_, cy_, cz_, ch_, cr_, cb_) in PLAN.get('sea_columns', []):      # (columns standing in the water, a ruin half sunk: off the way, scenery)
         marble += column(cx_, cy_, cz_, ch_, cr_, cb_)
-    for (px, pz, top, hs) in PLAN.get('pedestals', []):      # (a square marble pedestal standing out of the still water, a statue on it)
-        bm = bmesh.new(); box(bm, (px - hs, top - 2.4, pz - hs), (px + hs, top, pz + hs)); chisel(bm, 3, depth=(0.015, 0.05), keep_above=None); marble.append(finish(bm, 'pedestal'))
+    for pd_ in PLAN.get('pedestals', []):      # (a square marble pedestal standing out of the still water, a statue on it; a fifth value turns it about the up as the game turns its statue: rotation.y)
+        px, pz, top, hs = pd_[:4]; ty = float(pd_[4]) if len(pd_) > 4 else 0.0
+        cs, sn = math.cos(ty), math.sin(ty)
+        sq = [(px + a * cs + b * sn, pz - a * sn + b * cs) for (a, b) in ((-hs, -hs), (hs, -hs), (hs, hs), (-hs, hs))]
+        bm = bmesh.new(); hexa(bm, [(x, top - 2.4, z) for (x, z) in sq] + [(x, top, z) for (x, z) in sq]); chisel(bm, 3, depth=(0.015, 0.05), keep_above=None); marble.append(finish(bm, 'pedestal'))
     for (p, ax) in PLAN.get('arches', []):
         marble += arch(p[0], p[1], p[2], W=1.42, Hh=2.3, r=0.41, D=0.36, along_x=(ax == 'x'))
     for (bx0, bx1, bz0, bz1, bh) in PLAN.get('bridges', []):      # (a slab over a chasm: marble only, nothing under it but the sea; square where it meets the floors)

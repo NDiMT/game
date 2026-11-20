@@ -147,7 +147,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   the left a little bigger, a little further out and a little more random, lit like the statue of the first"): about
   15% larger, 0.75 to 1.3 m further out, not in a row, on their pedestals still; then a little bigger still (2.2, 3.1,
   3.05 m) and each turned a little its own way from facing the eye (13, -17, 9 degrees; the owner: "a little bigger still,
-  and turned at random, but slightly"), their pedestals grown with them (0.47) (`veil_plan.py` `sea_statues`, `turn`; the eye framed as before, on where they first stood, `sea_statues_first`); lit as the Observer is
+  and turned at random, but slightly"), their pedestals grown with them (0.47; the kneeling one's 0.57, a little wider than its own base) and turned with them
+  (the owner: "I want the statues turned together with their base": a pedestal's fifth value in the plan turns it about the
+  up as the game turns its statue; the statues' own bases are square to their models) (`veil_plan.py` `sea_statues`, `turn`; the eye framed as before, on where they first stood, `sea_statues_first`); lit as the Observer is
   (`IVV_LIT_AS_OBSERVER`: its far haze, no shadow of their own, the low sun a little stronger on their edges). Its backdrop is its own (`goveil/backdrop.jpg`: the golden morning,
   far veiled statues at the horizon, horizon 0.362). Concept: `design/level2/concept.jpg`. Its block is a sandier
   marble than the slabs, a little uneven, with a few discreet veins a little darker than it, its own so they go with it
