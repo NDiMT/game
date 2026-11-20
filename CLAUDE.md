@@ -79,6 +79,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
 - **Play it in a browser**: https://ndimt.github.io/game/eidolon-waking/ (the owner OK'd publishing there). **Upload
   each new build there without asking** (the owner, 19/11: "don't ask me every time, upload it"); check it in a headless
   browser first (every level it can reach), and say it is up.
+- **Sounds: none since 20/11, only the music** (the owner: "I don't like the sounds at all; what if you left only
+  music?"): `IVW_SFX_ON` false in `ch1.gd` (the film keeps its own sound); the effects are left out of the builds
+  (`sfx/*` in the presets' exclude filter), not made ready in the warm-up, her steps not followed; `IV_SFX=1` plays
+  them again on a desktop. How they were made and played, kept for the record:
 - **Sounds** (`sfx/`, `_ivw_sfx`): **only real sound effects** (the owner, 18/11: "cut the melodic sounds, only normal
   sound effects"). The Lyria cues (a note at PLAY, a sigh on each story line, a swell for the stones, the gate's rise, a
   pluck for a swipe where she cannot go) are no longer played and are left out of the builds (the presets' exclude

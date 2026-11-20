@@ -4919,7 +4919,7 @@ func _ivw_warm() -> void:
 	for ql in quote_lbls: was.append((ql as Label).text); (ql as Label).text = "\n".join(said)
 	if not said.is_empty():      # (and the story's own letters, at no strength)
 		for it in _ivw_story_make("\n".join(said)): (it[0] as Label).modulate.a = 0.004
-	_ivw_sounds_ready(([] if go_veil else ["res://music/theme.ogg"]) + ["res://music/lament.ogg", "res://music/lastlight.ogg", _go_level_music()] + IVW_SFX.map(func(n: String) -> String: return "res://sfx/%s.ogg" % n))
+	_ivw_sounds_ready(([] if go_veil else ["res://music/theme.ogg"]) + ["res://music/lament.ogg", "res://music/lastlight.ogg", _go_level_music()] + (IVW_SFX.map(func(n: String) -> String: return "res://sfx/%s.ogg" % n) if _ivw_sfx_on() else []))
 	for f in 4: await get_tree().process_frame      # (three of them drawn: what is built is built in the drawing)
 	for i in quote_lbls.size(): (quote_lbls[i] as Label).text = String(was[i])
 	if ivw_story != null:
@@ -5168,7 +5168,14 @@ func _go_level_music() -> String:
 ## the waking's sounds (sfx/: cut from the music model's pieces made from design/sfx/, each retuned onto the notes the
 ## lament shares with its D-minor turns, so none of them strikes against the music wherever the player meets it):
 ## PLAY a low note, each line of the story a woman's sigh, the stones a swell, the gate its passing, a step that cannot be a low pluck
+## no sound effects at all, only the music (and the film's own sound) (the owner, 20/11: "I don't like the sounds at
+## all; what if you left only music?"): their files and notes stay in sfx/ and design/sfx/, left out of the builds;
+## IV_SFX=1 plays them again on a desktop for a check
+const IVW_SFX_ON := false
+func _ivw_sfx_on() -> bool:
+	return IVW_SFX_ON or OS.get_environment("IV_SFX") != ""
 func _ivw_sfx(name: String, db := -8.0, from := 0.0, pitch := 1.0) -> AudioStreamPlayer:      # (real sounds only: steps, water, the winch, stone on stone, the gate's light; the melodic cues (a note at PLAY, a sigh on each line, a swell for the stones, the gate's rise, a pluck for a swipe where she cannot go) were cut, the owner 18/11: "only normal sound effects")
+	if not _ivw_sfx_on(): return null
 	if (OS.get_environment("IV_NO_MUSIC") != "" and OS.get_environment("IV_SFX_ONLY") == "") or OS.get_environment("IV_NO_SFX") != "" or not ResourceLoader.exists("res://sfx/%s.ogg" % name): return null      # (IV_SFX_ONLY: a check clip with the sounds and without the music)
 	if OS.get_environment("IV_SFX_LOG") != "": print("SFX ", name, " at ", snappedf(iv_t, 0.01))
 	var p := AudioStreamPlayer.new(); p.stream = _ivw_stream("res://sfx/%s.ogg" % name); p.volume_db = db; p.pitch_scale = pitch; add_child(p); p.play(from)
@@ -9697,7 +9704,7 @@ func _process(dt: float) -> void:
 	if figure_demo: _fig_frame(dt)
 	if geo_demo: _gh_post(dt)
 	if go_demo: _go_post(dt)
-	if go_wake: _ivw_steps_tick(dt)
+	if go_wake and _ivw_sfx_on(): _ivw_steps_tick(dt)
 	if ivh_on: ivh_parts += Vector3(hp1 - hp0, hp2 - hp1, Time.get_ticks_usec() - hp2) / 1000.0
 	if match_demo and not ended and not flip_on and not flip_busy and pos.z > MT_Z1 + 0.7: route.clear(); _end()
 	if flip_demo and not ended and not busy and not flip_busy and not flip_on and rects.has("S2") and rects["S2"].on and pos.z < TZ0 - 0.9: route.clear(); _end()      # (the trial ends behind the second sluice)
