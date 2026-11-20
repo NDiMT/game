@@ -36,7 +36,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   the first, the foam drawn from the shore map, better; the flash was "a white flash passing over the whole stone": now
   the stones are wet already under the water, so nothing about them changes at once as they break the surface, they dry
   softly from the top down, their sheen and foam fainter, the foam coming in over a moment, its blobs from a hash with no
-  `sin` in it, which a phone's graphics can take so loosely that every cell comes out foam); she climbs to the
+  `sin` in it, which a phone's graphics can take so loosely that every cell comes out foam; and then, still "a strange
+  flash like a glint": the shore map holds all the rising stones' outlines as one, so as the first broke the water its
+  foam ran out as a white line round the stones still under; now each stone's foam keeps to the water nearer it than the
+  others' middles, `others` in `IVW_CHURN_SH`, `_ivw_riser_middles`); she climbs to the
   glowing gate, steps into its light, and is lost in it in a flash (the gate alone lights) and rising motes; a
   moment's hold, then the light fills the picture and level 2 begins in it (`_ivw_to_veil`: the scene reloads with
   `Engine` meta `ivw_next`; `IV_ONE=1` stops after level 1). The dark end screen (EIDOLON alone: no "tap to ..." words,
@@ -157,7 +160,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   down: "leave it yellowish as it was, with a few discreet marble veins"); its meander cut unevenly by hand, a darker
   shade of the same stone, not terracotta (the owner) (`props/block_meander.glb`, `tools/go/block_meander.py`, kept for
   the record). **Since 20/11 a true cube that tumbles, as level 4's** (the owner: "this holds for maps 2 and 3 with the
-  cube too"): `props/block_cube.glb`, 0.92 m, its own colours; it tumbles over onto the next place, and into the gap
+  cube too"): `props/block_cube.glb`, 0.92 m, its own colours, beige since 20/11 in every level (the owner: "not gold but beige"; then, of an outline of a smaller
+  square in place of the meander, made and turned down the same day: "leave it with the meander, just make it beige"),
+  its meander a darker beige, its veins as discreet as before (`block`, `meander` in `IV_WAKE_PAL`, `IV_GLASS_PAL`); it tumbles over onto the next place, and into the gap
   too, as at every push (the owner, 20/11: "the same movement as the basic push"): shoved to its stone's edge, it rises
   onto that edge and goes over, out and down into the water (`_ivt_over_into`), a small splash as it breaks the water
   (`_ivv_splash`; the owner: "a small splash"), its top flush with the way (`_ivv_bside`); its foam is laid round the

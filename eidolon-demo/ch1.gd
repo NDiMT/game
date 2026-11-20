@@ -2172,8 +2172,8 @@ const IV_WAKE_PAL := {      # the waking: dawn over a still sea. Pearl and rose 
 	"rock2": ["c39f98", "93727c", "684a57", "4a3140"],
 	"observer": ["f5e7e1", "decdd0", "c6b0bc", "9d8599"],
 	"statue": ["fcf5f1", "f4e6e1", "d8c2c8", "ae96a9"],      # (the Observer as the concepts paint their statues: white marble warmed by the dawn on its lit side, a light rose-lilac shade; the user: "smoother and better lit")      # (the lighter stone's own: the white marble of the slabs; the user's ask)      # (the rock's own hues, its shade a little lighter so her face under the veil still reads)      # (her shade soft: the face under the veil must never fall into a dark hole)
-	"block": ["f6e6d0", "ecd8c0", "d3bba4", "ae968a"],      # (the uncut block: a warmer, sandier marble than the slabs, as stone fresh from the quarry is; the owner: "a little different in shade"; a grey-blue was tried and turned down, 18/11: "leave it yellowish as it was, with a few discreet marble veins")
-	"meander": ["cbb497", "baa386", "9e886f", "7a6756"],      # (its meander the block's own sandy stone, darker; the owner, after a pink and a terracotta: "not terracotta, just darker than the stone's colour")
+	"block": ["f2eade", "e9dfd1", "d1c4b7", "ab9f96"],      # (the cube beige, not gold (the owner, 20/11: "leave it with the meander, just make it beige"); before, a sandier marble, "f6e6d0", "ecd8c0", "d3bba4", "ae968a")      # (the uncut block: a warmer, sandier marble than the slabs, as stone fresh from the quarry is; the owner: "a little different in shade"; a grey-blue was tried and turned down, 18/11: "leave it yellowish as it was, with a few discreet marble veins")
+	"meander": ["bfb3a4", "ada294", "94897e", "756c64"],      # (its meander a darker shade of its beige, as it was of its sand ("cbb497", "baa386", "9e886f", "7a6756"); an outline of a smaller square in its place was made and turned down the same day)      # (its meander the block's own sandy stone, darker; the owner, after a pink and a terracotta: "not terracotta, just darker than the stone's colour")
 	"phead": ["f3e4df", "dcc4c4", "b9a0ad", "917b93"],
 	"groove": ["e2cac6", "e2cac6", "e2cac6", "e2cac6"],
 	"line": ["fff4ee", "fff4ee", "fff4ee", "fff4ee"],
@@ -2225,8 +2225,8 @@ const IV_GLASS_PAL := {      # the fourth level in the colours of its concept (d
 	"rock2": ["8d7d84", "6b5d6d", "4c4052", "35293b"],      # (its rock: #8a7878 lit, #493d4d #43384a, #36293a in the shade)
 	"groove": ["d8d0da", "d8d0da", "d8d0da", "d8d0da"],
 	"ring": ["fbf9f4", "fbf9f4", "fbf9f4", "fbf9f4"],
-	"block": ["fbe9d6", "f2d8c2", "dcbba4", "b4968b"],      # (its cube a little lighter and warmer, as the concept's #e7ccb8 lit, #b2988f in the shade; the same sandy marble)
-	"meander": ["e5d1ba", "d9c0a7", "c0a48c", "9a8173"],      # (its meander softer than the second level's, a little over half way to the cube's own stone (the owner, 20/11: "can we make the meander on the cube less intense?"))
+	"block": ["f7eee2", "f0e3d5", "d9c9bb", "b2a49b"],      # (beige as in the other levels, a touch warmer as its concept's; before "fbe9d6", "f2d8c2", "dcbba4", "b4968b")      # (its cube a little lighter and warmer, as the concept's #e7ccb8 lit, #b2988f in the shade; the same sandy marble)
+	"meander": ["dbcfc3", "ccbfb3", "b2a59a", "91867e"],      # (its meander beige too, softer than the other levels' as it was ("e5d1ba", "d9c0a7", "c0a48c", "9a8173"))      # (its meander softer than the second level's, a little over half way to the cube's own stone (the owner, 20/11: "can we make the meander on the cube less intense?"))
 }
 func _iv_pal(kind: String) -> Array:
 	if go_glass and IV_GLASS_PAL.has(kind): return IV_GLASS_PAL[kind] as Array
@@ -4745,6 +4745,7 @@ uniform vec4 shore_rect = vec4(0.0, 0.0, 1.0, 1.0); uniform float shore_d = 1.6;
 uniform float boil = 0.0; uniform float churn = 0.0; uniform float spread = 0.05;
 uniform vec2 centre; uniform float rad = 0.5;
 uniform float box_k = 0.0; uniform vec2 box_half = vec2(0.45);      // (or round a square stone set down in the water, not one in the shore's map: the block fallen into its hole)
+uniform vec2 others[8]; uniform int n_others = 0;      // (the middles of the other stones that rise: the shore map holds all their outlines as one, so this stone's foam keeps to the water nearer it than them; read from the map alone, it ran out as a white line round the stones still under, a flash over the water as the first broke it (the owner, 20/11: "a strange flash like a glint"))
 uniform vec3 foam_c : source_color = vec3(1.0, 0.985, 0.97);
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
@@ -4777,9 +4778,23 @@ void fragment(){
 	float dots = bub(wp.xz * 9.0 + vec2(TIME * 0.15, -TIME * 0.1), 0.35 + 0.65 * churn) * smoothstep(0.15, 0.4, r0) * (1.0 - smoothstep(0.85, 1.2, r0));      // (and round bubbles at its edge)
 	float a = boil * lip * 0.3 * smoothstep(0.4, 0.6, nb) + churn * max(band, max(blobs, dots));
 	a *= onw * (1.0 - smoothstep(rad * 1.15 + ext, rad * 1.15 + ext + 0.25, length(wp.xz - centre)));      // (round this stone only)
+	float own = 1.0; float dm = length(wp.xz - centre);
+	for (int k = 0; k < 8; k++) { if (k >= n_others) { break; } own = min(own, 1.0 - smoothstep(-0.14, 0.14, dm - length(wp.xz - others[k]))); }
+	a *= own;
 	ALBEDO = foam_c; ALPHA = clamp(a, 0.0, 1.0) * 0.78;
 }
 """
+var ivw_riser_mids := {}
+func _ivw_riser_middles() -> Dictionary:      # (each rising stone's middle on the water, its rock and its slab together, by its name)
+	if not ivw_riser_mids.is_empty(): return ivw_riser_mids
+	var bbs := {}
+	for q in ivw_risers:
+		if q.size() <= 5: continue
+		var qb := (q[0] as MeshInstance3D).global_transform * (q[0] as MeshInstance3D).get_aabb()
+		var nm := String(q[5]); bbs[nm] = qb if not bbs.has(nm) else (bbs[nm] as AABB).merge(qb)
+	for nm in bbs: var cc := (bbs[nm] as AABB).get_center(); ivw_riser_mids[nm] = Vector2(cc.x, cc.z)
+	return ivw_riser_mids
+
 func _ivw_churn_make(r: Array) -> MeshInstance3D:
 	if ivs_sea_mat == null or ivs_sea_mat.get_shader_parameter("shore_tex") == null: return null
 	var bb := AABB(); var first := true
@@ -4790,6 +4805,12 @@ func _ivw_churn_make(r: Array) -> MeshInstance3D:
 	var sea := IV_O.y + ivr_sea_y; var c := bb.get_center(); var rad := maxf(bb.size.x, bb.size.z) * 0.5
 	var m := ShaderMaterial.new(); m.shader = _ivw_shader(IVW_CHURN_SH); m.render_priority = 6
 	for k in ["shore_tex", "shore_rect", "shore_d"]: m.set_shader_parameter(k, ivs_sea_mat.get_shader_parameter(k))
+	var oth := PackedVector2Array()      # (the other stones' middles: its foam keeps to its own water)
+	var ocs := _ivw_riser_middles()
+	for nm in ocs:
+		if String(nm) != String(r[5]) and oth.size() < 8: oth.append(ocs[nm])
+	while oth.size() < 8: oth.append(Vector2(1e6, 1e6))
+	m.set_shader_parameter("others", oth); m.set_shader_parameter("n_others", ocs.size() - 1)
 	m.set_shader_parameter("centre", Vector2(c.x, c.z)); m.set_shader_parameter("rad", rad)      # (read from the shore map: the outline the stones' rock has at the water; foam round each stone only was tried, and the owner, 20/11, liked this one better)
 	var pm := PlaneMesh.new(); var ext := (rad + 1.2) * 2.0; pm.size = Vector2(ext, ext)
 	var mi := MeshInstance3D.new(); mi.mesh = pm; mi.material_override = m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(mi)
@@ -6343,7 +6364,7 @@ func _ivr_block() -> Node3D:
 	var n := Node3D.new(); iv_root.add_child(n)
 	n.add_child(doc.generate_scene(st))
 	var bx := _ivv_ex(0.0); bx["veins"] = 0.3; bx["ao_k"] = 0.0
-	if go_veil: bx.merge({"veins": 0.42, "vein_local": 1.0, "vein_sc": 1.1, "vein_w": 0.022, "vein_cloud": 0.06, "vein_tint": Color(0.86, 0.8, 0.76)}, true)      # (a few discreet veins, a little darker than the stone, its own so they go with it when pushed (the owner, 18/11))
+	if go_veil: bx.merge({"veins": 0.42, "vein_local": 1.0, "vein_sc": 1.1, "vein_w": 0.022, "vein_cloud": 0.06, "vein_tint": Color(0.86, 0.8, 0.76)}, true)      # (a few discreet veins, a little darker than the stone, its own so they go with it when pushed (the owner, 18/11))      # (a few discreet veins, a little darker than the stone, its own so they go with it when pushed (the owner, 18/11))
 	var mx := _ivv_ex(0.0); mx["veins"] = 0.0; mx["ao_k"] = 0.0
 	for m in n.find_children("*", "MeshInstance3D", true, false):
 		if go_veil and String(m.name).to_lower().contains("meander"): (m as MeshInstance3D).material_override = _iv_mat("meander", 0.0, mx); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON; continue      # (its meander apart, a darker stone)
