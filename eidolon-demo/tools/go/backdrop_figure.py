@@ -15,7 +15,7 @@ finished backdrop, so what was painted into that one elsewhere (the third level'
 level's painted goddess, a little bigger and lower (the owner, 20/11: "Aphrodite a little bigger and a little lower"):
 
   python3 -I tools/go/backdrop_figure.py design/level3/goddess_painted.png design/level3/backdrop_plain.jpg \
-      gomilos/backdrop.jpg 0.25 0.105 0.395 0.2 1 --onto design/level3/backdrop_whole.jpg 70,130,458,1240
+      gomilos/backdrop.jpg 0.25 0.105 0.395 0.3 1 --onto design/level3/backdrop_whole.jpg 70,130,458,1240
 """
 import sys
 import numpy as np

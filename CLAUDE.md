@@ -31,10 +31,12 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   the owner found the video poor; see the skill) → start screen (faded level, black thin EIDOLON logo and PLAY, the Theme) → PLAY → the Lament. Ione
   kneels facing her way, both hands on the front knee, back and head bowed; after a second of stone stillness she
   rises in moments (8 s clip: breath, hands to the knee, weight forward, push, lunge, step, back up, head last).
-  She turns the winch; the stones come up out of the water with foam on the water and on them (each stone's foam round
-  its own slab, `box_k` in `IVW_CHURN_SH`; the owner, 20/11: "when the rocks come out of the water they make a strange
-  flash": read from the shore map, it drew the outline all three stones' rock has at the water once all are up, one
-  blob, so as the first broke the water white lines leapt out over the others still under it); she climbs to the
+  She turns the winch; the stones come up out of the water with foam on the water and on them (the owner, 20/11: "when
+  the rocks come out of the water they make a strange flash": foam round each stone's own slab was tried, and he liked
+  the first, the foam drawn from the shore map, better; the flash was "a white flash passing over the whole stone": now
+  the stones are wet already under the water, so nothing about them changes at once as they break the surface, they dry
+  softly from the top down, their sheen and foam fainter, the foam coming in over a moment, its blobs from a hash with no
+  `sin` in it, which a phone's graphics can take so loosely that every cell comes out foam); she climbs to the
   glowing gate, steps into its light, and is lost in it in a flash (the gate alone lights) and rising motes; a
   moment's hold, then the light fills the picture and level 2 begins in it (`_ivw_to_veil`: the scene reloads with
   `Engine` meta `ivw_next`; `IV_ONE=1` stops after level 1). The dark end screen (EIDOLON alone: no "tap to ..." words,
@@ -46,7 +48,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   more beautiful); level 2 "He tried to find her face again, / so he carved a thousand statues, / but none was her." (the owner's own
   words, 18/11; three lines, each within a phone's width: a line wider than about 0.85 of it runs off the screen). Letter: the
   Cormorant Garamond upright (`fonts/CormorantGaramond-Variable.ttf`, weight 520, 47 px at 720 wide), high in the sky,
-  its lines coming one after the other, each rising a little (`_ivw_story_write`; the owner chose it of three, 18/11).
+  its lines coming one after the other, each rising a little (`_ivw_story_write`; the owner chose it of three, 18/11);
+  at the screen's foot was tried (`IVW_STORY_AT`) and he kept it high ("leave the texts at the top", 20/11).
 - **The film's textures** (`intro/vase/`): three texture arrays (`strips.jpg`, `pans.jpg`, `texts.png`, sliced in
   their `.import`), the vase and the words at the film's full size. A phone gives a canvas shader 16 textures, and
   Godot takes three of them plus the six highest units for itself. With one texture per piece (17 sampled) the film
@@ -145,7 +148,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   marble than the slabs, a little uneven, with a few discreet veins a little darker than it, its own so they go with it
   when pushed (`vein_local`; the owner, 18/11, after a grey-blue with white veins was tried in levels 2 and 3 and turned
   down: "leave it yellowish as it was, with a few discreet marble veins"); its meander cut unevenly by hand, a darker
-  shade of the same stone, not terracotta (the owner) (`props/block_meander.glb`, `tools/go/block_meander.py`). In the empty sea at the bottom right, a
+  shade of the same stone, not terracotta (the owner) (`props/block_meander.glb`, `tools/go/block_meander.py`, kept for
+  the record). **Since 20/11 a true cube that tumbles, as level 4's** (the owner: "this holds for maps 2 and 3 with the
+  cube too"): `props/block_cube.glb`, 0.92 m, its own colours; it tumbles over onto the next place, and out over the gap
+  it slides and falls in, its top flush with the way (`_ivv_bside`). In the empty sea at the bottom right, a
   rock and a smaller one beside it (the owner, 18/11), and the brown rock under the quay where she starts made stronger
   (its tops near the slab's, two more toward the eye; the owner): `rocks_after` in its plan, made after all the rest so
   nothing else of the level changes; it is built `ivory_level.py -- goveil/level.glb goveil/level.json 11 48 goveil/plan.json`, then
@@ -193,7 +199,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   (the owner: "no blurry leaves above"), only rocks before the eye at the bottom corners, the concept's own dark slate
   cut out of it with their soft edges (`gomilos/rock_bl.png`, `rock_br.png`; the owner: "like the second picture"); the
   stone she pushes level 2's own sandy block with its few discreet veins (a grey-blue was asked for, tried and turned
-  down); its backdrop the concept's own sky and sea
+  down), since 20/11 the cube, here 1.06 m on every side (`_ivv_bscale`): as high as the light runs over its floor (the
+  mirror's disc 1.02 m up), so it still stops it; its one push, into the niche under the rock, slides (the niche's roof is
+  too low for it to go over: its corner would rise 1.5 m); its backdrop the concept's own sky and sea
   painted alone by Gemini (no horizon line; a band of bright haze at 0.30, `horizon` 0.33 so the sea's glints come in
   below it). The light leaves the statue at the height of her eyes (the owner). The goddess a colossus (the owner: "a
   big statue of Aphrodite"),
@@ -209,8 +217,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   behind"); the level's `horizon` stays 0.33. **Since 20/11 the goddess in it is the painted one, a little bigger and
   lower** (the owner: "in map 3 and map 4 the statue not low poly, but painted"; "Aphrodite a little bigger and a little
   lower"): `python3 -I tools/go/backdrop_figure.py design/level3/goddess_painted.png design/level3/backdrop_plain.jpg
-  gomilos/backdrop.jpg 0.25 0.105 0.395 0.2 1 --onto design/level3/backdrop_whole.jpg 70,130,458,1240` (laid on the plain
-  backdrop, then only the box about her, its edge feathered, set into the whole one, so its far rocks stay as they are).
+  gomilos/backdrop.jpg 0.25 0.105 0.395 0.3 1 --onto design/level3/backdrop_whole.jpg 70,130,458,1240` (laid on the plain
+  backdrop, then only the box about her, its edge feathered, set into the whole one, so its far rocks stay as they are);
+  a little more haze over her (0.3, was 0.2; the owner: "the statue here a little more subdued").
   Turned down on the way: the goddess smooth and polished or softly painted, darker, a whole backdrop with her big and the
   haze low, rocks laid in by us (`tools/go/far_rocks.py`) or painted too near, too many or below her. No birds over this level (the owner: "take
   those stupid birds out of the third level"). The 3D goddess is out of the plan
@@ -308,7 +317,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   brown stone round their light too** (the owner asked for a golden light with terracotta in and round it, then kept the
   form and not its colours: "I like the square as it became; make it with white light and replace the terracotta with the
   colour you had"): the white frame, `rock2` within, a low square of `rock2` round it (`IVGL_PAD_OUT` 0.53); the square in
-  the image the same in its shader (`IVGL_SQUARE_SH`: a sharp white line, its stone given a little to the island's haze); it has no twin on the island (the owner, 19/11: "the shadow doesn't need a start square"). Five places the block cannot come out of (the corners), and no true dead end with the square
+  the image built the same (`_ivgl_pad`; the owner: "the start's square differs from the target's in the reflection; I
+  want it as the real one"), its stone given a little to the island's haze, its light flaring and staying brighter as the
+  block's image stands in it; it has no twin on the island (the owner, 19/11: "the shadow doesn't need a start square"). Five places the block cannot come out of (the corners), and no true dead end with the square
   (`tools/go/still_glass_trial.py`, plan `tools/go/still_plan.py`; the level.glb of the moving glass is the same, its
   floors unchanged). **The real place and its image stand a little apart** (the owner: "let the two sections have a
   little distance between them"): the glass 2.4 m past the terrace's nearest row (`GAP`, plane 11.4; 0.8 before), the
@@ -323,8 +334,7 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   lands, a few corners broken; a little lighter and warmer here, as the concept's `e7ccb8` (`block` in `IV_GLASS_PAL`); its meander softer than the
   second level's, a little over half way to the cube's own stone (`meander` in `IV_GLASS_PAL`; the owner, 20/11: "can we
   make the meander on the cube less intense?").
-  Levels 2 and 3 keep theirs (`block_meander.glb`, 0.9 m square, 1.04 m high: it falls into a gap and a niche at that
-  height) and slide it. **It goes over as a heavy stone shoved** (20/11: "a little more natural when it rolls", "and a
+  Levels 2 and 3 have it too since 20/11 (see them). **It goes over as a heavy stone shoved** (20/11: "a little more natural when it rolls", "and a
   little dust"; `_ivt_tumble`, `IVT_ON`): it slides first what the step (1.5 m) is longer than the cube (`IVT_SLIDE`,
   her hands with it), rises slowly onto its leading edge, slowing as it comes to balance (`IVT_RISE`), falls faster and
   faster onto its next face (`IVT_FALL`), never lifted off that edge, lands with a knock (the fall's thud without its

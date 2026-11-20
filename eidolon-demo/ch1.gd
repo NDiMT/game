@@ -1797,6 +1797,7 @@ func _go_write(text: String, hold := 4.5) -> void:
 ## far statues; its lines come one after the other, each rising a little as it clears; they go together. Black letters
 ## with no shadow and no glow (the owner's)
 const IVW_CORM := "res://fonts/CormorantGaramond-Variable.ttf"
+const IVW_STORY_AT := 0.0      # (the story's lines high in the sky; at a share of the screen's height above 0, their foot there (the owner, 20/11, asked "should the text not come out at the bottom? we always seem to have empty space at the bottom", then: "leave the texts at the top"); IV_STORY_AT tries another)
 var ivw_story: Control
 func _ivw_vfont(fn: String, wght: float) -> Font:
 	if not ivw_fonts.has(fn):
@@ -1815,18 +1816,23 @@ func _ivw_story_make(text: String) -> Array:      # (its lines as labels, set in
 	for ch in ivw_story.get_children(): ch.queue_free()
 	ivw_story.modulate.a = 1.0
 	var vp := get_viewport().get_visible_rect().size; var k := vp.x / 720.0
-	var y := vp.y * 0.083
 	var out := []
 	var ls := text.split("\n")
+	var rows := []      # (each line's spec, font, size and height, so the whole can be set from its foot)
+	var tot := 0.0
 	for i in ls.size():
 		var sp := _ivw_story_spec(i, ls[i])
 		var f := _ivw_vfont(String(sp.f), float(sp.w))
 		if f == null: continue
 		if f is FontVariation: (f as FontVariation).spacing_glyph = int(round(float(sp.sp) * k))
-		var fs := int(round(float(sp.s) * k))
+		var fs := int(round(float(sp.s) * k)); var h := f.get_height(fs)
+		rows.append([sp, f, fs, h]); tot += h + float(sp.gap) * k
+	var at := _ivgl_ef("IV_STORY_AT", IVW_STORY_AT)
+	var y := vp.y * 0.083 if at <= 0.0 else vp.y * at - tot      # (high in the sky as it was, or its foot at that share of the screen)
+	for rw in rows:
+		var sp: Dictionary = rw[0]; var f: Font = rw[1]; var fs: int = rw[2]; var h: float = rw[3]
 		var lb := Label.new(); lb.text = String(sp.t); lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; lb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		lb.add_theme_font_override("font", f); lb.add_theme_font_size_override("font_size", fs); lb.add_theme_color_override("font_color", Color(0.07, 0.05, 0.08))
-		var h := f.get_height(fs)
 		lb.position = Vector2(0, y); lb.size = Vector2(vp.x, h)
 		ivw_story.add_child(lb); out.append([lb, y])
 		y += h + float(sp.gap) * k
@@ -2339,13 +2345,14 @@ float vn(vec3 p){ vec3 i = floor(p); vec3 f = fract(p); f = f * f * (3.0 - 2.0 *
 	return mix(mix(mix(h3(i), h3(i + vec3(1, 0, 0)), f.x), mix(h3(i + vec3(0, 1, 0)), h3(i + vec3(1, 1, 0)), f.x), f.y),
 		mix(mix(h3(i + vec3(0, 0, 1)), h3(i + vec3(1, 0, 1)), f.x), mix(h3(i + vec3(0, 1, 1)), h3(i + vec3(1, 1, 1)), f.x), f.y), f.z); }
 float fbm(vec3 p){ return vn(p) * 0.55 + vn(p * 2.1 + 3.1) * 0.3 + vn(p * 4.3 + 7.7) * 0.15; }
+float hs3(vec3 p){ p = fract(p * vec3(0.1031, 0.1030, 0.0973)); p += dot(p, p.yxz + 33.33); return fract((p.x + p.y) * p.z); }      // (a hash with no sin in it: a phone's graphics take sin of large numbers loosely, and a hash of it can come out the same in every cell)
 float fbub(vec2 p, float on_p, float rk){      // (round blobs of a few sizes, most cells empty: foam drawn clean, as the sea's lip is)
 	vec2 i = floor(p); vec2 f = fract(p); float m = 0.0;
 	for (int y = -1; y <= 1; y++) { for (int x = -1; x <= 1; x++) {
 		vec2 g = vec2(float(x), float(y)); vec2 q = i + g;
-		vec2 o = vec2(h3(vec3(q, 5.1)), h3(vec3(q, 9.7))) * 0.8 + 0.1;
-		float r = (0.12 + 0.3 * h3(vec3(q, 2.3))) * rk;
-		m = max(m, step(1.0 - on_p, h3(vec3(q, 7.9))) * (1.0 - smoothstep(r * 0.75, r, length(g + o - f))));
+		vec2 o = vec2(hs3(vec3(q, 5.1)), hs3(vec3(q, 9.7))) * 0.8 + 0.1;
+		float r = (0.12 + 0.3 * hs3(vec3(q, 2.3))) * rk;
+		m = max(m, step(1.0 - on_p, hs3(vec3(q, 7.9))) * (1.0 - smoothstep(r * 0.75, r, length(g + o - f))));
 	} }
 	return m;
 }
@@ -2447,11 +2454,11 @@ void fragment(){
 	}
 	c *= 1.0 + bounce * vec3(0.16, 0.07, -0.02) * smoothstep(0.15, -0.55, d);      // (warm light thrown back from the mist into the shade)
 	if (wet_k > 0.0) {
-		float wet = wet_k * (1.0 - smoothstep(dry_y - 0.08, dry_y + 0.02, wy));
+		float wet = wet_k * (1.0 - smoothstep(dry_y - 0.35, dry_y + 0.15, wy));      // (drying softly from the top down, no line of light passing down it (the owner, 20/11: "a white flash passes over the whole stone"))
 		c = mix(c, c * vec3(0.8, 0.8, 0.87), wet * 0.75);      // (darker and a little cooler: wet stone)
 		float run = smoothstep(0.8, 1.0, sin(dot(wp.xz, vec2(37.0, 29.0)) + sin(wp.x * 7.0) * 2.0)) * smoothstep(0.5, 1.0, fract(wy * 2.4 + TIME * 1.7));
-		c += vec3(1.0) * run * wet * 0.24 * (1.0 - abs(fn.y));      // (water running down its sides)
-		c += vec3(1.0) * wet * 0.07 * smoothstep(0.7, 0.95, fn.y);      // (a sheen on its top)
+		c += vec3(1.0) * run * wet * 0.13 * (1.0 - abs(fn.y));      // (water running down its sides)
+		c += vec3(1.0) * wet * 0.02 * smoothstep(0.7, 0.95, fn.y);      // (a faint sheen on its top)
 	}
 	if (foam_k > 0.0) {      // (the user: "foam where they come out, and on them a little": a few round blobs of the sea's foam on its top, short runs down its sides, all draining off below a line that sinks)
 		float below = 1.0 - smoothstep(foam_y - 0.04, foam_y + 0.01, wy);
@@ -2463,7 +2470,7 @@ void fragment(){
 		float dash = smoothstep(0.3, 0.45, fract(wy * 2.0 + TIME * 0.9 + hc * 5.0));
 		float runs = col * dash * (1.0 - upf) * smoothstep(0.0, 0.3, 1.0 - abs(fn.y));
 		float ff = foam_k * below * clamp(blobs * upf + runs * 0.75, 0.0, 1.0);
-		c = mix(c, vec3(1.0, 0.99, 0.97), ff * 0.8);
+		c = mix(c, vec3(1.0, 0.99, 0.97), ff * 0.55);
 	}
 	if (sun_k > 0.0 && sil < 0.5) {
 		float lit = smoothstep(-0.05, 0.45, d);      // (the faces the light falls on)
@@ -4627,6 +4634,7 @@ func _ivw_risers_find(lv: Node3D, mn: Node3D) -> void:
 		var nm := String(mi.name).to_lower()
 		mi.material_override = _ivr_mat("rock2" if nm.contains("rock") else "marble2", 1.0, true).duplicate() as ShaderMaterial
 		(mi.material_override as ShaderMaterial).set_shader_parameter("clip_k", 0.0); (mi.material_override as ShaderMaterial).set_shader_parameter("under_k", 1.0)
+		(mi.material_override as ShaderMaterial).set_shader_parameter("wet_k", 1.0); (mi.material_override as ShaderMaterial).set_shader_parameter("dry_y", 1000.0)      # (wet while it lies under the water, so nothing changes at once as it comes up)
 		var img: MeshInstance3D = null
 		if mn != null:
 			var f := mn.find_children(String(mi.name), "MeshInstance3D", true, false)
@@ -4717,11 +4725,12 @@ func _ivw_emerge(r: Array) -> void:
 		if q.size() > 5 and String(q[5]) == String(r[5]):
 			var qm := (q[0] as MeshInstance3D).material_override as ShaderMaterial
 			if qm == null: continue
-			qm.set_shader_parameter("wet_k", 1.0); qm.set_shader_parameter("dry_y", bb.end.y + 0.6)
+			qm.set_shader_parameter("wet_k", 1.0); qm.set_shader_parameter("dry_y", bb.end.y + 0.6)      # (wet already under the water (_ivw_risers_find): nothing about it changes at once as it breaks the surface)
 			var tw := create_tween(); tw.tween_interval(0.6)
 			tw.tween_method(func(v: float) -> void: qm.set_shader_parameter("dry_y", v), bb.end.y + 0.6, sea - 0.15, 2.8).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
-			qm.set_shader_parameter("foam_k", 1.0); qm.set_shader_parameter("foam_y", bb.end.y + 0.4)      # (it comes up with the sea's foam on it, which drains off its top and down its sides)
+			qm.set_shader_parameter("foam_y", bb.end.y + 0.4)      # (it comes up with the sea's foam on it, which drains off its top and down its sides: coming in over a moment, never at once)
 			var tf := create_tween().set_parallel(true)
+			tf.tween_method(func(v: float) -> void: qm.set_shader_parameter("foam_k", v), 0.0, 1.0, 0.35).set_trans(Tween.TRANS_SINE)
 			tf.tween_method(func(v: float) -> void: qm.set_shader_parameter("foam_y", v), bb.end.y + 0.4, sea - 0.1, 2.6).set_delay(0.3).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_SINE)
 			tf.tween_method(func(v: float) -> void: qm.set_shader_parameter("foam_k", v), 1.0, 0.0, 3.6).set_delay(0.8).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
 
@@ -4735,7 +4744,7 @@ uniform sampler2D shore_tex : filter_linear, repeat_disable;
 uniform vec4 shore_rect = vec4(0.0, 0.0, 1.0, 1.0); uniform float shore_d = 1.6;
 uniform float boil = 0.0; uniform float churn = 0.0; uniform float spread = 0.05;
 uniform vec2 centre; uniform float rad = 0.5;
-uniform float box_k = 0.0; uniform vec2 box_half = vec2(0.45); uniform float box_r = 0.0;      // (or round a square stone set down in the water, not one in the shore's map: the block fallen into its hole; a rising stone's own slab, its corners rounded by box_r)
+uniform float box_k = 0.0; uniform vec2 box_half = vec2(0.45);      // (or round a square stone set down in the water, not one in the shore's map: the block fallen into its hole)
 uniform vec3 foam_c : source_color = vec3(1.0, 0.985, 0.97);
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
@@ -4754,7 +4763,7 @@ float bub(vec2 p, float rk){      // (round bubbles of a few sizes, some cells e
 void fragment(){
 	vec2 su = (wp.xz - shore_rect.xy) * shore_rect.zw;
 	float d = (1.0 - texture(shore_tex, clamp(su, vec2(0.001), vec2(0.999))).g) * shore_d;      // (how far from the stone's edge: nothing over it)
-	if (box_k > 0.5) { vec2 bq = abs(wp.xz - centre) - (box_half - vec2(box_r)); d = max(length(max(bq, vec2(0.0))) - box_r, 0.0); }
+	if (box_k > 0.5) { vec2 bq = abs(wp.xz - centre) - box_half; d = length(max(bq, vec2(0.0))); }
 	float onw = step(0.0005, d);      // (on the water only: over the stone nothing, it has its own)
 	float nz = vn(wp.xz * 3.5 + vec2(TIME * 0.3, -TIME * 0.24)) * 0.6 + vn(wp.xz * 8.0 - vec2(TIME * 0.42, -TIME * 0.18)) * 0.4;      // (broad and slow: the edges drawn clean and uneven, as the sea's own lip is; never a fine glitter)
 	float dd = d + (nz - 0.5) * 0.06;
@@ -4774,16 +4783,14 @@ void fragment(){
 func _ivw_churn_make(r: Array) -> MeshInstance3D:
 	if ivs_sea_mat == null or ivs_sea_mat.get_shader_parameter("shore_tex") == null: return null
 	var bb := AABB(); var first := true
-	for q in ivw_risers:      # (the stone's slab: what breaks the water first)
-		if q.size() > 5 and String(q[5]) == String(r[5]) and String((q[0] as MeshInstance3D).name).to_lower().contains("marble"):
+	for q in ivw_risers:      # (the whole stone: its rock and its slab)
+		if q.size() > 5 and String(q[5]) == String(r[5]):
 			var qb := (q[0] as MeshInstance3D).global_transform * (q[0] as MeshInstance3D).get_aabb()
 			bb = qb if first else bb.merge(qb); first = false
-	if first: return null
-	var sea := IV_O.y + ivr_sea_y; var c := bb.get_center(); var hf := Vector2(bb.size.x, bb.size.z) * 0.5; var rad := maxf(hf.x, hf.y) * 1.42
+	var sea := IV_O.y + ivr_sea_y; var c := bb.get_center(); var rad := maxf(bb.size.x, bb.size.z) * 0.5
 	var m := ShaderMaterial.new(); m.shader = _ivw_shader(IVW_CHURN_SH); m.render_priority = 6
 	for k in ["shore_tex", "shore_rect", "shore_d"]: m.set_shader_parameter(k, ivs_sea_mat.get_shader_parameter(k))
-	m.set_shader_parameter("centre", Vector2(c.x, c.z)); m.set_shader_parameter("rad", rad)
-	m.set_shader_parameter("box_k", 1.0); m.set_shader_parameter("box_half", hf); m.set_shader_parameter("box_r", minf(0.14, minf(hf.x, hf.y) * 0.3))      # (round its own slab only (the owner, 20/11: "when the rocks come out of the water they make a strange flash"): read from the shore map, the foam followed the outline all the stones' rock will have at the water once all are up, one blob, so as the first broke the water white lines leapt out over the others still under it)
+	m.set_shader_parameter("centre", Vector2(c.x, c.z)); m.set_shader_parameter("rad", rad)      # (read from the shore map: the outline the stones' rock has at the water; foam round each stone only was tried, and the owner, 20/11, liked this one better)
 	var pm := PlaneMesh.new(); var ext := (rad + 1.2) * 2.0; pm.size = Vector2(ext, ext)
 	var mi := MeshInstance3D.new(); mi.mesh = pm; mi.material_override = m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(mi)
 	mi.global_position = Vector3(c.x, sea + 0.006, c.z)
@@ -5428,9 +5435,9 @@ func _ivv_way_parent(a: String, b: String) -> Node3D:      # (the line or disc t
 	if not ivv_hole_way.has(h):
 		var n := Node3D.new(); iv_root.add_child(n); n.position.y = -1.4; ivv_hole_way[h] = n
 	return ivv_hole_way[h]
-const IVV_BLOCK_SCALE := 1.0      # (the block a stone of the causeway's size: it is to be the stone that is missing)
-const IVV_BLOCK_H := 1.04
-const IVV_BLOCK_HALF := 0.46      # (half its side, its faces a little out of true)
+const IVV_CUBE := 0.92      # (the cube's side as it is made, props/block_cube.glb: the second level's, of the causeway's stones' size, as it is to be the stone that is missing)
+func _ivv_bscale() -> float: return IVM_BLOCK_H / IVV_CUBE if go_milos else 1.0      # (the third level's as high as the light runs over its floor, so it stops it: 1.06 m)
+func _ivv_bside() -> float: return IVV_CUBE * _ivv_bscale()
 const IVV_FALL_DB := -3.0
 const IVV_PUSH_DB := -4.0
 func _ivv_push_in(nb: String, c: String) -> void:
@@ -5438,14 +5445,14 @@ func _ivv_push_in(nb: String, c: String) -> void:
 	iv_busy = true
 	var bp: Vector3 = iv_block_n.global_position
 	var sea := IV_O.y + ivr_sea_y
-	var hgt := IVV_BLOCK_H * IVV_BLOCK_SCALE      # (it sinks its own height: its top comes to rest level with the way)
+	var hgt := _ivv_bside()      # (it sinks its own height: its top comes to rest level with the way)
 	print("IV the block falls into ", c, " at ", snappedf(iv_t, 0.01))
 	_ivw_sfx("block_fall", IVV_FALL_DB)
 	var t := create_tween(); t.tween_property(iv_block_n, "global_position:y", bp.y - hgt - 0.05, 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	t.tween_property(iv_block_n, "global_position:y", bp.y - hgt, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)      # (down a little past its rest, and up to it: a heavy stone settling on its bed)
 	get_tree().create_timer(0.2, false).timeout.connect(func() -> void:
 		_ivw_ripple(Vector3(bp.x, sea, bp.z), 1.4); _ivw_splash(Vector3(bp.x, sea + 0.02, bp.z), 0.55)
-		_ivw_churn_burst(_ivv_churn_box(Vector3(bp.x, sea, bp.z), IVV_BLOCK_HALF * IVV_BLOCK_SCALE))      # (foam thrown out round it as it plunges, the owner: "when the stone falls in, foam")
+		_ivw_churn_burst(_ivv_churn_box(Vector3(bp.x, sea, bp.z), _ivv_bside() * 0.5))      # (foam thrown out round it as it plunges, the owner: "when the stone falls in, foam")
 		_ivv_block_foam(sea)
 		get_tree().create_timer(0.4, false).timeout.connect(func() -> void: _ivw_ripple(Vector3(bp.x, sea, bp.z), 1.9)))
 	await t.finished
@@ -6288,7 +6295,7 @@ func _ivr_block() -> Node3D:
 		for m in b0.find_children("*", "MeshInstance3D", true, false): (m as MeshInstance3D).material_override = _ivr_mat("marble2", 0.0)
 		return b0
 	var st := GLTFState.new(); var doc := GLTFDocument.new()
-	var bf := "res://props/block_cube.glb" if go_glass else ("res://props/block_meander.glb" if go_veil else "res://goiv/block.glb")      # (the fourth level: a true cube, its meander on all six faces, as it tumbles (the owner, 20/11: "the cube looks rectangular rather than square"; tools/go/block_cube.py))      # (the second level: the carved cube made rougher, its faces out of true, corners broken, its meander uneven as cut by hand and apart, to be coloured (tools/go/block_meander.py))
+	var bf := "res://props/block_cube.glb" if go_veil else "res://goiv/block.glb"      # (a true cube in the second, third and fourth levels (the owner, 20/11: "this holds for maps 2 and 3 with the cube too"))      # (the fourth level: a true cube, its meander on all six faces, as it tumbles (the owner, 20/11: "the cube looks rectangular rather than square"; tools/go/block_cube.py))      # (the second level: the carved cube made rougher, its faces out of true, corners broken, its meander uneven as cut by hand and apart, to be coloured (tools/go/block_meander.py))
 	doc.append_from_buffer(FileAccess.get_file_as_bytes(bf), "", st)
 	var n := Node3D.new(); iv_root.add_child(n)
 	n.add_child(doc.generate_scene(st))
@@ -6368,7 +6375,7 @@ func _ivr_build() -> void:
 	_ivr_way()
 	iv_me = "s"; iv_block = String(ivg.block) if ivg_on else "b0"
 	iv_block_n = _ivr_block()
-	if go_veil: iv_block_n.scale = Vector3.ONE * IVV_BLOCK_SCALE      # (made at its size: 0.9 m square, 1.04 m high)
+	if go_veil: iv_block_n.scale = Vector3.ONE * _ivv_bscale()      # (made at its size: a cube of 0.92 m, the third level's 1.06 m)
 	if go_glass and OS.get_environment("IV_BLOCK_AT") != "": iv_block = OS.get_environment("IV_BLOCK_AT")      # (for a picture: the block at that node from the first)
 	if ivp_nodes.has(iv_block): iv_block_n.global_position = ivp_nodes[iv_block]
 	else: iv_block_n.visible = false; iv_block_n.global_position = IV_O + Vector3(0, -60, 0)      # (a trial without the stone)
@@ -6785,7 +6792,7 @@ func _ivg_push(nb: String, c: String, first := "") -> void:
 	var kp: Vector3 = ivp_nodes[nb]; var qp: Vector3 = ivp_nodes[c]
 	var dv := Vector3(qp.x - kp.x, 0, qp.z - kp.z).normalized()
 	var fp: Vector3 = ivp_nodes[first] if first != "" else qp      # (a block that slides goes with her hands only to the next node; then on by itself)
-	var tum := IVT_ON and go_glass and (first == "" or first == c)      # (the fourth level: shoved, it tumbles over onto the next place; the owner, 19/11: "would it not be better to tumble it than drag it?")
+	var tum := IVT_ON and go_veil and not _ivv_hole(c) and not (ivg.get("unwalked", []) as Array).has(c) and (first == "" or first == c)      # (shoved, it tumbles over onto the next place (the owner, 19/11: "would it not be better to tumble it than drag it?"; 20/11, of the second and third levels too); out over a gap, or into the third level's niche under its rock, it slides)
 	iv_push = {"d": dv, "start": pos, "m0": kp, "len": Vector2(fp.x - kp.x, fp.z - kp.z).length(), "tumble": tum}
 	print("IV push ", nb, " -> ", c)
 	if go_veil and not tum: _ivw_sfx("block_push", IVV_PUSH_DB, 0.0, randf_range(0.95, 1.05))      # (stone dragged on stone)
@@ -9858,7 +9865,7 @@ var ivm_beam: Array = []      # (the beam's straight runs: [core, halo] each)
 var ivm_spark: MeshInstance3D      # (where the light ends on a thing: a bright spot)
 var ivm_leaves: Array = []      # (the gate's leaves: [hinge, its shut basis, the turn that opens it])
 const IVM_DISC_H := 1.02      # (the mirror's disc stands this high over its floor: _ivq_mirror)
-const IVM_BLOCK_HALF := 0.48      # (the stone as the light meets it: half its breadth, its height)
+const IVM_BLOCK_HALF := 0.53      # (the stone as the light meets it: half its breadth, its height; a cube of 1.06 m since 20/11)
 const IVM_BLOCK_H := 1.06
 const IVM_HER_R := 0.2      # (her body as the light meets it)
 const IVM_HER_H := 1.72
@@ -10077,7 +10084,7 @@ var ivgl_T := Transform3D()      # (the turn about the glass, in the world)
 var ivgl_img: Node3D      # (the level's image)
 var ivgl_block: Node3D      # (the block's image, kept to the block each frame)
 var ivgl_plane := Plane()      # (the glass in the world: the real side before it, n.p > d)
-var ivgl_square: MeshInstance3D
+var ivgl_square: Node3D
 const IVGL_ISLAND := true      # (the owner, 19/11: "could it be not a glass with a reflection, just an opposite island?": the same place turned over, standing across the water; no pane, its own colours; what moves here moves there)
 const IVGL_ISLE_GRAD := 0.0      # (the face's pink-to-blue gradient over it: 0.88 on 19/11 ("even more pink-blue"), then the owner, 20/11: "I don't like the reflection's colours at all ... colour-wise we're off our style": none)
 const IVGL_ISLE_TINT := 0.0      # (its colours drawn to the concept's image: a cool grey duotone, its shade a grey-blue, its light a pale lilac grey; sampled from design/level4/slide/concept_start.jpg, where the image beyond the glass is about bfbece and b4b9cc)
@@ -10109,29 +10116,6 @@ void fragment(){
 	ALBEDO = vec3(1.0, 0.98, 0.95); ALPHA = clamp(a * k, 0.0, 1.0);
 }
 """
-const IVGL_SQUARE_SH := """
-shader_type spatial;
-render_mode unshaded, cull_disabled, shadows_disabled, depth_draw_never, blend_mix;
-uniform vec3 col : source_color = vec3(1.0, 0.96, 0.88);      // (its light, white as the ring's)
-uniform vec3 tile : source_color = vec3(0.5, 0.45, 0.5);      // (the brown stone within it and round it, given to the island's mist)
-uniform float k = 1.0;
-void fragment(){      // (the square in the image: a thin line of white light, sharp but bright (the owner, 19/11), the brown stone within it and a square of it round it (20/11))
-	vec2 p = abs(UV - 0.5) * 2.0; float d = max(p.x, p.y);
-	float aa = fwidth(d); float w = max(0.012, aa * 0.9);
-	float e = abs(d - 0.62);
-	float ln = 1.0 - smoothstep(w, w + aa, e);
-	float gw = exp(-pow(e / max(0.03, aa * 2.0), 2.0)) * 0.5;      // (a glow at its rim, so it reads as light)
-	float inner = 1.0 - smoothstep(0.62 - w - 0.05 - aa, 0.62 - w - 0.05, d);
-	float band = smoothstep(0.7 - aa, 0.7, d) * (1.0 - smoothstep(0.79, 0.79 + aa, d));
-	float tl = max(inner, band) * 0.92;
-	float g = clamp(gw * min(k, 1.4), 0.0, 1.0); float l = clamp(ln * min(k, 1.4), 0.0, 1.0);
-	vec3 core = mix(vec3(1.0, 0.98, 0.94), vec3(1.0, 1.0, 1.0), clamp(k - 1.0, 0.0, 1.0));      // (its heart white, whiter as the block's image stands in it)
-	float a1 = g + tl * (1.0 - g); vec3 c1 = (col * g + tile * tl * (1.0 - g)) / max(a1, 0.001);      // (the glow over the terracotta, then the line over both)
-	float a2 = l + a1 * (1.0 - l); vec3 c2 = (core * l + c1 * a1 * (1.0 - l)) / max(a2, 0.001);
-	ALBEDO = c2; ALPHA = clamp(a2, 0.0, 1.0);
-}
-"""
-
 const IVGL_VEIL_SH := """
 shader_type spatial;
 render_mode unshaded, cull_disabled, shadows_disabled, depth_draw_never, blend_mix, fog_disabled;
@@ -10327,45 +10311,20 @@ func _ivgl_setup(lv: Node3D) -> void:
 	ivgl_pane.visible = not IVGL_ISLAND
 	iv_root.add_child(ivgl_pane)
 	var pp: Array = mr.get("plate", [0.0, 0.0, 0.0])
-	var sq := PlaneMesh.new(); sq.size = Vector2(1.7, 1.7)
-	var sm := ShaderMaterial.new(); sm.shader = _ivw_shader(IVGL_SQUARE_SH); sm.render_priority = 6
-	sm.set_shader_parameter("tile", Color(String((_iv_pal("rock2") as Array)[1])).lerp(IVGL_ISLE_HAZE, 0.35))
-	ivgl_square = MeshInstance3D.new(); ivgl_square.mesh = sq; ivgl_square.material_override = sm; ivgl_square.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	var sy := float(ivgl_sq_y[k0]) if ivgl_sq_y.size() > k0 else float(pp[1])      # (it lies on the image's floor under it)
-	iv_root.add_child(ivgl_square); ivgl_square.global_position = IV_O + Vector3(float(pp[0]), sy + 0.03, float(pp[2]))
+	ivgl_square_mat = _ivgl_pad_light()      # (the square in the image made as the one at her start (the owner, 20/11: "the start's square differs from the target's in the reflection; I want it as the real one"): its stone a little given to the island's haze)
+	var st := (_iv_mat("rock2", 0.0, {"fog_hi": -9.0, "fog_lo": -14.0}) as ShaderMaterial).duplicate() as ShaderMaterial
+	var rp: Array = _iv_pal("rock2"); var cn := ["c_top", "c_lit", "c_mid", "c_dark"]
+	for ci in 4: st.set_shader_parameter(cn[ci], Color(String(rp[ci])).lerp(IVGL_ISLE_HAZE, 0.35))
+	var tp := _ivgl_pad(IV_O + Vector3(float(pp[0]), sy, float(pp[2])), ivgl_square_mat, st, 0.22)
+	ivgl_square = tp[0]; ivgl_square_glow = tp[1]
 	ivgl_b0 = iv_block; ivgl_reset_n = String(ivg.get("reset", "")) if ivg_on else ""
 	ivt_home = iv_block_n.global_transform
 	if ivp_nodes.has(String(ivg.block)) and iv_block != String(ivg.block): ivt_home.origin = ivp_nodes[String(ivg.block)]; ivgl_b0 = String(ivg.block)      # (a picture's block elsewhere: still put back where the trial's block begins)
 	if ivgl_reset_n != "" and ivp_nodes.has(ivgl_reset_n):      # (the square at her start (the owner, 19/11): stepping on it puts the block back where it began; made as the ring before the gate is, square: a bright frame round a brown stone, so it stands out (the owner: "brown inside and bright outside, as the circle is"))
-		ivgl_reset_sq = Node3D.new(); iv_root.add_child(ivgl_reset_sq); ivgl_reset_sq.global_position = ivp_nodes[ivgl_reset_n]
-		var fr := Node3D.new(); fr.position = Vector3(0, 0.06, 0); fr.scale = Vector3(1, 0.62, 1); ivgl_reset_sq.add_child(fr)      # (its frame squashed as the ring's torus is)
-		var ha := IVGL_PAD_HALF; var tr := IVGL_PAD_TUBE
-		ivgl_reset_mat = (_iv_mat("ring", 0.0) as ShaderMaterial).duplicate() as ShaderMaterial
-		var lit := Color(String((_iv_pal("ring") as Array)[0]))
-		for nm in ["c_top", "c_lit", "c_mid", "c_dark"]: ivgl_reset_mat.set_shader_parameter(nm, lit)
-		ivgl_reset_mat.set_shader_parameter("emit", 0.3)      # (lit, as the ring once its gate is open: a golden light was tried a day and the owner kept its form, its light white again (20/11: "make it with white light"))
-		for k in 4:      # (its four sides, round in section as the ring's tube)
-			var bar := CylinderMesh.new(); bar.top_radius = tr; bar.bottom_radius = tr; bar.height = ha * 2.0; bar.radial_segments = 10; bar.rings = 1
-			var bi := MeshInstance3D.new(); bi.mesh = bar; bi.material_override = ivgl_reset_mat; bi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; fr.add_child(bi)
-			var ang := PI * 0.5 * float(k)
-			bi.basis = Basis(Vector3.UP, ang) * Basis(Vector3(0, 0, 1), PI * 0.5); bi.position = Basis(Vector3.UP, ang) * Vector3(0, 0, ha)
-		for sx in [-1.0, 1.0]:      # (its corners rounded)
-			for sz in [-1.0, 1.0]:
-				var sp := SphereMesh.new(); sp.radius = tr; sp.height = tr * 2.0; sp.radial_segments = 10; sp.rings = 5
-				var si := MeshInstance3D.new(); si.mesh = sp; si.material_override = ivgl_reset_mat; si.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; fr.add_child(si); si.position = Vector3(sx * ha, 0, sz * ha)
-		var inn := BoxMesh.new(); inn.size = Vector3((ha - tr * 0.6) * 2.0, 0.02, (ha - tr * 0.6) * 2.0)      # (the brown stone within, as the ring's)
-		var ii := MeshInstance3D.new(); ii.mesh = inn; ii.material_override = _iv_mat("rock2", 0.0, {"fog_hi": -9.0, "fog_lo": -14.0}); ii.position = Vector3(0, 0.012, 0); ivgl_reset_sq.add_child(ii)      # (the brown stone within)
-		var fo := Node3D.new(); fo.position = Vector3(0, 0.022, 0); fo.scale = Vector3(1, 0.3, 1); ivgl_reset_sq.add_child(fo)      # (and round it another square of the same stone, low, inlaid (the owner, 20/11: "the square I like as it became ... replace the terracotta with the colour you had"))
-		var ho := IVGL_PAD_OUT; var to := IVGL_PAD_OUT_TUBE
-		for k in 4:
-			var ob := CylinderMesh.new(); ob.top_radius = to; ob.bottom_radius = to; ob.height = ho * 2.0 + to * 2.0; ob.radial_segments = 8; ob.rings = 1
-			var obi := MeshInstance3D.new(); obi.mesh = ob; obi.material_override = _iv_mat("rock2", 0.0, {"fog_hi": -9.0, "fog_lo": -14.0}); obi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; fo.add_child(obi)
-			var oang := PI * 0.5 * float(k)
-			obi.basis = Basis(Vector3.UP, oang) * Basis(Vector3(0, 0, 1), PI * 0.5); obi.position = Basis(Vector3.UP, oang) * Vector3(0, 0, ho)
-		var gq2 := QuadMesh.new(); gq2.size = Vector2(1.3, 1.3)      # (and its soft glow, as the ring's)
-		var gm2 := StandardMaterial3D.new(); gm2.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm2.albedo_texture = load("res://goiv/glow.png")
-		gm2.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm2.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; gm2.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; gm2.albedo_color = Color(1.0, 0.97, 0.92, 0.26); gm2.render_priority = 6
-		ivgl_reset_glow = MeshInstance3D.new(); ivgl_reset_glow.mesh = gq2; ivgl_reset_glow.material_override = gm2; ivgl_reset_glow.position = Vector3(0, 0.22, 0); ivgl_reset_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; ivgl_reset_sq.add_child(ivgl_reset_glow)
+		ivgl_reset_mat = _ivgl_pad_light()
+		var rpd := _ivgl_pad(ivp_nodes[ivgl_reset_n], ivgl_reset_mat, _iv_mat("rock2", 0.0, {"fog_hi": -9.0, "fog_lo": -14.0}), 0.26)
+		ivgl_reset_sq = rpd[0]; ivgl_reset_glow = rpd[2]
 		# (no twin of it on the island over the water (the owner, 19/11: "the shadow doesn't need a start square"))
 	if hero_real and H.has("main") and OS.get_environment("IV_GLASS_HER") != "0":      # (her image in the glass, as a mirror has it: a body of hers turned over about it, doing as she does; a black blurred shadow of her (the owner, 19/11: "if Ione's reflection shows, let it be like a black blurred shadow"); IV_GLASS_HER=0 leaves it out)
 		ivgl_her_root = Node3D.new(); add_child(ivgl_her_root)
@@ -10382,6 +10341,45 @@ func _ivgl_setup(lv: Node3D) -> void:
 	if OS.get_environment("IV_GATE_OPEN") == "1": call_deferred("_ivgl_demo_open")      # (for a picture: the ring lit and the gate open from the first)
 
 var ivgl_reset_sq: Node3D
+var ivgl_square_mat: ShaderMaterial
+var ivgl_square_glow: StandardMaterial3D
+func _ivgl_pad_light() -> ShaderMaterial:      # (a square's frame: the ring's own lit white, as the ring once its gate is open; a golden light was tried a day and the owner kept its form, its light white again (20/11: "make it with white light"))
+	var m := (_iv_mat("ring", 0.0) as ShaderMaterial).duplicate() as ShaderMaterial
+	var lit := Color(String((_iv_pal("ring") as Array)[0]))
+	for nm in ["c_top", "c_lit", "c_mid", "c_dark"]: m.set_shader_parameter(nm, lit)
+	m.set_shader_parameter("emit", 0.3)
+	return m
+## a square of light, made as the ring before the gate is, square (the owner: "brown inside and bright outside, as the
+## circle is"; 20/11: "the square I like as it became ... replace the terracotta with the colour you had"): a bright frame
+## of four round bars and round corners, squashed as the ring's torus is, the brown stone within it, a low square of the
+## same stone round it, and the ring's soft glow over it. [the square, its glow's material, its glow]
+func _ivgl_pad(at: Vector3, frame_mat: Material, stone_mat: Material, glow_a: float) -> Array:
+	var pad := Node3D.new(); iv_root.add_child(pad); pad.global_position = at
+	var fr := Node3D.new(); fr.position = Vector3(0, 0.06, 0); fr.scale = Vector3(1, 0.62, 1); pad.add_child(fr)
+	var ha := IVGL_PAD_HALF; var tr := IVGL_PAD_TUBE
+	for k in 4:      # (its four sides, round in section as the ring's tube)
+		var bar := CylinderMesh.new(); bar.top_radius = tr; bar.bottom_radius = tr; bar.height = ha * 2.0; bar.radial_segments = 10; bar.rings = 1
+		var bi := MeshInstance3D.new(); bi.mesh = bar; bi.material_override = frame_mat; bi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; fr.add_child(bi)
+		var ang := PI * 0.5 * float(k)
+		bi.basis = Basis(Vector3.UP, ang) * Basis(Vector3(0, 0, 1), PI * 0.5); bi.position = Basis(Vector3.UP, ang) * Vector3(0, 0, ha)
+	for sx in [-1.0, 1.0]:      # (its corners rounded)
+		for sz in [-1.0, 1.0]:
+			var sp := SphereMesh.new(); sp.radius = tr; sp.height = tr * 2.0; sp.radial_segments = 10; sp.rings = 5
+			var si := MeshInstance3D.new(); si.mesh = sp; si.material_override = frame_mat; si.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; fr.add_child(si); si.position = Vector3(sx * ha, 0, sz * ha)
+	var inn := BoxMesh.new(); inn.size = Vector3((ha - tr * 0.6) * 2.0, 0.02, (ha - tr * 0.6) * 2.0)
+	var ii := MeshInstance3D.new(); ii.mesh = inn; ii.material_override = stone_mat; ii.position = Vector3(0, 0.012, 0); pad.add_child(ii)
+	var fo := Node3D.new(); fo.position = Vector3(0, 0.022, 0); fo.scale = Vector3(1, 0.3, 1); pad.add_child(fo)
+	var ho := IVGL_PAD_OUT; var to := IVGL_PAD_OUT_TUBE
+	for k in 4:
+		var ob := CylinderMesh.new(); ob.top_radius = to; ob.bottom_radius = to; ob.height = ho * 2.0 + to * 2.0; ob.radial_segments = 8; ob.rings = 1
+		var obi := MeshInstance3D.new(); obi.mesh = ob; obi.material_override = stone_mat; obi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; fo.add_child(obi)
+		var oang := PI * 0.5 * float(k)
+		obi.basis = Basis(Vector3.UP, oang) * Basis(Vector3(0, 0, 1), PI * 0.5); obi.position = Basis(Vector3.UP, oang) * Vector3(0, 0, ho)
+	var gq := QuadMesh.new(); gq.size = Vector2(1.3, 1.3)
+	var gm := StandardMaterial3D.new(); gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm.albedo_texture = load("res://goiv/glow.png")
+	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; gm.albedo_color = Color(1.0, 0.97, 0.92, glow_a); gm.render_priority = 6
+	var gi := MeshInstance3D.new(); gi.mesh = gq; gi.material_override = gm; gi.position = Vector3(0, 0.22, 0); gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; pad.add_child(gi)
+	return [pad, gm, gi]
 var ivgl_reset_mat: ShaderMaterial
 var ivgl_reset_glow: MeshInstance3D
 const IVGL_PAD_HALF := 0.39      # (half the frame's side along its tube's middle: as wide as the ring)
@@ -10437,7 +10435,7 @@ func _ivgl_demo_open() -> void:
 	ivm_open = true; ivm_ring_k = 1.0
 	if ivm_ring_gold != null: _ivm_ring_tick()
 	_ivm_gate_open()
-	if ivgl_square != null: (ivgl_square.material_override as ShaderMaterial).set_shader_parameter("k", 1.8)
+	if ivgl_square_mat != null: ivgl_square_mat.set_shader_parameter("emit", 0.9)
 
 func _ivgl_tick() -> void:      # (the images of what moves go with it: the block, the winch's wheel, the gate's leaves)
 	for pr in ivgl_pairs:
@@ -10468,9 +10466,10 @@ func _ivgl_check() -> void:      # (the block at rest where its image stands in 
 	if ivm_open: return
 	if po == "" or iv_block != po: return
 	print("IV the block's image stands in the square of light: the ring lights, and the gate opens")
-	if ivgl_square != null:
-		var sm := ivgl_square.material_override as ShaderMaterial
-		create_tween().tween_method(func(v: float) -> void: sm.set_shader_parameter("k", v), 1.0, 1.8, 0.6).set_trans(Tween.TRANS_SINE)
+	if ivgl_square_mat != null:      # (its light flares and stays a little brighter, as the start's does as she stands in it)
+		var sm := ivgl_square_mat; var gm := ivgl_square_glow
+		var tw := create_tween(); tw.tween_method(func(v: float) -> void: sm.set_shader_parameter("emit", v); gm.albedo_color.a = 0.22 + v * 0.5, 0.3, 1.2, 0.35).set_trans(Tween.TRANS_SINE)
+		tw.tween_method(func(v: float) -> void: sm.set_shader_parameter("emit", v); gm.albedo_color.a = 0.22 + v * 0.5, 1.2, 0.9, 0.9).set_trans(Tween.TRANS_SINE)
 	await _ivm_open()
 
 var ivgl_mea_on := false
