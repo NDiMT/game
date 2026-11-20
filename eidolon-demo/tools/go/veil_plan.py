@@ -68,7 +68,8 @@ def plan():
     # in the world's x and z: toward the eye is (0.71, 0.71). They are a third larger than she is: monuments)
     face = lambda dx, dz: round(math.atan2(-dz, dx), 3)
     statues = [['seated', [-3.0, H1, -8.0], 1.9, face(0.8, 0.6)], ['welcome', [-0.15, H1, -9.15], 2.4, face(0.1, 1.0)]]
-    sea_statues = [['kneeling', [-3.3, H0, -1.2], 1.7, face(0.8, 0.6)], ['standing', [-3.3, H0, -3.0], 2.4, face(0.8, 0.6)], ['unfinished', [-3.3, H0, -4.8], 2.4, face(0.8, 0.6)]]
+    sea_statues_first = [['kneeling', [-3.3, H0, -1.2], 1.7, face(0.8, 0.6)], ['standing', [-3.3, H0, -3.0], 2.4, face(0.8, 0.6)], ['unfinished', [-3.3, H0, -4.8], 2.4, face(0.8, 0.6)]]      # (as they first stood: in a row, the eye framed on them)
+    sea_statues = [['kneeling', [-4.05, H0, -0.85], 1.95, face(0.86, 0.52)], ['standing', [-4.6, H0, -3.2], 2.75, face(0.66, 0.75)], ['unfinished', [-4.2, H0, -5.4], 2.7, face(0.92, 0.38)]]      # (a little larger, further out in the sea, not in a row, each turned its own way (the owner, 20/11: "the three statues on the left a little bigger, a little further out and a little more random"))
     puzzle = {
         'nodes': N, 'edges': edges, 'start': 'S', 'exit': 'R', 'block': 'K', 'holes': ['H'],
         'intro': [[1.5, H0, 0.01], [1.5, H0, 0.0]],      # (no way in: she stands where the light of the first gate let her go)
@@ -77,7 +78,7 @@ def plan():
         'solution': WAY,
         'lines': ['He tried to find her face again,', 'so he carved a thousand statues,', 'but none was her.'],      # (the owner's own words, 18/11: "he tried to find her face again, so he carved a thousand statues, but none was her"; three lines, each within a phone's width; only at the level's start)
     }
-    pts = [p for p in N.values()] + [[x, f['h'], z] for f in floors.values() for x, z in f['xz']] + [[-1.5, H1 + 2.6, -8.9]] + [[s[1][0], s[1][1] + s[2], s[1][2]] for s in statues + sea_statues]
+    pts = [p for p in N.values()] + [[x, f['h'], z] for f in floors.values() for x, z in f['xz']] + [[-1.5, H1 + 2.6, -8.9]] + [[s[1][0], s[1][1] + s[2], s[1][2]] for s in statues + sea_statues_first]      # (the eye as it was framed: the statues moved out do not move it)
     pl = {
         'scene': 'wake', 'sea_y': SEA, 'heights': {'H0': H0, 'H1': H1}, 'floors': floors, 'flights': [fl],
         'nodes': N, 'edges': edges, 'ring': N['R'], 'stone': N['K'], 'holes': ['H'], 'faces': [],

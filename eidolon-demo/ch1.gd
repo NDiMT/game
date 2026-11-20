@@ -3657,7 +3657,7 @@ func _ivp_post(dt: float) -> void:
 		var pr := clampf((pos - (iv_push.start as Vector3)).dot(dv), 0.0, float(iv_push.len))
 		var bp: Vector3 = (iv_push.m0 as Vector3) + dv * pr
 		if bool(iv_push.get("tumble", false)): bp = iv_push.get("bp", iv_push.m0)      # (shoved, it slides before her hands, then goes over by itself: her hands to where it was)
-		else: iv_block_n.global_position = bp
+		else: iv_block_n.global_position = bp + (iv_push.get("off", Vector3.ZERO) as Vector3)
 		if ivp_bshadow != null: ivp_bshadow.global_position = bp + Vector3(0.42, 0.012, -0.18)
 		var face := bp - dv * 0.42 + Vector3(0, 0.66, 0)
 		var sd := Vector3(-dv.z, 0, dv.x) * 0.2
@@ -5371,6 +5371,7 @@ func _ivv_begin() -> void:
 
 ## the veiled ones (the owner: each different): statues of her as he wished her to be, smooth marble softly lit as the
 ## Observer is, each where the plan sets its foot, its height and its turn; those in the sea stand on their pedestals
+const IVV_LIT_AS_OBSERVER := ["kneeling", "standing", "unfinished"]
 const IVV_LOOK := {"smooth_k": 4.0, "rim_k": 0.16, "rim_col": Color(1.0, 0.86, 0.76), "rim_dir": Vector3(0.3, 0.25, -1.0), "form_key": Vector3(-0.55, 0.62, 0.56), "veins": 0.05, "ao_k": 0.6}      # (the Observer's smooth soft light)
 func _ivv_ex(haze := 0.15) -> Dictionary:
 	var ex := {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.7, "haze": haze, "clip_k": 1.0, "clip_y": IV_O.y + ivr_sea_y, "shadow_k": 0.0, "wline_k": 0.0}
@@ -5422,7 +5423,9 @@ func _ivv_statues(j: Dictionary) -> void:
 			var om := (m as MeshInstance3D).mesh.surface_get_material(0) as BaseMaterial3D
 			if String(s[0]) == "goddess" and om != null and om.albedo_texture != null: exm = exs.duplicate(); exm["alb_tex"] = _iv_mipped(om.albedo_texture); exm["baked_k"] = 1.0; exm["far_k"] = 0.05; exm["rim_k"] = 0.0      # (the goddess: her own light and shade painted into her colour (baked in Blender from the level's light, a lilac shade), shown as painted (the owner, 18/11: "a texture with light and shade"))
 			if String(s[0]) == "goddess" and (m as MeshInstance3D).mesh is ArrayMesh and (((m as MeshInstance3D).mesh as ArrayMesh).surface_get_format(0) & Mesh.ARRAY_FORMAT_COLOR) != 0 and (om == null or om.albedo_texture == null): exm = exs.duplicate(); exm["baked_k"] = 2.0; exm["far_k"] = 0.05; exm["rim_k"] = 0.0; exm["smooth_k"] = 0.0; exm["ao_k"] = 0.0      # (the goddess: her first model, its few flat faces, her light and shade painted into their colours (baked in Blender from the level's light, a lilac shade), shown as painted (the owner, 18/11: "the first Aphrodite", "light and shade on the first model"))
-			(m as MeshInstance3D).material_override = _iv_mat("goddess" if String(s[0]) == "goddess" and go_milos else "statue", 0.0, exm); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+			var obs := go_veil and not go_milos and not go_glass and IVV_LIT_AS_OBSERVER.has(String(s[0]))      # (the three in the sea lit as the first level's Observer (the owner, 20/11: "lit like the statue of the first"): its own far haze, no shadow of their own over their pedestals, the low sun a little stronger on their edges)
+			if obs: exm = exm.duplicate(); exm["rim_k"] = 0.22
+			(m as MeshInstance3D).material_override = _iv_mat("goddess" if String(s[0]) == "goddess" and go_milos else "statue", 0.03 if obs else 0.0, exm); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if obs else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		_ivs_mirror(hp, func(_mi: MeshInstance3D) -> Array:
 			var mx := {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.7, "haze": 1.0, "mirror_fade": 2.0, "mirror_wob": 0.05}; mx.merge(look); return ["statue", 0.0, mx])
 
@@ -6379,6 +6382,7 @@ func _ivr_build() -> void:
 	if go_glass and OS.get_environment("IV_BLOCK_AT") != "": iv_block = OS.get_environment("IV_BLOCK_AT")      # (for a picture: the block at that node from the first)
 	if ivp_nodes.has(iv_block): iv_block_n.global_position = ivp_nodes[iv_block]
 	else: iv_block_n.visible = false; iv_block_n.global_position = IV_O + Vector3(0, -60, 0)      # (a trial without the stone)
+	ivt_home = iv_block_n.global_transform      # (where it began, and as it stood)
 	if ivg_vol != "":
 		if go_wake: _ivw_winch(ivp_nodes[ivg_vol])
 		elif go_quarry: _ivq_capstan(ivp_nodes[ivg_vol])
@@ -6793,7 +6797,8 @@ func _ivg_push(nb: String, c: String, first := "") -> void:
 	var dv := Vector3(qp.x - kp.x, 0, qp.z - kp.z).normalized()
 	var fp: Vector3 = ivp_nodes[first] if first != "" else qp      # (a block that slides goes with her hands only to the next node; then on by itself)
 	var tum := IVT_ON and go_veil and not _ivv_hole(c) and not (ivg.get("unwalked", []) as Array).has(c) and (first == "" or first == c)      # (shoved, it tumbles over onto the next place (the owner, 19/11: "would it not be better to tumble it than drag it?"; 20/11, of the second and third levels too); out over a gap, or into the third level's niche under its rock, it slides)
-	iv_push = {"d": dv, "start": pos, "m0": kp, "len": Vector2(fp.x - kp.x, fp.z - kp.z).length(), "tumble": tum}
+	var off := _ivb_off()
+	iv_push = {"d": dv, "start": pos, "m0": kp, "len": Vector2(fp.x - kp.x, fp.z - kp.z).length(), "tumble": tum, "off": off}
 	print("IV push ", nb, " -> ", c)
 	if go_veil and not tum: _ivw_sfx("block_push", IVV_PUSH_DB, 0.0, randf_range(0.95, 1.05))      # (stone dragged on stone)
 	route.clear(); speed_cap = 1.0; face_to = null
@@ -6808,10 +6813,11 @@ func _ivg_push(nb: String, c: String, first := "") -> void:
 	if tum:
 		while ivt_busy: await get_tree().process_frame
 	else:
-		var rest := Vector2(qp.x - iv_block_n.global_position.x, qp.z - iv_block_n.global_position.z).length()
+		var ft := iv_block_n.global_position - off
+		var rest := Vector2(qp.x - ft.x, qp.z - ft.z).length()
 		var sl := create_tween()
-		if rest > 0.8: sl.tween_property(iv_block_n, "global_position", qp, 0.22 + rest * 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)      # (it slides on, slowing, and comes to rest)
-		else: sl.tween_property(iv_block_n, "global_position", qp, 0.18)
+		if rest > 0.8: sl.tween_property(iv_block_n, "global_position", qp + off, 0.22 + rest * 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)      # (it slides on, slowing, and comes to rest)
+		else: sl.tween_property(iv_block_n, "global_position", qp + off, 0.18)
 		await sl.finished
 	iv_me = nb; iv_block = c; ivp_wp_cur = kp
 	var dn := tw(); dn.set_parallel(); dn.tween_property(self, "a_wL", 0.0, 0.35); dn.tween_property(self, "a_wR", 0.0, 0.35); dn.tween_property(self, "a_lean", 0.0, 0.35)
@@ -6825,6 +6831,13 @@ const IVT_ON := true
 var ivt_box := AABB()
 var ivt_busy := false
 var ivt_home := Transform3D()      # (where it began, and as it began: the square at her start puts it back so)
+
+func _ivb_off() -> Vector3:      # (the block's origin from the middle of its foot: its origin is the middle of the face it was made standing on, and once it has tumbled that face is a side; every move that is not a tumble goes by the middle of its foot (the owner, 20/11: "the cube falling into the water looks very strange, half of it goes into the stone"))
+	if iv_block_n == null: return Vector3.ZERO
+	var bb := _ivt_box_get(); var t := iv_block_n.global_transform
+	var c := t * bb.get_center()
+	var hy := _ivt_half(t.basis.orthonormalized(), Vector3.UP, bb.size * 0.5 * t.basis.get_scale())
+	return iv_block_n.global_position - (c - Vector3(0, hy, 0))
 
 func _ivt_box_get() -> AABB:      # (its own box, in its own frame, found once from its meshes)
 	if ivt_box.size != Vector3.ZERO: return ivt_box
@@ -6994,6 +7007,7 @@ func _ivg_reset() -> void:
 	iv_me = String(ivg.start); pos = ivp_nodes[iv_me]; ivp_wp_cur = pos; ivp_wp_prev = pos
 	iv_block = String(ivg.block)
 	if ivp_nodes.has(iv_block): iv_block_n.global_position = ivp_nodes[iv_block]
+	if ivt_home != Transform3D() and go_veil: iv_block_n.global_transform = ivt_home      # (as it began, standing as it stood: tumbled, its origin is no longer at its foot)
 	ivg_v = 0
 	if iv_wheel != null: iv_wheel.rotation.z = 0.0
 	for mk in ivg_mir:      # (the mirrors as they were)
@@ -10010,7 +10024,7 @@ func _ivm_hit_her(a: Vector3, b: Vector3) -> float:      # (where along a to b t
 
 func _ivm_hit_box(a: Vector3, b: Vector3) -> float:      # (where along a to b the light meets the stone: past 1 if it does not)
 	if iv_block_n == null or not iv_block_n.visible: return 2.0
-	var c := iv_block_n.global_position
+	var c := iv_block_n.global_position - _ivb_off()      # (the middle of its foot, however it lies)
 	var lo := c + Vector3(-IVM_BLOCK_HALF, 0.0, -IVM_BLOCK_HALF); var hi := c + Vector3(IVM_BLOCK_HALF, IVM_BLOCK_H, IVM_BLOCK_HALF)
 	var d := b - a; var t0 := 0.0; var t1 := 1.0
 	for ax in 3:
