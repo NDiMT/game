@@ -69,7 +69,9 @@ def plan():
     face = lambda dx, dz: round(math.atan2(-dz, dx), 3)
     statues = [['seated', [-3.0, H1, -8.0], 1.9, face(0.8, 0.6)], ['welcome', [-0.15, H1, -9.15], 2.4, face(0.1, 1.0)]]
     sea_statues_first = [['kneeling', [-3.3, H0, -1.2], 1.7, face(0.8, 0.6)], ['standing', [-3.3, H0, -3.0], 2.4, face(0.8, 0.6)], ['unfinished', [-3.3, H0, -4.8], 2.4, face(0.8, 0.6)]]      # (as they first stood: in a row, the eye framed on them)
-    sea_statues = [['kneeling', [-4.05, H0, -0.85], 1.95, face(0.86, 0.52)], ['standing', [-4.6, H0, -3.2], 2.75, face(0.66, 0.75)], ['unfinished', [-4.2, H0, -5.4], 2.7, face(0.92, 0.38)]]      # (a little larger, further out in the sea, not in a row, each turned its own way (the owner, 20/11: "the three statues on the left a little bigger, a little further out and a little more random"))
+    turn = lambda deg: face(math.cos(math.radians(45 + deg)), math.sin(math.radians(45 + deg)))      # (turned that many degrees from facing the eye, toward the eye's left)
+    sea_statues = [['kneeling', [-4.05, H0, -0.85], 2.2, turn(13)], ['standing', [-4.6, H0, -3.2], 3.1, turn(-17)], ['unfinished', [-4.2, H0, -5.4], 3.05, turn(9)]]      # (larger, further out in the sea, not in a row, each turned its own way (the owner, 20/11: "the three statues on the left a little bigger, a little further out and a little more random"; then "a little bigger still, and turned at random, but slightly"))
+    ped_half = 0.47      # (their pedestals grown with them: 0.42 as they first stood)
     puzzle = {
         'nodes': N, 'edges': edges, 'start': 'S', 'exit': 'R', 'block': 'K', 'holes': ['H'],
         'intro': [[1.5, H0, 0.01], [1.5, H0, 0.0]],      # (no way in: she stands where the light of the first gate let her go)
@@ -85,7 +87,7 @@ def plan():
         'horizon': 0.362, 'sun': [0.51, 0.286],      # (its own backdrop's sea rim and sun, measured on goveil/backdrop.jpg: the golden morning, the veiled ones far off)
         'arches': [[[-1.5, H1, -8.9], 'x']],      # (the gate, square to the way's last stretch, just behind the ring)
         'statues': statues + sea_statues,
-        'pedestals': [[s[1][0], s[1][2], H0, 0.42] for s in sea_statues],      # (square marble pedestals out of the water, their tops level with the way)
+        'pedestals': [[s[1][0], s[1][2], H0, ped_half] for s in sea_statues],      # (square marble pedestals out of the water, their tops level with the way)
         'rocks': [[[-2.95, SEA, 1.0], 0.95, H0 - 0.2],      # (the quay's shoulders, out of the water)
                   [[0.35, SEA, 2.85], 0.8, H0 - 0.22],
                   [[2.75, SEA, -0.75], 0.62, H0 - 0.28],

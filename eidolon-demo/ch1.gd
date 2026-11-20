@@ -4879,12 +4879,14 @@ func _ivw_warm() -> void:
 	fl.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; fl.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; fl.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
 	fl.no_depth_test = true; fl.albedo_color = Color(1.0, 0.95, 0.85, 0.0); ivw_keep.append(fl)
 	var fq := QuadMesh.new(); fq.size = Vector2(1, 1); tiny.call(fq, fl, ivw_gate_p + Vector3(0, 0.95, 0))
-	for kind in 2:      # (the drops, and the motes as she goes: drawn as particles are, at no strength)
+	for kind in (3 if go_veil else 2):      # (the drops, the motes as she goes, and the dust and spray of the block that tumbles: drawn as particles are, at no strength)
 		var p := CPUParticles3D.new(); add_child(p); made.append(p)
-		p.global_position = on_sea + Vector3(0, 0.02, 0) if kind == 0 else pos + Vector3(0, 0.55, 0)
+		p.global_position = on_sea + Vector3(0, 0.02, 0) if kind != 1 else pos + Vector3(0, 0.55, 0)
 		p.amount = 2; p.lifetime = 0.5; p.local_coords = false; p.initial_velocity_min = 0.0; p.initial_velocity_max = 0.0; p.gravity = Vector3.ZERO
 		p.scale_amount_min = 0.01; p.scale_amount_max = 0.01; p.color = Color(1, 1, 1, 0)
 		if kind == 0: p.mesh = _ivw_drop_mesh()
+		elif kind == 2:
+			var dq := QuadMesh.new(); dq.size = Vector2(0.07, 0.07); dq.material = _ivt_dust_material(); p.mesh = dq
 		else:
 			var mq := QuadMesh.new(); mq.size = Vector2(0.07, 0.07)
 			var mm := StandardMaterial3D.new(); mm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; mm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; mm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
@@ -5444,28 +5446,66 @@ func _ivv_bside() -> float: return IVV_CUBE * _ivv_bscale()
 const IVV_FALL_DB := -3.0
 const IVV_PUSH_DB := -4.0
 func _ivv_push_in(nb: String, c: String) -> void:
-	await _ivg_push(nb, c)      # (she pushes it on as any push: it slides out over the gap)
+	var tum := IVT_ON and go_veil      # (shoved, it goes over its stone's edge as at every push and falls into the gap (the owner, 20/11: "the same movement as the basic push", "it doesn't fall with a tumble"); without the tumble it slides out over the gap and drops)
+	await _ivg_push(nb, c, "", tum)
 	iv_busy = true
-	var bp: Vector3 = iv_block_n.global_position
 	var sea := IV_O.y + ivr_sea_y
-	var hgt := _ivv_bside()      # (it sinks its own height: its top comes to rest level with the way)
-	print("IV the block falls into ", c, " at ", snappedf(iv_t, 0.01))
-	_ivw_sfx("block_fall", IVV_FALL_DB)
-	var t := create_tween(); t.tween_property(iv_block_n, "global_position:y", bp.y - hgt - 0.05, 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	t.tween_property(iv_block_n, "global_position:y", bp.y - hgt, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)      # (down a little past its rest, and up to it: a heavy stone settling on its bed)
-	get_tree().create_timer(0.2, false).timeout.connect(func() -> void:
-		_ivw_ripple(Vector3(bp.x, sea, bp.z), 1.4); _ivw_splash(Vector3(bp.x, sea + 0.02, bp.z), 0.55)
-		_ivw_churn_burst(_ivv_churn_box(Vector3(bp.x, sea, bp.z), _ivv_bside() * 0.5))      # (foam thrown out round it as it plunges, the owner: "when the stone falls in, foam")
-		_ivv_block_foam(sea)
-		get_tree().create_timer(0.4, false).timeout.connect(func() -> void: _ivw_ripple(Vector3(bp.x, sea, bp.z), 1.9)))
-	await t.finished
+	var qp: Vector3 = ivp_nodes[c]      # (the gap's own middle: where it comes to rest, and the foam round it; never its origin, which after a tumble is on a side (the owner: "the square comes out completely off"))
+	if not tum:
+		var bp: Vector3 = iv_block_n.global_position
+		var hgt := _ivv_bside()      # (it sinks its own height: its top comes to rest level with the way)
+		print("IV the block falls into ", c, " at ", snappedf(iv_t, 0.01))
+		var t := create_tween(); t.tween_property(iv_block_n, "global_position:y", bp.y - hgt - 0.05, 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		t.tween_property(iv_block_n, "global_position:y", bp.y - hgt, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)      # (down a little past its rest, and up to it: a heavy stone settling on its bed)
+		get_tree().create_timer(0.2, false).timeout.connect(func() -> void: _ivv_plunge(Vector3(qp.x, sea, qp.z)))
+		await t.finished
 	ivv_filled[c] = true; iv_block = ""
+	var bc := iv_block_n.global_transform * _ivt_box_get().get_center()
+	print("IV the block rests in ", c, " at ", Vector3(snappedf(bc.x - qp.x, 0.001), snappedf(bc.y - qp.y, 0.001), snappedf(bc.z - qp.z, 0.001)), " from its middle")
 	if ivs_sea_mat != null:      # (and then the still water's own thin foam and small waves round it, as round every stone: its place is in the shore map's green, tools/go/shore_hole.py)
 		var tu := create_tween(); tu.tween_interval(1.2)
 		tu.tween_method(func(v: float) -> void: ivs_sea_mat.set_shader_parameter("riser_up", v), 0.0, 1.0, 2.4).set_trans(Tween.TRANS_SINE)
 	if ivv_hole_way.has(c): create_tween().tween_property(ivv_hole_way[c], "position:y", 0.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await wait(0.3)
 	iv_busy = false
+
+func _ivv_plunge(at: Vector3) -> void:      # (as it breaks the water: its thud, a small splash thrown up round it (the owner, 20/11: "maybe a small splash when it falls"), rings, and the sea's foam thrown out round it)
+	_ivw_sfx("block_fall", IVV_FALL_DB, 0.18)      # (from just before its thud: it lands as it is heard)
+	var h := _ivv_bside() * 0.5
+	_ivw_ripple(at, 1.4); _ivv_splash(at, h)
+	_ivw_churn_burst(_ivv_churn_box(at, h))      # (foam thrown out round it as it plunges, the owner: "when the stone falls in, foam")
+	_ivv_block_foam(at.y)
+	get_tree().create_timer(0.4, false).timeout.connect(func() -> void: _ivw_ripple(at, 1.9))
+
+func _ivv_splash(at: Vector3, h: float) -> void:      # (a small splash: drops thrown up and out from all round it, and a soft white spray that hangs a moment and thins)
+	var p := CPUParticles3D.new(); add_child(p); p.global_position = at + Vector3(0, 0.03, 0)
+	p.one_shot = true; p.amount = 64; p.lifetime = 0.8; p.explosiveness = 0.86; p.local_coords = false
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING; p.emission_ring_axis = Vector3.UP; p.emission_ring_height = 0.03
+	p.emission_ring_radius = h * 1.2; p.emission_ring_inner_radius = h * 0.95
+	p.direction = Vector3.UP; p.spread = 24.0; p.initial_velocity_min = 1.4; p.initial_velocity_max = 2.7; p.gravity = Vector3(0, -8.5, 0)
+	p.radial_accel_min = 0.6; p.radial_accel_max = 1.6      # (out from it as they rise)
+	p.scale_amount_min = 1.3; p.scale_amount_max = 2.4      # (the stones' drops, larger: a stone this heavy throws more)
+	p.mesh = _ivw_drop_mesh()
+	var g := Gradient.new(); g.offsets = PackedFloat32Array([0.0, 0.65, 1.0]); g.colors = PackedColorArray([Color(1, 1, 1, 1.0), Color(1, 0.99, 0.98, 0.85), Color(1, 1, 1, 0.0)])
+	p.color_ramp = g
+	p.emitting = true
+	get_tree().create_timer(1.8, false).timeout.connect(p.queue_free)
+	var s := CPUParticles3D.new(); add_child(s); s.global_position = at + Vector3(0, 0.05, 0)      # (the spray: soft white puffs from round its foot)
+	s.one_shot = true; s.amount = 22; s.lifetime = 0.9; s.explosiveness = 0.9; s.local_coords = false
+	var q := QuadMesh.new(); q.size = Vector2(0.5, 0.5); q.material = _ivv_spray_mat(); s.mesh = q
+	s.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING; s.emission_ring_axis = Vector3.UP; s.emission_ring_radius = h * 1.1; s.emission_ring_inner_radius = h * 0.85; s.emission_ring_height = 0.04
+	s.direction = Vector3.UP; s.spread = 30.0; s.initial_velocity_min = 0.7; s.initial_velocity_max = 1.5
+	s.radial_accel_min = 0.8; s.radial_accel_max = 1.8; s.damping_min = 1.6; s.damping_max = 2.6; s.gravity = Vector3(0, -1.2, 0)
+	s.scale_amount_min = 0.6; s.scale_amount_max = 1.1
+	var sc := Curve.new(); sc.add_point(Vector2(0.0, 0.5)); sc.add_point(Vector2(1.0, 1.6)); s.scale_amount_curve = sc
+	var sg := Gradient.new(); sg.set_color(0, Color(1, 1, 1, 0.0)); sg.set_color(1, Color(1, 1, 1, 0.0)); sg.add_point(0.06, Color(1, 1, 1, 0.9)); sg.add_point(0.45, Color(1, 1, 1, 0.45)); s.color_ramp = sg
+	s.emitting = true
+	get_tree().create_timer(1.6, false).timeout.connect(s.queue_free)
+
+var ivv_spray: StandardMaterial3D
+func _ivv_spray_mat() -> StandardMaterial3D:      # (the dust's own material, white: the same shader, so nothing new to build when it is first drawn)
+	if ivv_spray == null: ivv_spray = _ivt_dust_material().duplicate() as StandardMaterial3D; ivv_spray.albedo_color = Color(1.0, 0.99, 0.97)
+	return ivv_spray
 
 func _ivv_churn_box(c: Vector3, half: float) -> MeshInstance3D:      # (the waking's foam on the water, round a square)
 	var m := ShaderMaterial.new(); m.shader = _ivw_shader(IVW_CHURN_SH); m.render_priority = 6
@@ -6791,12 +6831,12 @@ func _ivg_w_step() -> void:
 	_ivg_w_aim(0.45)
 	if _ivg_looked_at(nx): await _ivg_w_break()
 
-func _ivg_push(nb: String, c: String, first := "") -> void:
+func _ivg_push(nb: String, c: String, first := "", into := false) -> void:
 	iv_busy = true
 	var kp: Vector3 = ivp_nodes[nb]; var qp: Vector3 = ivp_nodes[c]
 	var dv := Vector3(qp.x - kp.x, 0, qp.z - kp.z).normalized()
 	var fp: Vector3 = ivp_nodes[first] if first != "" else qp      # (a block that slides goes with her hands only to the next node; then on by itself)
-	var tum := IVT_ON and go_veil and not _ivv_hole(c) and not (ivg.get("unwalked", []) as Array).has(c) and (first == "" or first == c)      # (shoved, it tumbles over onto the next place (the owner, 19/11: "would it not be better to tumble it than drag it?"; 20/11, of the second and third levels too); out over a gap, or into the third level's niche under its rock, it slides)
+	var tum := IVT_ON and go_veil and (into or (not _ivv_hole(c) and not (ivg.get("unwalked", []) as Array).has(c) and (first == "" or first == c)))      # (shoved, it tumbles over onto the next place (the owner, 19/11: "would it not be better to tumble it than drag it?"; 20/11, of the second and third levels too); out over a gap, or into the third level's niche under its rock, it slides)
 	var off := _ivb_off()
 	iv_push = {"d": dv, "start": pos, "m0": kp, "len": Vector2(fp.x - kp.x, fp.z - kp.z).length(), "tumble": tum, "off": off}
 	print("IV push ", nb, " -> ", c)
@@ -6805,8 +6845,10 @@ func _ivg_push(nb: String, c: String, first := "") -> void:
 	route.append({"p": kp})
 	var up := tw(); up.set_parallel(); up.tween_property(self, "a_wL", 1.0, 0.3); up.tween_property(self, "a_wR", 1.0, 0.3); up.tween_property(self, "a_lean", 0.16, 0.3)
 	if tum:
-		_ivt_tumble(kp, qp, 0.16)
-		await get_tree().create_timer(0.16 + IVT_SLIDE + IVT_RISE * 0.8, false).timeout      # (her hands come down as it goes over; she follows it)
+		_ivt_tumble(kp, qp, 0.16, into)
+		if into:      # (her hands come down as it goes over its stone's edge)
+			while ivt_busy and ivt_phase < 2: await get_tree().process_frame
+		else: await get_tree().create_timer(0.16 + IVT_SLIDE + IVT_RISE * 0.8, false).timeout      # (her hands come down as it goes over; she follows it)
 		var dw := tw(); dw.set_parallel(); dw.tween_property(self, "a_wL", 0.0, 0.3); dw.tween_property(self, "a_wR", 0.0, 0.3); dw.tween_property(self, "a_lean", 0.0, 0.3)
 	while not route.is_empty(): await get_tree().process_frame
 	iv_push = {}
@@ -6830,6 +6872,8 @@ func _ivg_push(nb: String, c: String, first := "") -> void:
 const IVT_ON := true
 var ivt_box := AABB()
 var ivt_busy := false
+var ivt_phase := 0      # (0 shoved, 1 up onto its edge, 2 over)
+var ivt_wet := false      # (into a gap: it has broken the water)
 var ivt_home := Transform3D()      # (where it began, and as it began: the square at her start puts it back so)
 
 func _ivb_off() -> Vector3:      # (the block's origin from the middle of its foot: its origin is the middle of the face it was made standing on, and once it has tumbled that face is a side; every move that is not a tumble goes by the middle of its foot (the owner, 20/11: "the cube falling into the water looks very strange, half of it goes into the stone"))
@@ -6853,8 +6897,8 @@ func _ivt_box_get() -> AABB:      # (its own box, in its own frame, found once f
 func _ivt_half(b: Basis, w: Vector3, hs: Vector3) -> float:      # (how far the box reaches along w, turned as it is)
 	return absf(w.dot(b.x)) * hs.x + absf(w.dot(b.y)) * hs.y + absf(w.dot(b.z)) * hs.z
 
-func _ivt_tumble(kp: Vector3, qp: Vector3, delay: float) -> void:      # (as a heavy stone is shoved over (the owner, 20/11: "a little more natural when it rolls", "and a little dust"): shoved, it first slides what the step is longer than the cube; then it rises slowly onto its leading edge, slowing as it comes to balance there; past it, it falls faster and faster onto its next face, lands with a knock and a puff of dust, rocks back a hair and is still; never lifted off its edge)
-	ivt_busy = true
+func _ivt_tumble(kp: Vector3, qp: Vector3, delay: float, into := false) -> void:      # (as a heavy stone is shoved over (the owner, 20/11: "a little more natural when it rolls", "and a little dust"): shoved, it first slides what the step is longer than the cube; then it rises slowly onto its leading edge, slowing as it comes to balance there; past it, it falls faster and faster onto its next face, lands with a knock and a puff of dust, rocks back a hair and is still; never lifted off its edge)
+	ivt_busy = true; ivt_phase = 0
 	if delay > 0.0: await get_tree().create_timer(delay, false).timeout
 	var bb := _ivt_box_get(); var cl := bb.get_center()
 	var t0 := iv_block_n.global_transform
@@ -6867,6 +6911,12 @@ func _ivt_tumble(kp: Vector3, qp: Vector3, delay: float) -> void:      # (as a h
 	var dy := qp.y - kp.y      # (a step to another floor's height, if ever)
 	var ax := Vector3.UP.cross(d).normalized()      # (turned about it, its top goes forward)
 	var sl := maxf(ln - (ed + eu), 0.0)
+	var slt := IVT_SLIDE
+	if into:      # (into a gap: shoved only to its stone's edge, and over it, as over any edge; then down into the water)
+		var e := _ivr_edge_dist(kp, d)
+		if e > 0.0:
+			var sl0 := sl; sl = clampf(e - ed, 0.0, sl)
+			slt = IVT_SLIDE * clampf(sqrt(sl / maxf(sl0, 0.01)), 0.3, 1.0)
 	if go_veil: _ivw_sfx("block_push", IVV_PUSH_DB - 3.0, 0.0, randf_range(1.05, 1.15))      # (its grinding as it is shoved, and as it tips)
 	if sl > 0.01:
 		_ivt_dust(Vector3(c0.x, y0, c0.z) + d * ed, ed * 0.6, 9, 1.2, 0.9)      # (a little dust off the stone where its leading edge scrapes)
@@ -6874,7 +6924,7 @@ func _ivt_tumble(kp: Vector3, qp: Vector3, delay: float) -> void:      # (as a h
 		ts.tween_method(func(u: float) -> void:
 			var c := c0 + d * (sl * u)
 			iv_block_n.global_transform = Transform3D(t0.basis, c - t0.basis * cl)
-			if not iv_push.is_empty(): iv_push["bp"] = Vector3(c.x, y0, c.z), 0.0, 1.0, IVT_SLIDE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			if not iv_push.is_empty(): iv_push["bp"] = Vector3(c.x, y0, c.z), 0.0, 1.0, slt).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		if ts.is_running(): await ts.finished
 	var c1 := c0 + d * sl
 	var pv := Vector3(c1.x, y0, c1.z) + d * ed      # (the edge it goes over)
@@ -6886,9 +6936,15 @@ func _ivt_tumble(kp: Vector3, qp: Vector3, delay: float) -> void:      # (as a h
 		var bs := Basis(b.x * sc.x, b.y * sc.y, b.z * sc.z)
 		var c := pv + r * rel + Vector3.UP * (dy * clampf(th / (PI * 0.5), 0.0, 1.0))
 		iv_block_n.global_transform = Transform3D(bs, c - bs * cl)
+	ivt_phase = 1
 	var t1 := create_tween()      # (up onto its edge, slowing as it comes to balance)
 	t1.tween_method(put, 0.0, tb, IVT_RISE).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	if t1.is_running(): await t1.finished
+	ivt_phase = 2
+	if into:
+		await _ivt_over_into(pv, rel, ax, b0, sc, cl, hs, tb, Vector3(qp.x, y0 + dy - ed, qp.z))
+		ivt_busy = false
+		return
 	var t2 := create_tween()      # (and over: it falls faster and faster)
 	t2.tween_method(put, tb, PI * 0.5, IVT_FALL).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	if t2.is_running(): await t2.finished
@@ -6905,18 +6961,45 @@ func _ivt_tumble(kp: Vector3, qp: Vector3, delay: float) -> void:      # (as a h
 	put.call(PI * 0.5)
 	ivt_busy = false
 
+func _ivt_over_into(pv: Vector3, rel: Vector3, ax: Vector3, b0: Basis, sc: Vector3, cl: Vector3, hs: Vector3, tb: float, rest: Vector3) -> void:      # (over its stone's edge and down into the gap: it turns on over that edge as at every push, and as it goes it falls, out and down, faster and faster, into the water; it comes to rest in the gap's middle, its top level with the way, and bobs a little)
+	var sea := IV_O.y + ivr_sea_y
+	var fo := rest - (pv + Basis(ax, PI * 0.5) * rel)      # (what it has still to go, past what turning over the edge alone would leave)
+	ivt_wet = false
+	var put := func(u: float, sink: float) -> void:
+		var th := tb + (PI * 0.5 - tb) * u * u * (3.0 - 2.0 * u)      # (it goes on over, slow from its balance, quicker, and slowed by the water at the last)
+		var r := Basis(ax, th); var b := r * b0
+		var bs := Basis(b.x * sc.x, b.y * sc.y, b.z * sc.z)
+		var c := pv + r * rel + Vector3(fo.x, 0.0, fo.z) * (u * u * (3.0 - 2.0 * u)) + Vector3(0.0, fo.y, 0.0) * (u * u * (1.7 - 0.7 * u)) + Vector3(0.0, sink, 0.0)      # (out as it leaves the edge; down faster and faster as it falls, and slowed by the water at the last)
+		iv_block_n.global_transform = Transform3D(bs, c - bs * cl)
+		if not ivt_wet and c.y - _ivt_half(b, Vector3.UP, hs) <= sea:
+			ivt_wet = true; _ivv_plunge(Vector3(rest.x, sea, rest.z))
+			print("IV the block breaks the water at ", snappedf(iv_t, 0.01), ", the foam's middle ", Vector2(snappedf(rest.x - IV_O.x, 0.001), snappedf(rest.z - IV_O.z, 0.001)))
+	var t2 := create_tween()
+	t2.tween_method(func(u: float) -> void: put.call(u, 0.0), 0.0, 1.0, IVT_DROP)
+	if t2.is_running(): await t2.finished
+	var t3 := create_tween()      # (it goes down a little past its rest in the water, and comes up to it)
+	t3.tween_method(func(v: float) -> void: put.call(1.0, v), 0.0, -0.07, 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	t3.tween_method(func(v: float) -> void: put.call(1.0, v), -0.07, 0.0, 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	if t3.is_running(): await t3.finished
+	put.call(1.0, 0.0)
+
+const IVT_DROP := 0.44      # (over its stone's edge and down into the water)
 const IVT_SLIDE := 0.34      # (the shove: it slides what the step is longer than the cube)
 const IVT_RISE := 0.36      # (up onto its edge, slowing to balance)
 const IVT_FALL := 0.21      # (over, faster and faster)
 const IVT_ROCK := 0.045      # (how far it rocks back on landing, radians)
 
 var ivt_dust_mat: StandardMaterial3D
-func _ivt_dust(at: Vector3, r: float, n: int, push: float, life: float) -> void:      # (dust thrown out low from under the stone, soft puffs that spread, rise a little, thin and go)
+func _ivt_dust_material() -> StandardMaterial3D:
 	if ivt_dust_mat == null:
 		ivt_dust_mat = StandardMaterial3D.new(); ivt_dust_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		ivt_dust_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; ivt_dust_mat.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES; ivt_dust_mat.billboard_keep_scale = true
 		ivt_dust_mat.vertex_color_use_as_albedo = true; ivt_dust_mat.albedo_texture = load("res://goiv/glow.png"); ivt_dust_mat.albedo_color = IVT_DUST_COL
 		ivt_dust_mat.render_priority = 6      # (after the sea, as every light and foam over it)
+	return ivt_dust_mat
+
+func _ivt_dust(at: Vector3, r: float, n: int, push: float, life: float) -> void:      # (dust thrown out low from under the stone, soft puffs that spread, rise a little, thin and go)
+	_ivt_dust_material()
 	var cp := CPUParticles3D.new(); add_child(cp); cp.global_position = at + Vector3(0, 0.04, 0)
 	cp.one_shot = true; cp.explosiveness = 0.92; cp.amount = n; cp.lifetime = life; cp.local_coords = false
 	var q := QuadMesh.new(); q.size = Vector2(0.55, 0.55); q.material = ivt_dust_mat; cp.mesh = q

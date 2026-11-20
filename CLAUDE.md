@@ -145,8 +145,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   P1 without texture, 40 credits each, welded and shaded by `tools/go/bake_ao.py --weld`); each model faces its own +x
   (the plan's turn sets that face toward the eye). **The three in the sea, since 20/11** (the owner: "the three statues on
   the left a little bigger, a little further out and a little more random, lit like the statue of the first"): about
-  15% larger, 0.75 to 1.3 m further out, not in a row, each turned its own way, on their pedestals still (`veil_plan.py`
-  `sea_statues`; the eye framed as before, on where they first stood, `sea_statues_first`); lit as the Observer is
+  15% larger, 0.75 to 1.3 m further out, not in a row, on their pedestals still; then a little bigger still (2.2, 3.1,
+  3.05 m) and each turned a little its own way from facing the eye (13, -17, 9 degrees; the owner: "a little bigger still,
+  and turned at random, but slightly"), their pedestals grown with them (0.47) (`veil_plan.py` `sea_statues`, `turn`; the eye framed as before, on where they first stood, `sea_statues_first`); lit as the Observer is
   (`IVV_LIT_AS_OBSERVER`: its far haze, no shadow of their own, the low sun a little stronger on their edges). Its backdrop is its own (`goveil/backdrop.jpg`: the golden morning,
   far veiled statues at the horizon, horizon 0.362). Concept: `design/level2/concept.jpg`. Its block is a sandier
   marble than the slabs, a little uneven, with a few discreet veins a little darker than it, its own so they go with it
@@ -154,8 +155,12 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   down: "leave it yellowish as it was, with a few discreet marble veins"); its meander cut unevenly by hand, a darker
   shade of the same stone, not terracotta (the owner) (`props/block_meander.glb`, `tools/go/block_meander.py`, kept for
   the record). **Since 20/11 a true cube that tumbles, as level 4's** (the owner: "this holds for maps 2 and 3 with the
-  cube too"): `props/block_cube.glb`, 0.92 m, its own colours; it tumbles over onto the next place, and out over the gap
-  it slides and falls in, its top flush with the way (`_ivv_bside`). Once it has tumbled its origin (the middle of the face
+  cube too"): `props/block_cube.glb`, 0.92 m, its own colours; it tumbles over onto the next place, and into the gap
+  too, as at every push (the owner, 20/11: "the same movement as the basic push"): shoved to its stone's edge, it rises
+  onto that edge and goes over, out and down into the water (`_ivt_over_into`), a small splash as it breaks the water
+  (`_ivv_splash`; the owner: "a small splash"), its top flush with the way (`_ivv_bside`); its foam is laid round the
+  gap's own middle, where it comes to rest (`_ivv_plunge`), never round its origin (the owner: "the foam should be at the
+  centre of the cube": round its origin it stood half a cube off). Once it has tumbled its origin (the middle of the face
   it was made standing on) is on a side, so every move that is not a tumble goes by the middle of its foot (`_ivb_off`;
   the owner, 20/11: "the cube falling into the water looks very strange, half of it goes into the stone"). In the empty sea at the bottom right, a
   rock and a smaller one beside it (the owner, 18/11), and the brown rock under the quay where she starts made stronger
