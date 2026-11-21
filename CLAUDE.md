@@ -177,7 +177,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   cube too"): `props/block_cube.glb`, 0.92 m, its own colours, beige since 20/11 in every level (the owner: "not gold but beige"; then, of an outline of a smaller
   square in place of the meander, made and turned down the same day: "leave it with the meander, just make it beige";
   then "a more brown beige", "and the meander a little lighter"; and "in all levels the cube with the meander like the
-  first": the fourth level's own lighter, softer colours for it are gone, it is the second level's), its meander a darker shade of that brown beige, its veins as discreet as before (`block`, `meander` in `IV_WAKE_PAL`, `IV_GLASS_PAL`); it tumbles over onto the next place, and into the gap
+  first": the fourth level's own lighter, softer colours for it are gone, it is the second level's), its meander a darker shade of that brown beige, its veins as discreet as before (`block`, `meander` in `IV_WAKE_PAL`, `IV_GLASS_PAL`);
+  since 21/11 carved with four small square keys on each face, two by two, as the fifth level's concept has it (the
+  owner: "can we make the designs on the cube like this?"; `tools/go/block_cube.py ... four`, `one` the single great key); it tumbles over onto the next place, and into the gap
   too, as at every push (the owner, 20/11: "the same movement as the basic push"): shoved to its stone's edge, it rises
   onto that edge and goes over, out and down into the water (`_ivt_over_into`), a small splash as it breaks the water
   (`_ivv_splash`; the owner: "a small splash"), its top flush with the way (`_ivv_bside`); its foam is laid round the
@@ -204,6 +206,7 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   opens"): a beam of light, seen, leaves a statue (the owner: "the beam should leave from a statue, and be blocked by a
   stone"): a veiled marble woman standing in the water at the channel's lower end, a light in her hands (no plinth: the
   busts on plinths looked staged); it runs up the channel to the goddess's bronze mirror (on its square marble plinth,
+  its light white since 21/11, as the ring is, `IVM_LIGHT_COL` (the owner: "maybe the beam white?"; a warm gold before);
   the bronze under its stand a round foot since 21/11, `_ivq_mirror`: the owner, "the metal part below round"; the
   plinth made round instead was turned down: "I didn't ask you to raise anything and break something else"; the
   fifth level uses the same mirror); a swipe into the mirror turns
@@ -469,7 +472,7 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   into the mirror with longing, / and it kept him."). The Guardian of the Glass, a hooded man of cracked glass
   (`props/statue_guardian.glb`, Tripo P1 from `design/level5/guardian_design.jpg`, the owner's OK for 40 credits), on a
   round pedestal in a pool at the island's middle, turns a quarter clockwise at each of her moves; his gaze, a band of
-  cold light on the floor (bright now, faint where he will look next) and a line from his eyes, runs along the ways
+  red light on the floor (bright now, faint where he will look next; red since the owner, 21/11) and a line from his eyes, runs along the ways
   and over the water until the stone, she or the mirror stops it; where he looks now or next she may not end a move:
   seen, back to the start (`_ivg_fail`). She hides behind the stone on the pier, turns the goddess's mirror (level 3's,
   flat here, a quarter a swipe) to face him, pushes the stone off the walk into the deep water (it sinks), steps off
