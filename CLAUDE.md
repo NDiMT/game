@@ -178,8 +178,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   square in place of the meander, made and turned down the same day: "leave it with the meander, just make it beige";
   then "a more brown beige", "and the meander a little lighter"; and "in all levels the cube with the meander like the
   first": the fourth level's own lighter, softer colours for it are gone, it is the second level's), its meander a darker shade of that brown beige, its veins as discreet as before (`block`, `meander` in `IV_WAKE_PAL`, `IV_GLASS_PAL`);
-  since 21/11 carved with four small square keys on each face, two by two, as the fifth level's concept has it (the
-  owner: "can we make the designs on the cube like this?"; `tools/go/block_cube.py ... four`, `one` the single great key); it tumbles over onto the next place, and into the gap
+  its single great key cut in each face (`tools/go/block_cube.py ... one`; four small square keys on each face, two by
+  two, as the fifth level's concept has them, were tried on 21/11, `four`, and the same day the owner: "put back the
+  previous cube you push"); it tumbles over onto the next place, and into the gap
   too, as at every push (the owner, 20/11: "the same movement as the basic push"): shoved to its stone's edge, it rises
   onto that edge and goes over, out and down into the water (`_ivt_over_into`), a small splash as it breaks the water
   (`_ivv_splash`; the owner: "a small splash"), its top flush with the way (`_ivv_bside`); its foam is laid round the

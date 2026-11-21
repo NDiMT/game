@@ -11,15 +11,16 @@ owner, 20/11: "the cube looks rectangular rather than square, not the same heigh
     its foot at its origin.
 
 usage: python3.11 -I tools/go/block_cube.py -- <out.glb> [side metres] [seed] [one|four]
-  four (since 21/11, the owner: "can we make the designs on the cube like this?", showing the fifth level's concept): on
-  each face four small square keys, two by two, cut thin and fine; one: the single great key of each face, as before.
+  one (the game's): the single great key of each face; four: on each face four small square keys, two by two, cut thin
+  and fine (tried 21/11, the owner: "can we make the designs on the cube like this?", showing the fifth level's concept;
+  the same day: "put back the previous cube you push").
 """
 import bpy, bmesh, sys, random, math
 from mathutils import Vector, noise
 
 a = sys.argv[sys.argv.index('--') + 1:]
 OUT = a[0]; SIDE = float(a[1]) if len(a) > 1 else 0.92; SEED = int(a[2]) if len(a) > 2 else 11
-PATTERN = a[3] if len(a) > 3 else 'four'
+PATTERN = a[3] if len(a) > 3 else 'one'      # (the game's: the single great key on each face; the owner, 21/11, after four small keys were tried: "put back the previous cube")
 rnd = random.Random(SEED)
 bpy.ops.wm.read_factory_settings(use_empty=True)
 
