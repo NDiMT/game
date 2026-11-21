@@ -508,7 +508,15 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   -10,-1.6,-5.8 for a whole statue 6.8 m tall, its head under the story's lines; the veiled bust -11.3,-3.2,-7.1, 6.5 m),
   offered 21/11: 8 the bearded colossus (`iv_colossus`), 9 the goddess (`statue_goddess`), 10 the veiled bust
   (`observer`), on the plain backdrop; 10 in the game (`observer` in `guard_plan.py` and the level's json, no rebuild
-  needed) and the plain backdrop back (`goguard/backdrop.jpg`), until the owner chooses. Before it (the owner, 21/11: "make something else for the
+  needed) and the plain backdrop back (`goguard/backdrop.jpg`), until the owner chooses; then he said "another
+  background", and of the ways put to him chose "a 3D island with ruins": **since 21/11 a far island of ruins in the sea
+  at the upper left**, built as the level is by `tools/ivory_level.py` from its own plan (`tools/go/guard_far_plan.py` →
+  `goguard/far_plan.json`, built in a scratch folder so no json or shore map of the level's is touched, then
+  `goguard/far.glb`, `importer="keep"`): an upper terrace of slabs with a broken colonnade at its back, a lower terrace,
+  its rock, two columns half sunk beside it; the game sets it down (`_ivgd_far`) a little nearer than built
+  (`IVGD_FAR_AT` 1.2, 0, 1.2, so its columns stay under the story's lines), in the level's materials given to the haze
+  (`IVGD_FAR_K` 0.3), its image in the water; `IV_FAR=0` leaves it out, `IV_FAR_AT="dx,dz[,scale]"`, `IV_FAR_K` try others.
+  The veiled bust is out again (`observer` None). Before it (the owner, 21/11: "make something else for the
   background, whatever you like, but matching the perspective and the colours"; then of it: "I don't like the new
   background"): the ruins of a drowned sanctuary far
   off in the still sea, two rows of white columns going away into the haze, seen from above as the island is: Gemini's

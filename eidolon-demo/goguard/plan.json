@@ -631,15 +631,7 @@
  "head": null,
  "relief": null,
  "cypress": null,
- "observer": [
-  -11.3,
-  -3.2,
-  -7.1,
-  6.5,
-  -0.6
- ],
- "observer_model": "observer",
- "observer_haze": 0.2,
+ "observer": null,
  "eye": {
   "pitch": 35.0,
   "centre": [

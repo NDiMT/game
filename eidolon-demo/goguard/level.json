@@ -356,15 +356,9 @@
  "door": null,
  "walls": null,
  "trench": null,
- "observer": [
-  -11.3,
-  -3.2,
-  -7.1,
-  6.5,
-  -0.6
- ],
- "observer_haze": 0.2,
- "observer_model": "observer",
+ "observer": null,
+ "observer_haze": null,
+ "observer_model": null,
  "horizon": 0.33,
  "sun": [
   0.72,

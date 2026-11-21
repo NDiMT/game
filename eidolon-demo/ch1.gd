@@ -4123,7 +4123,8 @@ func _ivr_cam(dt := -1.0) -> void:
 	cam.global_transform = Transform3D(b, c + b.z * 40.0)
 	cam.keep_aspect = Camera3D.KEEP_WIDTH; cam.size = w * maxf(1.0, (vp.x / vp.y) / 0.5625)
 
-func _ivr_mat(kind: String, ao := 1.0, local := false) -> ShaderMaterial: return _iv_mat(kind, 0.0, {"lfog": 1.0 if (local and not iv_at_sea) else 0.0, "fog_hi": (ivr_sea_y + (0.04 if go_wake else 1.5)) if iv_at_sea else (-1.4 if go_moon else (-1.6 if go_quarry else -3.6)), "fog_lo": (ivr_sea_y - (0.7 if go_wake else 0.15)) if iv_at_sea else (-5.4 if go_moon else (-6.0 if go_quarry else -7.5)), "ao_k": ao * ({"marble2": 0.4, "olive2": 0.2, "bark": 0.3, "rock2": 0.0, "quarry": 0.55} as Dictionary).get(kind, 1.0), "veins": (0.35 if go_moon else (0.25 if go_quarry else (0.25 if go_wake else 0.6))) if (kind == "marble2" or kind == "quarry") else 0.0, "dk": 0.17 if kind == "quarry" else 0.0, "bounce": 0.0, "haze": 1.0, "shadow_k": (0.8 if go_wake else 0.0) if kind == "rock2" else 1.0, "lf_hi": 1.0 if iv_at_sea else (1.0 if go_moon else (1.4 if go_quarry else 0.5)), "lf_len": 2.6 if iv_at_sea else (2.8 if go_moon else (3.2 if go_quarry else 1.9))})
+func _ivr_mat(kind: String, ao := 1.0, local := false) -> ShaderMaterial: return _iv_mat(kind, 0.0, _ivr_ex(kind, ao, local))
+func _ivr_ex(kind: String, ao := 1.0, local := false) -> Dictionary: return {"lfog": 1.0 if (local and not iv_at_sea) else 0.0, "fog_hi": (ivr_sea_y + (0.04 if go_wake else 1.5)) if iv_at_sea else (-1.4 if go_moon else (-1.6 if go_quarry else -3.6)), "fog_lo": (ivr_sea_y - (0.7 if go_wake else 0.15)) if iv_at_sea else (-5.4 if go_moon else (-6.0 if go_quarry else -7.5)), "ao_k": ao * ({"marble2": 0.4, "olive2": 0.2, "bark": 0.3, "rock2": 0.0, "quarry": 0.55} as Dictionary).get(kind, 1.0), "veins": (0.35 if go_moon else (0.25 if go_quarry else (0.25 if go_wake else 0.6))) if (kind == "marble2" or kind == "quarry") else 0.0, "dk": 0.17 if kind == "quarry" else 0.0, "bounce": 0.0, "haze": 1.0, "shadow_k": (0.8 if go_wake else 0.0) if kind == "rock2" else 1.0, "lf_hi": 1.0 if iv_at_sea else (1.0 if go_moon else (1.4 if go_quarry else 0.5)), "lf_len": 2.6 if iv_at_sea else (2.8 if go_moon else (3.2 if go_quarry else 1.9))}
 
 ## the way drawn on the stone: a pale line, and at each node a pale disc in a darker ring
 func _ivr_way() -> void:
@@ -10897,6 +10898,7 @@ void fragment(){
 """
 
 func _ivgd_setup() -> void:
+	_ivgd_far()
 	var gd: Dictionary = ivg.get("guard", {})
 	ivgd_d0 = maxi(IVGD_ORDER.find(String(gd.get("d0", "S"))), 0); ivgd_phase = 0; ivgd_kept = false; ivgd_gk = 1.0
 	var at: Vector3 = ivp_nodes[String(gd.get("node", "G"))]
@@ -10940,6 +10942,35 @@ func _ivgd_setup() -> void:
 	print("IV the Guardian at ", String(gd.get("node", "G")), " looks ", IVGD_ORDER[ivgd_d0], "; the mirror at ", ivgd_mir, " faces ", IVGD_ORDER[ivgd_face])
 
 func _ivgd_dir(ph: int) -> String: return IVGD_ORDER[(ivgd_d0 + ph) % 4]
+
+## far out in the still sea behind the gate, an island of ruins built as the level is (tools/go/guard_far_plan.py), laid in
+## the haze, its image in the water (the owner, 21/11: "something else in the background, and let it be 3D"; of the ways
+## offered, "a 3D island with ruins"); IV_FAR=0 leaves it out, IV_FAR_K tries another haze
+const IVGD_FAR_K := 0.3
+const IVGD_FAR_AT := Vector3(1.2, 0.0, 1.2)      # (set down a little nearer than it was built, so its columns stay under the story's lines)
+func _ivgd_far() -> void:
+	var fp := go_dir + "far.glb"
+	if OS.get_environment("IV_FAR") == "0" or not FileAccess.file_exists(fp): return
+	var st := GLTFState.new(); var doc := GLTFDocument.new()
+	doc.append_from_buffer(FileAccess.get_file_as_bytes(fp), "", st)
+	var fv := doc.generate_scene(st) as Node3D
+	if fv == null: return
+	iv_root.add_child(fv)
+	var fo := IVGD_FAR_AT
+	if OS.get_environment("IV_FAR_AT") != "":      # (to try it elsewhere: "dx,dz" from where it was built, and a third value its scale)
+		var f3 := OS.get_environment("IV_FAR_AT").split_floats(","); fo = Vector3(f3[0], 0.0, f3[1]); if f3.size() > 2: fv.scale = Vector3.ONE * f3[2]
+	fv.position += fo
+	var fk := float(OS.get_environment("IV_FAR_K")) if OS.get_environment("IV_FAR_K") != "" else IVGD_FAR_K
+	for m in fv.find_children("*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		var nm := String(mi.name).to_lower() + "|" + String(mi.get_parent().name).to_lower()
+		var kind := "rock2" if nm.contains("rock") else "marble2"
+		mi.material_override = _iv_mat(kind, fk, _ivr_ex(kind, 1.0, true)); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if iv_at_sea:
+		_ivs_mirror(fv, func(mi: MeshInstance3D) -> Array:
+			var nm := String(mi.name).to_lower() + "|" + String(mi.get_parent().name).to_lower()
+			var kd := "rock2" if nm.contains("rock") else "marble2"
+			return [kd, fk, {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.15, "veins": 0.6 if kd == "marble2" else 0.0, "haze": 1.0}])
 
 ## he turns to his look (a quarter at each of her moves; at once when the level starts or begins again)
 func _ivgd_aim(t: float) -> void:

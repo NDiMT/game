@@ -98,7 +98,7 @@ def plan():
         'rocks': rocks,
         'rocks_after': [[[-3.9, SEA, -6.0], 0.95, SEA + 0.95], [[3.9, SEA, 2.4], 0.8, SEA + 0.75], [[4.9, SEA, 3.3], 0.42, SEA + 0.35]],      # (a few rocks in the sea, as its concept has them: one beyond the mirror, two before the start)
         'columns': [], 'volute': None, 'head': None, 'relief': None, 'cypress': None,
-        'observer': [-11.3, -3.2, -7.1, 6.5, -0.6], 'observer_model': 'observer', 'observer_haze': 0.2,      # (far out in the sea at the left, a colossal veiled bust rising out of it, 3D as level 1's Observer is (the owner, 21/11: "something else in the background, and let it be 3D"); of three offered, until the owner chooses)
+        'observer': None,      # (a colossal veiled bust in the sea, 3D as level 1's Observer is, was here a while (21/11; [-11.3, -3.2, -7.1, 6.5, -0.6], model 'observer'): the owner, "another background"; the far island of ruins, tools/go/guard_far_plan.py, in its place)
         'eye': eye_fit(pts, top_room=0.33, bottom_room=0.18, margin=0.7),
         'shore': True,
         'scenery': [['statue', [guard['at'][0], H0 + 0.1 + guard['height'] / 2, guard['at'][2]], [0.7, guard['height'], 0.7], [0.8, 0.86, 0.95]],      # (placeholders in the blockout's preview: the Guardian and the mirror)
