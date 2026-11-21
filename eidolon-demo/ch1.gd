@@ -10044,7 +10044,6 @@ func _ivm_ring_tick() -> void:      # (the ring's stone by its light: a dark lil
 var ivm_beam: Array = []      # (the beam's straight runs: [core, halo] each)
 var ivm_spark: MeshInstance3D      # (where the light ends on a thing: a bright spot)
 var ivm_leaves: Array = []      # (the gate's leaves: [hinge, its shut basis, the turn that opens it])
-const IVM_LIGHT_COL := Color(1.0, 0.98, 0.95)      # (the statue's light white, as the ring is (the owner, 21/11: "maybe the beam white?"); a warm gold before, 1.0, 0.88, 0.58)
 const IVM_DISC_H := 1.02      # (the mirror's disc stands this high over its floor: _ivq_mirror)
 const IVM_BLOCK_HALF := 0.53      # (the stone as the light meets it: half its breadth, its height; a cube of 1.06 m since 20/11)
 const IVM_BLOCK_H := 1.06
@@ -10076,7 +10075,7 @@ func _ivm_setup() -> void:
 		for c in 2:
 			var cm := CylinderMesh.new(); cm.top_radius = 0.032 if c == 0 else 0.13; cm.bottom_radius = cm.top_radius; cm.height = 1.0
 			cm.radial_segments = 12; cm.rings = 1; cm.cap_top = false; cm.cap_bottom = false
-			var mt := ShaderMaterial.new(); mt.shader = sh; mt.set_shader_parameter("core", 1.0 if c == 0 else 0.0); mt.set_shader_parameter("col", Vector3(IVM_LIGHT_COL.r, IVM_LIGHT_COL.g, IVM_LIGHT_COL.b)); mt.render_priority = 4 + c
+			var mt := ShaderMaterial.new(); mt.shader = sh; mt.set_shader_parameter("core", 1.0 if c == 0 else 0.0); mt.render_priority = 4 + c
 			var mi := MeshInstance3D.new(); mi.mesh = cm; mi.material_override = mt; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; mi.visible = false
 			iv_root.add_child(mi); pair.append(mi)
 		ivm_beam.append(pair)
@@ -10084,7 +10083,7 @@ func _ivm_setup() -> void:
 	for which in 2:
 		var gm := StandardMaterial3D.new(); gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm.albedo_texture = load("res://goiv/glow.png")
 		gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm.blend_mode = BaseMaterial3D.BLEND_MODE_MIX; gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-		gm.albedo_color = Color(IVM_LIGHT_COL, 0.9 if which == 0 else 0.75); gm.render_priority = 6
+		gm.albedo_color = Color(1.0, 0.92, 0.66, 0.9 if which == 0 else 0.75); gm.render_priority = 6
 		var g := MeshInstance3D.new(); g.mesh = gq; g.material_override = gm; g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		iv_root.add_child(g)
 		if which == 0: g.global_position = ivm_at

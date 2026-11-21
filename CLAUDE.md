@@ -206,7 +206,7 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   opens"): a beam of light, seen, leaves a statue (the owner: "the beam should leave from a statue, and be blocked by a
   stone"): a veiled marble woman standing in the water at the channel's lower end, a light in her hands (no plinth: the
   busts on plinths looked staged); it runs up the channel to the goddess's bronze mirror (on its square marble plinth,
-  its light white since 21/11, as the ring is, `IVM_LIGHT_COL` (the owner: "maybe the beam white?"; a warm gold before);
+  its light the warm gold it was (white was tried, 21/11, and turned down: "the yellow beam was better");
   the bronze under its stand a round foot since 21/11, `_ivq_mirror`: the owner, "the metal part below round"; the
   plinth made round instead was turned down: "I didn't ask you to raise anything and break something else"; the
   fifth level uses the same mirror); a swipe into the mirror turns
