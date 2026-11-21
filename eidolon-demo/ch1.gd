@@ -4263,6 +4263,10 @@ var ivw_idle := 0.0
 var ivw_veil_m: ShaderMaterial
 
 func _ivw_scene(j: Dictionary) -> void:
+	if OS.get_environment("IV_OBS") != "":      # (another colossus in the sea to try: "x,foot,z,height,turn,model[,haze]")
+		var o := OS.get_environment("IV_OBS").split(",")
+		j["observer"] = [float(o[0]), float(o[1]), float(o[2]), float(o[3]), float(o[4])]; j["observer_model"] = o[5]
+		if o.size() > 6: j["observer_haze"] = float(o[6])
 	if j.get("observer") != null: _ivw_observer(j)
 	if j.get("statues") != null: _ivv_statues(j)
 	_ivw_scene2(j)

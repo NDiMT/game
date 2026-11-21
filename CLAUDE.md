@@ -497,7 +497,12 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   prompts and paintings beside it; 4 none), the owner to choose; then of these, "another background": three more, not
   statues (5 tall rocks far off, 6 a temple on a steep island, 7 an ancient lighthouse: `backdrop_rocks`, `_temple`,
   `_lighthouse`, each with its prompt), offered 21/11; a sky of great clouds was made too and not shown (it painted a
-  second sun). Before it (the owner, 21/11: "make something else for the
+  second sun). Then the owner: "put something else in the background, and let it be 3D": three of our own 3D statues
+  standing far out in the sea at the left, as level 1's Observer stands (`observer` in the level's json, built by
+  `_ivw_observer`, its image in the water; `IV_OBS="x,foot,z,height,turn,model[,haze]"` tries one: about
+  -10,-1.6,-5.8 for a whole statue 6.8 m tall, its head under the story's lines; the veiled bust -11.3,-3.2,-7.1, 6.5 m),
+  offered 21/11: 8 the bearded colossus (`iv_colossus`), 9 the goddess (`statue_goddess`), 10 the veiled bust
+  (`observer`), on the plain backdrop. Before it (the owner, 21/11: "make something else for the
   background, whatever you like, but matching the perspective and the colours"; then of it: "I don't like the new
   background"): the ruins of a drowned sanctuary far
   off in the still sea, two rows of white columns going away into the haze, seen from above as the island is: Gemini's
