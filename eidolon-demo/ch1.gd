@@ -10800,6 +10800,9 @@ const IVGD_EYE_K := 0.9      # (his eyes, in the shadow of his hood, at this muc
 const IVGD_COL := Color(0.96, 0.2, 0.18)      # (his gaze red (the owner, 21/11: "and in 5 maybe the beam red?"); a cold blue-white before)
 const IVGD_GLASS := [Color(0.5, 0.46, 0.56), Color(0.17, 0.15, 0.21), Color(0.88, 0.85, 0.92)]      # (his glass: its light, its depth, its cracks: a dark smoky plum glass, pale cracks (the owner, 21/11: "I'd like him in another colour"; a pale blue-white glass before, 0.76 0.84 0.96 / 0.5 0.6 0.8 / white))
 const IVGD_DISC_A := 0.42      # (how red the discs of the way under his gaze go: "a little")
+const IVGD_LINE_W := 0.26      # (the soft line of his gaze laid over those discs, along the way: its breadth (the owner, 21/11: "on the circles that light, a blurry laser line from above where the laser passes"))
+const IVGD_LINE_A := 0.62
+const IVGD_BEAM_K := [1.05, 0.85]      # (his line's core and halo: a little stronger than level 3's light (the owner, 21/11: "the laser a little more intense"); 0.75, 0.5 before)
 var ivgd_n: Node3D
 var ivgd_body: Node3D
 var ivgd_phase := 0
@@ -10814,6 +10817,21 @@ var ivgd_glass: ShaderMaterial
 var ivgd_beam := []      # (the line of his look from his eyes: core, halo)
 var ivgd_red: StandardMaterial3D      # (laid over the discs of the way his gaze falls on: they redden a little)
 var ivgd_reddened := []
+var ivgd_lines := []      # (the soft lines of his gaze over the discs it falls on)
+
+const IVGD_LINE_SH := """
+shader_type spatial;
+render_mode unshaded, blend_mix, cull_disabled, depth_draw_never, shadows_disabled;
+uniform vec3 col : source_color = vec3(0.96, 0.2, 0.18);
+uniform float k = 1.0;
+void fragment(){
+	float across = 1.0 - abs(UV.y * 2.0 - 1.0);
+	float along = smoothstep(0.0, 0.22, UV.x) * (1.0 - smoothstep(0.78, 1.0, UV.x));
+	float flick = 0.94 + 0.06 * sin(TIME * 2.3 + UV.x * 9.0);
+	ALBEDO = mix(col, vec3(1.0, 0.86, 0.82), 0.45 * pow(across, 6.0));
+	ALPHA = clamp(pow(across, 2.2) * along * k * flick, 0.0, 1.0);
+}
+"""
 var ivgd_gk := 1.0      # (his gaze's strength: it dims as he turns, and goes out when the mirror keeps him)
 var ivgd_sunk := false
 
@@ -10878,13 +10896,19 @@ func _ivgd_setup() -> void:
 	# "an extra circle": "the laser's reflection should redden the path's circles a little")
 	var esh := _ivw_shader(IVM_BEAM_SH)
 	for c in 2:
-		var cm := CylinderMesh.new(); cm.top_radius = 0.022 if c == 0 else 0.09; cm.bottom_radius = cm.top_radius; cm.height = 1.0
+		var cm := CylinderMesh.new(); cm.top_radius = 0.026 if c == 0 else 0.1; cm.bottom_radius = cm.top_radius; cm.height = 1.0      # (0.022 and 0.09 before: "a little more intense")
 		cm.radial_segments = 12; cm.rings = 1; cm.cap_top = false; cm.cap_bottom = false
 		var mt := ShaderMaterial.new(); mt.shader = esh; mt.set_shader_parameter("core", 1.0 if c == 0 else 0.0); mt.set_shader_parameter("col", Vector3(IVGD_COL.r, IVGD_COL.g, IVGD_COL.b)); mt.render_priority = 4 + c
 		var bi := MeshInstance3D.new(); bi.mesh = cm; bi.material_override = mt; bi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; bi.visible = false
 		iv_root.add_child(bi); ivgd_beam.append(bi)
 	ivgd_red = StandardMaterial3D.new(); ivgd_red.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; ivgd_red.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	ivgd_red.albedo_color = Color(IVGD_COL, IVGD_DISC_A)
+	var lsh := _ivw_shader(IVGD_LINE_SH)
+	for _i in 4:
+		var lm := PlaneMesh.new(); lm.size = Vector2(1.0, 1.0)
+		var lmat := ShaderMaterial.new(); lmat.shader = lsh; lmat.set_shader_parameter("col", IVGD_COL); lmat.render_priority = 6
+		var li := MeshInstance3D.new(); li.mesh = lm; li.material_override = lmat; li.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; li.visible = false
+		iv_root.add_child(li); ivgd_lines.append(li)
 	_ivgd_mir_make()
 	print("IV the Guardian at ", String(gd.get("node", "G")), " looks ", IVGD_ORDER[ivgd_d0], "; the mirror at ", ivgd_mir, " faces ", IVGD_ORDER[ivgd_face])
 
@@ -11018,6 +11042,25 @@ func _ivgd_draw() -> void:
 	for n in lit:
 		if ivp_disc.has(n): (ivp_disc[n] as MeshInstance3D).material_overlay = ivgd_red; ivgd_reddened.append(n)
 	ivgd_red.albedo_color.a = IVGD_DISC_A * clampf(k, 0.0, 1.0)
+	# a soft line of his gaze over each run of lit discs, along the way, a little past the first and the last
+	var runs := []; var cur := []
+	for n in lit:
+		if ivp_disc.has(n): cur.append(n)
+		elif not cur.is_empty(): runs.append(cur); cur = []
+	if not cur.is_empty(): runs.append(cur)
+	var dl: Vector3 = ivg_dirv[String(tn.dir)]
+	for i in ivgd_lines.size():
+		var li: MeshInstance3D = ivgd_lines[i]
+		li.visible = i < runs.size()
+		if not li.visible: continue
+		var r: Array = runs[i]
+		var p0: Vector3 = (ivp_nodes[String(r[0])] as Vector3) - dl * 0.42
+		var p1: Vector3 = (ivp_nodes[String(r[r.size() - 1])] as Vector3) + dl * 0.42
+		var y := maxf(p0.y, p1.y) + 0.05
+		p0.y = y; p1.y = y
+		var L := (p1 - p0).length()
+		li.global_transform = Transform3D(Basis(dl * L, Vector3.UP, dl.cross(Vector3.UP) * IVGD_LINE_W), (p0 + p1) * 0.5)
+		(li.material_override as ShaderMaterial).set_shader_parameter("k", IVGD_LINE_A * clampf(k, 0.0, 1.0))
 	var d: Vector3 = ivg_dirv[String(tn.dir)]
 	var a := ivgd_n.global_position + Vector3(0, IVGD_EYE_K * float((ivg.get("guard", {}) as Dictionary).get("height", 3.6)), 0) + d * 0.22
 	var b: Vector3 = e
@@ -11034,7 +11077,7 @@ func _ivgd_draw() -> void:
 		if L < 0.05: bi.visible = false; continue
 		var y := v / L; var x := y.cross(Vector3.UP if absf(y.y) < 0.95 else Vector3.RIGHT).normalized(); var z := x.cross(y)
 		bi.global_transform = Transform3D(Basis(x, y * L, z), (a + b) * 0.5)
-		(bi.material_override as ShaderMaterial).set_shader_parameter("k", clampf(k * (0.75 if c == 0 else 0.5) + fl * 1.5, 0.0, 2.5))
+		(bi.material_override as ShaderMaterial).set_shader_parameter("k", clampf(k * float(IVGD_BEAM_K[c]) + fl * 1.5, 0.0, 2.5))
 ## where his look ends, on the floor: at the stone, at her, at the mirror, or past the last place it lights
 func _ivgd_end(t: Dictionary) -> Vector3:
 	var d: Vector3 = ivg_dirv[String(t.dir)]
