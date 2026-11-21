@@ -1662,8 +1662,11 @@ func _ready() -> void:
 		Engine.set_meta("iv_globals", true)
 		RenderingServer.global_shader_parameter_add("view_ax", RenderingServer.GLOBAL_VAR_TYPE_VEC3, Vector3(0.57735, 0.57735, 0.57735))      # (before any shader is made)
 		RenderingServer.global_shader_parameter_add("sea_y", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, WATER)
+		RenderingServer.global_shader_parameter_add("iv_gaze", RenderingServer.GLOBAL_VAR_TYPE_VEC4, Vector4.ZERO)      # (the fifth level's Guardian: his gaze's line over the ground, a and b in x and z)
+		RenderingServer.global_shader_parameter_add("iv_gaze2", RenderingServer.GLOBAL_VAR_TYPE_VEC4, Vector4.ZERO)      # (its breadth, its strength (0: none))
 	else:
 		RenderingServer.global_shader_parameter_set("view_ax", Vector3(0.57735, 0.57735, 0.57735)); RenderingServer.global_shader_parameter_set("sea_y", WATER)
+		RenderingServer.global_shader_parameter_set("iv_gaze", Vector4.ZERO); RenderingServer.global_shader_parameter_set("iv_gaze2", Vector4.ZERO)
 	for k in [["base", SH], ["two", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled;")],
 			["mir", SH.replace("render_mode ambient_light_disabled, specular_disabled;", "render_mode ambient_light_disabled, specular_disabled, cull_disabled, shadows_disabled;")],
 			["water", SH_WATER], ["cloth", SH_CLOTH], ["sheet", SH_SHEET], ["mirror", SH_MIRROR], ["ring", SH_RING], ["sea", SH_SEA], ["refl", SH_REFL], ["glass", SH_GLASS], ["pit", SH_PIT], ["face", SH_FACE], ["foam", SH_FOAM], ["fog", SH_FOG], ["shard", SH_SHARD], ["pane", SH_PANE]]:

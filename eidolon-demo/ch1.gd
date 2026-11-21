@@ -1838,6 +1838,7 @@ func _ivw_story_make(text: String) -> Array:      # (its lines as labels, set in
 		y += h + float(sp.gap) * k
 	return out
 func _ivw_story_write(text: String, hold: float) -> void:
+	if OS.get_environment("IV_NO_STORY") != "": return      # (a picture without the story's lines)
 	var k := get_viewport().get_visible_rect().size.x / 720.0
 	var ls := _ivw_story_make(text)
 	for i in ls.size():
@@ -2173,8 +2174,8 @@ const IV_WAKE_PAL := {      # the waking: dawn over a still sea. Pearl and rose 
 	"rock2": ["c39f98", "93727c", "684a57", "4a3140"],
 	"observer": ["f5e7e1", "decdd0", "c6b0bc", "9d8599"],
 	"statue": ["fcf5f1", "f4e6e1", "d8c2c8", "ae96a9"],      # (the Observer as the concepts paint their statues: white marble warmed by the dawn on its lit side, a light rose-lilac shade; the user: "smoother and better lit")      # (the lighter stone's own: the white marble of the slabs; the user's ask)      # (the rock's own hues, its shade a little lighter so her face under the veil still reads)      # (her shade soft: the face under the veil must never fall into a dark hole)
-	"block": ["dbcbb6", "ccbaa3", "b29f89", "8f7e6f"],      # (the cube a brown beige (the owner, 20/11: "leave it with the meander, just make it beige", then "a more brown beige"); a paler beige "f2eade", "e9dfd1", "d1c4b7", "ab9f96" before it, and a sandier marble, "f6e6d0", "ecd8c0", "d3bba4", "ae968a")      # (the uncut block: a warmer, sandier marble than the slabs, as stone fresh from the quarry is; the owner: "a little different in shade"; a grey-blue was tried and turned down, 18/11: "leave it yellowish as it was, with a few discreet marble veins")
-	"meander": ["baa58d", "a8937d", "8f7c6b", "706155"],      # (its meander a darker shade of its brown beige, a little lighter than first made ("a38f79"...; the owner: "and the meander a little lighter"), as it was of its sand ("cbb497", "baa386", "9e886f", "7a6756"); an outline of a smaller square in its place was made and turned down the same day)      # (its meander the block's own sandy stone, darker; the owner, after a pink and a terracotta: "not terracotta, just darker than the stone's colour")
+	"block": ["d6b18a", "c49f78", "a7845f", "84674b"],      # (the cube a light brown in every level (the owner, 21/11: "the stone with the meander in all levels light brown"); a brown beige before, "dbcbb6", "ccbaa3", "b29f89", "8f7e6f", and before it a paler beige, "f2eade", "e9dfd1", "d1c4b7", "ab9f96", and a sandier marble, "f6e6d0", "ecd8c0", "d3bba4", "ae968a")
+	"meander": ["b18e69", "9e7c59", "84664a", "66503b"],      # (its meander a darker shade of its light brown (21/11); of the brown beige before, "baa58d", "a8937d", "8f7c6b", "706155")
 	"phead": ["f3e4df", "dcc4c4", "b9a0ad", "917b93"],
 	"groove": ["e2cac6", "e2cac6", "e2cac6", "e2cac6"],
 	"line": ["fff4ee", "fff4ee", "fff4ee", "fff4ee"],
@@ -2326,6 +2327,16 @@ uniform float brush_sc = 1.0;      // (the strokes' size)
 uniform float vein_local = 0.0; uniform float vein_sc = 0.9; uniform float vein_w = 0.03; uniform float vein_cloud = 0.05; uniform float vein_gain = 1.0;      // (a block that is pushed: its veins its own, not the world's, so they go with it; light veins on a darker stone: vein_gain over 1)
 uniform float drill = 0.0;      // (a face sawn in the quarry: the drill's grooves down it, the beds across it)
 varying vec3 wp; varying vec3 lpos;
+global uniform vec4 iv_gaze; global uniform vec4 iv_gaze2;      // (the fifth level's Guardian: his gaze lights the ground under it, whatever it is: slabs, rock)
+float gaze_light(vec3 p, vec3 n){
+	if (iv_gaze2.y <= 0.0) return 0.0;
+	vec2 pa = iv_gaze.xy; vec2 ab = iv_gaze.zw - pa; float L2 = max(dot(ab, ab), 1e-4); float L = sqrt(L2);
+	float t = clamp(dot(p.xz - pa, ab) / L2, 0.0, 1.0);
+	float dd = length(p.xz - (pa + ab * t));
+	float e = min(0.45 / L, 0.5);
+	float ends = smoothstep(0.0, e, t) * (1.0 - smoothstep(1.0 - e, 1.0, t));
+	return exp(-dd * dd / (iv_gaze2.x * iv_gaze2.x)) * ends * smoothstep(-0.15, 0.6, normalize(n).y) * iv_gaze2.y;
+}
 void vertex(){
 	lpos = VERTEX;
 	wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; wn = (MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz;
@@ -2555,6 +2566,7 @@ void fragment(){
 	if (under_k > 0.5) fk = max(fk, smoothstep(-0.02, 1.7, clip_y - wp.y) * 0.8);
 	if (mirror_k > 0.5 && mirror_fade > 0.0) fk = max(fk, smoothstep(0.0, mirror_fade, mirror_y - wp.y));
 	if (wline_k > 0.0) { float hw = wp.y - clip_y; c = mix(c, vec3(1.0, 0.97, 0.93), wline_k * (1.0 - smoothstep(0.0, 0.05, hw)) * step(-0.002, hw)); }
+	if (mirror_k < 0.5) c = mix(c, vec3(1.0, 0.3, 0.26), gaze_light(wp, wn));
 	ALBEDO = c * (1.0 - fk);
 	vec3 mist = bgc(sy);
 	if (bg_tex_k > 0.5) {
@@ -5698,6 +5710,7 @@ uniform float wave_k = 0.0;      // (small soft waves aslant, here and there, ea
 uniform float grade_k = 0.0; uniform vec3 grade_far = vec3(0.75, 0.77, 0.86); uniform vec3 grade_near = vec3(0.605, 0.655, 0.745); uniform vec2 grade_y = vec2(0.45, 1.0); uniform float grade_keep = 0.6;      // (the painted sea brought to a concept's own colours, its light and dark kept about them)
 uniform float grad_k = 0.0; uniform vec3 grad_far = vec3(1.0); uniform vec3 grad_near = vec3(1.0); uniform vec3 grad_sun = vec3(1.0); uniform vec4 grad_y = vec4(0.45, 1.0, 0.0, 0.0);      // (a gradient laid over the painted sea, as a tint keeping its painting: from the far water down to the picture's foot (grad_y.xy on the screen), and aslant toward the sun's side (grad_y.z))
 varying vec3 wp;
+global uniform vec4 iv_gaze; global uniform vec4 iv_gaze2;      // (the fifth level's Guardian: his gaze lights the water under it too)
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 vec3 bgc(float s){
 	if (sky4 > 0.5) { vec3 c = mix(bg_top, bg_hz, smoothstep(sky_s.x * 0.3, sky_s.x, s)); c = mix(c, bg_mid, smoothstep(sky_s.x, sky_s.y, s)); return mix(c, bg_bot, smoothstep(sky_s.y, sky_s.z, s)); }
@@ -5777,7 +5790,14 @@ void fragment(){
 		fo = clamp(lip * 0.32 + wv * 0.3 * brk * gate, 0.0, 1.0) * shore_k;
 	}
 	ALBEDO = mix(c, foam_c, fo);
-	if (sea_a < 0.999) ALPHA = mix(sea_a, 1.0, fo);
+	float ga = 0.0;
+	if (iv_gaze2.y > 0.0) {
+		vec2 pa = iv_gaze.xy; vec2 ab = iv_gaze.zw - pa; float L2 = max(dot(ab, ab), 1e-4); float L = sqrt(L2);
+		float t = clamp(dot(wp.xz - pa, ab) / L2, 0.0, 1.0); float dd = length(wp.xz - (pa + ab * t)); float e = min(0.45 / L, 0.5);
+		ga = exp(-dd * dd / (iv_gaze2.x * iv_gaze2.x)) * smoothstep(0.0, e, t) * (1.0 - smoothstep(1.0 - e, 1.0, t)) * iv_gaze2.y;
+		ALBEDO = mix(ALBEDO, vec3(1.0, 0.3, 0.26), ga);
+	}
+	if (sea_a < 0.999) ALPHA = max(mix(sea_a, 1.0, fo), ga);
 }
 """
 func _ivs_sea(sea_y: float) -> void:
@@ -10805,8 +10825,8 @@ const IVGD_EYE_K := 0.9      # (his eyes, in the shadow of his hood, at this muc
 const IVGD_COL := Color(0.96, 0.2, 0.18)      # (his gaze red (the owner, 21/11: "and in 5 maybe the beam red?"); a cold blue-white before)
 const IVGD_GLASS := [Color(0.5, 0.46, 0.56), Color(0.17, 0.15, 0.21), Color(0.88, 0.85, 0.92)]      # (his glass: its light, its depth, its cracks: a dark smoky plum glass, pale cracks (the owner, 21/11: "I'd like him in another colour"; a pale blue-white glass before, 0.76 0.84 0.96 / 0.5 0.6 0.8 / white))
 const IVGD_DISC_A := 0.42      # (how red the discs of the way under his gaze go: "a little")
-const IVGD_LINE_W := 0.62      # (his gaze over the discs it lights, along the way, as a blurry shadow of his line: its breadth (the owner, 21/11: "on the circles that light, a blurry laser line from above where the laser passes", then "along the circles that light, the laser should show as a blurry shadow"; a line 0.26 m wide with a bright middle before))
-const IVGD_LINE_A := 0.5
+const IVGD_LINE_W := 0.42      # (his gaze over the discs it lights, along the way, as a blurry shadow of his line: its breadth (the owner, 21/11: "on the circles that light, a blurry laser line from above where the laser passes", then "along the circles that light, the laser should show as a blurry shadow"; a line 0.26 m wide with a bright middle before))
+const IVGD_LINE_A := 0.26      # (faint (the owner, 21/11: "a little more subdued, the laser over the surfaces", then "a little fainter and blurry"); 0.5, then 0.32 before)
 const IVGD_BEAM_K := [1.7, 1.35]      # (his line's core and halo, bright (the owner, 21/11: "the main laser brighter"; 1.05, 0.85 before, and 0.75, 0.5 before that))
 const IVGD_BEAM_FADE := 0.55      # (and it goes out softly over its last part, from this much of its length on ("and ending in a fade out"))
 const IVGD_BEAM_SH := """
@@ -10947,10 +10967,11 @@ func _ivgd_dir(ph: int) -> String: return IVGD_ORDER[(ivgd_d0 + ph) % 4]
 ## the haze, its image in the water (the owner, 21/11: "something else in the background, and let it be 3D"; of the ways
 ## offered, "a 3D island with ruins"); IV_FAR=0 leaves it out, IV_FAR_K tries another haze
 const IVGD_FAR_K := 0.3
+const IVGD_FAR_ON := false      # (the owner, 21/11: "can't you make the island as a picture?": it is painted in the backdrop now; IV_FAR=1 brings the 3D one back)
 const IVGD_FAR_AT := Vector3(1.2, 0.0, 1.2)      # (set down a little nearer than it was built, so its columns stay under the story's lines)
 func _ivgd_far() -> void:
 	var fp := go_dir + "far.glb"
-	if OS.get_environment("IV_FAR") == "0" or not FileAccess.file_exists(fp): return
+	if not (IVGD_FAR_ON or OS.get_environment("IV_FAR") == "1") or OS.get_environment("IV_FAR") == "0" or not FileAccess.file_exists(fp): return
 	var st := GLTFState.new(); var doc := GLTFDocument.new()
 	doc.append_from_buffer(FileAccess.get_file_as_bytes(fp), "", st)
 	var fv := doc.generate_scene(st) as Node3D
@@ -11100,40 +11121,14 @@ func _ivgd_draw() -> void:
 	for n in lit:
 		if ivp_disc.has(n): (ivp_disc[n] as MeshInstance3D).material_overlay = ivgd_red; ivgd_reddened.append(n)
 	ivgd_red.albedo_color.a = IVGD_DISC_A * clampf(k, 0.0, 1.0)
-	# his line's blurry shadow on every surface it passes over, from his pedestal's edge to where it ends: on the walk at
-	# its height, on the water at the sea's (the owner, 21/11: "the laser below, over the whole surface it passes over")
+	# his line's light on every surface under it, from his pedestal's edge to where it ends, whatever it falls on: slabs,
+	# brown rock, the water (the owner, 21/11: "the laser should light whatever surface it passes over, even the brown
+	# rocks, and a little fainter and blurry"): a value every level's material and the sea's read (iv_gaze in main.gd)
 	var dl: Vector3 = ivg_dirv[String(tn.dir)]
-	var sea := IV_O.y + ivr_sea_y
-	var unw: Array = ivg.get("unwalked", [])
-	var gp := ivgd_n.global_position
-	var pts := [[gp + dl * 0.62, false]]      # (a point of his line on the ground, and whether the walk is under it)
-	for n in (tn.nodes if k > 0.05 else []): pts.append([ivp_nodes[String(n)] as Vector3, not unw.has(String(n))])
-	if k > 0.05: pts.append([e, String(tn.end) != "off"])
-	var pieces := []      # ([from, to, on the walk])
-	for i in range(1, pts.size()):
-		var pa: Vector3 = pts[i - 1][0]; var pb: Vector3 = pts[i][0]
-		var wa: bool = pts[i - 1][1]; var wb: bool = pts[i][1]
-		if wa == wb: pieces.append([pa, pb, wa])
-		elif wa: pieces.append([pa, pa + dl * 0.75, true]); pieces.append([pa + dl * 0.75, pb, false])      # (off the slab's edge, a step's half from its node)
-		else: pieces.append([pa, pb - dl * 0.75, false]); pieces.append([pb - dl * 0.75, pb, true])
-	var runs := []
-	for pc in pieces:
-		if not runs.is_empty() and bool(runs[-1][2]) == bool(pc[2]): runs[-1][1] = pc[1]
-		else: runs.append([pc[0], pc[1], pc[2]])
-	var shown := 0
-	for r in runs:
-		if shown >= ivgd_lines.size(): break
-		var p0: Vector3 = r[0]; var p1: Vector3 = r[1]
-		var y := (maxf(p0.y, p1.y) + 0.05) if bool(r[2]) else sea + 0.03
-		p0.y = y; p1.y = y
-		var L := (p1 - p0).length()
-		if L < 0.08: continue
-		var li: MeshInstance3D = ivgd_lines[shown]; shown += 1
-		li.global_transform = Transform3D(Basis(dl * L, Vector3.UP, dl.cross(Vector3.UP) * IVGD_LINE_W), (p0 + p1) * 0.5)
-		var lm := li.material_override as ShaderMaterial
-		lm.set_shader_parameter("k", IVGD_LINE_A * clampf(k, 0.0, 1.0)); lm.set_shader_parameter("len_m", L)
-		li.visible = true
-	for i in range(shown, ivgd_lines.size()): (ivgd_lines[i] as MeshInstance3D).visible = false
+	var ga := ivgd_n.global_position + dl * 0.62
+	RenderingServer.global_shader_parameter_set("iv_gaze", Vector4(ga.x, ga.z, e.x, e.z))
+	RenderingServer.global_shader_parameter_set("iv_gaze2", Vector4(IVGD_LINE_W, IVGD_LINE_A * clampf(k, 0.0, 1.0), 0.0, 0.0))
+	for li in ivgd_lines: (li as MeshInstance3D).visible = false
 	var d: Vector3 = ivg_dirv[String(tn.dir)]
 	var a := ivgd_n.global_position + Vector3(0, IVGD_EYE_K * float((ivg.get("guard", {}) as Dictionary).get("height", 3.6)), 0) + d * 0.22
 	var b: Vector3 = e

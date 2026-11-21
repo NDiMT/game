@@ -179,7 +179,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   cube too"): `props/block_cube.glb`, 0.92 m, its own colours, beige since 20/11 in every level (the owner: "not gold but beige"; then, of an outline of a smaller
   square in place of the meander, made and turned down the same day: "leave it with the meander, just make it beige";
   then "a more brown beige", "and the meander a little lighter"; and "in all levels the cube with the meander like the
-  first": the fourth level's own lighter, softer colours for it are gone, it is the second level's), its meander a darker shade of that brown beige, its veins as discreet as before (`block`, `meander` in `IV_WAKE_PAL`, `IV_GLASS_PAL`);
+  first": the fourth level's own lighter, softer colours for it are gone, it is the second level's; since 21/11 a light brown, `d6b18a` lit, in every level: "the stone with the meander in
+  all levels light brown"), its meander a darker shade of it, its veins as discreet as before (`block`, `meander` in `IV_WAKE_PAL`, `IV_GLASS_PAL`);
   its single great key cut in each face (`tools/go/block_cube.py ... one`; four small square keys on each face, two by
   two, as the fifth level's concept has them, were tried on 21/11, `four`, and the same day the owner: "put back the
   previous cube you push"); it tumbles over onto the next place, and into the gap
@@ -473,8 +474,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   `design/level4/` (the concepts, the face in the sea, `face_ref.png`).
 - **Level 5, the Guardian (`goguard/`, `FLIP=goguard`, being built since 21/11)**: the script's tenth truth ("He looked
   into the mirror with longing, / and it kept him."). The Guardian of the Glass, a hooded man of cracked glass
-  (`props/statue_guardian.glb`, Tripo P1 from `design/level5/guardian_design.jpg`, the owner's OK for 40 credits), 3.2 m
-  tall (the owner, 21/11: "smaller"; 4.0 before; `height` in `guard_plan.py`); his model faces its own +x, as every statue made from a picture (`IVGD_YAW0` 0; π/2 had him a quarter off: the owner,
+  (`props/statue_guardian.glb`, Tripo P1 from `design/level5/guardian_design.jpg`, the owner's OK for 40 credits), 2.6 m
+  tall (the owner, 21/11: "smaller", then "even shorter"; 4.0, then 3.2 before; `height` in `guard_plan.py`); his model faces its own +x, as every statue made from a picture (`IVGD_YAW0` 0; π/2 had him a quarter off: the owner,
   21/11, "you have the guardian turned wrong by 90 degrees"); a dark smoky plum glass with pale cracks since 21/11
   (`IVGD_GLASS`; the owner: "I'd like him in another colour", and only his: "I didn't tell you to change the level's
   colours, only the guardian's"; of smoke, amethyst and honey he chose "the first"; a pale blue-white glass first; amber and jade tried too;
@@ -483,11 +484,15 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   shader `IVGD_BEAM_SH`, `IVGD_BEAM_K` 1.7 and 1.35, going out softly over its last part from `IVGD_BEAM_FADE` 0.55 of
   its length: the owner, "the main laser brighter and ending in a fade out"), runs along the ways and over the water
   until the stone, she or the mirror stops it, and the discs of the way it falls on go a little red (`IVGD_DISC_A`,
-  laid over each disc, `ivp_disc`), with his line laid under it as a blurry red shadow on every surface it passes over
-  (`IVGD_LINE_*`: 0.62 m broad, soft as a gaussian across, no bright middle, its ends fading over 0.32 m; from his
-  pedestal's edge to where his line ends, on the walk at its height and off the slab's edge on the water at the sea's;
-  the owner: "along the circles that light, the laser should show as a blurry shadow", then "the laser below, over the
-  whole surface it passes over"; over the lit discs alone, and a thinner line with a bright middle, before). Before, a broad band of light on the floor from his pedestal along it was "a
+  laid over each disc, `ivp_disc`), and under it whatever it passes over glows a soft red, the walk, the brown rock and the water alike (the owner,
+  21/11: "the laser should light whatever surface it passes over, even the brown rocks, a little fainter and blurry"):
+  the level's shader and the sea's take his line from two global uniforms (`iv_gaze`: its two ends in x and z;
+  `iv_gaze2`: its breadth and strength; added in `main.gd` `_ready`, set each frame by `_ivgd_draw`, 0 in every other
+  level) and light what lies within it, soft as a gaussian across, its ends fading, only on faces turned up
+  (`gaze_light` in IV_SH; `IVGD_LINE_W` 0.42 m, `IVGD_LINE_A` 0.26). Before: strips laid over the walk and the sea
+  (`IVGD_LINE_SH`, still made, kept hidden), which stopped at the rock (the owner: "along the circles that light, the
+  laser should show as a blurry shadow", "the laser below, over the whole surface it passes over", "a little more
+  subdued"); over the lit discs alone, and a thinner line with a bright middle, before that. Before, a broad band of light on the floor from his pedestal along it was "a
   pointless laser blur" and a ring on each place "an extra circle" (the owner, 21/11); where he will look next, a fainter
   band then, is no longer shown; where he looks now or
   next she may not end a move: seen, back to the start (`_ivg_fail`). She hides behind the stone on the pier, turns the
@@ -516,6 +521,13 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   its rock, two columns half sunk beside it; the game sets it down (`_ivgd_far`) a little nearer than built
   (`IVGD_FAR_AT` 1.2, 0, 1.2, so its columns stay under the story's lines), in the level's materials given to the haze
   (`IVGD_FAR_K` 0.3), its image in the water; `IV_FAR=0` leaves it out, `IV_FAR_AT="dx,dz[,scale]"`, `IV_FAR_K` try others.
+  **Then painted into the backdrop** (the owner, 21/11: "can't you make the island as a picture?"): Gemini's edit of
+  the plain backdrop, given a screenshot of the level with the 3D island and the island close up
+  (`design/level5/backdrop_isle_prompt.txt`, its raw edit `backdrop_isle_edit.jpg`); the island cut out of it by its
+  difference from the plain one (the edit lies on it exactly), made 0.85 its size about its top's middle and lowered
+  0.07 of the height, so it stays under the story's lines, and laid on the plain backdrop (`backdrop_isle.jpg`, then
+  cropped to 1080x1920 as `goguard/backdrop.jpg`). The 3D island is off (`IVGD_FAR_ON` false; `IV_FAR=1` brings it
+  back; `goguard/far.glb` is left out of the builds).
   The veiled bust is out again (`observer` None). Before it (the owner, 21/11: "make something else for the
   background, whatever you like, but matching the perspective and the colours"; then of it: "I don't like the new
   background"): the ruins of a drowned sanctuary far

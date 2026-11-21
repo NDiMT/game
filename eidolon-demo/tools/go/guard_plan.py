@@ -55,7 +55,7 @@ def plan():
         'P1': {'h': H0, 'xz': rect(1.5, 2.5, -1.5, -0.5)},      # (round to the pier)
         'P2': {'h': H0, 'xz': rect(1.68, 4.5, -0.5, 0.5)},      # (the pier out along his east line, the mirror at its end)
     }
-    guard = {'at': W(0, 0, SEA), 'pedestal_top': H0 + 0.1, 'height': 3.2, 'd0': NAME[t.d0], 'turn': t.turn}      # (a little under twice her height (the owner, 21/11: "smaller"; 4.0 before))
+    guard = {'at': W(0, 0, SEA), 'pedestal_top': H0 + 0.1, 'height': 2.6, 'd0': NAME[t.d0], 'turn': t.turn}      # (half again her height (the owner, 21/11: "smaller", then "even shorter"; 4.0, then 3.2 before))
     puzzle = {
         'nodes': N, 'edges': edges, 'start': 'S', 'exit': 'R', 'block': 'K', 'holes': [],
         'intro': [[N['S'][0], H0, N['S'][2] + 0.01], N['S']],      # (no way in: she stands where the light of the fourth gate let her go)
