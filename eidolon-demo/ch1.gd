@@ -4723,7 +4723,7 @@ func _ivw_emerge(r: Array) -> void:
 		ivw_surf_n += 1; _ivw_sfx("stone_surface_%d" % (1 + ivw_surf_n % 3), IVW_SURF_DB, 0.0, randf_range(0.93, 1.07))
 	if r.size() > 7:
 		if r[7] == null or not is_instance_valid(r[7]): r[7] = _ivw_churn_make(r)
-		_ivw_churn_burst(r[7] as MeshInstance3D, 0.55, false)      # (its foam coming in over a moment as it comes up, never at once)
+		_ivw_churn_burst(r[7] as MeshInstance3D, 0.5, false, 0.3)      # (its foam coming in over a moment as it comes up, never at once; a breath after its top breaks the water, when its rock has come up to where it meets the water: at once, a thin line of it lay out on the water round where the rock would stand)
 	for q in ivw_risers:
 		if q.size() > 5 and String(q[5]) == String(r[5]):
 			var qm := (q[0] as MeshInstance3D).material_override as ShaderMaterial
@@ -4848,14 +4848,14 @@ func _ivw_own_shore() -> Texture2D:      # (each rising stone's own shore map: t
 	if ivw_own_shore == null and ResourceLoader.exists(go_dir + "shore_risers.png"): ivw_own_shore = load(go_dir + "shore_risers.png")
 	return ivw_own_shore
 
-func _ivw_churn_burst(mi: MeshInstance3D, rise := 0.18, boil := true) -> void:
+func _ivw_churn_burst(mi: MeshInstance3D, rise := 0.18, boil := true, delay := 0.0) -> void:
 	if mi == null or not is_instance_valid(mi): return
 	var m := mi.material_override as ShaderMaterial
 	var t := create_tween().set_parallel(true)
-	t.tween_method(func(v: float) -> void: m.set_shader_parameter("churn", v), 0.0, 1.0, rise).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
-	t.tween_method(func(v: float) -> void: m.set_shader_parameter("spread", v), 0.05, 0.45, 1.8).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	t.tween_method(func(v: float) -> void: m.set_shader_parameter("churn", v), 0.0, 1.0, rise).set_delay(delay).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	t.tween_method(func(v: float) -> void: m.set_shader_parameter("spread", v), 0.05, 0.45, 1.8).set_delay(delay).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
 	if boil: t.tween_method(func(v: float) -> void: m.set_shader_parameter("boil", v), 1.0, 0.0, 0.7)
-	t.tween_method(func(v: float) -> void: m.set_shader_parameter("churn", v), 1.0, 0.0, 2.6).set_delay(0.9).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	t.tween_method(func(v: float) -> void: m.set_shader_parameter("churn", v), 1.0, 0.0, 2.6).set_delay(0.9 + delay).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
 	t.chain().tween_callback(mi.queue_free)
 
 func _ivw_splash(at: Vector3, rad: float) -> void:      # (drops thrown up from a stone's edges as it breaks the water)
@@ -6044,9 +6044,22 @@ func _ivq_decor() -> void:
 func _ivq_mirror(nd: String, turn: int) -> void:
 	var p: Vector3 = ivp_nodes[nd]
 	var root := Node3D.new(); iv_root.add_child(root); root.global_position = p
-	var bs := _iv_st()
-	_iv_box(bs, Vector3(-0.3, 0.0, -0.3), Vector3(0.3, 0.12, 0.3)); _iv_box(bs, Vector3(-0.22, 0.12, -0.22), Vector3(0.22, 0.2, 0.22))
-	var bmi := MeshInstance3D.new(); bmi.mesh = bs.commit(); bmi.material_override = _ivr_mat("marble2", 0.0); root.add_child(bmi)
+	var bmi := MeshInstance3D.new()
+	if go_wake:      # (a round base of two steps, as high as the square one was (the owner, 21/11: "in level 3 put a round base on the mirror, and let's use the same mirror here", the fifth level))
+		var b1 := CylinderMesh.new(); b1.top_radius = 0.32; b1.bottom_radius = 0.34; b1.height = 0.12; b1.radial_segments = 40; b1.rings = 1
+		var b2 := CylinderMesh.new(); b2.top_radius = 0.23; b2.bottom_radius = 0.25; b2.height = 0.08; b2.radial_segments = 40; b2.rings = 1
+		var am := ArrayMesh.new()
+		for pr in [[b1, 0.06], [b2, 0.16]]:
+			var st_ := SurfaceTool.new(); st_.create_from(pr[0] as Mesh, 0)
+			var arr := st_.commit_to_arrays(); var vv: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+			for i in vv.size(): vv[i] = vv[i] + Vector3(0, float(pr[1]), 0)
+			arr[Mesh.ARRAY_VERTEX] = vv; am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+		bmi.mesh = am
+	else:
+		var bs := _iv_st()
+		_iv_box(bs, Vector3(-0.3, 0.0, -0.3), Vector3(0.3, 0.12, 0.3)); _iv_box(bs, Vector3(-0.22, 0.12, -0.22), Vector3(0.22, 0.2, 0.22))
+		bmi.mesh = bs.commit()
+	bmi.material_override = _ivr_mat("marble2", 0.0); root.add_child(bmi)
 	var head := Node3D.new(); root.add_child(head)
 	var post := CylinderMesh.new(); post.top_radius = 0.035; post.bottom_radius = 0.05; post.height = 0.5; post.radial_segments = 10; post.rings = 1
 	var pmi := MeshInstance3D.new(); pmi.mesh = post; pmi.material_override = _ivr_mat("bronze", 0.0); pmi.position = Vector3(0, 0.45, 0); head.add_child(pmi)
