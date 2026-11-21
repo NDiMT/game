@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from veil_plan import eye_fit
 from gaze_trial import guardian, solve, NAME
 
-H0 = 0.0
+H0 = 0.6      # (the walk stands well out of the water, on its rock, as its concept has it)
 SEA = -0.3
 STEP = 1.5
 W = lambda gx, gy, h=H0: [round(-STEP * gy, 3), h, round(-STEP * gx, 3)]      # (a cell of the board, in the world)
@@ -27,7 +27,8 @@ CELL = {(-2, -1): 'S', (-1, -1): 'A', (0, -1): 'B', (1, -1): 'K', (1, 0): 'E', (
         (0, -2): 'L', (1, -2): 'H', (2, -1): 'P', (2, 0): 'Q', (3, 0): 'T'}
 GAZE = {(4, 0): 'M',      # (the goddess's mirror, on the pier's end)
         (0, 0): 'G',      # (the Guardian on his pedestal in the pool)
-        (0, 1): 'N1', (0, 2): 'N2', (0, 3): 'N3', (-2, 0): 'W2', (-3, 0): 'W3', (0, -3): 'S3'}      # (his lines over the water)
+        (0, 1): 'N1', (0, 2): 'N2', (0, 3): 'N3', (-2, 0): 'W2', (-3, 0): 'W3', (0, -3): 'S3',      # (his lines over the water)
+        (1, 1): 'D'}      # (the deep water at the pool's open back: the stone pushed in sinks there)
 SINK = (1, 1)      # (deep water at the pool's open back: the stone pushed in sinks)
 
 
@@ -41,7 +42,7 @@ def plan():
     name = {**CELL, **GAZE}
     N = {k: W(*c) for c, k in name.items()}
     edges = sorted({tuple(sorted((name[a], name[b]))) for a, b in t.level})
-    edges = [[a, b, []] for a, b in edges]
+    edges = [[a, b, []] for a, b in edges] + [['M', 'T', []]]      # (the mirror turned from the pier's end: a swipe into it)
     gaps = sorted({tuple(sorted((name[a], name[b]))) for a, b in t.links})
     way = []
     for dn, cell, ev, ph in res['path']:
@@ -63,12 +64,18 @@ def plan():
         'grid': {'E': [0, 0, -1], 'S': [1, 0, 0], 'W': [0, 0, 1], 'N': [-1, 0, 0]},
         'guard': dict(guard, node='G'),      # (he looks first south, and turns clockwise a quarter at each of her moves)
         'mirror_face': {'node': 'M', 'face': NAME[t.mface0], 'from': [name[c] for c in t.mfrom]},      # (a flat mirror, turned a quarter at a swipe into it; its face toward him keeps him)
-        'sinks': {'E': {'N': W(*SINK, SEA)}},      # (the stone on E pushed north goes over the edge into the deep water, and sinks)
+        'sinks': {'E': {'N': 'D'}},      # (the stone on E pushed north goes over the edge into the deep water, D, and sinks)
         'unwalked': list(GAZE),
         'solution': way,
         'lines': ['He looked into the mirror with longing,', 'and it kept him.'],      # (the script's tenth truth; to be settled with the owner)
     }
-    rocks = [[[1.6, SEA, 4.0], 0.85, H0 - 0.2],      # (about the start, out of the water)
+    B = lambda gx, gy, r, top: [W(gx, gy, SEA), r, top]      # (a rock at a place of the board)
+    rocks = [B(-2.25, -1.75, 0.85, H0 - 0.1), B(-1.2, -1.8, 0.8, H0 - 0.12), B(-2.8, -0.85, 0.8, H0 - 0.1),      # (the island's rock under its walk, out of the water all round it, its tops just under the slabs (the concept: the slabs on chunky dark rock))
+             B(-0.75, -2.45, 0.75, H0 - 0.12), B(0.75, -2.75, 0.8, H0 - 0.1), B(1.6, -2.6, 0.75, H0 - 0.12),      # (none on his lines over the water: his gaze runs out over them)
+             B(-1.85, 0.75, 0.8, H0 - 0.1), B(-1.85, 1.85, 0.8, H0 - 0.12), B(-1.6, 2.85, 0.95, H0 - 0.05),
+             B(2.0, -1.85, 0.75, H0 - 0.12), B(2.85, -1.05, 0.7, H0 - 0.12), B(3.4, -0.85, 0.7, H0 - 0.12), B(4.35, -0.8, 0.7, H0 - 0.1),
+             B(4.85, 0.1, 0.75, H0 - 0.1), B(2.6, 0.85, 0.65, H0 - 0.14), B(3.6, 0.85, 0.7, H0 - 0.12), B(4.5, 0.85, 0.6, H0 - 0.14),
+             [[1.6, SEA, 4.0], 0.85, H0 - 0.2],      # (about the start, out of the water)
              [[3.3, SEA, 1.2], 0.7, H0 - 0.25],
              [[3.7, SEA, -1.5], 0.75, H0 - 0.25],      # (under the push spot's outer side)
              [[-4.3, SEA, 2.6], 0.9, H0 - 0.15],      # (behind the gate's rock)
@@ -104,7 +111,7 @@ def check(pz):
     t = guardian(); name = {**CELL, **GAZE}
     lv = {frozenset((name[a], name[b])) for a, b in t.level}
     gp = {frozenset((name[a], name[b])) for a, b in t.links}
-    assert lv == {frozenset(e[:2]) for e in pz['edges']}
+    assert lv == {frozenset(e[:2]) for e in pz['edges']} - {frozenset(('M', 'T'))}
     assert gp == {frozenset(g) for g in pz['gaps']}
     assert name[t.ring] == pz['exit'] and name[t.stone0] == pz['block'] and name[t.start] == pz['start'] and name[t.mirror] == 'M'
     print('the plan is the board: %d ways, %d gaze-only links; the way: %s' % (len(lv), len(gp), ' '.join(pz['solution'])))
