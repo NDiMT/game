@@ -494,7 +494,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   off at the left, gazing into a hand mirror, painted as level 3's goddess is (Gemini's edit of the plain backdrop, with
   level 3's backdrop for its style and a screenshot of the level for its colours: `backdrop_sculptor_prompt.txt`,
   `backdrop_sculptor.jpg`), of four offered (2 a veiled maiden with a mirror, 3 Narcissus over his reflection, their
-  prompts and paintings beside it; 4 none), the owner to choose. Before it (the owner, 21/11: "make something else for the
+  prompts and paintings beside it; 4 none), the owner to choose; then of these, "another background": three more, not
+  statues (5 tall rocks far off, 6 a temple on a steep island, 7 an ancient lighthouse: `backdrop_rocks`, `_temple`,
+  `_lighthouse`, each with its prompt), offered 21/11; a sky of great clouds was made too and not shown (it painted a
+  second sun). Before it (the owner, 21/11: "make something else for the
   background, whatever you like, but matching the perspective and the colours"; then of it: "I don't like the new
   background"): the ruins of a drowned sanctuary far
   off in the still sea, two rows of white columns going away into the haze, seen from above as the island is: Gemini's
