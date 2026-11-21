@@ -530,6 +530,15 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   0.07 of the height, so it stays under the story's lines, and laid on the plain backdrop (`backdrop_isle.jpg`, then
   cropped to 1080x1920 as `goguard/backdrop.jpg`). The 3D island is off (`IVGD_FAR_ON` false; `IV_FAR=1` brings it
   back; `goguard/far.glb` is left out of the builds).
+  **Then a more surreal island, five offered** (the owner, 21/11: "shall we try another background? an island again,
+  but more surreal"): each Gemini's edit of the plain backdrop, given a screenshot of the level for the island's place,
+  size and look (`design/level5/surreal/`: its prompt and its raw edit), laid in smaller and lower by
+  `tools/go/backdrop_place.py` so it stays under the story's lines and clear of the level (scale, x, top): 1 a floating
+  island, a thread of water falling from it (0.68, 0.25, 0.225); 2 an island on a slender stem of rock, a round temple
+  on it and a stair winding up (0.62, 0.24, 0.235); 3 an island coming apart upward, its stones drifting into the sky
+  (0.6, 0.25, 0.146, faded out above 0.17 to 0.24); 4 an island held up in a colossal marble hand (0.6, 0.25, 0.23); 5 an
+  island and its upside-down twin in the sky (0.5, 0.25, 0.215). The owner to choose; the painted island of ruins stays
+  until then.
   The veiled bust is out again (`observer` None). Before it (the owner, 21/11: "make something else for the
   background, whatever you like, but matching the perspective and the colours"; then of it: "I don't like the new
   background"): the ruins of a drowned sanctuary far
