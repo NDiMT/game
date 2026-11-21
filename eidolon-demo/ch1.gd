@@ -10804,9 +10804,29 @@ const IVGD_EYE_K := 0.9      # (his eyes, in the shadow of his hood, at this muc
 const IVGD_COL := Color(0.96, 0.2, 0.18)      # (his gaze red (the owner, 21/11: "and in 5 maybe the beam red?"); a cold blue-white before)
 const IVGD_GLASS := [Color(0.5, 0.46, 0.56), Color(0.17, 0.15, 0.21), Color(0.88, 0.85, 0.92)]      # (his glass: its light, its depth, its cracks: a dark smoky plum glass, pale cracks (the owner, 21/11: "I'd like him in another colour"; a pale blue-white glass before, 0.76 0.84 0.96 / 0.5 0.6 0.8 / white))
 const IVGD_DISC_A := 0.42      # (how red the discs of the way under his gaze go: "a little")
-const IVGD_LINE_W := 0.26      # (the soft line of his gaze laid over those discs, along the way: its breadth (the owner, 21/11: "on the circles that light, a blurry laser line from above where the laser passes"))
-const IVGD_LINE_A := 0.62
-const IVGD_BEAM_K := [1.05, 0.85]      # (his line's core and halo: a little stronger than level 3's light (the owner, 21/11: "the laser a little more intense"); 0.75, 0.5 before)
+const IVGD_LINE_W := 0.62      # (his gaze over the discs it lights, along the way, as a blurry shadow of his line: its breadth (the owner, 21/11: "on the circles that light, a blurry laser line from above where the laser passes", then "along the circles that light, the laser should show as a blurry shadow"; a line 0.26 m wide with a bright middle before))
+const IVGD_LINE_A := 0.5
+const IVGD_BEAM_K := [1.7, 1.35]      # (his line's core and halo, bright (the owner, 21/11: "the main laser brighter"; 1.05, 0.85 before, and 0.75, 0.5 before that))
+const IVGD_BEAM_FADE := 0.55      # (and it goes out softly over its last part, from this much of its length on ("and ending in a fade out"))
+const IVGD_BEAM_SH := """
+shader_type spatial;
+render_mode unshaded, blend_mix, cull_back, depth_draw_never, shadows_disabled;
+uniform vec3 col : source_color = vec3(0.96, 0.2, 0.18);
+uniform float k = 1.0;
+uniform float core = 0.0;
+uniform float fade = 0.55;
+varying float along;
+void vertex(){ along = VERTEX.y + 0.5; }
+void fragment(){
+	float f = abs(dot(NORMAL, VIEW));
+	float a = core > 0.5 ? smoothstep(0.1, 0.8, f) * 0.95 : pow(f, 2.0) * 0.45;
+	float flick = 0.94 + 0.06 * sin(TIME * 2.3 + FRAGCOORD.y * 0.013);
+	float out_k = 1.0 - smoothstep(fade, 1.0, along);
+	float in_k = smoothstep(0.0, 0.04, along);
+	ALBEDO = core > 0.5 ? mix(col, vec3(1.0, 0.96, 0.94), 0.62) : col;
+	ALPHA = clamp(a * k * flick * out_k * in_k, 0.0, 1.0);
+}
+"""
 var ivgd_n: Node3D
 var ivgd_body: Node3D
 var ivgd_phase := 0
@@ -10829,11 +10849,12 @@ render_mode unshaded, blend_mix, cull_disabled, depth_draw_never, shadows_disabl
 uniform vec3 col : source_color = vec3(0.96, 0.2, 0.18);
 uniform float k = 1.0;
 void fragment(){
-	float across = 1.0 - abs(UV.y * 2.0 - 1.0);
-	float along = smoothstep(0.0, 0.22, UV.x) * (1.0 - smoothstep(0.78, 1.0, UV.x));
-	float flick = 0.94 + 0.06 * sin(TIME * 2.3 + UV.x * 9.0);
-	ALBEDO = mix(col, vec3(1.0, 0.86, 0.82), 0.45 * pow(across, 6.0));
-	ALPHA = clamp(pow(across, 2.2) * along * k * flick, 0.0, 1.0);
+	float r = abs(UV.y * 2.0 - 1.0);
+	float across = exp(-r * r * 5.5) - exp(-5.5) * r;      // (a soft gaussian across it: a blurry shadow of his line, no bright middle)
+	float along = smoothstep(0.0, 0.3, UV.x) * (1.0 - smoothstep(0.7, 1.0, UV.x));
+	float flick = 0.95 + 0.05 * sin(TIME * 2.3 + UV.x * 9.0);
+	ALBEDO = col;
+	ALPHA = clamp(across * along * k * flick, 0.0, 1.0);
 }
 """
 var ivgd_gk := 1.0      # (his gaze's strength: it dims as he turns, and goes out when the mirror keeps him)
@@ -10898,11 +10919,11 @@ func _ivgd_setup() -> void:
 	# his gaze: the line of his look from his eyes to where it ends, and the discs of the way it falls on a little red
 	# (the owner, 21/11: a band of light on the floor along it and a ring on each place were "a pointless laser blur" and
 	# "an extra circle": "the laser's reflection should redden the path's circles a little")
-	var esh := _ivw_shader(IVM_BEAM_SH)
+	var esh := _ivw_shader(IVGD_BEAM_SH)
 	for c in 2:
 		var cm := CylinderMesh.new(); cm.top_radius = 0.026 if c == 0 else 0.1; cm.bottom_radius = cm.top_radius; cm.height = 1.0      # (0.022 and 0.09 before: "a little more intense")
 		cm.radial_segments = 12; cm.rings = 1; cm.cap_top = false; cm.cap_bottom = false
-		var mt := ShaderMaterial.new(); mt.shader = esh; mt.set_shader_parameter("core", 1.0 if c == 0 else 0.0); mt.set_shader_parameter("col", Vector3(IVGD_COL.r, IVGD_COL.g, IVGD_COL.b)); mt.render_priority = 4 + c
+		var mt := ShaderMaterial.new(); mt.shader = esh; mt.set_shader_parameter("core", 1.0 if c == 0 else 0.0); mt.set_shader_parameter("col", IVGD_COL); mt.set_shader_parameter("fade", IVGD_BEAM_FADE); mt.render_priority = 4 + c
 		var bi := MeshInstance3D.new(); bi.mesh = cm; bi.material_override = mt; bi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; bi.visible = false
 		iv_root.add_child(bi); ivgd_beam.append(bi)
 	ivgd_red = StandardMaterial3D.new(); ivgd_red.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; ivgd_red.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -11058,8 +11079,8 @@ func _ivgd_draw() -> void:
 		li.visible = i < runs.size()
 		if not li.visible: continue
 		var r: Array = runs[i]
-		var p0: Vector3 = (ivp_nodes[String(r[0])] as Vector3) - dl * 0.42
-		var p1: Vector3 = (ivp_nodes[String(r[r.size() - 1])] as Vector3) + dl * 0.42
+		var p0: Vector3 = (ivp_nodes[String(r[0])] as Vector3) - dl * 0.65
+		var p1: Vector3 = (ivp_nodes[String(r[r.size() - 1])] as Vector3) + dl * 0.65
 		var y := maxf(p0.y, p1.y) + 0.05
 		p0.y = y; p1.y = y
 		var L := (p1 - p0).length()

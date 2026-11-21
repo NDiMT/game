@@ -477,12 +477,13 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   (`IVGD_GLASS`; the owner: "I'd like him in another colour", and only his: "I didn't tell you to change the level's
   colours, only the guardian's"; of smoke, amethyst and honey he chose "the first"; a pale blue-white glass first; amber and jade tried too;
   `IV_GUARD_COL="tint;deep;cracks"` tries another). On a round pedestal in a pool at the island's middle, he turns a
-  quarter clockwise at each of her moves; his gaze, a line of red light from his eyes (red since the owner, 21/11; a little
-  stronger than level 3's light since: "the laser a little more intense", `IVGD_BEAM_K`), runs along the ways and over
-  the water until the stone, she or the mirror stops it, and the discs of the way it falls on go a little red
-  (`IVGD_DISC_A`, laid over each disc, `ivp_disc`), a soft red line laid over them along the way (`IVGD_LINE_*`, over
-  each run of lit discs and a little past its ends; the owner: "on the circles that light, a blurry laser line from
-  above, where the laser passes"). Before, a broad band of light on the floor from his pedestal along it was "a
+  quarter clockwise at each of her moves; his gaze, a line of red light from his eyes (red since the owner, 21/11; bright, its own
+  shader `IVGD_BEAM_SH`, `IVGD_BEAM_K` 1.7 and 1.35, going out softly over its last part from `IVGD_BEAM_FADE` 0.55 of
+  its length: the owner, "the main laser brighter and ending in a fade out"), runs along the ways and over the water
+  until the stone, she or the mirror stops it, and the discs of the way it falls on go a little red (`IVGD_DISC_A`,
+  laid over each disc, `ivp_disc`), with his line along them as a blurry red shadow on the floor (`IVGD_LINE_*`: 0.62 m
+  broad, soft as a gaussian across, no bright middle, over each run of lit discs and 0.65 m past its ends; the owner:
+  "along the circles that light, the laser should show as a blurry shadow"; a thinner line with a bright middle before). Before, a broad band of light on the floor from his pedestal along it was "a
   pointless laser blur" and a ring on each place "an extra circle" (the owner, 21/11); where he will look next, a fainter
   band then, is no longer shown; where he looks now or
   next she may not end a move: seen, back to the start (`_ivg_fail`). She hides behind the stone on the pier, turns the
@@ -502,7 +503,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   `_ivw_observer`, its image in the water; `IV_OBS="x,foot,z,height,turn,model[,haze]"` tries one: about
   -10,-1.6,-5.8 for a whole statue 6.8 m tall, its head under the story's lines; the veiled bust -11.3,-3.2,-7.1, 6.5 m),
   offered 21/11: 8 the bearded colossus (`iv_colossus`), 9 the goddess (`statue_goddess`), 10 the veiled bust
-  (`observer`), on the plain backdrop. Before it (the owner, 21/11: "make something else for the
+  (`observer`), on the plain backdrop; 10 in the game (`observer` in `guard_plan.py` and the level's json, no rebuild
+  needed) and the plain backdrop back (`goguard/backdrop.jpg`), until the owner chooses. Before it (the owner, 21/11: "make something else for the
   background, whatever you like, but matching the perspective and the colours"; then of it: "I don't like the new
   background"): the ruins of a drowned sanctuary far
   off in the still sea, two rows of white columns going away into the haze, seen from above as the island is: Gemini's
