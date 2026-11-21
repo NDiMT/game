@@ -470,16 +470,33 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   `design/level4/` (the concepts, the face in the sea, `face_ref.png`).
 - **Level 5, the Guardian (`goguard/`, `FLIP=goguard`, being built since 21/11)**: the script's tenth truth ("He looked
   into the mirror with longing, / and it kept him."). The Guardian of the Glass, a hooded man of cracked glass
-  (`props/statue_guardian.glb`, Tripo P1 from `design/level5/guardian_design.jpg`, the owner's OK for 40 credits), on a
-  round pedestal in a pool at the island's middle, turns a quarter clockwise at each of her moves; his gaze, a band of
-  red light on the floor (bright now, faint where he will look next; red since the owner, 21/11) and a line from his eyes, runs along the ways
-  and over the water until the stone, she or the mirror stops it; where he looks now or next she may not end a move:
-  seen, back to the start (`_ivg_fail`). She hides behind the stone on the pier, turns the goddess's mirror (level 3's,
-  flat here, a quarter a swipe) to face him, pushes the stone off the walk into the deep water (it sinks), steps off
-  his line; he looks into the mirror, sees himself, frosts over, and the gate opens. Board `gaze_trial.py guardian()`
-  (19 swipes, one way, the stone needed), plan `tools/go/guard_plan.py`, build `ivory_level.py -- goguard/level.glb
-  goguard/level.json 505 32 goguard/plan.json`; `_ivgd_*` in `ch1.gd`; concept `design/level5/concept.jpg`, board
-  `board.png`, backdrop painted alone (`backdrop_prompt.txt`). Level 4's gate leads on into it; the end screen after it.
+  (`props/statue_guardian.glb`, Tripo P1 from `design/level5/guardian_design.jpg`, the owner's OK for 40 credits); his
+  model faces its own +x, as every statue made from a picture (`IVGD_YAW0` 0; π/2 had him a quarter off: the owner,
+  21/11, "you have the guardian turned wrong by 90 degrees"); a dark smoky plum glass with pale cracks since 21/11
+  (`IVGD_GLASS`; the owner: "I'd like him in another colour", and only his: "I didn't tell you to change the level's
+  colours, only the guardian's"; a pale blue-white glass first; amber, jade, amethyst and honey tried;
+  `IV_GUARD_COL="tint;deep;cracks"` tries another). On a round pedestal in a pool at the island's middle, he turns a
+  quarter clockwise at each of her moves; his gaze, a line of red light from his eyes (red since the owner, 21/11), runs
+  along the ways and over the water until the stone, she or the mirror stops it, and the discs of the way it falls on
+  go a little red (`IVGD_DISC_A`, laid over each disc, `ivp_disc`; the owner, 21/11: a band of light on the floor along
+  it was "a pointless laser blur" and a ring on each place "an extra circle": "the laser's reflection should redden the
+  path's circles a little"; where he will look next, a fainter band before, is no longer shown); where he looks now or
+  next she may not end a move: seen, back to the start (`_ivg_fail`). She hides behind the stone on the pier, turns the
+  goddess's mirror (level 3's, flat here, a quarter a swipe) to face him, pushes the stone off the walk into the deep
+  water (it sinks), steps off his line; he looks into the mirror, sees himself, frosts over, and the gate opens. Board
+  `gaze_trial.py guardian()` (19 swipes, one way, the stone needed), plan `tools/go/guard_plan.py`, build
+  `ivory_level.py -- goguard/level.glb goguard/level.json 505 32 goguard/plan.json`; `_ivgd_*` in `ch1.gd`; concept
+  `design/level5/concept.jpg`, board `board.png`. **Its backdrop** (the owner, 21/11: "make something else for the
+  background, whatever you like, but matching the perspective and the colours"): the ruins of a drowned sanctuary far
+  off in the still sea, two rows of white columns going away into the haze, seen from above as the island is: Gemini's
+  edit of the plain backdrop (`backdrop_source.jpg`) with a screenshot of the level given for its perspective
+  (`design/level5/backdrop_drowned_prompt.txt`, the painting `backdrop_drowned.jpg`), laid back toward the plain one,
+  0.3 of its own kept down to 0.27 of its height (under the story's lines), 0.75 from 0.36 to 0.42, 0.3 again at 0.56, where
+  the ruins come near the island's top (the
+  edit is aligned with the plain backdrop, so the blend leaves no ghost). Turned down: a glass colossus and the
+  Colossus of Rhodes (painted from below, not as the island is seen); tried and not used: islets with a ruined temple
+  (`backdrop_isles_prompt.txt`: they read as part of the level). Level 4's gate leads on into it; the end screen
+  after it.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are

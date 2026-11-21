@@ -3443,6 +3443,7 @@ void fragment(){ vec2 uv = vec2(0.5) + (SCREEN_UV - vec2(0.5)) * k; ALBEDO = tex
 var ivp_on := OS.get_environment("IV_MODE") != "3d"      # (the painted level and the 3D one play by the same way)
 var ivp_nodes := {}      # name -> where (world)
 var ivp_edges := []      # [a, b, the points between them on the way (world)]
+var ivp_disc := {}      # name -> the disc of the way on it (the fifth level reddens those its Guardian looks on)
 var ivp_wp_prev := Vector3.ZERO
 var ivp_wp_cur := Vector3.INF
 var ivp_sunk := false
@@ -4179,6 +4180,7 @@ func _ivr_way() -> void:
 		var ri := _iv_prim(rm, p + Vector3(0, 0.008, 0), "groove", wp_k); ri.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		var dm := CylinderMesh.new(); dm.top_radius = 0.16; dm.bottom_radius = 0.165; dm.height = 0.035; dm.radial_segments = 24; dm.rings = 1
 		var di := MeshInstance3D.new(); di.mesh = dm; di.material_override = _ivr_mat("marble2", 0.0); di.position = p + Vector3(0, 0.02, 0); di.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; wp_k.add_child(di)
+		ivp_disc[k] = di
 
 ## far off, as the picture has it, one band behind another, each paler and smaller than the one before: tall crags at
 ## the eye's sides; behind them a colonnade on its pillar of rock and lesser crags; far behind, highest, the hill of
@@ -10793,9 +10795,11 @@ const IVGL_SHADE_COL := Color(0.42, 0.48, 0.62)      # (her shadow over there gr
 ## goes out, and the gate opens (the owner, 21/11: the fifth level, "He looked into the mirror with longing, and it
 ## kept him"). The stone pushed off the walk into the deep water at the pool's back sinks, and is gone.
 const IVGD_ORDER := ["E", "S", "W", "N"]      # (clockwise, as the board is seen from above: a quarter on at each move)
-const IVGD_YAW0 := PI * 0.5      # (his model's own front is its own +z, a quarter off every other statue made from a picture; IV_GUARD_YAW tries another)
+const IVGD_YAW0 := 0.0      # (his model's own front is its own +x, as every statue made from a picture (the owner, 21/11: "you have the guardian turned wrong by 90 degrees": +z was taken for it); IV_GUARD_YAW tries another)
 const IVGD_EYE_K := 0.9      # (his eyes, in the shadow of his hood, at this much of his height over his pedestal's top)
 const IVGD_COL := Color(0.96, 0.2, 0.18)      # (his gaze red (the owner, 21/11: "and in 5 maybe the beam red?"); a cold blue-white before)
+const IVGD_GLASS := [Color(0.5, 0.46, 0.56), Color(0.17, 0.15, 0.21), Color(0.88, 0.85, 0.92)]      # (his glass: its light, its depth, its cracks: a dark smoky plum glass, pale cracks (the owner, 21/11: "I'd like him in another colour"; a pale blue-white glass before, 0.76 0.84 0.96 / 0.5 0.6 0.8 / white))
+const IVGD_DISC_A := 0.42      # (how red the discs of the way under his gaze go: "a little")
 var ivgd_n: Node3D
 var ivgd_body: Node3D
 var ivgd_phase := 0
@@ -10807,26 +10811,11 @@ var ivgd_face := 0
 var ivgd_face0 := 0
 var ivgd_before := []      # (where he looked as her move began: she may not step into it)
 var ivgd_glass: ShaderMaterial
-var ivgd_band: MeshInstance3D      # (his gaze on the floor now)
-var ivgd_band2: MeshInstance3D      # (and, faintly, where he will look after her next move)
 var ivgd_beam := []      # (the line of his look from his eyes: core, halo)
-var ivgd_rings := []
+var ivgd_red: StandardMaterial3D      # (laid over the discs of the way his gaze falls on: they redden a little)
+var ivgd_reddened := []
 var ivgd_gk := 1.0      # (his gaze's strength: it dims as he turns, and goes out when the mirror keeps him)
 var ivgd_sunk := false
-
-const IVGD_BAND_SH := """
-shader_type spatial;
-render_mode unshaded, blend_mix, cull_disabled, depth_draw_never, shadows_disabled;
-uniform vec3 col : source_color = vec3(0.62, 0.76, 1.0);
-uniform float k = 1.0;
-void fragment(){
-	float across = 1.0 - abs(UV.y * 2.0 - 1.0);
-	float along = smoothstep(0.0, 0.06, UV.x) * (1.0 - smoothstep(0.8, 1.0, UV.x));
-	float flick = 0.93 + 0.07 * sin(TIME * 1.6 + UV.x * 7.0);
-	ALBEDO = mix(col, vec3(1.0, 0.9, 0.88), 0.25 * across);
-	ALPHA = clamp(pow(across, 1.2) * along * k * 0.85 * flick, 0.0, 1.0);
-}
-"""
 
 const IVGD_GLASS_SH := """
 shader_type spatial;
@@ -10834,6 +10823,7 @@ render_mode cull_back, specular_schlick_ggx;
 uniform vec3 tint : source_color = vec3(0.76, 0.84, 0.96);
 uniform vec3 deep : source_color = vec3(0.5, 0.6, 0.8);
 uniform vec3 rim_c : source_color = vec3(1.0, 0.9, 0.78);
+uniform vec3 crack_c : source_color = vec3(1.0);
 uniform float frost = 0.0;
 varying vec3 lp;
 void vertex(){ lp = VERTEX; }
@@ -10852,12 +10842,12 @@ void fragment(){
 	float fr = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.0);
 	float ck = cracks(lp * 2.6) * (0.5 + 0.5 * frost);
 	vec3 c = mix(deep, tint, 0.55 + 0.45 * fr);      // (glass is deeper where one looks through more of it, brighter at its edges)
-	c = mix(c, vec3(1.0), ck * 0.7);
+	c = mix(c, crack_c, ck * 0.7);
 	c = mix(c, vec3(0.95, 0.97, 1.0), frost * 0.85);
 	ALBEDO = c;
 	ROUGHNESS = mix(0.12, 0.55, frost);
 	SPECULAR = 0.8;
-	EMISSION = rim_c * fr * 0.3 * (1.0 - frost) + vec3(0.85, 0.92, 1.0) * ck * 0.15;
+	EMISSION = rim_c * fr * 0.3 * (1.0 - frost) + crack_c * ck * 0.15;
 }
 """
 
@@ -10874,19 +10864,18 @@ func _ivgd_setup() -> void:
 	ivgd_body = Node3D.new(); ivgd_n.add_child(ivgd_body)
 	var m := prop_model("statue_guardian", ivgd_body, float(gd.get("height", 3.6)))
 	ivgd_glass = ShaderMaterial.new(); ivgd_glass.shader = _ivw_shader(IVGD_GLASS_SH)
+	var gc := IVGD_GLASS
+	if OS.get_environment("IV_GUARD_COL") != "":      # (another glass to try: "tint;deep;cracks", each "r,g,b")
+		gc = []
+		for part in OS.get_environment("IV_GUARD_COL").split(";"):
+			var f := part.split_floats(","); gc.append(Color(f[0], f[1], f[2]))
+	ivgd_glass.set_shader_parameter("tint", gc[0]); ivgd_glass.set_shader_parameter("deep", gc[1]); ivgd_glass.set_shader_parameter("crack_c", gc[2])
 	for mi in m.find_children("*", "MeshInstance3D", true, false):
 		(mi as MeshInstance3D).material_override = ivgd_glass; (mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_ivgd_aim(0.0)
-	# his gaze: a band of cold light on the floor along his look, faintly where he will look next, a ring on each place it
-	# lights, and the line of his look from his eyes to where it ends
-	var bsh := _ivw_shader(IVGD_BAND_SH)
-	for which in 2:
-		var pm := PlaneMesh.new(); pm.size = Vector2(1.0, 1.0)
-		var bm := ShaderMaterial.new(); bm.shader = bsh; bm.set_shader_parameter("col", IVGD_COL); bm.render_priority = 5
-		var b := MeshInstance3D.new(); b.mesh = pm; b.material_override = bm; b.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; b.visible = false
-		iv_root.add_child(b)
-		if which == 0: ivgd_band = b
-		else: ivgd_band2 = b
+	# his gaze: the line of his look from his eyes to where it ends, and the discs of the way it falls on a little red
+	# (the owner, 21/11: a band of light on the floor along it and a ring on each place were "a pointless laser blur" and
+	# "an extra circle": "the laser's reflection should redden the path's circles a little")
 	var esh := _ivw_shader(IVM_BEAM_SH)
 	for c in 2:
 		var cm := CylinderMesh.new(); cm.top_radius = 0.022 if c == 0 else 0.09; cm.bottom_radius = cm.top_radius; cm.height = 1.0
@@ -10894,12 +10883,8 @@ func _ivgd_setup() -> void:
 		var mt := ShaderMaterial.new(); mt.shader = esh; mt.set_shader_parameter("core", 1.0 if c == 0 else 0.0); mt.set_shader_parameter("col", Vector3(IVGD_COL.r, IVGD_COL.g, IVGD_COL.b)); mt.render_priority = 4 + c
 		var bi := MeshInstance3D.new(); bi.mesh = cm; bi.material_override = mt; bi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; bi.visible = false
 		iv_root.add_child(bi); ivgd_beam.append(bi)
-	var rmat := StandardMaterial3D.new(); rmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; rmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	rmat.albedo_color = Color(IVGD_COL.lerp(Color(1, 1, 1), 0.25), 0.85); rmat.render_priority = 6; rmat.no_depth_test = false
-	for _r in 6:
-		var tm := TorusMesh.new(); tm.inner_radius = 0.24; tm.outer_radius = 0.3; tm.rings = 28; tm.ring_segments = 4
-		var rg := MeshInstance3D.new(); rg.mesh = tm; rg.material_override = rmat; rg.scale = Vector3(1, 0.15, 1); rg.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; rg.visible = false
-		iv_root.add_child(rg); ivgd_rings.append(rg)
+	ivgd_red = StandardMaterial3D.new(); ivgd_red.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; ivgd_red.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	ivgd_red.albedo_color = Color(IVGD_COL, IVGD_DISC_A)
 	_ivgd_mir_make()
 	print("IV the Guardian at ", String(gd.get("node", "G")), " looks ", IVGD_ORDER[ivgd_d0], "; the mirror at ", ivgd_mir, " faces ", IVGD_ORDER[ivgd_face])
 
@@ -11021,19 +11006,18 @@ func _ivgd_reset() -> void:
 	if ivgd_sunk: ivgd_sunk = false; iv_block_n.visible = true; ivv_filled.clear()
 	if ivgd_glass != null: ivgd_glass.set_shader_parameter("frost", 0.0)
 
-## his gaze drawn as it is now: on the floor along his look to where it ends, faintly where he will look next, a ring on
-## each place it lights, and the line from his eyes to where it ends
+## his gaze drawn as it is now: the discs of the way it falls on a little red, and the line from his eyes to where it ends
 func _ivgd_draw() -> void:
 	var k := ivgd_gk
 	var tn := _ivgd_trace(ivgd_phase, iv_me)
-	var e := _ivgd_band_put(ivgd_band, tn, k)
-	var tx := _ivgd_trace(ivgd_phase + 1, iv_me)
-	_ivgd_band_put(ivgd_band2, tx, 0.0 if ivgd_kept else k * 0.3)
-	var lit: Array = tn.nodes
-	for i in ivgd_rings.size():
-		var rg: MeshInstance3D = ivgd_rings[i]
-		rg.visible = k > 0.05 and i < lit.size()
-		if rg.visible: rg.global_position = (ivp_nodes[String(lit[i])] as Vector3) + Vector3(0, 0.035, 0)
+	var e := _ivgd_end(tn)
+	var lit: Array = tn.nodes if k > 0.05 else []
+	for n in ivgd_reddened:
+		if not lit.has(n) and ivp_disc.has(n): (ivp_disc[n] as MeshInstance3D).material_overlay = null
+	ivgd_reddened = []
+	for n in lit:
+		if ivp_disc.has(n): (ivp_disc[n] as MeshInstance3D).material_overlay = ivgd_red; ivgd_reddened.append(n)
+	ivgd_red.albedo_color.a = IVGD_DISC_A * clampf(k, 0.0, 1.0)
 	var d: Vector3 = ivg_dirv[String(tn.dir)]
 	var a := ivgd_n.global_position + Vector3(0, IVGD_EYE_K * float((ivg.get("guard", {}) as Dictionary).get("height", 3.6)), 0) + d * 0.22
 	var b: Vector3 = e
@@ -11051,24 +11035,15 @@ func _ivgd_draw() -> void:
 		var y := v / L; var x := y.cross(Vector3.UP if absf(y.y) < 0.95 else Vector3.RIGHT).normalized(); var z := x.cross(y)
 		bi.global_transform = Transform3D(Basis(x, y * L, z), (a + b) * 0.5)
 		(bi.material_override as ShaderMaterial).set_shader_parameter("k", clampf(k * (0.75 if c == 0 else 0.5) + fl * 1.5, 0.0, 2.5))
-## a band of his gaze on the floor: from his pedestal's edge along his look to where it ends; the end, returned
-func _ivgd_band_put(mi: MeshInstance3D, t: Dictionary, k: float) -> Vector3:
+## where his look ends, on the floor: at the stone, at her, at the mirror, or past the last place it lights
+func _ivgd_end(t: Dictionary) -> Vector3:
 	var d: Vector3 = ivg_dirv[String(t.dir)]
 	var g := ivgd_n.global_position
-	var y := g.y - 0.07
-	var a := Vector3(g.x, y, g.z) + d * 0.62
 	var end: Vector3
 	match String(t.end):
 		"stone": end = (ivp_nodes[iv_block] as Vector3) - d * 0.5
 		"her": end = ivp_nodes[iv_me]
 		"mirror": end = (ivp_nodes[ivgd_mir] as Vector3) - d * 0.32
 		_: end = ((ivp_nodes[String(t.at)] as Vector3) + d * 0.9) if not (t.nodes as Array).is_empty() else g + d * 1.3
-	end.y = y
-	if k <= 0.01: mi.visible = false; return end
-	var v := end - a; v.y = 0.0; var L := v.length()
-	if L < 0.05: mi.visible = false; return end
-	var dn := v / L
-	mi.global_transform = Transform3D(Basis(dn * L, Vector3.UP, dn.cross(Vector3.UP) * 0.62), (a + end) * 0.5)
-	(mi.material_override as ShaderMaterial).set_shader_parameter("k", k)
-	mi.visible = true
+	end.y = g.y - 0.07
 	return end
