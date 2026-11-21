@@ -134,6 +134,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   of level). Now 0.16 s. `IV_HITCH=1` prints how long a level took to make.
 - **The builds leave out what no level opens** (found by tracing the files a whole play opens, film included): the old
   props and their pictures, the mirrors, the old heads (`WebWake`/`AndroidWake` exclude filter), about 10 of 69 MB.
+  A prop a level comes to open must come out of that filter: level 5's veiled bust (`props/observer.glb`) was in it,
+  and its page crashed in the browser check (21/11); check the pack with `tools/pck_list.py` for each new prop.
 - **The camera** holds the whole map and follows her a little, smoothly and a little behind; on larger maps it goes
   with her but shows little past the edges (`_ivr_follow` in `ch1.gd`).
 - **Music per level** (`_go_level_music` in `ch1.gd`): waking Lament, sanctuary Requiem, moon Elegy, quarry Stone,
