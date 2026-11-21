@@ -10,18 +10,21 @@ owner, 20/11: "the cube looks rectangular rather than square, not the same heigh
   - Parted in two, block and meander, so the game can colour the meander (and light it); made SIDE metres on a side,
     its foot at its origin.
 
-usage: python3.11 -I tools/go/block_cube.py -- <out.glb> [side metres] [seed]
+usage: python3.11 -I tools/go/block_cube.py -- <out.glb> [side metres] [seed] [one|four]
+  four (since 21/11, the owner: "can we make the designs on the cube like this?", showing the fifth level's concept): on
+  each face four small square keys, two by two, cut thin and fine; one: the single great key of each face, as before.
 """
 import bpy, bmesh, sys, random, math
 from mathutils import Vector, noise
 
 a = sys.argv[sys.argv.index('--') + 1:]
 OUT = a[0]; SIDE = float(a[1]) if len(a) > 1 else 0.92; SEED = int(a[2]) if len(a) > 2 else 11
+PATTERN = a[3] if len(a) > 3 else 'four'
 rnd = random.Random(SEED)
 bpy.ops.wm.read_factory_settings(use_empty=True)
 
 L = 0.726; HF = L / 2.0      # (the source block's width, and half of it)
-DEPTH = 0.033
+DEPTH = 0.033 if PATTERN == 'one' else 0.02      # (the four small keys cut thin and less deep)
 # the key, in a face's own square (s across, t up, -0.5..0.5): a band from the lower left along the bottom, up the right,
 # back along the top, down the left, along the inner bottom and up into the middle, as the first block's
 BARS = [(-0.40, 0.40, -0.40, -0.305), (0.305, 0.40, -0.40, 0.40), (-0.28, 0.40, 0.305, 0.40), (-0.28, -0.185, -0.12, 0.40),
@@ -32,9 +35,22 @@ FACES = [(Vector((1, 0, 0)), Vector((0, 1, 0)), Vector((0, 0, 1))), (Vector((-1,
          (Vector((0, 0, 1)), Vector((1, 0, 0)), Vector((0, 1, 0))), (Vector((0, 0, -1)), Vector((1, 0, 0)), Vector((0, -1, 0)))]
 TURN = [0, 1, 2, 3, 1, 2]      # (quarter turns of the key on each face)
 
+# a small square key (the fifth level's concept's): a band round three sides and down the fourth, then in along the
+# inside and up into the middle, a square spiral; in a key's own square (-0.5..0.5), its band this wide
+KW = 0.11
+KEY = [((-0.45, -0.45), (0.45, -0.45)), ((0.45, -0.45), (0.45, 0.45)), ((0.45, 0.45), (-0.45, 0.45)), ((-0.45, 0.45), (-0.45, -0.17)),
+       ((-0.45, -0.17), (0.17, -0.17)), ((0.17, -0.17), (0.17, 0.17)), ((0.17, 0.17), (-0.13, 0.17))]
+KEY_AT = [(-0.235, -0.235, 0), (0.235, -0.235, 1), (0.235, 0.235, 2), (-0.235, 0.235, 3)]      # (four on a face, two by two, each turned a quarter on from the last)
+KEY_K = 0.43      # (a key's size across, in its face's)
+def small_keys():
+    for (cx, cy, q) in KEY_AT:
+        for (x0, y0), (x1, y1) in KEY:
+            s0, s1 = min(x0, x1) - KW * 0.5, max(x0, x1) + KW * 0.5; t0, t1 = min(y0, y1) - KW * 0.5, max(y0, y1) + KW * 0.5
+            for _ in range(q): s0, s1, t0, t1 = -t1, -t0, s0, s1
+            yield cx + s0 * KEY_K, cx + s1 * KEY_K, cy + t0 * KEY_K, cy + t1 * KEY_K
 def key_rects(k):
     q = TURN[k]
-    for (s0, s1, t0, t1) in BARS:
+    for (s0, s1, t0, t1) in (BARS if PATTERN == 'one' else list(small_keys())):
         for _ in range(q): s0, s1, t0, t1 = -t1, -t0, s0, s1      # (a quarter turn of the rectangle in the face)
         yield s0, s1, t0, t1
 
@@ -74,11 +90,12 @@ def side_of(co):      # (the face a point lies nearest, its across and its up th
 mark = bm.faces.layers.int.new('mea')
 for f in bm.faces:
     c = f.calc_center_median(); k, n, sa, ta, depth, u, v, w = side_of(c)
-    f[mark] = 1 if (0.003 < depth < DEPTH + 0.008 and abs(u) < HF * 0.83 and abs(v) < HF * 0.83) else 0
+    lim = 0.83 if PATTERN == 'one' else 0.95      # (the four small keys reach nearer the face's edges)
+    f[mark] = 1 if (0.003 < depth < DEPTH + 0.008 and abs(u) < HF * lim and abs(v) < HF * lim) else 0
 print('meander faces', sum(f[mark] for f in bm.faces))
 
 # the meander uneven, as cut by hand (as tools/go/block_meander.py)
-WOB = (0.02, 0.0125, 0.015)
+WOB = (0.02, 0.0125, 0.015) if PATTERN == 'one' else (0.006, 0.004, 0.006)      # (thin grooves waver less, or they would close)
 SEG = 0.035
 def split_long(e):
     A, B = e.verts[0].co.copy(), e.verts[1].co.copy(); n = int((B - A).length / SEG) + 1

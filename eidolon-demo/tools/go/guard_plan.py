@@ -55,7 +55,7 @@ def plan():
         'P1': {'h': H0, 'xz': rect(1.5, 2.5, -1.5, -0.5)},      # (round to the pier)
         'P2': {'h': H0, 'xz': rect(1.68, 4.5, -0.5, 0.5)},      # (the pier out along his east line, the mirror at its end)
     }
-    guard = {'at': W(0, 0, SEA), 'pedestal_top': H0 + 0.1, 'height': 3.6, 'd0': NAME[t.d0], 'turn': t.turn}
+    guard = {'at': W(0, 0, SEA), 'pedestal_top': H0 + 0.1, 'height': 4.0, 'd0': NAME[t.d0], 'turn': t.turn}      # (about twice her height, as its concept has him)
     puzzle = {
         'nodes': N, 'edges': edges, 'start': 'S', 'exit': 'R', 'block': 'K', 'holes': [],
         'intro': [[N['S'][0], H0, N['S'][2] + 0.01], N['S']],      # (no way in: she stands where the light of the fourth gate let her go)
@@ -65,9 +65,9 @@ def plan():
         'guard': dict(guard, node='G'),      # (he looks first south, and turns clockwise a quarter at each of her moves)
         'mirror_face': {'node': 'M', 'face': NAME[t.mface0], 'from': [name[c] for c in t.mfrom]},      # (a flat mirror, turned a quarter at a swipe into it; its face toward him keeps him)
         'sinks': {'E': {'N': 'D'}},      # (the stone on E pushed north goes over the edge into the deep water, D, and sinks)
-        'unwalked': list(GAZE),
+        'unwalked': list(GAZE.values()),      # (no disc of the way where only his gaze goes: the water, his pedestal, the mirror, the deep water)
         'solution': way,
-        'lines': ['He looked into the mirror with longing,', 'and it kept him.'],      # (the script's tenth truth; to be settled with the owner)
+        'lines': ['He looked into the mirror', 'with longing,', 'and it kept him.'],      # (three lines, each within a phone's width)      # (the script's tenth truth; to be settled with the owner)
     }
     B = lambda gx, gy, r, top: [W(gx, gy, SEA), r, top]      # (a rock at a place of the board)
     rocks = [B(-2.25, -1.75, 0.85, H0 - 0.1), B(-1.2, -1.8, 0.8, H0 - 0.12), B(-2.8, -0.85, 0.8, H0 - 0.1),      # (the island's rock under its walk, out of the water all round it, its tops just under the slabs (the concept: the slabs on chunky dark rock))

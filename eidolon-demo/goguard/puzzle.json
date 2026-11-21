@@ -283,7 +283,7 @@
    -0.0
   ],
   "pedestal_top": 0.7,
-  "height": 3.6,
+  "height": 4.0,
   "d0": "S",
   "turn": 1,
   "node": "G"
@@ -301,42 +301,15 @@
   }
  },
  "unwalked": [
-  [
-   4,
-   0
-  ],
-  [
-   0,
-   0
-  ],
-  [
-   0,
-   1
-  ],
-  [
-   0,
-   2
-  ],
-  [
-   0,
-   3
-  ],
-  [
-   -2,
-   0
-  ],
-  [
-   -3,
-   0
-  ],
-  [
-   0,
-   -3
-  ],
-  [
-   1,
-   1
-  ]
+  "M",
+  "G",
+  "N1",
+  "N2",
+  "N3",
+  "W2",
+  "W3",
+  "S3",
+  "D"
  ],
  "solution": [
   "A",
@@ -360,7 +333,8 @@
   "R"
  ],
  "lines": [
-  "He looked into the mirror with longing,",
+  "He looked into the mirror",
+  "with longing,",
   "and it kept him."
  ]
 }

@@ -6591,7 +6591,7 @@ func _ivr_build() -> void:
 			rb.visible = false; rbl.visible = false
 			if ResourceLoader.exists("res://goglass/mist_l.png") and OS.get_environment("IV_ZOOM") == "" and OS.get_environment("IV_MIST_L") == "1":      # (laid on the screen for the game's own eye: not for a close look; off since 20/11: a flat white blot over the island's end ("the mist arranged better"), a bank of cloud standing on the water in its place; IV_MIST_L=1 brings it back)
 				var ml := _iv_overlay(cl, "res://goglass/mist_l.png", Vector2(-70 * k, vh * 0.27), Vector2(400, 475) * k); ml.modulate = Color(1, 1, 1, 0.92)
-		if go_veil and not go_milos and not go_glass and ResourceLoader.exists("res://goveil/statue_fg.png"):      # (the second level: a veiled statue standing before the eye at the lower right, blurred, dark against the light, one of the thousand (the owner, 18/11: "fantastic, the blurred statue"); clear of the way, the gate and the rocks in the sea)
+		if go_veil and not go_milos and not go_glass and not go_guard and ResourceLoader.exists("res://goveil/statue_fg.png"):      # (the second level: a veiled statue standing before the eye at the lower right, blurred, dark against the light, one of the thousand (the owner, 18/11: "fantastic, the blurred statue"); clear of the way, the gate and the rocks in the sea)
 			var sfg := _iv_overlay(cl, "res://goveil/statue_fg.png", Vector2(487 * k, vh - 468 * k), Vector2(341, 532) * k); sfg.modulate = Color(0.55, 0.42, 0.58, 0.95)
 		vg.colors = PackedColorArray([Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0.05), Color(0.26, 0.16, 0.3, 0.2)])      # (a soft darkening at the edges: the eye drawn in)
 		if go_glass: vr.visible = false      # (the fourth level: none; its concept is clear to the corners, and the plum darkening turned its sky pink there (the owner, 20/11: "fix the colours well and very carefully, look at the Gemini sample"))
@@ -10044,6 +10044,7 @@ func _ivm_ring_tick() -> void:      # (the ring's stone by its light: a dark lil
 var ivm_beam: Array = []      # (the beam's straight runs: [core, halo] each)
 var ivm_spark: MeshInstance3D      # (where the light ends on a thing: a bright spot)
 var ivm_leaves: Array = []      # (the gate's leaves: [hinge, its shut basis, the turn that opens it])
+const IVM_LIGHT_COL := Color(1.0, 0.98, 0.95)      # (the statue's light white, as the ring is (the owner, 21/11: "maybe the beam white?"); a warm gold before, 1.0, 0.88, 0.58)
 const IVM_DISC_H := 1.02      # (the mirror's disc stands this high over its floor: _ivq_mirror)
 const IVM_BLOCK_HALF := 0.53      # (the stone as the light meets it: half its breadth, its height; a cube of 1.06 m since 20/11)
 const IVM_BLOCK_H := 1.06
@@ -10075,7 +10076,7 @@ func _ivm_setup() -> void:
 		for c in 2:
 			var cm := CylinderMesh.new(); cm.top_radius = 0.032 if c == 0 else 0.13; cm.bottom_radius = cm.top_radius; cm.height = 1.0
 			cm.radial_segments = 12; cm.rings = 1; cm.cap_top = false; cm.cap_bottom = false
-			var mt := ShaderMaterial.new(); mt.shader = sh; mt.set_shader_parameter("core", 1.0 if c == 0 else 0.0); mt.render_priority = 4 + c
+			var mt := ShaderMaterial.new(); mt.shader = sh; mt.set_shader_parameter("core", 1.0 if c == 0 else 0.0); mt.set_shader_parameter("col", Vector3(IVM_LIGHT_COL.r, IVM_LIGHT_COL.g, IVM_LIGHT_COL.b)); mt.render_priority = 4 + c
 			var mi := MeshInstance3D.new(); mi.mesh = cm; mi.material_override = mt; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; mi.visible = false
 			iv_root.add_child(mi); pair.append(mi)
 		ivm_beam.append(pair)
@@ -10083,7 +10084,7 @@ func _ivm_setup() -> void:
 	for which in 2:
 		var gm := StandardMaterial3D.new(); gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm.albedo_texture = load("res://goiv/glow.png")
 		gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm.blend_mode = BaseMaterial3D.BLEND_MODE_MIX; gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-		gm.albedo_color = Color(1.0, 0.92, 0.66, 0.9 if which == 0 else 0.75); gm.render_priority = 6
+		gm.albedo_color = Color(IVM_LIGHT_COL, 0.9 if which == 0 else 0.75); gm.render_priority = 6
 		var g := MeshInstance3D.new(); g.mesh = gq; g.material_override = gm; g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		iv_root.add_child(g)
 		if which == 0: g.global_position = ivm_at
@@ -10793,9 +10794,9 @@ const IVGL_SHADE_COL := Color(0.42, 0.48, 0.62)      # (her shadow over there gr
 ## goes out, and the gate opens (the owner, 21/11: the fifth level, "He looked into the mirror with longing, and it
 ## kept him"). The stone pushed off the walk into the deep water at the pool's back sinks, and is gone.
 const IVGD_ORDER := ["E", "S", "W", "N"]      # (clockwise, as the board is seen from above: a quarter on at each move)
-const IVGD_YAW0 := 0.0      # (his model's own front: its own +x, as every statue made from a picture; IV_GUARD_YAW tries another)
-const IVGD_EYE_H := 3.2      # (his eyes over his pedestal's top)
-const IVGD_COL := Color(0.62, 0.76, 1.0)      # (his gaze: a cold light)
+const IVGD_YAW0 := PI * 0.5      # (his model's own front is its own +z, a quarter off every other statue made from a picture; IV_GUARD_YAW tries another)
+const IVGD_EYE_K := 0.9      # (his eyes, in the shadow of his hood, at this much of his height over his pedestal's top)
+const IVGD_COL := Color(0.96, 0.2, 0.18)      # (his gaze red (the owner, 21/11: "and in 5 maybe the beam red?"); a cold blue-white before)
 var ivgd_n: Node3D
 var ivgd_body: Node3D
 var ivgd_phase := 0
@@ -10823,17 +10824,17 @@ void fragment(){
 	float across = 1.0 - abs(UV.y * 2.0 - 1.0);
 	float along = smoothstep(0.0, 0.06, UV.x) * (1.0 - smoothstep(0.8, 1.0, UV.x));
 	float flick = 0.93 + 0.07 * sin(TIME * 1.6 + UV.x * 7.0);
-	ALBEDO = mix(col, vec3(1.0), 0.35 * across);
-	ALPHA = clamp(pow(across, 1.4) * along * k * 0.62 * flick, 0.0, 1.0);
+	ALBEDO = mix(col, vec3(1.0, 0.9, 0.88), 0.25 * across);
+	ALPHA = clamp(pow(across, 1.2) * along * k * 0.85 * flick, 0.0, 1.0);
 }
 """
 
 const IVGD_GLASS_SH := """
 shader_type spatial;
-render_mode blend_mix, depth_draw_opaque, cull_back, specular_schlick_ggx;
-uniform vec3 tint : source_color = vec3(0.8, 0.87, 0.97);
+render_mode cull_back, specular_schlick_ggx;
+uniform vec3 tint : source_color = vec3(0.76, 0.84, 0.96);
+uniform vec3 deep : source_color = vec3(0.5, 0.6, 0.8);
 uniform vec3 rim_c : source_color = vec3(1.0, 0.9, 0.78);
-uniform float alpha_k = 0.5;
 uniform float frost = 0.0;
 varying vec3 lp;
 void vertex(){ lp = VERTEX; }
@@ -10849,16 +10850,15 @@ float cracks(vec3 p){
 	return 1.0 - smoothstep(0.0, 0.05, d2 - d1);
 }
 void fragment(){
-	float fr = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.2);
-	float ck = cracks(lp * 2.6) * (0.55 + 0.45 * frost);
-	vec3 c = mix(tint, vec3(1.0), 0.2 + 0.5 * fr);
-	c = mix(c, vec3(1.0), ck * 0.75);
+	float fr = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.0);
+	float ck = cracks(lp * 2.6) * (0.5 + 0.5 * frost);
+	vec3 c = mix(deep, tint, 0.55 + 0.45 * fr);      // (glass is deeper where one looks through more of it, brighter at its edges)
+	c = mix(c, vec3(1.0), ck * 0.7);
 	c = mix(c, vec3(0.95, 0.97, 1.0), frost * 0.85);
 	ALBEDO = c;
-	ROUGHNESS = mix(0.1, 0.55, frost);
-	SPECULAR = 0.7;
-	EMISSION = rim_c * fr * 0.35 * (1.0 - frost) + vec3(0.85, 0.92, 1.0) * ck * 0.12;
-	ALPHA = clamp(mix(alpha_k + fr * 0.4 + ck * 0.35, 0.96, frost), 0.0, 1.0);
+	ROUGHNESS = mix(0.12, 0.55, frost);
+	SPECULAR = 0.8;
+	EMISSION = rim_c * fr * 0.3 * (1.0 - frost) + vec3(0.85, 0.92, 1.0) * ck * 0.15;
 }
 """
 
@@ -10896,7 +10896,7 @@ func _ivgd_setup() -> void:
 		var bi := MeshInstance3D.new(); bi.mesh = cm; bi.material_override = mt; bi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; bi.visible = false
 		iv_root.add_child(bi); ivgd_beam.append(bi)
 	var rmat := StandardMaterial3D.new(); rmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; rmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	rmat.albedo_color = Color(0.86, 0.93, 1.0, 0.8); rmat.render_priority = 6; rmat.no_depth_test = false
+	rmat.albedo_color = Color(IVGD_COL.lerp(Color(1, 1, 1), 0.25), 0.85); rmat.render_priority = 6; rmat.no_depth_test = false
 	for _r in 6:
 		var tm := TorusMesh.new(); tm.inner_radius = 0.24; tm.outer_radius = 0.3; tm.rings = 28; tm.ring_segments = 4
 		var rg := MeshInstance3D.new(); rg.mesh = tm; rg.material_override = rmat; rg.scale = Vector3(1, 0.15, 1); rg.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; rg.visible = false
@@ -11036,7 +11036,7 @@ func _ivgd_draw() -> void:
 		rg.visible = k > 0.05 and i < lit.size()
 		if rg.visible: rg.global_position = (ivp_nodes[String(lit[i])] as Vector3) + Vector3(0, 0.035, 0)
 	var d: Vector3 = ivg_dirv[String(tn.dir)]
-	var a := ivgd_n.global_position + Vector3(0, IVGD_EYE_H, 0) + d * 0.2
+	var a := ivgd_n.global_position + Vector3(0, IVGD_EYE_K * float((ivg.get("guard", {}) as Dictionary).get("height", 3.6)), 0) + d * 0.22
 	var b: Vector3 = e
 	match String(tn.end):
 		"her": b = (ivp_nodes[iv_me] as Vector3) + Vector3(0, 1.05, 0)
@@ -11069,7 +11069,7 @@ func _ivgd_band_put(mi: MeshInstance3D, t: Dictionary, k: float) -> Vector3:
 	var v := end - a; v.y = 0.0; var L := v.length()
 	if L < 0.05: mi.visible = false; return end
 	var dn := v / L
-	mi.global_transform = Transform3D(Basis(dn * L, Vector3.UP, dn.cross(Vector3.UP) * 0.5), (a + end) * 0.5)
+	mi.global_transform = Transform3D(Basis(dn * L, Vector3.UP, dn.cross(Vector3.UP) * 0.62), (a + end) * 0.5)
 	(mi.material_override as ShaderMaterial).set_shader_parameter("k", k)
 	mi.visible = true
 	return end
