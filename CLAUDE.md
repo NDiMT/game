@@ -203,7 +203,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   let him." Puzzle, the owner's own rule ("the gate closed; moving the stone sends the light to the circle and the gate
   opens"): a beam of light, seen, leaves a statue (the owner: "the beam should leave from a statue, and be blocked by a
   stone"): a veiled marble woman standing in the water at the channel's lower end, a light in her hands (no plinth: the
-  busts on plinths looked staged); it runs up the channel to the goddess's bronze mirror; a swipe into the mirror turns
+  busts on plinths looked staged); it runs up the channel to the goddess's bronze mirror (on its square marble plinth,
+  the bronze under its stand a round foot since 21/11, `_ivq_mirror`: the owner, "the metal part below round"; the
+  plinth made round instead was turned down: "I didn't ask you to raise anything and break something else"; the
+  fifth level uses the same mirror); a swipe into the mirror turns
   it; the stone and she herself (where she stands she casts a shadow) stop the light; the ring before the gate is unlit
   and the gate's door shut until the light reaches the ring (the owner: "the mirror lights the circle, which is off, and
   it lights and the door opens"), and then it stays open; the ring is entered only open. Laid on the concept's own map
@@ -462,6 +465,18 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   (`design/level4/game/backdrop_painted.jpg`) was tried and is not the one.
   Earlier designs kept for the record: `tools/go/glass_trial.py` (cracks to cross), `plate_plan.py`,
   `design/level4/` (the concepts, the face in the sea, `face_ref.png`).
+- **Level 5, the Guardian (`goguard/`, `FLIP=goguard`, being built since 21/11)**: the script's tenth truth ("He looked
+  into the mirror with longing, / and it kept him."). The Guardian of the Glass, a hooded man of cracked glass
+  (`props/statue_guardian.glb`, Tripo P1 from `design/level5/guardian_design.jpg`, the owner's OK for 40 credits), on a
+  round pedestal in a pool at the island's middle, turns a quarter clockwise at each of her moves; his gaze, a band of
+  cold light on the floor (bright now, faint where he will look next) and a line from his eyes, runs along the ways
+  and over the water until the stone, she or the mirror stops it; where he looks now or next she may not end a move:
+  seen, back to the start (`_ivg_fail`). She hides behind the stone on the pier, turns the goddess's mirror (level 3's,
+  flat here, a quarter a swipe) to face him, pushes the stone off the walk into the deep water (it sinks), steps off
+  his line; he looks into the mirror, sees himself, frosts over, and the gate opens. Board `gaze_trial.py guardian()`
+  (19 swipes, one way, the stone needed), plan `tools/go/guard_plan.py`, build `ivory_level.py -- goguard/level.glb
+  goguard/level.json 505 32 goguard/plan.json`; `_ivgd_*` in `ch1.gd`; concept `design/level5/concept.jpg`, board
+  `board.png`, backdrop painted alone (`backdrop_prompt.txt`). Level 4's gate leads on into it; the end screen after it.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are

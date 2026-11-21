@@ -259,7 +259,7 @@ void fragment(){
 	}
 }"""
 var flip_test := OS.get_environment("FLIP") == "1"      # every water turns the picture
-var go_demo := OS.has_feature("godemo") or OS.get_environment("FLIP") == "go" or OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or OS.get_environment("FLIP") == "gosea" or OS.has_feature("gosea") or OS.get_environment("FLIP") == "gomoon" or OS.has_feature("gomoon") or OS.get_environment("FLIP") == "goquarry" or OS.has_feature("goquarry") or OS.get_environment("FLIP") == "gowake" or OS.has_feature("gowake") or OS.get_environment("FLIP") == "goveil" or OS.has_feature("goveil") or OS.get_environment("FLIP") == "gomilos" or OS.has_feature("gomilos") or OS.get_environment("FLIP") == "goglass" or OS.has_feature("goglass")      # the trial played a step at a time (Eidolon GO)
+var go_demo := OS.has_feature("godemo") or OS.get_environment("FLIP") == "go" or OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or OS.get_environment("FLIP") == "gosea" or OS.has_feature("gosea") or OS.get_environment("FLIP") == "gomoon" or OS.has_feature("gomoon") or OS.get_environment("FLIP") == "goquarry" or OS.has_feature("goquarry") or OS.get_environment("FLIP") == "gowake" or OS.has_feature("gowake") or OS.get_environment("FLIP") == "goveil" or OS.has_feature("goveil") or OS.get_environment("FLIP") == "gomilos" or OS.has_feature("gomilos") or OS.get_environment("FLIP") == "goglass" or OS.has_feature("goglass") or OS.get_environment("FLIP") == "goguard" or OS.has_feature("goguard")      # the trial played a step at a time (Eidolon GO)
 var geo_demo := OS.has_feature("geodemo") or OS.get_environment("FLIP") == "geo"      # the trial of the hall of images: ways that join where their pictures join
 var figure_demo := OS.has_feature("figuredemo") or OS.get_environment("FLIP") == "figure"      # the trial of the face in the water: three courts where a picture is made whole in the water
 var match_demo := OS.has_feature("matchdemo") or OS.get_environment("FLIP") == "match"      # the trial of the still water: one new court, where the world and what its water shows are to be made to agree
@@ -2090,13 +2090,14 @@ var go_drown := OS.get_environment("FLIP") == "gosea" or OS.has_feature("gosea")
 var go_moon := OS.get_environment("FLIP") == "gomoon" or OS.has_feature("gomoon")      # the third level: the moon dial (gomoon/), a sanctuary in the snow at night
 var go_quarry := OS.get_environment("FLIP") == "goquarry" or OS.has_feature("goquarry")      # the fourth level: the quarry (goquarry/), where the faces were cut
 var go_glass := OS.get_environment("FLIP") == "goglass" or OS.has_feature("goglass") or String(Engine.get_meta("ivw_next", "")) == "goglass"      # the fourth level (or the third's gate has led into it): the glass (goglass/), a wall of glass across the level and the level's image beyond it; a block that slides till something stops it, brought to rest where its image stands in a square of light (it rides the second: its sea, its light, its block)
+var go_guard := OS.get_environment("FLIP") == "goguard" or OS.has_feature("goguard") or String(Engine.get_meta("ivw_next", "")) == "goguard"      # the fifth level (or the fourth's gate has led into it): the Guardian (goguard/), a hooded man of glass on his pedestal in a pool, turning a quarter at each of her moves; seen, she goes back to the start; the goddess's mirror turned to face him keeps him (it rides the second: its sea, its light, its block)
 var go_milos := OS.get_environment("FLIP") == "gomilos" or OS.has_feature("gomilos") or String(Engine.get_meta("ivw_next", "")) == "gomilos"      # the third level (or the second's gate has led into it): the goddess's sanctuary on Milos (gomilos/), the statue's light, the mirror, the stone, the ring that lights and opens the gate (it rides the second: its start, its block, its statues)
-var go_veil := OS.get_environment("FLIP") == "goveil" or OS.has_feature("goveil") or String(Engine.get_meta("ivw_next", "")) == "goveil" or go_milos or go_glass      # the second level (or the first's gate has led into it: _ivw_to_veil): the veiled (goveil/), a golden morning on the same still sea: a block pushed into the causeway's gap
+var go_veil := OS.get_environment("FLIP") == "goveil" or OS.has_feature("goveil") or String(Engine.get_meta("ivw_next", "")) == "goveil" or go_milos or go_glass or go_guard      # the second level (or the first's gate has led into it: _ivw_to_veil): the veiled (goveil/), a golden morning on the same still sea: a block pushed into the causeway's gap
 var go_wake := OS.get_environment("FLIP") == "gowake" or OS.has_feature("gowake") or go_veil      # the first level: the waking (gowake/), dawn over a still sea (the second rides its sea, its light, its sounds and its gate; what is the waking's own asks not go_veil)
 var iv_at_sea := go_drown or go_wake      # (a level standing in still water: the sea, the level's image in it)
 var iv_no_old := go_wake and OS.get_environment("IV_OLD_WORLD") == ""      # (the waking's levels: the old chapter's world is not built (IV_OLD_WORLD=1 builds it as before))
 var go_iv := OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or go_drown or go_moon or go_quarry or go_wake
-var go_dir := "res://goglass/" if go_glass else "res://gomilos/" if go_milos else "res://goveil/" if go_veil else "res://gowake/" if go_wake else ("res://gosea/" if go_drown else ("res://gomoon/" if go_moon else ("res://goquarry/" if go_quarry else "res://goiv/")))      # the level's own folder: its level.glb, level.json, puzzle.json
+var go_dir := "res://goguard/" if go_guard else "res://goglass/" if go_glass else "res://gomilos/" if go_milos else "res://goveil/" if go_veil else "res://gowake/" if go_wake else ("res://gosea/" if go_drown else ("res://gomoon/" if go_moon else ("res://goquarry/" if go_quarry else "res://goiv/")))      # the level's own folder: its level.glb, level.json, puzzle.json
 const IV_O := Vector3(460.0, 0.0, 0.0)      # (far from the world, and from the courts of the other trial)
 const IV_T := 2.0      # from one node of the way to the next
 const IV_PITCH := 37.0
@@ -2228,7 +2229,7 @@ const IV_GLASS_PAL := {      # the fourth level in the colours of its concept (d
 	# (its cube as the second level's, block and meander (the owner, 20/11: "in all levels the cube with the meander like the first"); its own, lighter and softer, were "e3d2bf"... and "d4c1ae"...)
 }
 func _iv_pal(kind: String) -> Array:
-	if go_glass and IV_GLASS_PAL.has(kind): return IV_GLASS_PAL[kind] as Array
+	if (go_glass or go_guard) and IV_GLASS_PAL.has(kind): return IV_GLASS_PAL[kind] as Array      # (the fifth level, for now, in the fourth's colours: its concept's are near them)
 	if go_milos and IV_MILOS_PAL.has(kind): return IV_MILOS_PAL[kind] as Array
 	if go_wake and IV_WAKE_PAL.has(kind): return IV_WAKE_PAL[kind] as Array
 	if go_quarry and IV_QUARRY_PAL.has(kind): return IV_QUARRY_PAL[kind] as Array
@@ -3260,8 +3261,9 @@ func _iv_post(dt: float) -> void:
 	var pl := 0.5 + 0.5 * sin(iv_t * 2.2)
 	(iv_glow.material_override as StandardMaterial3D).albedo_color.a = ((0.16 + 0.14 * pl) if ivp_on else (0.5 + 0.35 * pl)) * (ivm_ring_k if (go_milos or go_glass) else 1.0)
 	if go_milos and not ivm_beam.is_empty(): _ivm_draw()
+	if go_guard and ivgd_n != null: _ivgd_draw()
 	if go_glass and not ivgl_pairs.is_empty(): _ivgl_tick()
-	if (go_milos or go_glass) and ivm_ring_gold != null and ivm_ring_k > 0.0 and ivm_ring_k < 1.001 and not ivm_ring_done: _ivm_ring_tick()
+	if (go_milos or go_glass or go_guard) and ivm_ring_gold != null and ivm_ring_k > 0.0 and ivm_ring_k < 1.001 and not ivm_ring_done: _ivm_ring_tick()
 	if not iv_won: iv_glow.scale = Vector3.ONE * (0.92 + 0.12 * pl)
 	if iv_leaves != null: iv_leaves.pivot_offset = Vector2.ZERO; iv_leaves.rotation = deg_to_rad(1.3 * sin(iv_t * 0.9) + 0.6 * sin(iv_t * 2.3))
 	if started and ivp_on:
@@ -3784,6 +3786,7 @@ func _ivg_plain(n: String) -> bool:      # (a step onto n is a step only: nothin
 func _ivg_run_path(from: String, first: String) -> Array:
 	var path := [first]
 	if not ivg_run_on or not ivg_faces.is_empty() or ivg_wi >= 0: return path      # (where looks or a walking statue answer each step: a node a swipe)
+	if go_guard and not ivgd_kept: return path      # (while the Guardian turns at each of her moves: a node a swipe)
 	var prev := from; var cur := first
 	for _g in 64:
 		if cur == ivg_exit: break      # (at the gate's ring: the level ends there)
@@ -4387,8 +4390,8 @@ func _ivw_exit() -> void:
 
 func _ivw_chain_ok() -> bool: return _ivw_next_level() != ""
 func _ivw_next_level() -> String:      # (the level a gate leads on into: none with IV_ONE=1, a level alone)
-	if OS.get_environment("IV_ONE") != "" or go_glass: return ""
-	var nx := "goglass" if go_milos else ("gomilos" if go_veil else "goveil")
+	if OS.get_environment("IV_ONE") != "" or go_guard: return ""
+	var nx := "goguard" if go_glass else ("goglass" if go_milos else ("gomilos" if go_veil else "goveil"))
 	return nx if FileAccess.file_exists("res://%s/puzzle.json" % nx) else ""
 func _ivw_to_next(nx: String) -> void:      # (the gate's light fills the picture, the warm white the next level begins in, and the next is set up behind it)
 	var cl := CanvasLayer.new(); cl.layer = 7; add_child(cl)
@@ -4485,7 +4488,7 @@ func _ivw_gate_light(p: Vector3, ax: String) -> void:
 	var g := Gradient.new(); g.offsets = PackedFloat32Array([0.0, 0.25, 1.0]); g.colors = PackedColorArray([Color(1, 0.95, 0.85, 0.0), Color(1, 0.95, 0.85, 0.9), Color(1, 0.95, 0.9, 0.0)])
 	pt.color_ramp = g; pt.emitting = true
 	ivw_gate_parts.append(pt)
-	if go_milos or go_glass: _ivm_gate_shut()      # (the third and fourth levels: the door shut until the ring is lit)
+	if go_milos or go_glass or go_guard: _ivm_gate_shut()      # (the third, fourth and fifth levels: the door shut until the ring is lit)
 	# (no image of the gate's light in the glass: the image has no gate (the owner, 20/11: "in 4 the reflection without a gate"); _ivgl_gate_images made it)
 
 const IVW_VEIL_SH := """
@@ -5134,13 +5137,13 @@ func _ivw_menu_make() -> void:
 		if f != null: cap.add_theme_font_override("font", f)
 		cap.add_theme_font_size_override("font_size", int(vp.x * 0.042)); cap.add_theme_color_override("font_color", Color(cream, 0.7))
 		cap.size = Vector2(vp.x, vp.x * 0.07); cap.position = Vector2(0.0, vp.y * 0.335); cap.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_menu.add_child(cap)
-		var nl := 4 if FileAccess.file_exists("res://goglass/puzzle.json") else 3      # (the fourth when it is in the build)
+		var nl := 5 if FileAccess.file_exists("res://goguard/puzzle.json") else (4 if FileAccess.file_exists("res://goglass/puzzle.json") else 3)      # (the fourth and fifth when they are in the build)
 		for i in nl:
 			var lb := Label.new(); lb.text = str(i + 1)
 			lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			if f != null: lb.add_theme_font_override("font", f)
 			lb.add_theme_font_size_override("font_size", int(vp.x * 0.075)); lb.add_theme_color_override("font_color", cream)
-			lb.size = Vector2(bw, bw); lb.position = Vector2(vp.x * 0.5 + (float(i) - float(nl - 1) * 0.5) * vp.x * (0.2 if nl <= 3 else 0.17) - bw * 0.5, vp.y * 0.405 - bw * 0.5)
+			lb.size = Vector2(bw, bw); lb.position = Vector2(vp.x * 0.5 + (float(i) - float(nl - 1) * 0.5) * vp.x * (0.2 if nl <= 3 else (0.17 if nl == 4 else 0.15)) - bw * 0.5, vp.y * 0.405 - bw * 0.5)
 			lb.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_menu.add_child(lb)
 			ivw_pick.append(Rect2(lb.position, lb.size).grow(vp.x * 0.02))
 	title_box.hide()
@@ -5973,6 +5976,7 @@ func _ivg_dlook(f: Dictionary) -> Dictionary:
 ## a face whose look another's reaches breaks; then the looks are looked again, until none does
 func _ivg_settle() -> void:
 	if go_milos: await _ivm_check()
+	if go_guard: await _ivgd_turn()      # (the fifth level: the Guardian turns a quarter after each of her moves)
 	if not ivg_fbreak: return
 	for _k in 8:
 		var hit := []
@@ -6044,22 +6048,9 @@ func _ivq_decor() -> void:
 func _ivq_mirror(nd: String, turn: int) -> void:
 	var p: Vector3 = ivp_nodes[nd]
 	var root := Node3D.new(); iv_root.add_child(root); root.global_position = p
-	var bmi := MeshInstance3D.new()
-	if go_wake:      # (a round base of two steps, as high as the square one was (the owner, 21/11: "in level 3 put a round base on the mirror, and let's use the same mirror here", the fifth level))
-		var b1 := CylinderMesh.new(); b1.top_radius = 0.32; b1.bottom_radius = 0.34; b1.height = 0.12; b1.radial_segments = 40; b1.rings = 1
-		var b2 := CylinderMesh.new(); b2.top_radius = 0.23; b2.bottom_radius = 0.25; b2.height = 0.08; b2.radial_segments = 40; b2.rings = 1
-		var am := ArrayMesh.new()
-		for pr in [[b1, 0.06], [b2, 0.16]]:
-			var st_ := SurfaceTool.new(); st_.create_from(pr[0] as Mesh, 0)
-			var arr := st_.commit_to_arrays(); var vv: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
-			for i in vv.size(): vv[i] = vv[i] + Vector3(0, float(pr[1]), 0)
-			arr[Mesh.ARRAY_VERTEX] = vv; am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
-		bmi.mesh = am
-	else:
-		var bs := _iv_st()
-		_iv_box(bs, Vector3(-0.3, 0.0, -0.3), Vector3(0.3, 0.12, 0.3)); _iv_box(bs, Vector3(-0.22, 0.12, -0.22), Vector3(0.22, 0.2, 0.22))
-		bmi.mesh = bs.commit()
-	bmi.material_override = _ivr_mat("marble2", 0.0); root.add_child(bmi)
+	var bs := _iv_st()
+	_iv_box(bs, Vector3(-0.3, 0.0, -0.3), Vector3(0.3, 0.12, 0.3)); _iv_box(bs, Vector3(-0.22, 0.12, -0.22), Vector3(0.22, 0.2, 0.22))
+	var bmi := MeshInstance3D.new(); bmi.mesh = bs.commit(); bmi.material_override = _ivr_mat("marble2", 0.0); root.add_child(bmi)
 	var head := Node3D.new(); root.add_child(head)
 	var post := CylinderMesh.new(); post.top_radius = 0.035; post.bottom_radius = 0.05; post.height = 0.5; post.radial_segments = 10; post.rings = 1
 	var pmi := MeshInstance3D.new(); pmi.mesh = post; pmi.material_override = _ivr_mat("bronze", 0.0); pmi.position = Vector3(0, 0.45, 0); head.add_child(pmi)
@@ -6067,8 +6058,13 @@ func _ivq_mirror(nd: String, turn: int) -> void:
 	var dmi := MeshInstance3D.new(); dmi.mesh = disc; dmi.material_override = _ivr_mat("silver", 0.0); dmi.position = Vector3(0, 1.02, 0); dmi.rotation.x = PI * 0.5; head.add_child(dmi)
 	var rim := TorusMesh.new(); rim.inner_radius = 0.33; rim.outer_radius = 0.39; rim.rings = 36; rim.ring_segments = 8
 	var rmi := MeshInstance3D.new(); rmi.mesh = rim; rmi.material_override = _ivr_mat("bronze", 0.0); rmi.position = Vector3(0, 1.02, 0); rmi.rotation.x = PI * 0.5; rmi.scale = Vector3(1, 1.6, 1); head.add_child(rmi)
-	var bar := BoxMesh.new(); bar.size = Vector3(0.95, 0.012, 0.06)
-	var mk := MeshInstance3D.new(); mk.mesh = bar; mk.material_override = _ivr_mat("bronze", 0.0); mk.position = Vector3(0, 0.205, 0); head.add_child(mk)
+	var mk := MeshInstance3D.new(); mk.material_override = _ivr_mat("bronze", 0.0); head.add_child(mk)
+	if go_wake:      # (the bronze under the stand round, a round foot on the plinth, the plinth as it was (the owner, 21/11: "the metal part below round"; the plinth made round instead was turned down: "I didn't ask you to change anything else"))
+		var ft := CylinderMesh.new(); ft.top_radius = 0.15; ft.bottom_radius = 0.2; ft.height = 0.05; ft.radial_segments = 36; ft.rings = 1
+		mk.mesh = ft; mk.position = Vector3(0, 0.225, 0); mk.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	else:
+		var bar := BoxMesh.new(); bar.size = Vector3(0.95, 0.012, 0.06)
+		mk.mesh = bar; mk.position = Vector3(0, 0.205, 0)
 	for m in [bmi, pmi, dmi, rmi]: (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	ivg_mir[nd] = {"turn": turn, "turn0": turn, "n": head}
 	_ivq_mirror_pose(nd, 0.0)
@@ -6508,6 +6504,7 @@ func _ivr_build() -> void:
 		for mm in (ivg.mirrors as Array): _ivq_mirror(String(mm.node), int(mm.turn))
 		_ivg_gaze_all()
 	if go_milos and ivg_on and ivg.get("light") != null: _ivm_setup()
+	if go_guard and ivg_on: _ivgd_setup()
 	if j.get("relief") != null:
 		var rs := _ivr_block(); rs.global_position = V.call(j.relief); rs.scale = Vector3.ONE * 0.42; rs.rotation = Vector3(0.12, 0.6, -0.08)
 	# the fallen face: one of the thousand, on its cheek in the rock, looking up at the eye
@@ -6530,7 +6527,7 @@ func _ivr_build() -> void:
 	var tm := TorusMesh.new(); tm.inner_radius = 0.3 if ivr_on else 0.36; tm.outer_radius = 0.46; tm.rings = 32; tm.ring_segments = 8
 	var rm := _iv_prim(tm, Vector3(0, 0.06, 0), "ring", iv_ring); rm.scale = Vector3(1, 0.62, 1); rm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	if go_glass: call_deferred("_ivgl_pair_ring")      # (its image in the glass, lit as it lights)
-	if go_milos or go_glass:      # (the third level: the ring dark, a stone unlit, no glow, until the light reaches it; then the ochre of every ring comes up in it (the owner, 18/11: "before the light falls on it, off, darker"))
+	if go_milos or go_glass or go_guard:      # (the third level: the ring dark, a stone unlit, no glow, until the light reaches it; then the ochre of every ring comes up in it (the owner, 18/11: "before the light falls on it, off, darker"))
 		ivm_ring_gold = rm; rm.material_override = (rm.material_override as ShaderMaterial).duplicate(); _ivm_ring_tick()
 	if ivr_on:
 		var hm := CylinderMesh.new(); hm.top_radius = 0.31; hm.bottom_radius = 0.31; hm.height = 0.02; hm.radial_segments = 28; hm.rings = 1
@@ -6715,6 +6712,7 @@ func _ivg_seen(f: Dictionary) -> Array:
 		out.append(c); a = k; k = c
 	return out
 func _ivg_looked_at(n: String) -> bool:
+	if go_guard and ivgd_n != null and not ivgd_kept and (ivgd_before.has(n) or (_ivgd_trace(ivgd_phase, n).nodes as Array).has(n)): return true      # (the Guardian's gaze: where he looked as she moved, or looks now)
 	for f in ivg_faces:
 		if f.alive and _ivg_seen(f).has(n): return true
 	return false
@@ -6816,6 +6814,15 @@ func _ivg_turn(nb: String) -> void:
 	var me := iv_me
 	var wn := _ivg_w_node()
 	if OS.get_environment("IV_TRACE") != "": print("IV turn ", me, " -> ", nb, "  block ", iv_block, " volute ", ivg_v, " statue ", wn)
+	if go_guard and ivgd_n != null:      # (the fifth level: where the Guardian looks as she moves, she may not step into)
+		ivgd_before = [] if ivgd_kept else (_ivgd_trace(ivgd_phase, "").nodes as Array)
+		if nb == ivgd_mir and ivgd_mir != "":      # she turns the goddess's mirror a quarter round
+			if ivgd_kept: await _her_no(); return
+			iv_moves += 1
+			await _ivgd_mir_turn()
+			await _ivg_settle()
+			if _ivg_looked_at(iv_me): await _ivg_fail("seen", iv_me); return
+			return
 	if ivg_mir.has(nb):      # she turns a bronze mirror: the looks that reach it go on the other way
 		iv_moves += 1
 		if go_milos: create_tween().tween_property(self, "ivm_after_k", 0.0, 0.25).set_trans(Tween.TRANS_SINE)      # (the light past the mirror goes out as it turns, and comes back on its new way)
@@ -6836,9 +6843,10 @@ func _ivg_turn(nb: String) -> void:
 	else:
 		if nb == iv_block:      # the stone goes on before her, one node straight on
 			var c := _ivg_cont(me, nb)
-			if c == "" or c == ivg_vol or _ivg_face_on(c) >= 0 or c == wn: await _her_no(); return
+			var sink := _ivgd_sink_to(me, nb) if go_guard and c == "" else ""      # (the fifth level: off the walk's edge into the deep water)
+			if sink == "" and (c == "" or c == ivg_vol or _ivg_face_on(c) >= 0 or c == wn): await _her_no(); return
 			if bool(ivg.get("plinths", false)) and (_ivg_plinth(c) or c == ivg_exit): await _her_no(); return
-			if (go_milos or go_glass) and c == ivg_exit: await _her_no(); return      # (never onto the ring)
+			if (go_milos or go_glass or go_guard) and c == ivg_exit: await _her_no(); return      # (never onto the ring)
 			var c1 := c
 			if go_glass and bool(ivg.get("slide", false)):      # (a trial of sliding blocks: it slides on till something stops it: a column, the floor's end, a threshold, a stair, the ring)
 				if _ivgl_sill(nb, c): await _her_no(); return      # (a threshold before it: it will not go over)
@@ -6848,7 +6856,8 @@ func _ivg_turn(nb: String) -> void:
 					if c2 == "" or c2 == ivg_exit or c2 == wn or c2 == ivg_vol or _ivgl_sill(c, c2) or _ivv_hole(c2) or _ivg_face_on(c2) >= 0: break
 					pv = c; c = c2
 			iv_moves += 1
-			if _ivv_hole(c): await _ivv_push_in(nb, c)      # (into the gap in the way: it falls in, and its top is the way)
+			if sink != "": await _ivgd_sink(nb, sink)      # (into the deep water: it sinks, and is gone)
+			elif _ivv_hole(c): await _ivv_push_in(nb, c)      # (into the gap in the way: it falls in, and its top is the way)
 			else: await _ivg_push(nb, c, c1)
 			_ivg_gaze_all()
 			if go_glass: await _ivgl_check()
@@ -6866,7 +6875,7 @@ func _ivg_turn(nb: String) -> void:
 				await _ivg_w_break()
 				await _ivp_walk([nb])
 			elif _ivv_hole(nb): await _her_no(); return      # (still water: no way yet)
-			elif (go_milos or go_glass) and nb == ivg_exit and not ivm_open: await _her_no(); return      # (the gate is shut: its threshold will not take her)
+			elif (go_milos or go_glass or go_guard) and nb == ivg_exit and not ivm_open: await _her_no(); return      # (the gate is shut: its threshold will not take her)
 			else:
 				var run := _ivg_run_path(me, nb)      # (a long way: one swipe takes her on along it, to where there is something to choose)
 				iv_moves += run.size(); ivg_run = run
@@ -7178,6 +7187,7 @@ func _ivg_reset() -> void:
 		ivg_wi = 0; ivg_wd = 1; ivg_w.visible = true; ivg_w.scale = Vector3.ONE; (ivg_w.get_node("body") as Node3D).rotation = Vector3.ZERO
 		ivg_w.global_position = ivp_nodes[ivg_route[0]]; _ivg_w_aim(0.0)
 	iv_moves = 0
+	if go_guard: _ivgd_reset()
 
 # ---------------------------------------------------------------- the face in the water (a trial)
 ## Three courts by themselves in the sea, one after another. In each a medallion of square stones stands on two posts
@@ -9124,7 +9134,7 @@ func tap(sp: Vector2) -> void:
 	if go_demo and not started and go_wake and ivw_menu != null:
 		if ivw_menu_on:
 			for i in ivw_pick.size():
-				if i > 0 and (ivw_pick[i] as Rect2).has_point(sp): _ivw_jump(["goveil", "gomilos", "goglass"][i - 1]); return      # (a later level, for the tests)
+				if i > 0 and (ivw_pick[i] as Rect2).has_point(sp): _ivw_jump(["goveil", "gomilos", "goglass", "goguard"][i - 1]); return      # (a later level, for the tests)
 			_ivw_play()
 		return
 	if go_demo and not started:      # (the trial played a step at a time: the eye draws back to hold the board)
@@ -10772,3 +10782,294 @@ func _ivgl_shade_mat() -> ShaderMaterial:
 		(m as ShaderMaterial).render_priority = 6      # (after the sea, as every light and foam over it: drawn without depth, at 0 the sea was laid over her wherever only sky and sea lay behind her (the owner, 20/11: "the shadow passes under the background"))
 	return ivgl_shade
 const IVGL_SHADE_COL := Color(0.42, 0.48, 0.62)      # (her shadow over there grey-blue, not black (the owner, 19/11: "the reflection's shadow more grey-blue, not black"; a dark blue before); IV_SHADE_COL="r,g,b" tries another)
+
+# ---------------------------------------------------------------- the fifth level: the Guardian (goguard/)
+## The Guardian of the Glass stands on his pedestal in the pool and turns a quarter, clockwise, at each of her moves (a
+## step, a push, a turn of the mirror) (tools/go/gaze_trial.py): his gaze runs out along the ways and over the water
+## until the stone, she, or the goddess's mirror stops it. Where he looks now, and where he will look after her move
+## (shown faintly), she may not end a move: seen, she is taken back to the start (_ivg_fail). The goddess's mirror (the
+## third level's, on its plinth, its bronze foot round) turns a quarter at a swipe into it; when his gaze falls on its
+## face, it is thrown back into his eyes: he sees himself, the mirror keeps him, he stops, his glass frosts over, his gaze
+## goes out, and the gate opens (the owner, 21/11: the fifth level, "He looked into the mirror with longing, and it
+## kept him"). The stone pushed off the walk into the deep water at the pool's back sinks, and is gone.
+const IVGD_ORDER := ["E", "S", "W", "N"]      # (clockwise, as the board is seen from above: a quarter on at each move)
+const IVGD_YAW0 := 0.0      # (his model's own front: its own +x, as every statue made from a picture; IV_GUARD_YAW tries another)
+const IVGD_EYE_H := 3.2      # (his eyes over his pedestal's top)
+const IVGD_COL := Color(0.62, 0.76, 1.0)      # (his gaze: a cold light)
+var ivgd_n: Node3D
+var ivgd_body: Node3D
+var ivgd_phase := 0
+var ivgd_d0 := 1
+var ivgd_kept := false
+var ivgd_mir := ""
+var ivgd_mir_head: Node3D
+var ivgd_face := 0
+var ivgd_face0 := 0
+var ivgd_before := []      # (where he looked as her move began: she may not step into it)
+var ivgd_glass: ShaderMaterial
+var ivgd_band: MeshInstance3D      # (his gaze on the floor now)
+var ivgd_band2: MeshInstance3D      # (and, faintly, where he will look after her next move)
+var ivgd_beam := []      # (the line of his look from his eyes: core, halo)
+var ivgd_rings := []
+var ivgd_gk := 1.0      # (his gaze's strength: it dims as he turns, and goes out when the mirror keeps him)
+var ivgd_sunk := false
+
+const IVGD_BAND_SH := """
+shader_type spatial;
+render_mode unshaded, blend_mix, cull_disabled, depth_draw_never, shadows_disabled;
+uniform vec3 col : source_color = vec3(0.62, 0.76, 1.0);
+uniform float k = 1.0;
+void fragment(){
+	float across = 1.0 - abs(UV.y * 2.0 - 1.0);
+	float along = smoothstep(0.0, 0.06, UV.x) * (1.0 - smoothstep(0.8, 1.0, UV.x));
+	float flick = 0.93 + 0.07 * sin(TIME * 1.6 + UV.x * 7.0);
+	ALBEDO = mix(col, vec3(1.0), 0.35 * across);
+	ALPHA = clamp(pow(across, 1.4) * along * k * 0.62 * flick, 0.0, 1.0);
+}
+"""
+
+const IVGD_GLASS_SH := """
+shader_type spatial;
+render_mode blend_mix, depth_draw_opaque, cull_back, specular_schlick_ggx;
+uniform vec3 tint : source_color = vec3(0.8, 0.87, 0.97);
+uniform vec3 rim_c : source_color = vec3(1.0, 0.9, 0.78);
+uniform float alpha_k = 0.5;
+uniform float frost = 0.0;
+varying vec3 lp;
+void vertex(){ lp = VERTEX; }
+float h31(vec3 p){ p = fract(p * vec3(0.1031, 0.1030, 0.0973)); p += dot(p, p.yxz + 33.33); return fract((p.x + p.y) * p.z); }
+float cracks(vec3 p){
+	vec3 i = floor(p); vec3 f = fract(p); float d1 = 8.0; float d2 = 8.0;
+	for (int z = -1; z <= 1; z++) { for (int y = -1; y <= 1; y++) { for (int x = -1; x <= 1; x++) {
+		vec3 g = vec3(float(x), float(y), float(z));
+		vec3 o = vec3(h31(i + g), h31(i + g + 17.1), h31(i + g + 31.7));
+		float d = length(g + o - f);
+		if (d < d1) { d2 = d1; d1 = d; } else if (d < d2) { d2 = d; }
+	} } }
+	return 1.0 - smoothstep(0.0, 0.05, d2 - d1);
+}
+void fragment(){
+	float fr = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.2);
+	float ck = cracks(lp * 2.6) * (0.55 + 0.45 * frost);
+	vec3 c = mix(tint, vec3(1.0), 0.2 + 0.5 * fr);
+	c = mix(c, vec3(1.0), ck * 0.75);
+	c = mix(c, vec3(0.95, 0.97, 1.0), frost * 0.85);
+	ALBEDO = c;
+	ROUGHNESS = mix(0.1, 0.55, frost);
+	SPECULAR = 0.7;
+	EMISSION = rim_c * fr * 0.35 * (1.0 - frost) + vec3(0.85, 0.92, 1.0) * ck * 0.12;
+	ALPHA = clamp(mix(alpha_k + fr * 0.4 + ck * 0.35, 0.96, frost), 0.0, 1.0);
+}
+"""
+
+func _ivgd_setup() -> void:
+	var gd: Dictionary = ivg.get("guard", {})
+	ivgd_d0 = maxi(IVGD_ORDER.find(String(gd.get("d0", "S"))), 0); ivgd_phase = 0; ivgd_kept = false; ivgd_gk = 1.0
+	var at: Vector3 = ivp_nodes[String(gd.get("node", "G"))]
+	var top := at.y + 0.1
+	var sea := IV_O.y + ivr_sea_y
+	var pd := CylinderMesh.new(); pd.top_radius = 0.56; pd.bottom_radius = 0.62; pd.height = top - sea + 0.6; pd.radial_segments = 40; pd.rings = 1      # (his pedestal: a round drum of marble rising out of the pool)
+	var pmi := MeshInstance3D.new(); pmi.mesh = pd; pmi.material_override = _ivr_mat("marble2", 0.0); iv_root.add_child(pmi)
+	pmi.global_position = Vector3(at.x, (top + sea - 0.6) * 0.5, at.z); pmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	ivgd_n = Node3D.new(); iv_root.add_child(ivgd_n); ivgd_n.global_position = Vector3(at.x, top, at.z)
+	ivgd_body = Node3D.new(); ivgd_n.add_child(ivgd_body)
+	var m := prop_model("statue_guardian", ivgd_body, float(gd.get("height", 3.6)))
+	ivgd_glass = ShaderMaterial.new(); ivgd_glass.shader = _ivw_shader(IVGD_GLASS_SH)
+	for mi in m.find_children("*", "MeshInstance3D", true, false):
+		(mi as MeshInstance3D).material_override = ivgd_glass; (mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_ivgd_aim(0.0)
+	# his gaze: a band of cold light on the floor along his look, faintly where he will look next, a ring on each place it
+	# lights, and the line of his look from his eyes to where it ends
+	var bsh := _ivw_shader(IVGD_BAND_SH)
+	for which in 2:
+		var pm := PlaneMesh.new(); pm.size = Vector2(1.0, 1.0)
+		var bm := ShaderMaterial.new(); bm.shader = bsh; bm.set_shader_parameter("col", IVGD_COL); bm.render_priority = 5
+		var b := MeshInstance3D.new(); b.mesh = pm; b.material_override = bm; b.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; b.visible = false
+		iv_root.add_child(b)
+		if which == 0: ivgd_band = b
+		else: ivgd_band2 = b
+	var esh := _ivw_shader(IVM_BEAM_SH)
+	for c in 2:
+		var cm := CylinderMesh.new(); cm.top_radius = 0.022 if c == 0 else 0.09; cm.bottom_radius = cm.top_radius; cm.height = 1.0
+		cm.radial_segments = 12; cm.rings = 1; cm.cap_top = false; cm.cap_bottom = false
+		var mt := ShaderMaterial.new(); mt.shader = esh; mt.set_shader_parameter("core", 1.0 if c == 0 else 0.0); mt.set_shader_parameter("col", Vector3(IVGD_COL.r, IVGD_COL.g, IVGD_COL.b)); mt.render_priority = 4 + c
+		var bi := MeshInstance3D.new(); bi.mesh = cm; bi.material_override = mt; bi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; bi.visible = false
+		iv_root.add_child(bi); ivgd_beam.append(bi)
+	var rmat := StandardMaterial3D.new(); rmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; rmat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	rmat.albedo_color = Color(0.86, 0.93, 1.0, 0.8); rmat.render_priority = 6; rmat.no_depth_test = false
+	for _r in 6:
+		var tm := TorusMesh.new(); tm.inner_radius = 0.24; tm.outer_radius = 0.3; tm.rings = 28; tm.ring_segments = 4
+		var rg := MeshInstance3D.new(); rg.mesh = tm; rg.material_override = rmat; rg.scale = Vector3(1, 0.15, 1); rg.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; rg.visible = false
+		iv_root.add_child(rg); ivgd_rings.append(rg)
+	_ivgd_mir_make()
+	print("IV the Guardian at ", String(gd.get("node", "G")), " looks ", IVGD_ORDER[ivgd_d0], "; the mirror at ", ivgd_mir, " faces ", IVGD_ORDER[ivgd_face])
+
+func _ivgd_dir(ph: int) -> String: return IVGD_ORDER[(ivgd_d0 + ph) % 4]
+
+## he turns to his look (a quarter at each of her moves; at once when the level starts or begins again)
+func _ivgd_aim(t: float) -> void:
+	var v: Vector3 = ivg_dirv[_ivgd_dir(ivgd_phase)]
+	var y0 := IVGD_YAW0 + (float(OS.get_environment("IV_GUARD_YAW")) if OS.get_environment("IV_GUARD_YAW") != "" else 0.0)
+	var yw := atan2(-v.z, v.x) + y0
+	if t <= 0.0: ivgd_body.rotation.y = yw; return
+	var cur := ivgd_body.rotation.y; var dy := wrapf(yw - cur, -PI, PI)
+	create_tween().tween_property(ivgd_body, "rotation:y", cur + dy, t).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+## his gaze at a turn of his: the places it lights in order, where and on what it ends, and whether it comes back off the
+## mirror's face into his eyes (she stops it where she stands, when `me` is her place; "" looks past her)
+func _ivgd_trace(ph: int, me: String) -> Dictionary:
+	var dn := _ivgd_dir(ph); var d: Vector3 = ivg_dirv[dn]
+	var c := String((ivg.get("guard", {}) as Dictionary).get("node", "G")); var out := []
+	for _i in 30:
+		var n := _ivg_look_next(c, d)
+		if n == "": return {"nodes": out, "end": "off", "at": c, "dir": dn}
+		if n == iv_block: return {"nodes": out, "end": "stone", "at": c, "dir": dn}
+		if n == ivgd_mir: return {"nodes": out, "end": "mirror", "at": c, "dir": dn, "back": IVGD_ORDER[ivgd_face] == IVGD_ORDER[(IVGD_ORDER.find(dn) + 2) % 4]}
+		out.append(n)
+		if n == me: return {"nodes": out, "end": "her", "at": n, "dir": dn}
+		c = n
+	return {"nodes": out, "end": "off", "at": c, "dir": dn}
+
+## after each of her moves: he turns a quarter; if his gaze now falls on the mirror's face, it keeps him
+func _ivgd_turn() -> void:
+	if ivgd_n == null or ivgd_kept: return
+	ivgd_phase += 1
+	var dm := create_tween(); dm.tween_property(self, "ivgd_gk", 0.15, 0.12)
+	dm.tween_property(self, "ivgd_gk", 1.0, 0.3).set_delay(0.22)
+	_ivgd_aim(0.42)
+	if OS.get_environment("IV_TRACE") != "": print("IV the Guardian turns to look ", _ivgd_dir(ivgd_phase))
+	var t := _ivgd_trace(ivgd_phase, iv_me)
+	if String(t.end) == "mirror" and bool(t.get("back", false)): await _ivgd_keep()
+
+## he sees himself in the mirror: it keeps him
+func _ivgd_keep() -> void:
+	ivgd_kept = true
+	print("IV the Guardian looks into the mirror and sees himself: the mirror keeps him")
+	await wait(0.45)
+	var fl := create_tween(); fl.tween_method(func(v: float) -> void: (ivgd_beam[0] as MeshInstance3D).set_meta("flash", v), 0.0, 1.0, 0.25)
+	fl.tween_method(func(v: float) -> void: (ivgd_beam[0] as MeshInstance3D).set_meta("flash", v), 1.0, 0.0, 0.6)
+	var fr := create_tween(); fr.tween_method(func(v: float) -> void: ivgd_glass.set_shader_parameter("frost", v), 0.0, 1.0, 1.6).set_trans(Tween.TRANS_SINE)
+	await wait(0.7)
+	var g := create_tween(); g.tween_property(self, "ivgd_gk", 0.0, 0.9).set_trans(Tween.TRANS_SINE)
+	await wait(0.4)
+	await _ivm_open()
+
+## the goddess's mirror: the third level's, on its plinth, its bronze foot round (the owner, 21/11: "let's use the same
+## mirror here"); here it turns a quarter at a time, flat, its face toward one way
+func _ivgd_mir_make() -> void:
+	var mf: Dictionary = ivg.get("mirror_face", {})
+	ivgd_mir = String(mf.get("node", ""))
+	if ivgd_mir == "" or not ivp_nodes.has(ivgd_mir): ivgd_mir = ""; return
+	ivgd_face0 = maxi(IVGD_ORDER.find(String(mf.get("face", "S"))), 0); ivgd_face = ivgd_face0
+	_ivq_mirror(ivgd_mir, 0)
+	ivgd_mir_head = ivg_mir[ivgd_mir].n; ivg_mir.erase(ivgd_mir)      # (not one of the mirrors that turn a look a quarter: this one faces a way)
+	_ivgd_mir_pose(0.0)
+func _ivgd_mir_basis(fi: int) -> Basis:
+	var z: Vector3 = ivg_dirv[IVGD_ORDER[fi]]
+	return Basis(Vector3.UP.cross(z), Vector3.UP, z)
+func _ivgd_mir_pose(t: float) -> void:
+	var b := _ivgd_mir_basis(ivgd_face)
+	if t <= 0.0: ivgd_mir_head.basis = b; return
+	var q0 := ivgd_mir_head.quaternion; var q1 := b.get_rotation_quaternion()
+	if q0.dot(q1) < 0.0: q1 = -q1
+	var tw2 := create_tween(); tw2.tween_method(func(k: float) -> void: ivgd_mir_head.quaternion = q0.slerp(q1, k), 0.0, 1.0, t).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await tw2.finished
+## she turns it a quarter round, her hands on its rim
+func _ivgd_mir_turn() -> void:
+	iv_busy = true
+	var wp: Vector3 = (ivp_nodes[ivgd_mir] as Vector3) + Vector3(0, 0.9, 0)
+	face_to = wp
+	var n := 0
+	while face_to != null and n < 90: await get_tree().process_frame; n += 1
+	var to_her := Vector3(pos.x - wp.x, 0, pos.z - wp.z).normalized()
+	var fr := wp + to_her * 0.3
+	tgtL = fr + Vector3(0, 0.15, 0) + to_her.cross(Vector3.UP) * 0.16; tgtR = fr + Vector3(0, -0.05, 0) - to_her.cross(Vector3.UP) * 0.16
+	var up := tw(); up.set_parallel(); up.tween_property(self, "a_wL", 1.0, 0.3); up.tween_property(self, "a_wR", 1.0, 0.3); up.tween_property(self, "a_lean", 0.14, 0.3)
+	await up.finished
+	ivgd_face = (ivgd_face + 1) % 4
+	print("IV the mirror at ", ivgd_mir, " turns to face ", IVGD_ORDER[ivgd_face])
+	await _ivgd_mir_pose(0.8)
+	var dn := tw(); dn.set_parallel(); dn.tween_property(self, "a_wL", 0.0, 0.35); dn.tween_property(self, "a_wR", 0.0, 0.35); dn.tween_property(self, "a_lean", 0.0, 0.35)
+	await dn.finished
+	iv_busy = false
+
+## the stone pushed from `me` onto `nb`'s further side: where it goes over the walk's edge into the deep water ("" none)
+func _ivgd_sink_to(me: String, nb: String) -> String:
+	var sk: Dictionary = (ivg.get("sinks", {}) as Dictionary).get(nb, {})
+	if sk.is_empty(): return ""
+	var v: Vector3 = (ivp_nodes[nb] as Vector3) - (ivp_nodes[me] as Vector3); v.y = 0.0; v = v.normalized()
+	for dk in sk:
+		if ivg_dirv.has(dk) and (ivg_dirv[dk] as Vector3).dot(v) > 0.9: return String(sk[dk])
+	return ""
+## over the edge into the deep water, as into level 2's gap; but here it sinks on down, and is gone
+func _ivgd_sink(nb: String, into: String) -> void:
+	await _ivv_push_in(nb, into)
+	iv_busy = true
+	ivgd_sunk = true
+	print("IV the stone sinks in the deep water at ", into)
+	var bp := iv_block_n.global_position
+	var t := create_tween(); t.tween_property(iv_block_n, "global_position:y", bp.y - 1.8, 1.6).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await t.finished
+	iv_block_n.visible = false
+	iv_busy = false
+
+## seen: everything as it began (with _ivg_reset)
+func _ivgd_reset() -> void:
+	if ivgd_n == null: return
+	ivgd_phase = 0; ivgd_kept = false; ivgd_gk = 1.0; ivgd_before = []
+	_ivgd_aim(0.0)
+	if ivgd_mir != "": ivgd_face = ivgd_face0; _ivgd_mir_pose(0.0)
+	if ivgd_sunk: ivgd_sunk = false; iv_block_n.visible = true; ivv_filled.clear()
+	if ivgd_glass != null: ivgd_glass.set_shader_parameter("frost", 0.0)
+
+## his gaze drawn as it is now: on the floor along his look to where it ends, faintly where he will look next, a ring on
+## each place it lights, and the line from his eyes to where it ends
+func _ivgd_draw() -> void:
+	var k := ivgd_gk
+	var tn := _ivgd_trace(ivgd_phase, iv_me)
+	var e := _ivgd_band_put(ivgd_band, tn, k)
+	var tx := _ivgd_trace(ivgd_phase + 1, iv_me)
+	_ivgd_band_put(ivgd_band2, tx, 0.0 if ivgd_kept else k * 0.3)
+	var lit: Array = tn.nodes
+	for i in ivgd_rings.size():
+		var rg: MeshInstance3D = ivgd_rings[i]
+		rg.visible = k > 0.05 and i < lit.size()
+		if rg.visible: rg.global_position = (ivp_nodes[String(lit[i])] as Vector3) + Vector3(0, 0.035, 0)
+	var d: Vector3 = ivg_dirv[String(tn.dir)]
+	var a := ivgd_n.global_position + Vector3(0, IVGD_EYE_H, 0) + d * 0.2
+	var b: Vector3 = e
+	match String(tn.end):
+		"her": b = (ivp_nodes[iv_me] as Vector3) + Vector3(0, 1.05, 0)
+		"stone": b = e + Vector3(0, 0.5, 0)
+		"mirror": b = (ivp_nodes[ivgd_mir] as Vector3) + Vector3(0, IVM_DISC_H, 0)
+	var fl := float((ivgd_beam[0] as MeshInstance3D).get_meta("flash", 0.0))
+	for c in 2:
+		var bi: MeshInstance3D = ivgd_beam[c]
+		bi.visible = k > 0.05
+		if not bi.visible: continue
+		var v := b - a; var L := v.length()
+		if L < 0.05: bi.visible = false; continue
+		var y := v / L; var x := y.cross(Vector3.UP if absf(y.y) < 0.95 else Vector3.RIGHT).normalized(); var z := x.cross(y)
+		bi.global_transform = Transform3D(Basis(x, y * L, z), (a + b) * 0.5)
+		(bi.material_override as ShaderMaterial).set_shader_parameter("k", clampf(k * (0.75 if c == 0 else 0.5) + fl * 1.5, 0.0, 2.5))
+## a band of his gaze on the floor: from his pedestal's edge along his look to where it ends; the end, returned
+func _ivgd_band_put(mi: MeshInstance3D, t: Dictionary, k: float) -> Vector3:
+	var d: Vector3 = ivg_dirv[String(t.dir)]
+	var g := ivgd_n.global_position
+	var y := g.y - 0.07
+	var a := Vector3(g.x, y, g.z) + d * 0.62
+	var end: Vector3
+	match String(t.end):
+		"stone": end = (ivp_nodes[iv_block] as Vector3) - d * 0.5
+		"her": end = ivp_nodes[iv_me]
+		"mirror": end = (ivp_nodes[ivgd_mir] as Vector3) - d * 0.32
+		_: end = ((ivp_nodes[String(t.at)] as Vector3) + d * 0.9) if not (t.nodes as Array).is_empty() else g + d * 1.3
+	end.y = y
+	if k <= 0.01: mi.visible = false; return end
+	var v := end - a; v.y = 0.0; var L := v.length()
+	if L < 0.05: mi.visible = false; return end
+	var dn := v / L
+	mi.global_transform = Transform3D(Basis(dn * L, Vector3.UP, dn.cross(Vector3.UP) * 0.5), (a + end) * 0.5)
+	(mi.material_override as ShaderMaterial).set_shader_parameter("k", k)
+	mi.visible = true
+	return end
