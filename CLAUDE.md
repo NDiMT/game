@@ -180,7 +180,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   square in place of the meander, made and turned down the same day: "leave it with the meander, just make it beige";
   then "a more brown beige", "and the meander a little lighter"; and "in all levels the cube with the meander like the
   first": the fourth level's own lighter, softer colours for it are gone, it is the second level's; since 21/11 a light brown, `d6b18a` lit, in every level: "the stone with the meander in
-  all levels light brown"), its meander a darker shade of it, its veins as discreet as before (`block`, `meander` in `IV_WAKE_PAL`, `IV_GLASS_PAL`);
+  all levels light brown"; then a little lighter and greyer, `d2baa0` lit: "the cube with the meander a little lighter
+  brown and greyer"), its meander a darker shade of it, its veins as discreet as before (`block`, `meander` in `IV_WAKE_PAL`, `IV_GLASS_PAL`);
   its single great key cut in each face (`tools/go/block_cube.py ... one`; four small square keys on each face, two by
   two, as the fifth level's concept has them, were tried on 21/11, `four`, and the same day the owner: "put back the
   previous cube you push"); it tumbles over onto the next place, and into the gap
@@ -489,7 +490,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   the level's shader and the sea's take his line from two global uniforms (`iv_gaze`: its two ends in x and z;
   `iv_gaze2`: its breadth and strength; added in `main.gd` `_ready`, set each frame by `_ivgd_draw`, 0 in every other
   level) and light what lies within it, soft as a gaussian across, its ends fading, only on faces turned up
-  (`gaze_light` in IV_SH; `IVGD_LINE_W` 0.42 m, `IVGD_LINE_A` 0.26). Before: strips laid over the walk and the sea
+  (`gaze_light` in IV_SH; `IVGD_LINE_W` 0.3 m, 0.42 before: "the laser's light on the floor a little thinner and
+  slightly less blurry"; `IVGD_LINE_A` 0.26). Before: strips laid over the walk and the sea
   (`IVGD_LINE_SH`, still made, kept hidden), which stopped at the rock (the owner: "along the circles that light, the
   laser should show as a blurry shadow", "the laser below, over the whole surface it passes over", "a little more
   subdued"); over the lit discs alone, and a thinner line with a bright middle, before that. Before, a broad band of light on the floor from his pedestal along it was "a
