@@ -483,9 +483,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   shader `IVGD_BEAM_SH`, `IVGD_BEAM_K` 1.7 and 1.35, going out softly over its last part from `IVGD_BEAM_FADE` 0.55 of
   its length: the owner, "the main laser brighter and ending in a fade out"), runs along the ways and over the water
   until the stone, she or the mirror stops it, and the discs of the way it falls on go a little red (`IVGD_DISC_A`,
-  laid over each disc, `ivp_disc`), with his line along them as a blurry red shadow on the floor (`IVGD_LINE_*`: 0.62 m
-  broad, soft as a gaussian across, no bright middle, over each run of lit discs and 0.65 m past its ends; the owner:
-  "along the circles that light, the laser should show as a blurry shadow"; a thinner line with a bright middle before). Before, a broad band of light on the floor from his pedestal along it was "a
+  laid over each disc, `ivp_disc`), with his line laid under it as a blurry red shadow on every surface it passes over
+  (`IVGD_LINE_*`: 0.62 m broad, soft as a gaussian across, no bright middle, its ends fading over 0.32 m; from his
+  pedestal's edge to where his line ends, on the walk at its height and off the slab's edge on the water at the sea's;
+  the owner: "along the circles that light, the laser should show as a blurry shadow", then "the laser below, over the
+  whole surface it passes over"; over the lit discs alone, and a thinner line with a bright middle, before). Before, a broad band of light on the floor from his pedestal along it was "a
   pointless laser blur" and a ring on each place "an extra circle" (the owner, 21/11); where he will look next, a fainter
   band then, is no longer shown; where he looks now or
   next she may not end a move: seen, back to the start (`_ivg_fail`). She hides behind the stone on the pier, turns the

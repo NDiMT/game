@@ -10848,10 +10848,12 @@ shader_type spatial;
 render_mode unshaded, blend_mix, cull_disabled, depth_draw_never, shadows_disabled;
 uniform vec3 col : source_color = vec3(0.96, 0.2, 0.18);
 uniform float k = 1.0;
+uniform float len_m = 2.0;      // (its length in metres: its ends fade over the same length however long it is)
 void fragment(){
 	float r = abs(UV.y * 2.0 - 1.0);
 	float across = exp(-r * r * 5.5) - exp(-5.5) * r;      // (a soft gaussian across it: a blurry shadow of his line, no bright middle)
-	float along = smoothstep(0.0, 0.3, UV.x) * (1.0 - smoothstep(0.7, 1.0, UV.x));
+	float e = clamp(0.32 / max(len_m, 0.01), 0.0, 0.5);
+	float along = smoothstep(0.0, e, UV.x) * (1.0 - smoothstep(1.0 - e, 1.0, UV.x));
 	float flick = 0.95 + 0.05 * sin(TIME * 2.3 + UV.x * 9.0);
 	ALBEDO = col;
 	ALPHA = clamp(across * along * k * flick, 0.0, 1.0);
@@ -10929,7 +10931,7 @@ func _ivgd_setup() -> void:
 	ivgd_red = StandardMaterial3D.new(); ivgd_red.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; ivgd_red.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	ivgd_red.albedo_color = Color(IVGD_COL, IVGD_DISC_A)
 	var lsh := _ivw_shader(IVGD_LINE_SH)
-	for _i in 4:
+	for _i in 8:
 		var lm := PlaneMesh.new(); lm.size = Vector2(1.0, 1.0)
 		var lmat := ShaderMaterial.new(); lmat.shader = lsh; lmat.set_shader_parameter("col", IVGD_COL); lmat.render_priority = 6
 		var li := MeshInstance3D.new(); li.mesh = lm; li.material_override = lmat; li.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; li.visible = false
@@ -11067,25 +11069,40 @@ func _ivgd_draw() -> void:
 	for n in lit:
 		if ivp_disc.has(n): (ivp_disc[n] as MeshInstance3D).material_overlay = ivgd_red; ivgd_reddened.append(n)
 	ivgd_red.albedo_color.a = IVGD_DISC_A * clampf(k, 0.0, 1.0)
-	# a soft line of his gaze over each run of lit discs, along the way, a little past the first and the last
-	var runs := []; var cur := []
-	for n in lit:
-		if ivp_disc.has(n): cur.append(n)
-		elif not cur.is_empty(): runs.append(cur); cur = []
-	if not cur.is_empty(): runs.append(cur)
+	# his line's blurry shadow on every surface it passes over, from his pedestal's edge to where it ends: on the walk at
+	# its height, on the water at the sea's (the owner, 21/11: "the laser below, over the whole surface it passes over")
 	var dl: Vector3 = ivg_dirv[String(tn.dir)]
-	for i in ivgd_lines.size():
-		var li: MeshInstance3D = ivgd_lines[i]
-		li.visible = i < runs.size()
-		if not li.visible: continue
-		var r: Array = runs[i]
-		var p0: Vector3 = (ivp_nodes[String(r[0])] as Vector3) - dl * 0.65
-		var p1: Vector3 = (ivp_nodes[String(r[r.size() - 1])] as Vector3) + dl * 0.65
-		var y := maxf(p0.y, p1.y) + 0.05
+	var sea := IV_O.y + ivr_sea_y
+	var unw: Array = ivg.get("unwalked", [])
+	var gp := ivgd_n.global_position
+	var pts := [[gp + dl * 0.62, false]]      # (a point of his line on the ground, and whether the walk is under it)
+	for n in (tn.nodes if k > 0.05 else []): pts.append([ivp_nodes[String(n)] as Vector3, not unw.has(String(n))])
+	if k > 0.05: pts.append([e, String(tn.end) != "off"])
+	var pieces := []      # ([from, to, on the walk])
+	for i in range(1, pts.size()):
+		var pa: Vector3 = pts[i - 1][0]; var pb: Vector3 = pts[i][0]
+		var wa: bool = pts[i - 1][1]; var wb: bool = pts[i][1]
+		if wa == wb: pieces.append([pa, pb, wa])
+		elif wa: pieces.append([pa, pa + dl * 0.75, true]); pieces.append([pa + dl * 0.75, pb, false])      # (off the slab's edge, a step's half from its node)
+		else: pieces.append([pa, pb - dl * 0.75, false]); pieces.append([pb - dl * 0.75, pb, true])
+	var runs := []
+	for pc in pieces:
+		if not runs.is_empty() and bool(runs[-1][2]) == bool(pc[2]): runs[-1][1] = pc[1]
+		else: runs.append([pc[0], pc[1], pc[2]])
+	var shown := 0
+	for r in runs:
+		if shown >= ivgd_lines.size(): break
+		var p0: Vector3 = r[0]; var p1: Vector3 = r[1]
+		var y := (maxf(p0.y, p1.y) + 0.05) if bool(r[2]) else sea + 0.03
 		p0.y = y; p1.y = y
 		var L := (p1 - p0).length()
+		if L < 0.08: continue
+		var li: MeshInstance3D = ivgd_lines[shown]; shown += 1
 		li.global_transform = Transform3D(Basis(dl * L, Vector3.UP, dl.cross(Vector3.UP) * IVGD_LINE_W), (p0 + p1) * 0.5)
-		(li.material_override as ShaderMaterial).set_shader_parameter("k", IVGD_LINE_A * clampf(k, 0.0, 1.0))
+		var lm := li.material_override as ShaderMaterial
+		lm.set_shader_parameter("k", IVGD_LINE_A * clampf(k, 0.0, 1.0)); lm.set_shader_parameter("len_m", L)
+		li.visible = true
+	for i in range(shown, ivgd_lines.size()): (ivgd_lines[i] as MeshInstance3D).visible = false
 	var d: Vector3 = ivg_dirv[String(tn.dir)]
 	var a := ivgd_n.global_position + Vector3(0, IVGD_EYE_K * float((ivg.get("guard", {}) as Dictionary).get("height", 3.6)), 0) + d * 0.22
 	var b: Vector3 = e
