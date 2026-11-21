@@ -2346,6 +2346,9 @@ float vn(vec3 p){ vec3 i = floor(p); vec3 f = fract(p); f = f * f * (3.0 - 2.0 *
 		mix(mix(h3(i + vec3(0, 0, 1)), h3(i + vec3(1, 0, 1)), f.x), mix(h3(i + vec3(0, 1, 1)), h3(i + vec3(1, 1, 1)), f.x), f.y), f.z); }
 float fbm(vec3 p){ return vn(p) * 0.55 + vn(p * 2.1 + 3.1) * 0.3 + vn(p * 4.3 + 7.7) * 0.15; }
 float hs3(vec3 p){ p = fract(p * vec3(0.1031, 0.1030, 0.0973)); p += dot(p, p.yxz + 33.33); return fract((p.x + p.y) * p.z); }      // (a hash with no sin in it: a phone's graphics take sin of large numbers loosely, and a hash of it can come out the same in every cell)
+float vns(vec3 p){ vec3 i = floor(p); vec3 f = fract(p); f = f * f * (3.0 - 2.0 * f);      // (a soft noise of that hash: the foam's clusters on a stone that comes up)
+	return mix(mix(mix(hs3(i), hs3(i + vec3(1, 0, 0)), f.x), mix(hs3(i + vec3(0, 1, 0)), hs3(i + vec3(1, 1, 0)), f.x), f.y),
+		mix(mix(hs3(i + vec3(0, 0, 1)), hs3(i + vec3(1, 0, 1)), f.x), mix(hs3(i + vec3(0, 1, 1)), hs3(i + vec3(1, 1, 1)), f.x), f.y), f.z); }
 float fbub(vec2 p, float on_p, float rk){      // (round blobs of a few sizes, most cells empty: foam drawn clean, as the sea's lip is)
 	vec2 i = floor(p); vec2 f = fract(p); float m = 0.0;
 	for (int y = -1; y <= 1; y++) { for (int x = -1; x <= 1; x++) {
@@ -2463,9 +2466,9 @@ void fragment(){
 	if (foam_k > 0.0) {      // (the user: "foam where they come out, and on them a little": a few round blobs of the sea's foam on its top, short runs down its sides, all draining off below a line that sinks)
 		float below = 1.0 - smoothstep(foam_y - 0.04, foam_y + 0.01, wy);
 		float upf = smoothstep(0.55, 0.85, fn.y);
-		float blobs = fbub(wp.xz * 8.5, 0.16, 0.45 + 0.55 * foam_k) * smoothstep(0.35, 0.55, vn(vec3(wp.xz * 2.4, 1.7)));      // (a few, in a few clusters, and shrinking as it drains: never spots all over it)
+		float blobs = fbub(wp.xz * 8.5, 0.16, 0.45 + 0.55 * foam_k) * smoothstep(0.35, 0.55, vns(vec3(wp.xz * 2.4, 1.7)));      // (a few, in a few clusters, and shrinking as it drains: never spots all over it; no sin in its hashes, so a phone never draws it all over)
 		vec2 tg = normalize(vec2(-fn.z, fn.x) + vec2(0.0001, 0.0));      // (along the side it is on)
-		float sx = dot(wp.xz, tg) * 8.0; float hc = h3(vec3(floor(sx), 3.7, 1.3));
+		float sx = dot(wp.xz, tg) * 8.0; float hc = hs3(vec3(floor(sx), 3.7, 1.3));
 		float col = (1.0 - smoothstep(0.1, 0.17, abs(fract(sx) - 0.3 - 0.4 * hc))) * step(0.6, hc);      // (here and there a run of water down its side)
 		float dash = smoothstep(0.3, 0.45, fract(wy * 2.0 + TIME * 0.9 + hc * 5.0));
 		float runs = col * dash * (1.0 - upf) * smoothstep(0.0, 0.3, 1.0 - abs(fn.y));
@@ -4635,6 +4638,7 @@ func _ivw_risers_find(lv: Node3D, mn: Node3D) -> void:
 		mi.material_override = _ivr_mat("rock2" if nm.contains("rock") else "marble2", 1.0, true).duplicate() as ShaderMaterial
 		(mi.material_override as ShaderMaterial).set_shader_parameter("clip_k", 0.0); (mi.material_override as ShaderMaterial).set_shader_parameter("under_k", 1.0)
 		(mi.material_override as ShaderMaterial).set_shader_parameter("wet_k", 0.0)      # (it comes up in its own colours: wet, darker and cooler, it came up dark and lightened as it dried, which read as a flash (the owner, 20/11: "they start dark and make a strange flash"))
+		(mi.material_override as ShaderMaterial).set_meta("wline", (mi.material_override as ShaderMaterial).get_shader_parameter("wline_k")); (mi.material_override as ShaderMaterial).set_shader_parameter("wline_k", 0.0)      # (no fine line of light where it meets the water while it moves: the line's band (5 cm over the water) lay on its flat top as the top came through the water, and the whole top went white for a frame, a flash on each stone and each ledge of its rock (the owner, 21/11: "this ridiculous flash"); it comes in once the stone is still, _ivw_wline)
 		var img: MeshInstance3D = null
 		if mn != null:
 			var f := mn.find_children(String(mi.name), "MeshInstance3D", true, false)
@@ -4691,8 +4695,7 @@ func _ivw_risers_set(u: float) -> void:
 			e_min = minf(e_min, p * p * (3.0 - 2.0 * p))
 			if String(rm.name).to_lower().contains("marble"):
 				var top := (rm.global_transform * rm.get_aabb()).end.y
-				if r.size() > 7 and r[7] == null and not bool(r[6]) and u > 0.0 and top > sea - 0.35: r[7] = _ivw_churn_make(r)      # (the water boils white over it as it comes near)
-				if not bool(r[6]) and u > 0.0 and top > sea + 0.01: r[6] = true; _ivw_emerge(r)
+				if not bool(r[6]) and u > 0.0 and top > sea + 0.01: r[6] = true; _ivw_emerge(r)      # (nothing on the water before it breaks it: the foam that boiled over each stone as it neared drew a line round every stone still under, from the winch's first turn (their tops lie 0.32 under, within its 0.35))
 				elif bool(r[6]) and top < sea - 0.05: r[6] = false; r[7] = null
 				elif not bool(r[6]) and r.size() > 7 and r[7] != null and top < sea - 0.4:      # (sunk again before it broke the water: no boiling left over it)
 					if is_instance_valid(r[7]): (r[7] as Node).queue_free()
@@ -4720,14 +4723,14 @@ func _ivw_emerge(r: Array) -> void:
 		ivw_surf_n += 1; _ivw_sfx("stone_surface_%d" % (1 + ivw_surf_n % 3), IVW_SURF_DB, 0.0, randf_range(0.93, 1.07))
 	if r.size() > 7:
 		if r[7] == null or not is_instance_valid(r[7]): r[7] = _ivw_churn_make(r)
-		_ivw_churn_burst(r[7] as MeshInstance3D)
+		_ivw_churn_burst(r[7] as MeshInstance3D, 0.55, false)      # (its foam coming in over a moment as it comes up, never at once)
 	for q in ivw_risers:
 		if q.size() > 5 and String(q[5]) == String(r[5]):
 			var qm := (q[0] as MeshInstance3D).material_override as ShaderMaterial
 			if qm == null: continue
 			qm.set_shader_parameter("foam_y", bb.end.y + 0.4)      # (it comes up with the sea's foam on it, which drains off its top and down its sides: coming in over a moment, never at once)
 			var tf := create_tween().set_parallel(true)
-			tf.tween_method(func(v: float) -> void: qm.set_shader_parameter("foam_k", v), 0.0, 1.0, 0.35).set_trans(Tween.TRANS_SINE)
+			tf.tween_method(func(v: float) -> void: qm.set_shader_parameter("foam_k", v), 0.0, 1.0, 0.6).set_trans(Tween.TRANS_SINE)
 			tf.tween_method(func(v: float) -> void: qm.set_shader_parameter("foam_y", v), bb.end.y + 0.4, sea - 0.1, 2.6).set_delay(0.3).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_SINE)
 			tf.tween_method(func(v: float) -> void: qm.set_shader_parameter("foam_k", v), 1.0, 0.0, 3.6).set_delay(0.8).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
 
@@ -4742,13 +4745,14 @@ uniform vec4 shore_rect = vec4(0.0, 0.0, 1.0, 1.0); uniform float shore_d = 1.6;
 uniform float boil = 0.0; uniform float churn = 0.0; uniform float spread = 0.05;
 uniform vec2 centre; uniform float rad = 0.5;
 uniform float box_k = 0.0; uniform vec2 box_half = vec2(0.45);      // (or round a square stone set down in the water, not one in the shore's map: the block fallen into its hole)
+uniform sampler2D own_tex : filter_linear, repeat_disable; uniform float own_k = 0.0; uniform vec3 own_ch = vec3(1.0, 0.0, 0.0);      // (each rising stone's own shore map, a channel each (tools/go/shore_risers.py): its foam hugs it alone, and keeps off the water nearer another (the owner, 21/11: "the rocks that come up and this ridiculous flash": read from the green, which holds them all as one, it ran out as white lines round the stones still under))
 uniform vec2 others[8]; uniform int n_others = 0;      // (the middles of the other stones that rise: the shore map holds all their outlines as one, so this stone's foam keeps to the water nearer it than them; read from the map alone, it ran out as a white line round the stones still under, a flash over the water as the first broke it (the owner, 20/11: "a strange flash like a glint"))
 uniform vec3 foam_c : source_color = vec3(1.0, 0.985, 0.97);
 varying vec3 wp;
 void vertex(){ wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
-float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float h21(vec2 p){ vec3 q = fract(vec3(p.xyx) * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }      // (hashes with no sin in them: a phone's graphics take sin of large numbers loosely, and then every cell can come out foam)
 float vn(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), f.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), f.x), f.y); }
-vec2 h22(vec2 p){ return fract(sin(vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)))) * 43758.5453); }
+vec2 h22(vec2 p){ vec3 q = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973)); q += dot(q, q.yzx + 33.33); return fract((q.xx + q.yz) * q.zy); }
 float bub(vec2 p, float rk){      // (round bubbles of a few sizes, some cells empty, shrinking with rk: foam is round, never angular flecks)
 	vec2 i = floor(p); vec2 f = fract(p); float m = 0.0;
 	for (int y = -1; y <= 1; y++) { for (int x = -1; x <= 1; x++) {
@@ -4761,6 +4765,13 @@ float bub(vec2 p, float rk){      // (round bubbles of a few sizes, some cells e
 void fragment(){
 	vec2 su = (wp.xz - shore_rect.xy) * shore_rect.zw;
 	float d = (1.0 - texture(shore_tex, clamp(su, vec2(0.001), vec2(0.999))).g) * shore_d;      // (how far from the stone's edge: nothing over it)
+	float mine = 1.0;
+	if (own_k > 0.5) {      // (from its own outline only; and nothing on the water nearer another stone's, nor over one still under)
+		vec3 ov = texture(own_tex, clamp(su, vec2(0.001), vec2(0.999))).rgb;
+		d = (1.0 - dot(ov, own_ch)) * shore_d;
+		float d_oth = (1.0 - max(max(ov.r * (1.0 - own_ch.r), ov.g * (1.0 - own_ch.g)), ov.b * (1.0 - own_ch.b))) * shore_d;
+		mine = clamp((d_oth - d) / 0.12 + 0.5, 0.0, 1.0);
+	}
 	if (box_k > 0.5) { vec2 bq = abs(wp.xz - centre) - box_half; d = length(max(bq, vec2(0.0))); }
 	float onw = step(0.0005, d);      // (on the water only: over the stone nothing, it has its own)
 	float nz = vn(wp.xz * 3.5 + vec2(TIME * 0.3, -TIME * 0.24)) * 0.6 + vn(wp.xz * 8.0 - vec2(TIME * 0.42, -TIME * 0.18)) * 0.4;      // (broad and slow: the edges drawn clean and uneven, as the sea's own lip is; never a fine glitter)
@@ -4775,7 +4786,7 @@ void fragment(){
 	float dots = bub(wp.xz * 9.0 + vec2(TIME * 0.15, -TIME * 0.1), 0.35 + 0.65 * churn) * smoothstep(0.15, 0.4, r0) * (1.0 - smoothstep(0.85, 1.2, r0));      // (and round bubbles at its edge)
 	float a = boil * lip * 0.3 * smoothstep(0.4, 0.6, nb) + churn * max(band, max(blobs, dots));
 	a *= onw * (1.0 - smoothstep(rad * 1.15 + ext, rad * 1.15 + ext + 0.25, length(wp.xz - centre)));      // (round this stone only)
-	float own = 1.0; float dm = length(wp.xz - centre);
+	float own = mine; float dm = length(wp.xz - centre);
 	for (int k = 0; k < 8; k++) { if (k >= n_others) { break; } own = min(own, 1.0 - smoothstep(-0.14, 0.14, dm - length(wp.xz - others[k]))); }
 	a *= own;
 	ALBEDO = foam_c; ALPHA = clamp(a, 0.0, 1.0) * 0.78;
@@ -4808,43 +4819,67 @@ func _ivw_churn_make(r: Array) -> MeshInstance3D:
 		if String(nm) != String(r[5]) and oth.size() < 8: oth.append(ocs[nm])
 	while oth.size() < 8: oth.append(Vector2(1e6, 1e6))
 	m.set_shader_parameter("others", oth); m.set_shader_parameter("n_others", ocs.size() - 1)
+	var own := _ivw_own_shore()
+	var ch := []      # (its channel: the stones by their names, as the tool lays them, the first red)
+	for nm in _ivw_riser_middles():
+		if String(nm) != "": ch.append(String(nm))
+	ch.sort()
+	if own != null and ch.find(String(r[5])) >= 0 and ch.find(String(r[5])) < 3:      # (its own outline, from its own channel: the middles' split no longer needed)
+		var oc := Vector3.ZERO; oc[ch.find(String(r[5]))] = 1.0
+		m.set_shader_parameter("own_tex", own); m.set_shader_parameter("own_k", 1.0); m.set_shader_parameter("own_ch", oc); m.set_shader_parameter("n_others", 0)
+		print("IV stone %s breaks the water: its foam from its own outline (channel %d)" % [String(r[5]), ch.find(String(r[5]))])
 	m.set_shader_parameter("centre", Vector2(c.x, c.z)); m.set_shader_parameter("rad", rad)      # (read from the shore map: the outline the stones' rock has at the water; foam round each stone only was tried, and the owner, 20/11, liked this one better)
 	var pm := PlaneMesh.new(); var ext := (rad + 1.2) * 2.0; pm.size = Vector2(ext, ext)
 	var mi := MeshInstance3D.new(); mi.mesh = pm; mi.material_override = m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; add_child(mi)
 	mi.global_position = Vector3(c.x, sea + 0.006, c.z)
-	create_tween().tween_method(func(v: float) -> void: m.set_shader_parameter("boil", v), 0.0, 1.0, 0.5).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
 	return mi
 
-func _ivw_churn_burst(mi: MeshInstance3D) -> void:
+func _ivw_wline(on: bool) -> void:      # (the fine line of light where a stone meets the still water, as every stone has it: on the rising stones only once they are still)
+	for r in ivw_risers:
+		if r.size() <= 5 or String(r[5]) == "": continue
+		var qm := (r[0] as MeshInstance3D).material_override as ShaderMaterial
+		if qm == null or not qm.has_meta("wline"): continue
+		var w := float(qm.get_meta("wline")) if qm.get_meta("wline") != null else 0.0
+		if on: create_tween().tween_method(func(v: float) -> void: qm.set_shader_parameter("wline_k", v), 0.0, w, 1.2).set_trans(Tween.TRANS_SINE)
+		else: qm.set_shader_parameter("wline_k", 0.0)
+
+var ivw_own_shore: Texture2D
+func _ivw_own_shore() -> Texture2D:      # (each rising stone's own shore map: tools/go/shore_risers.py)
+	if ivw_own_shore == null and ResourceLoader.exists(go_dir + "shore_risers.png"): ivw_own_shore = load(go_dir + "shore_risers.png")
+	return ivw_own_shore
+
+func _ivw_churn_burst(mi: MeshInstance3D, rise := 0.18, boil := true) -> void:
 	if mi == null or not is_instance_valid(mi): return
 	var m := mi.material_override as ShaderMaterial
 	var t := create_tween().set_parallel(true)
-	t.tween_method(func(v: float) -> void: m.set_shader_parameter("churn", v), 0.0, 1.0, 0.18)
+	t.tween_method(func(v: float) -> void: m.set_shader_parameter("churn", v), 0.0, 1.0, rise).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
 	t.tween_method(func(v: float) -> void: m.set_shader_parameter("spread", v), 0.05, 0.45, 1.8).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
-	t.tween_method(func(v: float) -> void: m.set_shader_parameter("boil", v), 1.0, 0.0, 0.7)
+	if boil: t.tween_method(func(v: float) -> void: m.set_shader_parameter("boil", v), 1.0, 0.0, 0.7)
 	t.tween_method(func(v: float) -> void: m.set_shader_parameter("churn", v), 1.0, 0.0, 2.6).set_delay(0.9).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
 	t.chain().tween_callback(mi.queue_free)
 
 func _ivw_splash(at: Vector3, rad: float) -> void:      # (drops thrown up from a stone's edges as it breaks the water)
 	var p := CPUParticles3D.new(); add_child(p); p.global_position = at
-	p.one_shot = true; p.amount = 40; p.lifetime = 0.62; p.explosiveness = 0.8; p.local_coords = false
+	p.one_shot = true; p.amount = 24; p.lifetime = 0.62; p.explosiveness = 0.8; p.local_coords = false      # (fewer, smaller and softer than they were: forty bright white drops read as a glint over the stone)
 	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING; p.emission_ring_axis = Vector3.UP; p.emission_ring_height = 0.02
 	p.emission_ring_radius = rad + 0.06; p.emission_ring_inner_radius = rad * 0.75
 	p.direction = Vector3.UP; p.spread = 30.0; p.initial_velocity_min = 0.9; p.initial_velocity_max = 1.9; p.gravity = Vector3(0, -7.0, 0)
-	p.scale_amount_min = 0.55; p.scale_amount_max = 1.0
+	p.scale_amount_min = 0.45; p.scale_amount_max = 0.85
 	p.mesh = _ivw_drop_mesh()
-	var g := Gradient.new(); g.offsets = PackedFloat32Array([0.0, 0.6, 1.0]); g.colors = PackedColorArray([Color(1, 1, 1, 0.95), Color(1, 0.99, 0.98, 0.75), Color(1, 1, 1, 0.0)])
+	var g := Gradient.new(); g.offsets = PackedFloat32Array([0.0, 0.6, 1.0]); g.colors = PackedColorArray([Color(1, 0.98, 0.97, 0.6), Color(1, 0.98, 0.97, 0.45), Color(1, 0.98, 0.97, 0.0)])
 	p.color_ramp = g
 	p.emitting = true
 	get_tree().create_timer(1.6).timeout.connect(p.queue_free)
 
 func _ivw_raise(up: bool) -> void:
 	if ivw_risers.is_empty(): ivw_up = 1.0 if up else 0.0; return
+	if not up: _ivw_wline(false)
 	var t := create_tween(); t.tween_method(_ivw_risers_set, ivw_up, 1.0 if up else 0.0, 3.2)      # (each stone eases by itself, in its turn)
 	for k in 4:
 		await get_tree().create_timer(0.55).timeout
 		await _ivw_snap("w7_rising%d" % k)
 	if t.is_running(): await t.finished
+	if up: _ivw_wline(true)
 	if up and go_wake and ivg_on and ivg.has("mid") and not iv_said.has("mid"):      # (the stones up out of the sea: what she must do, said once; the script: Ione's own face lies on the sea floor, and the dead are known by their faces)
 		iv_said["mid"] = true; _go_write("\n".join(PackedStringArray(ivg.mid)), 4.8)
 	await _ivw_snap("w8_risen")

@@ -41,7 +41,14 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   foam ran out as a white line round the stones still under; now each stone's foam keeps to the water nearer it than the
   others' middles, `others` in `IVW_CHURN_SH`, `_ivw_riser_middles`; and then "they start dark and make a strange
   flash": wet, darker and cooler, they came up grey-blue and whitened all at once as they dried; now they are never wet,
-  `wet_k` 0, and come up in their own colours, only the foam on the water and a little on them); she climbs to the
+  `wet_k` 0, and come up in their own colours, only the foam on the water and a little on them; and then (21/11) "this
+  ridiculous flash": the fine line of light where stone meets water (`wline_k`, a band 5 cm over it) lay on each flat top
+  as it came through the water, so the whole top went white for a frame: off on the rising stones while they move, back
+  once still (`_ivw_wline`); and the foam that boiled over each stone as it neared (from the winch's first turn, their
+  tops lying 0.32 under) and the burst read the shore map's green, all their outlines as one, so white lines ran round
+  the stones still under: no boiling now, and each stone's foam reads its own outline, `gowake/shore_risers.png` (a
+  channel each, `tools/go/shore_risers.py`; run it again after a rebuild), coming in over 0.55 s; its drops fewer and
+  softer; no `sin` in the foam's hashes); she climbs to the
   glowing gate, steps into its light, and is lost in it in a flash (the gate alone lights) and rising motes; a
   moment's hold, then the light fills the picture and level 2 begins in it (`_ivw_to_veil`: the scene reloads with
   `Engine` meta `ivw_next`; `IV_ONE=1` stops after level 1). The dark end screen (EIDOLON alone: no "tap to ..." words,
