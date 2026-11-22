@@ -6,7 +6,11 @@ something else in the background, and let it be 3D"; of the ways offered he chos
 No one walks there: it has no way, no nodes, no shore of its own. It is built in its own place in the level's axes, so
 the game sets it down where it was made.
 
-usage: python3 -I tools/go/guard_far_plan.py <out far_plan.json>
+usage: python3 -I tools/go/guard_far_plan.py <out far_plan.json> [float]
+  float: the island in the air (the owner, 22/11, after the painted ones: "I don't like the background"; of the 3D one
+  before, "shadows, more detail, a column less, the columns randomly, slightly turned"): its rock under the old water
+  line drawn into one jagged point under it (`hang`), no rocks or columns in the sea about it, the back row's second
+  column gone, every column turned and leaning a little its own way; the game lifts it (IV_FAR_LIFT)
 then:  python3.11 -I tools/ivory_level.py -- <scratch>/far.glb <scratch>/far.json 77 24 goguard/far_plan.json
        and copy far.glb into goguard/ (built elsewhere so its json and no shore map touch the level's own)
 """
@@ -40,7 +44,18 @@ def far_plan():
     return keep
 
 
+def float_plan():
+    pl = far_plan()
+    turn = [[17, 3.0, 40], [-23, 2.5, 200], [35, 4.0, 120], [8, 3.5, 300], [-12, 2.0, 80]]
+    cols = [c for c in pl['columns'] if not (abs(c[0][0] + 11.8) < 0.01 and abs(c[0][2] + 8.2) < 0.01)]      # (the back row's second, the middle one)
+    pl['columns'] = [c + [turn[i]] for i, c in enumerate(cols)]
+    pl['rocks'] = [r for r in pl['rocks'] if r[2] >= LO - 0.13]      # (the island's own rock, under its slabs; the small ones out in the sea about it are gone)
+    pl['sea_columns'] = []
+    pl['hang'] = [SEA, 2.8, -11.2, -6.9, 1.3]
+    return pl
+
+
 if __name__ == '__main__':
     out = sys.argv[1] if len(sys.argv) > 1 else 'goguard/far_plan.json'
-    json.dump(far_plan(), open(out, 'w'), indent=1)
+    json.dump(float_plan() if 'float' in sys.argv[2:] else far_plan(), open(out, 'w'), indent=1)
     print('wrote', out)

@@ -883,6 +883,20 @@ def column(x, y, z, h, r=0.2, broken=True):
     return m
 
 
+def turn_column(obs, x, y, z, rot):
+    """a column turned its own way about its upright (plinth and shaft), and its shaft leaning a little from its foot,
+    as the ruin settled (the fifth level's far island, the owner: "randomly, slightly turned")"""
+    yaw, lean, lw = (math.radians(float(v)) for v in rot)
+    Ry = Matrix.Rotation(yaw, 4, 'Z')
+    ax = Vector((math.cos(lw + math.pi / 2), -math.sin(lw + math.pi / 2), 0.0))      # (the shaft leans toward lw, in the game's x-z: about the level line across it)
+    Rl = Matrix.Rotation(lean, 4, ax)
+    foot = G(x, y + 0.3, z); axis = G(x, y, z)
+    for i_, ob in enumerate(obs):
+        for v in ob.data.vertices:
+            c = v.co - axis; c = Ry @ c; v.co = c + axis
+            if i_ > 0: v.co = Rl @ (v.co - foot) + foot
+
+
 def arch(cx, y, cz, W=1.9, Hh=2.6, r=0.52, D=0.5, along_x=True):
     """a free-standing gate: a block with a round-headed opening, an impost moulding and a cornice; facing the eye's
     left (along_x) or its right"""
@@ -1126,12 +1140,15 @@ else:
                 out = square_to_flights(broken(faceted(poly, keep, seg=(0.3, 0.55), jit=0.02 if cracked else 0.035), seg=0.2, jit=0.008 if cracked else 0.014, chip=0.0 if cracked else 0.1), p_[1])      # (a cracked half: its edges less broken, its outline kept simple)
                 dh_ = dh if pi_ == 0 else rnd.uniform(-0.045, -0.004)
                 marble.append(slab('stone_%s_%d' % (k_, pi_), ccw(out), p_[1] + dh_, thick=th_, keep=keep))
-    for (p, h) in PLAN.get('columns', []):
+    for col_ in PLAN.get('columns', []):      # ([x, y, z], height[, [turn, lean, lean's way]]: a column turned about its upright and its shaft leaning a little, in degrees)
+        p, h = col_[0], col_[1]
         x_, z_ = on_floor(p[0], p[1], p[2], 0.42)
         cw = clear_of_way(x_, p[1], z_, 0.26)
         if cw is None: print('COLUMN at', p, 'dropped: no room off the way'); continue
         if math.hypot(cw[0] - x_, cw[1] - z_) > 0.01: print('COLUMN at', p, 'moved off the way to', [round(cw[0], 2), round(cw[1], 2)])
-        marble += column(cw[0], p[1], cw[1], h)
+        obs_c = column(cw[0], p[1], cw[1], h)
+        if len(col_) > 2: turn_column(obs_c, cw[0], p[1], cw[1], col_[2])
+        marble += obs_c
     for (cx_, cy_, cz_, ch_, cr_, cb_) in PLAN.get('sea_columns', []):      # (columns standing in the water, a ruin half sunk: off the way, scenery)
         marble += column(cx_, cy_, cz_, ch_, cr_, cb_)
     for pd_ in PLAN.get('pedestals', []):      # (a square marble pedestal standing out of the still water, a statue on it; a fifth value turns it about the up as the game turns its statue: rotation.y)
@@ -1232,6 +1249,16 @@ if CV and rock:      # (room cut out of the rock where something stands or goes:
             bpy.context.view_layer.objects.active = ob; bpy.ops.object.modifier_apply(modifier=md_.name); n_cv += 1
         bpy.data.objects.remove(cut_, do_unlink=True)
     print('ROCK CARVED:', len(CV), 'boxes through', n_cv, 'rocks')
+HG = PLAN.get('hang') if PLAN else None
+if HG and rock:      # (an island in the air: its rock under y0, which went on down into the sea, drawn up into one jagged point under it, depth D below y0, about (cx, cz); the fifth level's far island)
+    y0_, D_, cx_, cz_, pw_ = (float(v) for v in HG)
+    for ob in rock:
+        for v in ob.data.vertices:
+            gy = v.co.z
+            if gy >= y0_: continue
+            t = min((y0_ - gy) / 12.0, 1.0); k = (1.0 - t) ** pw_
+            gx, gz = v.co.x, -v.co.y
+            v.co.x = cx_ + (gx - cx_) * k; v.co.y = -(cz_ + (gz - cz_) * k); v.co.z = y0_ - D_ * t ** 0.8
 M = join(marble, 'marble'); R = join(rock, 'rock') if rock else None; O = join(olive, 'olive') if olive else None; B = join(barks, 'bark') if barks else None
 QU = join(quarries, 'quarry') if quarries else None
 SN = join(SNOWS, 'snow') if SNOWS else None

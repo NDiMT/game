@@ -2230,6 +2230,9 @@ const IV_GLASS_PAL := {      # the fourth level in the colours of its concept (d
 	# (its cube as the second level's, block and meander (the owner, 20/11: "in all levels the cube with the meander like the first"); its own, lighter and softer, were "e3d2bf"... and "d4c1ae"...)
 }
 func _iv_pal(kind: String) -> Array:
+	if (kind == "block" or kind == "meander") and OS.get_environment("IV_CUBE_PAL") != "":      # (another cube to try: "block:h,h,h,h;meander:h,h,h,h", lit to shade)
+		for part in OS.get_environment("IV_CUBE_PAL").split(";"):
+			if part.begins_with(kind + ":"): return Array(part.get_slice(":", 1).split(","))
 	if (go_glass or go_guard) and IV_GLASS_PAL.has(kind): return IV_GLASS_PAL[kind] as Array      # (the fifth level, for now, in the fourth's colours: its concept's are near them)
 	if go_milos and IV_MILOS_PAL.has(kind): return IV_MILOS_PAL[kind] as Array
 	if go_wake and IV_WAKE_PAL.has(kind): return IV_WAKE_PAL[kind] as Array
@@ -10938,7 +10941,7 @@ func _ivgd_setup() -> void:
 			var f := part.split_floats(","); gc.append(Color(f[0], f[1], f[2]))
 	ivgd_glass.set_shader_parameter("tint", gc[0]); ivgd_glass.set_shader_parameter("deep", gc[1]); ivgd_glass.set_shader_parameter("crack_c", gc[2])
 	for mi in m.find_children("*", "MeshInstance3D", true, false):
-		(mi as MeshInstance3D).material_override = ivgd_glass; (mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		(mi as MeshInstance3D).material_override = ivgd_glass; (mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON      # (his own shadow on his pedestal and the way: without it he seemed to stand in the air, the owner, 22/11)
 	_ivgd_aim(0.0)
 	# his gaze: the line of his look from his eyes to where it ends, and the discs of the way it falls on a little red
 	# (the owner, 21/11: a band of light on the floor along it and a ring on each place were "a pointless laser blur" and
@@ -10968,9 +10971,11 @@ func _ivgd_dir(ph: int) -> String: return IVGD_ORDER[(ivgd_d0 + ph) % 4]
 ## offered, "a 3D island with ruins"); IV_FAR=0 leaves it out, IV_FAR_K tries another haze
 const IVGD_FAR_K := 0.3
 const IVGD_FAR_ON := false      # (the owner, 21/11: "can't you make the island as a picture?": it is painted in the backdrop now; IV_FAR=1 brings the 3D one back)
+const IVGD_FAR_FILE := "far.glb"
+const IVGD_FAR_LIFT := 0.0
 const IVGD_FAR_AT := Vector3(1.2, 0.0, 1.2)      # (set down a little nearer than it was built, so its columns stay under the story's lines)
 func _ivgd_far() -> void:
-	var fp := go_dir + "far.glb"
+	var fp := OS.get_environment("IV_FAR_FILE") if OS.get_environment("IV_FAR_FILE") != "" else go_dir + IVGD_FAR_FILE      # (IV_FAR_FILE tries another build of it)
 	if not (IVGD_FAR_ON or OS.get_environment("IV_FAR") == "1") or OS.get_environment("IV_FAR") == "0" or not FileAccess.file_exists(fp): return
 	var st := GLTFState.new(); var doc := GLTFDocument.new()
 	doc.append_from_buffer(FileAccess.get_file_as_bytes(fp), "", st)
@@ -10980,13 +10985,14 @@ func _ivgd_far() -> void:
 	var fo := IVGD_FAR_AT
 	if OS.get_environment("IV_FAR_AT") != "":      # (to try it elsewhere: "dx,dz" from where it was built, and a third value its scale)
 		var f3 := OS.get_environment("IV_FAR_AT").split_floats(","); fo = Vector3(f3[0], 0.0, f3[1]); if f3.size() > 2: fv.scale = Vector3.ONE * f3[2]
+	fo.y += float(OS.get_environment("IV_FAR_LIFT")) if OS.get_environment("IV_FAR_LIFT") != "" else IVGD_FAR_LIFT      # (an island in the air is lifted off the water)
 	fv.position += fo
 	var fk := float(OS.get_environment("IV_FAR_K")) if OS.get_environment("IV_FAR_K") != "" else IVGD_FAR_K
 	for m in fv.find_children("*", "MeshInstance3D", true, false):
 		var mi := m as MeshInstance3D
 		var nm := String(mi.name).to_lower() + "|" + String(mi.get_parent().name).to_lower()
 		var kind := "rock2" if nm.contains("rock") else "marble2"
-		mi.material_override = _iv_mat(kind, fk, _ivr_ex(kind, 1.0, true)); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.material_override = _iv_mat(kind, fk, _ivr_ex(kind, 1.0, true)); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON      # (its columns' shadows on its slabs: the owner, of it, "I want shadows")
 	if iv_at_sea:
 		_ivs_mirror(fv, func(mi: MeshInstance3D) -> Array:
 			var nm := String(mi.name).to_lower() + "|" + String(mi.get_parent().name).to_lower()
