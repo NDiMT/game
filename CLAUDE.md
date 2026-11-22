@@ -212,7 +212,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   opens"): a beam of light, seen, leaves a statue (the owner: "the beam should leave from a statue, and be blocked by a
   stone"): a veiled marble woman standing in the water at the channel's lower end, a light in her hands (no plinth: the
   busts on plinths looked staged); it runs up the channel to the goddess's bronze mirror (on its square marble plinth,
-  its light the warm gold it was (white was tried, 21/11, and turned down: "the yellow beam was better");
+  its light white since 22/11 (`IVM_LIGHT_COL`; the owner: "in 3 make the light's colour white"; a white tried on 21/11
+  was turned down then, "the yellow beam was better", and the warm gold came back; `IV_L3_GOLD=1` shows the gold);
   the bronze under its stand a round foot since 21/11, `_ivq_mirror`: the owner, "the metal part below round"; the
   plinth made round instead was turned down: "I didn't ask you to raise anything and break something else"; the
   fifth level uses the same mirror); a swipe into the mirror turns
@@ -283,7 +284,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   bands); levels 1 and 2 would need their own rebuild with `smooth_normals`.
 - **The ring before every gate** is a soft white light (`fbf9f4`, `emit` 0.3, a soft white glow; the owner, 19/11: "the
   ring white light", after a bright yellowish ochre read as lemon and a very soft ochre); level 3's unlit ring a light
-  grey-lilac (`d2cee0`; the owner asked twice for it lighter) that lights to the white; the brown stone within it. A
+  grey-lilac (`d2cee0`; the owner asked twice for it lighter) that lights to the white; the brown stone within it, and
+  since 22/11 a low ring of the same brown stone round its white (`IV_RING_OUT` 0.52, tube 0.05, as the squares' stone
+  round their light; the owner: "on the round rings at the gate another small outer layer in the colour of the inside,
+  round the white"). A
   terracotta disc within and a terracotta ring round it were tried for a day (20/11) and the owner had it back "exactly
   as it was".
 - **The levels are painted in brushstrokes** (the owner, 19/11: "softly, as with a brush", "the brushstrokes on the
@@ -481,7 +485,13 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   21/11, "you have the guardian turned wrong by 90 degrees"); a dark smoky plum glass with pale cracks since 21/11
   (`IVGD_GLASS`; the owner: "I'd like him in another colour", and only his: "I didn't tell you to change the level's
   colours, only the guardian's"; of smoke, amethyst and honey he chose "the first"; a pale blue-white glass first; amber and jade tried too;
-  `IV_GUARD_COL="tint;deep;cracks"` tries another). On a round pedestal in a pool at the island's middle, he turns a
+  `IV_GUARD_COL="tint;deep;cracks"` tries another). **Since 22/11 he stands in the pool's water** at the island's
+  middle, no pedestal, his eyes 0.62 m over the walk, within the cube's 0.92, so the stone stops his gaze where it
+  stands (the owner: "what if the guardian were just a head at the height of the cube?", then "maybe not on a pedestal
+  but in the water, so his gaze is at the cube's height"; `IVGD_IN_WATER`, `IVGD_EYE_OVER`; `IV_GUARD_PED=1` sets him on
+  his round pedestal again, `IV_GUARD_EYE` tries another height): nothing of him under the water is drawn (`water_y` in
+  `IVGD_GLASS_SH`), his image lies in it and turns as he turns (`img_k`, `ivgd_img`), the still water's thin foam round
+  him (`_ivv_churn_box`), and his gaze runs level at his eyes' height (to the mirror it rises to its disc). He turns a
   quarter clockwise at each of her moves; his gaze, a line of red light from his eyes (red since the owner, 21/11; bright, its own
   shader `IVGD_BEAM_SH`, `IVGD_BEAM_K` 1.7 and 1.35, going out softly over its last part from `IVGD_BEAM_FADE` 0.55 of
   its length: the owner, "the main laser brighter and ending in a fade out"), runs along the ways and over the water
@@ -546,10 +556,19 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   third value in a plan, [turn, lean, lean's way] in degrees, `turn_column` in the builder; the owner, of the first 3D
   one: "shadows, more detail, a column less, randomly slightly turned"), its rock under the old water line drawn into
   one jagged point under it (`hang` in a plan); the game lifts it 2 m off the water (`IVGD_FAR_LIFT`) and sets it
-  nearer than built (`IVGD_FAR_AT` 2.6, 0, 2.6), its image in the water, and it casts its shadows (`IVGD_FAR_ON` true;
-  `IV_FAR_FILE`, `IV_FAR_LIFT`, `IV_FAR_AT="dx,dz[,scale about its own middle]"` try others). Its columns reach up into
-  the story's first line at the start, as in the picture the owner chose. `goguard/backdrop.jpg` is the plain sky again
-  (`backdrop_source.jpg` at 1080 wide, its middle 1920); `goguard/far.glb` is packed again.
+  nearer than built (`IVGD_FAR_AT` 3.98, 0, 2.9 since 22/11, "the island a little more to the right and lower": about
+  0.07 of the screen's width right and 0.035 of its height down from 2.6, 0, 2.6, the picture the owner chose; 0.05 down
+  set its rock on the gate's top), its image in the water, and it casts its shadows (`IVGD_FAR_ON` true; `IV_FAR_FILE`,
+  `IV_FAR_LIFT`, `IV_FAR_AT="dx,dz[,scale about its own middle]"` try others). `goguard/backdrop.jpg` is the plain sky
+  again (`backdrop_source.jpg` at 1080 wide, its middle 1920); `goguard/far.glb` is packed again.
+  **Columns standing out of the water far behind the level** (the owner, 22/11: "in the background, in the depth, add
+  columns that stick up out of the water"): five, one whole and four broken, each turned and leaning a little, a drowned
+  colonnade in the haze under the sun at the upper right, clear of the island and the level (`FAR_COLS` in
+  `tools/go/guard_far_plan.py`, `cols` → `goguard/far_cols_plan.json`; built `ivory_level.py -- <scratch>/far_cols.glb
+  <scratch>/far_cols.json 91 24 goguard/far_cols_plan.json`, copied to `goguard/far_cols.glb`, packed; a sea column's
+  seventh value turns and leans it as a column's third does), laid further in the haze than the island (`IVGD_COLS_K`
+  0.6; at 0.45 they stood as white as the slabs), their image in the water (`_ivgd_far_cols`; `IV_COLS=0` leaves them
+  out, `IV_COLS_K` tries another haze).
   **Blurred columns before the eye** (the owner, 22/11: "can we have blurred columns at the front of the screen?"): two
   broken fluted columns of our own, at the left and the right edges, their feet behind the rocks before the eye
   (`goguard/col_l.png`, `col_r.png` by `tools/go/fg_columns.py`: rendered from the game's eye, lit from behind, darkened
@@ -557,6 +576,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   rocks before the eye in this level (the owner: "you've left blurred rocks in front too"), so each shaft runs on below
   the picture's edge (`below` in the tool: a drum of its own dice, the rest as it was). **The Guardian casts his
   shadow** on his pedestal and the way (22/11: "the guardian looks as if he stands in the air": his glass cast none).
+  **Frosted, his shade is a soft lilac grey** (`frost_fill` in `IVGD_GLASS_SH`, as the slabs' shade): lit by the sun
+  alone, the side away from it and his own shadow on him stayed near black as he whitened (the owner, 22/11: "when he
+  whitens some spots look black"); `IV_FROST=1` frosts him from the start, for a picture.
   **The cube, four offered** (22/11: "for the square with the meander I want something else, try something yourself,
   to match in colour, and in style if you want"; `IV_CUBE_PAL="block:h,h,h,h;meander:h,h,h,h"` tries one): 1 white
   marble, its meander the rock's dark plum (`f2ebe3`; `6e5f6e`), 2 dark plum stone, its meander ivory (`857684`;
@@ -565,7 +587,12 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   (`d4aeb0`; `f8f0ef`), 7 rose-white marble, lilac-grey meander (`f3e6e6`; `9d93ad`), 8 dark slate blue-grey, ivory
   (`7b8499`; `f2f1f4`), 9 warm grey, dark meander (`cfc6bd`; `6b6160`), 10 amethyst, ivory (`a38fb3`; `f4eef6`); every
   option's four tones, lit to shade, in `IV_CUBE_PAL` form in `design/cube/options.txt`. He chose 3, the lilac grey
-  with white ("the lilac grey with white, I liked it"): `block`, `meander` in `IV_WAKE_PAL`, every level.
+  with white ("the lilac grey with white, I liked it"): `block`, `meander` in `IV_WAKE_PAL`, every level. Then, the
+  same day, "I want another colour and style for the cube with the meander, suggest something": four offered, its key
+  kept, its stone and finish new (`design/cube/options.txt` s1-s4; `IV_CUBE_EX="block:k=v,...;meander:k=v"` sets its
+  materials' own values, emit, flat_mode, veins): 1 bronze, its meander a green patina; 2 terracotta, its meander a
+  black glaze, as a black-figure vase; 3 white marble, its meander gold; 4 dark veined stone, its meander a white light
+  as the rings'; the owner to choose.
   The veiled bust is out again (`observer` None). Before it (the owner, 21/11: "make something else for the
   background, whatever you like, but matching the perspective and the colours"; then of it: "I don't like the new
   background"): the ruins of a drowned sanctuary far

@@ -6447,6 +6447,17 @@ func _ivr_block() -> Node3D:
 	for m in n.find_children("*", "MeshInstance3D", true, false):
 		if go_veil and String(m.name).to_lower().contains("meander"): (m as MeshInstance3D).material_override = _iv_mat("meander", 0.0, mx); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON; continue      # (its meander apart, a darker stone)
 		(m as MeshInstance3D).material_override = _iv_mat("block", 0.0, bx) if go_veil else _ivr_mat("marble2"); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON      # (the second level: an uncut block of the statues' own marble, lit as softly)
+	if go_veil and OS.get_environment("IV_CUBE_EX") != "":      # (for a picture of another cube: "block:emit=0.2,veins=0.5;meander:emit=0.5,flat_mode=1,vein_tint=#8a9a90", its two materials' own values)
+		for part in OS.get_environment("IV_CUBE_EX").split(";"):
+			var kd := part.get_slice(":", 0); var kv := part.get_slice(":", 1)
+			for m in n.find_children("*", "MeshInstance3D", true, false):
+				if (kd == "meander") != String(m.name).to_lower().contains("meander"): continue
+				var sm := (m as MeshInstance3D).material_override as ShaderMaterial
+				if sm == null: continue
+				sm = sm.duplicate() as ShaderMaterial; (m as MeshInstance3D).material_override = sm
+				for kvp in kv.split(","):
+					var vv := kvp.get_slice("=", 1)
+					sm.set_shader_parameter(kvp.get_slice("=", 0), Color(vv) if vv.begins_with("#") else float(vv))
 	return n
 
 func _ivr_build() -> void:
@@ -6562,6 +6573,10 @@ func _ivr_build() -> void:
 	if ivr_on:
 		var hm := CylinderMesh.new(); hm.top_radius = 0.31; hm.bottom_radius = 0.31; hm.height = 0.02; hm.radial_segments = 28; hm.rings = 1
 		var hi := MeshInstance3D.new(); hi.mesh = hm; hi.material_override = _iv_mat("rock2", 0.0, {"fog_hi": -9.0, "fog_lo": -14.0}); hi.position = Vector3(0, 0.012, 0); iv_ring.add_child(hi)
+		if IV_RING_OUT > 0.0:      # (a low ring of the same brown stone round its white, as the squares have (the owner, 22/11: "on the round rings at the gate another small outer layer in the colour of the inside, round the white"))
+			var om := TorusMesh.new(); om.inner_radius = IV_RING_OUT - IV_RING_OUT_TUBE; om.outer_radius = IV_RING_OUT + IV_RING_OUT_TUBE; om.rings = 40; om.ring_segments = 8
+			var oi := MeshInstance3D.new(); oi.mesh = om; oi.material_override = hi.material_override; oi.position = Vector3(0, 0.013, 0); oi.scale = Vector3(1, 0.16, 1)      # (flat, so its top is lit as the stone within is and reads its colour; squashed to 0.3 as the squares' stone, it read darker than the inside)
+			oi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; iv_ring.add_child(oi)
 	var gq := QuadMesh.new(); gq.size = Vector2(1.7, 1.7)
 	var gm := StandardMaterial3D.new(); gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm.albedo_texture = load("res://goiv/glow.png")
 	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm.blend_mode = BaseMaterial3D.BLEND_MODE_MIX if go_moon else BaseMaterial3D.BLEND_MODE_ADD; gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED; gm.albedo_color = Color(1.0, 0.76, 0.36, 0.42) if go_moon else (Color(1.0, 0.97, 0.92, 0.38) if go_wake else Color(1.0, 0.96, 0.86, 0.5))      # (on the snow a glow added burns white: drawn over it, golden; at the waking's gates golden too, as the ring's ochre)
@@ -10076,8 +10091,10 @@ func _ivm_ring_tick() -> void:      # (the ring's stone by its light: a dark lil
 		ivgl_ring_img_mat.set_shader_parameter("emit", 0.3 * clampf(ivm_ring_k, 0.0, 1.0))
 	if ivm_ring_k >= 1.0: ivm_ring_done = true
 var ivm_beam: Array = []      # (the beam's straight runs: [core, halo] each)
+var ivm_gold := OS.get_environment("IV_L3_GOLD") == "1"      # (the light its warm gold, as it was until 22/11)
 var ivm_spark: MeshInstance3D      # (where the light ends on a thing: a bright spot)
 var ivm_leaves: Array = []      # (the gate's leaves: [hinge, its shut basis, the turn that opens it])
+const IVM_LIGHT_COL := Color(1.0, 0.98, 0.95)      # (the statue's light white, as the ring is (the owner, 22/11: "in 3 make the light's colour white"; a white tried on 21/11 was turned down then, "the yellow beam was better", and the warm gold, 1.0, 0.88, 0.58, came back); IV_L3_GOLD=1 shows the gold)
 const IVM_DISC_H := 1.02      # (the mirror's disc stands this high over its floor: _ivq_mirror)
 const IVM_BLOCK_HALF := 0.53      # (the stone as the light meets it: half its breadth, its height; a cube of 1.06 m since 20/11)
 const IVM_BLOCK_H := 1.06
@@ -10110,6 +10127,7 @@ func _ivm_setup() -> void:
 			var cm := CylinderMesh.new(); cm.top_radius = 0.032 if c == 0 else 0.13; cm.bottom_radius = cm.top_radius; cm.height = 1.0
 			cm.radial_segments = 12; cm.rings = 1; cm.cap_top = false; cm.cap_bottom = false
 			var mt := ShaderMaterial.new(); mt.shader = sh; mt.set_shader_parameter("core", 1.0 if c == 0 else 0.0); mt.render_priority = 4 + c
+			if not ivm_gold: mt.set_shader_parameter("col", Vector3(IVM_LIGHT_COL.r, IVM_LIGHT_COL.g, IVM_LIGHT_COL.b))
 			var mi := MeshInstance3D.new(); mi.mesh = cm; mi.material_override = mt; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; mi.visible = false
 			iv_root.add_child(mi); pair.append(mi)
 		ivm_beam.append(pair)
@@ -10117,7 +10135,7 @@ func _ivm_setup() -> void:
 	for which in 2:
 		var gm := StandardMaterial3D.new(); gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm.albedo_texture = load("res://goiv/glow.png")
 		gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm.blend_mode = BaseMaterial3D.BLEND_MODE_MIX; gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-		gm.albedo_color = Color(1.0, 0.92, 0.66, 0.9 if which == 0 else 0.75); gm.render_priority = 6
+		gm.albedo_color = Color(1.0, 0.92, 0.66, 0.9 if which == 0 else 0.75) if ivm_gold else Color(IVM_LIGHT_COL, 0.9 if which == 0 else 0.75); gm.render_priority = 6
 		var g := MeshInstance3D.new(); g.mesh = gq; g.material_override = gm; g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		iv_root.add_child(g)
 		if which == 0: g.global_position = ivm_at
@@ -10597,6 +10615,8 @@ var ivgl_reset_mat: ShaderMaterial
 var ivgl_reset_glow: MeshInstance3D
 const IVGL_PAD_HALF := 0.39      # (half the frame's side along its tube's middle: as wide as the ring)
 const IVGL_PAD_TUBE := 0.075
+const IV_RING_OUT := 0.52      # (the low ring of brown stone round the white ring before every gate: its middle's radius and its tube, as the squares' (0.53, 0.05); 0 none)
+const IV_RING_OUT_TUBE := 0.055
 const IVGL_PAD_OUT := 0.53      # (the square of brown stone round it: half its side, and its tube)
 const IVGL_PAD_OUT_TUBE := 0.05
 var ivgl_reset_n := ""
@@ -10828,7 +10848,11 @@ const IVGL_SHADE_COL := Color(0.42, 0.48, 0.62)      # (her shadow over there gr
 ## kept him"). The stone pushed off the walk into the deep water at the pool's back sinks, and is gone.
 const IVGD_ORDER := ["E", "S", "W", "N"]      # (clockwise, as the board is seen from above: a quarter on at each move)
 const IVGD_YAW0 := 0.0      # (his model's own front is its own +x, as every statue made from a picture (the owner, 21/11: "you have the guardian turned wrong by 90 degrees": +z was taken for it); IV_GUARD_YAW tries another)
-const IVGD_EYE_K := 0.9      # (his eyes, in the shadow of his hood, at this much of his height over his pedestal's top)
+const IVGD_EYE_K := 0.9      # (his eyes, in the shadow of his hood, at this much of his height over his feet)
+const IVGD_IN_WATER := true      # (no pedestal: he stands in the pool's water (the owner, 22/11: "what if the guardian were just a head at the height of the cube?", then "maybe not on a pedestal but in the water, so his gaze is at the cube's height"); IV_GUARD_PED=1 sets him on his pedestal again)
+const IVGD_EYE_OVER := 0.62      # (his eyes this high over the walk, within the cube's 0.92: the stone stops his gaze where it stands, and his hood's top is about level with the cube's; IV_GUARD_EYE tries another)
+const IVGD_FOAM_HALF := 0.27      # (the thin foam round him on the water: about his breadth where he meets it)
+const IVGD_FOAM_K := 0.3
 const IVGD_COL := Color(0.96, 0.2, 0.18)      # (his gaze red (the owner, 21/11: "and in 5 maybe the beam red?"); a cold blue-white before)
 const IVGD_GLASS := [Color(0.5, 0.46, 0.56), Color(0.17, 0.15, 0.21), Color(0.88, 0.85, 0.92)]      # (his glass: its light, its depth, its cracks: a dark smoky plum glass, pale cracks (the owner, 21/11: "I'd like him in another colour"; a pale blue-white glass before, 0.76 0.84 0.96 / 0.5 0.6 0.8 / white))
 const IVGD_DISC_A := 0.42      # (how red the discs of the way under his gaze go: "a little")
@@ -10888,6 +10912,14 @@ void fragment(){
 }
 """
 var ivgd_gk := 1.0      # (his gaze's strength: it dims as he turns, and goes out when the mirror keeps him)
+var ivgd_wet := false      # (he stands in the pool's water)
+var ivgd_floor := 0.0      # (the walk's height about him (his pedestal's top before): his gaze's ends lie on it)
+var ivgd_img: Node3D      # (his image in the water)
+var ivgd_img_body: Node3D
+var ivgd_img_glass: ShaderMaterial
+func _ivgd_frost(v: float) -> void:      # (his glass frosted over this much, and his image's with it)
+	if ivgd_glass != null: ivgd_glass.set_shader_parameter("frost", v)
+	if ivgd_img_glass != null: ivgd_img_glass.set_shader_parameter("frost", v)
 var ivgd_sunk := false
 
 const IVGD_GLASS_SH := """
@@ -10898,8 +10930,13 @@ uniform vec3 deep : source_color = vec3(0.5, 0.6, 0.8);
 uniform vec3 rim_c : source_color = vec3(1.0, 0.9, 0.78);
 uniform vec3 crack_c : source_color = vec3(1.0);
 uniform float frost = 0.0;
+uniform vec3 frost_fill = vec3(0.5, 0.48, 0.56);
+uniform float water_y = -1000.0;      // (he stands in the pool's water: nothing of him under it is drawn)
+uniform float img_k = 0.0;      // (his image in the water: drawn only below it, lit as he is above, dimmed into the sea as it goes down)
+uniform vec3 sea_c : source_color = vec3(0.85, 0.76, 0.8);
 varying vec3 lp;
-void vertex(){ lp = VERTEX; }
+varying vec3 wp;
+void vertex(){ lp = VERTEX; wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 float h31(vec3 p){ p = fract(p * vec3(0.1031, 0.1030, 0.0973)); p += dot(p, p.yxz + 33.33); return fract((p.x + p.y) * p.z); }
 float cracks(vec3 p){
 	vec3 i = floor(p); vec3 f = fract(p); float d1 = 8.0; float d2 = 8.0;
@@ -10912,31 +10949,43 @@ float cracks(vec3 p){
 	return 1.0 - smoothstep(0.0, 0.05, d2 - d1);
 }
 void fragment(){
+	if (img_k < 0.5 ? wp.y < water_y : wp.y > water_y) discard;
+	if (img_k > 0.5) { vec3 wn = (INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz; wn.y = -wn.y; NORMAL = normalize((VIEW_MATRIX * vec4(wn, 0.0)).xyz); }      // (each face of his image as lit as it is above)
 	float fr = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.0);
 	float ck = cracks(lp * 2.6) * (0.5 + 0.5 * frost);
 	vec3 c = mix(deep, tint, 0.55 + 0.45 * fr);      // (glass is deeper where one looks through more of it, brighter at its edges)
 	c = mix(c, crack_c, ck * 0.7);
 	c = mix(c, vec3(0.95, 0.97, 1.0), frost * 0.85);
+	if (img_k > 0.5) c = mix(c, sea_c, 0.28 + 0.5 * smoothstep(0.0, 3.2, water_y - wp.y));      // (as every image in the water: it dims as it goes down)
 	ALBEDO = c;
 	ROUGHNESS = mix(0.12, 0.55, frost);
 	SPECULAR = 0.8;
-	EMISSION = rim_c * fr * 0.3 * (1.0 - frost) + crack_c * ck * 0.15;
+	EMISSION = rim_c * fr * 0.3 * (1.0 - frost) + crack_c * ck * 0.15 + frost_fill * frost;      // (frosted, his shade a soft lilac grey as the slabs' is: lit only by the sun, the side away from it and his own shadow on him stayed near black, "some spots look black", the owner, 22/11)
 }
 """
 
 func _ivgd_setup() -> void:
 	_ivgd_far()
+	_ivgd_far_cols()
 	var gd: Dictionary = ivg.get("guard", {})
 	ivgd_d0 = maxi(IVGD_ORDER.find(String(gd.get("d0", "S"))), 0); ivgd_phase = 0; ivgd_kept = false; ivgd_gk = 1.0
 	var at: Vector3 = ivp_nodes[String(gd.get("node", "G"))]
 	var top := at.y + 0.1
 	var sea := IV_O.y + ivr_sea_y
-	var pd := CylinderMesh.new(); pd.top_radius = 0.56; pd.bottom_radius = 0.62; pd.height = top - sea + 0.6; pd.radial_segments = 40; pd.rings = 1      # (his pedestal: a round drum of marble rising out of the pool)
-	var pmi := MeshInstance3D.new(); pmi.mesh = pd; pmi.material_override = _ivr_mat("marble2", 0.0); iv_root.add_child(pmi)
-	pmi.global_position = Vector3(at.x, (top + sea - 0.6) * 0.5, at.z); pmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-	ivgd_n = Node3D.new(); iv_root.add_child(ivgd_n); ivgd_n.global_position = Vector3(at.x, top, at.z)
+	var gh := float(gd.get("height", 3.6))
+	ivgd_floor = top
+	ivgd_wet = IVGD_IN_WATER and OS.get_environment("IV_GUARD_PED") != "1"
+	var base := top
+	if ivgd_wet:      # (he stands in the pool's water, deep enough that his eyes are at the cube's height)
+		var eo := float(OS.get_environment("IV_GUARD_EYE")) if OS.get_environment("IV_GUARD_EYE") != "" else IVGD_EYE_OVER
+		base = at.y + eo - IVGD_EYE_K * gh
+	else:
+		var pd := CylinderMesh.new(); pd.top_radius = 0.56; pd.bottom_radius = 0.62; pd.height = top - sea + 0.6; pd.radial_segments = 40; pd.rings = 1      # (his pedestal: a round drum of marble rising out of the pool)
+		var pmi := MeshInstance3D.new(); pmi.mesh = pd; pmi.material_override = _ivr_mat("marble2", 0.0); iv_root.add_child(pmi)
+		pmi.global_position = Vector3(at.x, (top + sea - 0.6) * 0.5, at.z); pmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	ivgd_n = Node3D.new(); iv_root.add_child(ivgd_n); ivgd_n.global_position = Vector3(at.x, base, at.z)
 	ivgd_body = Node3D.new(); ivgd_n.add_child(ivgd_body)
-	var m := prop_model("statue_guardian", ivgd_body, float(gd.get("height", 3.6)))
+	var m := prop_model("statue_guardian", ivgd_body, gh)
 	ivgd_glass = ShaderMaterial.new(); ivgd_glass.shader = _ivw_shader(IVGD_GLASS_SH)
 	var gc := IVGD_GLASS
 	if OS.get_environment("IV_GUARD_COL") != "":      # (another glass to try: "tint;deep;cracks", each "r,g,b")
@@ -10946,6 +10995,20 @@ func _ivgd_setup() -> void:
 	ivgd_glass.set_shader_parameter("tint", gc[0]); ivgd_glass.set_shader_parameter("deep", gc[1]); ivgd_glass.set_shader_parameter("crack_c", gc[2])
 	for mi in m.find_children("*", "MeshInstance3D", true, false):
 		(mi as MeshInstance3D).material_override = ivgd_glass; (mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON      # (his own shadow on his pedestal and the way: without it he seemed to stand in the air, the owner, 22/11)
+	if ivgd_wet:
+		ivgd_glass.set_shader_parameter("water_y", sea + 0.004); ivgd_glass.set_shader_parameter("sea_c", sea_c)
+		if iv_at_sea:      # (his image in the pool's water, turning as he turns)
+			ivgd_img = Node3D.new(); iv_root.add_child(ivgd_img)
+			ivgd_img.global_transform = Transform3D(Basis.from_scale(Vector3(1, -1, 1)), Vector3(0, 2.0 * sea, 0)) * ivgd_n.global_transform
+			ivgd_img_body = Node3D.new(); ivgd_img.add_child(ivgd_img_body)
+			var im := prop_model("statue_guardian", ivgd_img_body, gh)
+			ivgd_img_glass = ivgd_glass.duplicate() as ShaderMaterial; ivgd_img_glass.set_shader_parameter("img_k", 1.0); ivgd_img_glass.set_shader_parameter("water_y", sea)
+			for mi in im.find_children("*", "MeshInstance3D", true, false):
+				(mi as MeshInstance3D).material_override = ivgd_img_glass; (mi as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var fm := _ivv_churn_box(Vector3(at.x, sea, at.z), IVGD_FOAM_HALF)      # (the still water's thin foam round him where he meets it)
+		var fmm := fm.material_override as ShaderMaterial
+		fmm.set_shader_parameter("boil", 0.0); fmm.set_shader_parameter("churn", IVGD_FOAM_K); fmm.set_shader_parameter("spread", 0.1)
+	if OS.get_environment("IV_FROST") != "": _ivgd_frost(float(OS.get_environment("IV_FROST")))      # (for a picture: frosted over, as when the mirror keeps him)
 	_ivgd_aim(0.0)
 	# his gaze: the line of his look from his eyes to where it ends, and the discs of the way it falls on a little red
 	# (the owner, 21/11: a band of light on the floor along it and a ring on each place were "a pointless laser blur" and
@@ -10978,7 +11041,7 @@ const IVGD_FAR_ON := true      # (the island in the air, 3D, on the plain sky (t
 const IVGD_FAR_FILE := "far.glb"
 const IVGD_FAR_C := Vector3(-11.2, 0.0, -6.9)      # (its own middle, as built: it is made smaller about it)
 const IVGD_FAR_LIFT := 2.0      # (off the water: an island in the air)
-const IVGD_FAR_AT := Vector3(2.6, 0.0, 2.6)      # (nearer than built, as the owner chose it; 1.2, 1.2 on the water before)      # (set down a little nearer than it was built, so its columns stay under the story's lines)
+const IVGD_FAR_AT := Vector3(3.98, 0.0, 2.9)      # (a little to the right and lower on the screen than the owner first chose it (22/11: "the island a little more to the right and lower"; 2.6, 0, 2.6 before): about 0.07 of the screen's width right and 0.035 of its height down, its rock clear of the gate under it (0.05 down was tried: it came onto the gate's top); 1.2, 1.2 on the water before that)
 func _ivgd_far() -> void:
 	var fp := OS.get_environment("IV_FAR_FILE") if OS.get_environment("IV_FAR_FILE") != "" else go_dir + IVGD_FAR_FILE      # (IV_FAR_FILE tries another build of it)
 	if not (IVGD_FAR_ON or OS.get_environment("IV_FAR") == "1") or OS.get_environment("IV_FAR") == "0" or not FileAccess.file_exists(fp): return
@@ -11004,6 +11067,27 @@ func _ivgd_far() -> void:
 			var nm := String(mi.name).to_lower() + "|" + String(mi.get_parent().name).to_lower()
 			var kd := "rock2" if nm.contains("rock") else "marble2"
 			return [kd, fk, {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.15, "veins": 0.6 if kd == "marble2" else 0.0, "haze": 1.0}])
+
+## columns standing out of the water far behind the level, a drowned colonnade in the haze under the sun, built as the
+## level is (tools/go/guard_far_plan.py cols), their image in the water (the owner, 22/11: "in the background, in the
+## depth, add columns that stick up out of the water"); IV_COLS=0 leaves them out, IV_COLS_K tries another haze
+const IVGD_COLS_ON := true
+const IVGD_COLS_K := 0.6      # (further in the haze than the island in the air (0.3): far off; at 0.45 they stood as white as the level's slabs)
+func _ivgd_far_cols() -> void:
+	var fp := go_dir + "far_cols.glb"
+	if not IVGD_COLS_ON or OS.get_environment("IV_COLS") == "0" or not FileAccess.file_exists(fp): return
+	var st := GLTFState.new(); var doc := GLTFDocument.new()
+	doc.append_from_buffer(FileAccess.get_file_as_bytes(fp), "", st)
+	var fv := doc.generate_scene(st) as Node3D
+	if fv == null: return
+	iv_root.add_child(fv)
+	var fk := float(OS.get_environment("IV_COLS_K")) if OS.get_environment("IV_COLS_K") != "" else IVGD_COLS_K
+	for m in fv.find_children("*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		mi.material_override = _iv_mat("marble2", fk, _ivr_ex("marble2", 1.0, true)); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if iv_at_sea:
+		_ivs_mirror(fv, func(_mi: MeshInstance3D) -> Array:
+			return ["marble2", fk, {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.15, "veins": 0.6, "haze": 1.0}])
 
 ## he turns to his look (a quarter at each of her moves; at once when the level starts or begins again)
 func _ivgd_aim(t: float) -> void:
@@ -11047,7 +11131,7 @@ func _ivgd_keep() -> void:
 	await wait(0.45)
 	var fl := create_tween(); fl.tween_method(func(v: float) -> void: (ivgd_beam[0] as MeshInstance3D).set_meta("flash", v), 0.0, 1.0, 0.25)
 	fl.tween_method(func(v: float) -> void: (ivgd_beam[0] as MeshInstance3D).set_meta("flash", v), 1.0, 0.0, 0.6)
-	var fr := create_tween(); fr.tween_method(func(v: float) -> void: ivgd_glass.set_shader_parameter("frost", v), 0.0, 1.0, 1.6).set_trans(Tween.TRANS_SINE)
+	var fr := create_tween(); fr.tween_method(_ivgd_frost, 0.0, 1.0, 1.6).set_trans(Tween.TRANS_SINE)
 	await wait(0.7)
 	var g := create_tween(); g.tween_property(self, "ivgd_gk", 0.0, 0.9).set_trans(Tween.TRANS_SINE)
 	await wait(0.4)
@@ -11119,7 +11203,7 @@ func _ivgd_reset() -> void:
 	_ivgd_aim(0.0)
 	if ivgd_mir != "": ivgd_face = ivgd_face0; _ivgd_mir_pose(0.0)
 	if ivgd_sunk: ivgd_sunk = false; iv_block_n.visible = true; ivv_filled.clear()
-	if ivgd_glass != null: ivgd_glass.set_shader_parameter("frost", 0.0)
+	_ivgd_frost(0.0)
 
 ## his gaze drawn as it is now: the discs of the way it falls on a little red, and the line from his eyes to where it ends
 func _ivgd_draw() -> void:
@@ -11137,7 +11221,8 @@ func _ivgd_draw() -> void:
 	# brown rock, the water (the owner, 21/11: "the laser should light whatever surface it passes over, even the brown
 	# rocks, and a little fainter and blurry"): a value every level's material and the sea's read (iv_gaze in main.gd)
 	var dl: Vector3 = ivg_dirv[String(tn.dir)]
-	var ga := ivgd_n.global_position + dl * 0.62
+	if ivgd_img_body != null: ivgd_img_body.rotation.y = ivgd_body.rotation.y      # (his image turns as he turns)
+	var ga := ivgd_n.global_position + dl * (0.36 if ivgd_wet else 0.62)      # (from his pedestal's edge, or from his body in the water)
 	RenderingServer.global_shader_parameter_set("iv_gaze", Vector4(ga.x, ga.z, e.x, e.z))
 	RenderingServer.global_shader_parameter_set("iv_gaze2", Vector4(IVGD_LINE_W, IVGD_LINE_A * clampf(k, 0.0, 1.0), 0.0, 0.0))
 	for li in ivgd_lines: (li as MeshInstance3D).visible = false
@@ -11148,6 +11233,7 @@ func _ivgd_draw() -> void:
 		"her": b = (ivp_nodes[iv_me] as Vector3) + Vector3(0, 1.05, 0)
 		"stone": b = e + Vector3(0, 0.5, 0)
 		"mirror": b = (ivp_nodes[ivgd_mir] as Vector3) + Vector3(0, IVM_DISC_H, 0)
+	if ivgd_wet and String(tn.end) != "mirror": b.y = a.y      # (in the water his gaze runs level, at the cube's height)
 	var fl := float((ivgd_beam[0] as MeshInstance3D).get_meta("flash", 0.0))
 	for c in 2:
 		var bi: MeshInstance3D = ivgd_beam[c]
@@ -11168,5 +11254,5 @@ func _ivgd_end(t: Dictionary) -> Vector3:
 		"her": end = ivp_nodes[iv_me]
 		"mirror": end = (ivp_nodes[ivgd_mir] as Vector3) - d * 0.32
 		_: end = ((ivp_nodes[String(t.at)] as Vector3) + d * 0.9) if not (t.nodes as Array).is_empty() else g + d * 1.3
-	end.y = g.y - 0.07
+	end.y = ivgd_floor - 0.07
 	return end

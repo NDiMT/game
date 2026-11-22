@@ -1149,8 +1149,11 @@ else:
         obs_c = column(cw[0], p[1], cw[1], h)
         if len(col_) > 2: turn_column(obs_c, cw[0], p[1], cw[1], col_[2])
         marble += obs_c
-    for (cx_, cy_, cz_, ch_, cr_, cb_) in PLAN.get('sea_columns', []):      # (columns standing in the water, a ruin half sunk: off the way, scenery)
-        marble += column(cx_, cy_, cz_, ch_, cr_, cb_)
+    for sc_ in PLAN.get('sea_columns', []):      # (columns standing in the water, a ruin half sunk: off the way, scenery; a seventh value [turn, lean, lean's way] turns and leans it as a column's third does)
+        cx_, cy_, cz_, ch_, cr_, cb_ = sc_[:6]
+        obs_s = column(cx_, cy_, cz_, ch_, cr_, cb_)
+        if len(sc_) > 6: turn_column(obs_s, cx_, cy_, cz_, sc_[6])
+        marble += obs_s
     for pd_ in PLAN.get('pedestals', []):      # (a square marble pedestal standing out of the still water, a statue on it; a fifth value turns it about the up as the game turns its statue: rotation.y)
         px, pz, top, hs = pd_[:4]; ty = float(pd_[4]) if len(pd_) > 4 else 0.0
         cs, sn = math.cos(ty), math.sin(ty)

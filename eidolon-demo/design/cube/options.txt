@@ -9,3 +9,11 @@ c7 block:f3e6e6,e5d5d6,cab8bd,9c8a94;meander:9d93ad,8a809c,6f6784,544e68
 c8 block:7b8499,676f86,51586d,3c4154;meander:f2f1f4,e1e0e7,c5c4d0,9897a8
 c9 block:cfc6bd,bdb3a9,a1968c,7d736b;meander:6b6160,5a504f,463d3e,332b2d
 c10 block:a38fb3,8f7ba0,725f84,554566;meander:f4eef6,e4dcea,c9bfd2,9d92a8
+
+# another colour and style, offered on 22/11 (the owner: "I want another colour and style for the cube with the
+# meander, suggest something"): its key kept, its stone and finish new; IV_CUBE_PAL as above, IV_CUBE_EX its materials'
+# own values (emit: its own light, flat_mode 1: lit evenly, veins: how much of the stone's veining)
+s1 bronze, its meander green with patina      IV_CUBE_PAL=block:d0a072,b08455,8a6442,5f4430;meander:9fd0bf,85b8a7,689a8b,4b766b      IV_CUBE_EX=block:veins=0.0
+s2 terracotta, its meander black glaze, as a black-figure vase      IV_CUBE_PAL=block:de956a,c97d56,a9643f,7e4a30;meander:3b302f,30272a,262022,1b1618      IV_CUBE_EX=block:veins=0.0
+s3 white marble, its meander gold      IV_CUBE_PAL=block:f7f3ec,ece6dd,d6cdc3,b2a79e;meander:f3d78e,e2bd6c,c39a52,94713c      IV_CUBE_EX=meander:emit=0.18
+s4 dark veined stone, its meander a white light as the rings      IV_CUBE_PAL=block:5d5165,4c4154,3b3243,2b2432;meander:fbf9f4,fbf9f4,fbf9f4,fbf9f4      IV_CUBE_EX=meander:emit=0.5,flat_mode=1;block:veins=0.25

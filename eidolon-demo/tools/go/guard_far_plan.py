@@ -6,11 +6,13 @@ something else in the background, and let it be 3D"; of the ways offered he chos
 No one walks there: it has no way, no nodes, no shore of its own. It is built in its own place in the level's axes, so
 the game sets it down where it was made.
 
-usage: python3 -I tools/go/guard_far_plan.py <out far_plan.json> [float]
+usage: python3 -I tools/go/guard_far_plan.py <out far_plan.json> [float | cols]
   float: the island in the air (the owner, 22/11, after the painted ones: "I don't like the background"; of the 3D one
   before, "shadows, more detail, a column less, the columns randomly, slightly turned"): its rock under the old water
   line drawn into one jagged point under it (`hang`), no rocks or columns in the sea about it, the back row's second
   column gone, every column turned and leaning a little its own way; the game lifts it (IV_FAR_LIFT)
+  cols: only the far columns standing out of the water behind the level (FAR_COLS; the owner, 22/11), built as
+  goguard/far_cols.glb from goguard/far_cols_plan.json the same way (seed 91)
 then:  python3.11 -I tools/ivory_level.py -- <scratch>/far.glb <scratch>/far.json 77 24 goguard/far_plan.json
        and copy far.glb into goguard/ (built elsewhere so its json and no shore map touch the level's own)
 """
@@ -55,7 +57,29 @@ def float_plan():
     return pl
 
 
+# columns standing out of the water far behind the level, a drowned colonnade in the haze under the sun (the owner,
+# 22/11: "in the background, in the depth, add columns that stick up out of the water"): [x, foot, z, height, radius,
+# broken, [turn, lean, lean's way]], their plinths under the water (a column's foot 0.6 under it), so each comes up out
+# of the sea; laid where the picture at the level's start has open sea under the haze, clear of the island in the air
+# and of the level (each at about these points of the screen, x and y: 0.60 0.385, 0.67 0.375, 0.78 0.395, 0.95 0.37,
+# 0.50 0.375; tools: the level's eye, its follow lifting the picture 0.07 at the start)
+FAR_COLS = [[-5.52, SEA - 0.6, -7.82, 3.0, 0.22, False, [12, 1.5, 30]],
+            [-5.21, SEA - 0.6, -8.60, 2.1, 0.22, True, [-20, 3.0, 160]],
+            [-3.88, SEA - 0.6, -8.97, 2.6, 0.22, True, [28, 2.0, 250]],
+            [-3.17, SEA - 0.6, -10.89, 1.7, 0.22, True, [-8, 4.0, 300]],
+            [-6.53, SEA - 0.6, -7.28, 1.9, 0.22, True, [40, 2.5, 100]]]
+
+
+def cols_plan():
+    """only the far columns in the water: no floors, no rock"""
+    pl = far_plan()
+    pl.update({'floors': {}, 'rocks': [], 'columns': [], 'sea_columns': FAR_COLS})
+    pl.pop('hang', None)
+    return pl
+
+
 if __name__ == '__main__':
     out = sys.argv[1] if len(sys.argv) > 1 else 'goguard/far_plan.json'
-    json.dump(float_plan() if 'float' in sys.argv[2:] else far_plan(), open(out, 'w'), indent=1)
+    mode = sys.argv[2] if len(sys.argv) > 2 else ''
+    json.dump({'float': float_plan, 'cols': cols_plan}.get(mode, far_plan)(), open(out, 'w'), indent=1)
     print('wrote', out)
