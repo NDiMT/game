@@ -1,0 +1,11 @@
+# the cube's colourings offered on 22/11 (IV_CUBE_PAL form: block and meander, four tones each, lit to shade)
+c1 block:f2ebe3,e3d9d0,c8bcb4,9b8f8b;meander:6e5f6e,5c4d5e,483b4b,352a38
+c2 block:857684,6f6170,574a5a,3f3344;meander:f1eae2,dfd5cd,c2b6b0,958a8a
+c3 block:bfb4c9,aba1b9,8d84a0,6c6481;meander:f6f1ef,e6dfdf,cbc2c6,a097a3
+c4 block:c98d76,b67b66,986554,734c41;meander:f2e4d6,e1cdbb,c2aa97,93806f
+c5 block:c3cad6,afb6c5,9199ad,707a92;meander:f5f6f9,e4e6ee,c8ccd9,9ea4b8
+c6 block:d4aeb0,c29a9e,a37f85,7f6168;meander:f8f0ef,eadcdc,cfbec2,a3929a
+c7 block:f3e6e6,e5d5d6,cab8bd,9c8a94;meander:9d93ad,8a809c,6f6784,544e68
+c8 block:7b8499,676f86,51586d,3c4154;meander:f2f1f4,e1e0e7,c5c4d0,9897a8
+c9 block:cfc6bd,bdb3a9,a1968c,7d736b;meander:6b6160,5a504f,463d3e,332b2d
+c10 block:a38fb3,8f7ba0,725f84,554566;meander:f4eef6,e4dcea,c9bfd2,9d92a8
