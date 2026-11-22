@@ -10752,16 +10752,16 @@ func _ivgl_poof_mat() -> StandardMaterial3D:      # (the dust's own material in 
 	if ivgl_poof == null: ivgl_poof = _ivt_dust_material().duplicate() as StandardMaterial3D; ivgl_poof.albedo_color = IVGL_POOF_COL
 	return ivgl_poof
 
-func _iv_puff(at: Vector3, mat: Material) -> void:      # (a shadow gone in a puff: large soft puffs out of her whole body that run together, a cloud, never dots; it bursts out, slows, and drifts up a little as smoke does, and thins)
+func _iv_puff(at: Vector3, mat: Material, dense := 1.0) -> void:      # (a shadow gone in a puff: large soft puffs out of her whole body that run together, a cloud, never dots; it bursts out, slows, and drifts up a little as smoke does, and thins)
 	var p := CPUParticles3D.new(); add_child(p); p.global_position = at
-	p.one_shot = true; p.amount = 24; p.lifetime = 1.4; p.explosiveness = 0.95; p.local_coords = false
+	p.one_shot = true; p.amount = int(24 * dense); p.lifetime = 1.4; p.explosiveness = 0.95; p.local_coords = false
 	var q := QuadMesh.new(); q.size = Vector2(1.5, 1.5); q.material = mat; p.mesh = q
 	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX; p.emission_box_extents = Vector3(0.18, 0.72, 0.18)
 	p.direction = Vector3.UP; p.spread = 180.0; p.initial_velocity_min = 0.15; p.initial_velocity_max = 0.55
 	p.damping_min = 1.3; p.damping_max = 2.4; p.gravity = Vector3(0, 0.14, 0)
 	p.scale_amount_min = 0.6; p.scale_amount_max = 1.1
 	var sc := Curve.new(); sc.add_point(Vector2(0.0, 0.5)); sc.add_point(Vector2(1.0, 2.0)); p.scale_amount_curve = sc
-	var g := Gradient.new(); g.set_color(0, Color(1, 1, 1, 0.0)); g.set_color(1, Color(1, 1, 1, 0.0)); g.add_point(0.06, Color(1, 1, 1, 0.55)); g.add_point(0.4, Color(1, 1, 1, 0.26)); p.color_ramp = g
+	var g := Gradient.new(); g.set_color(0, Color(1, 1, 1, 0.0)); g.set_color(1, Color(1, 1, 1, 0.0)); g.add_point(0.06, Color(1, 1, 1, minf(0.55 * dense, 0.95))); g.add_point(0.4, Color(1, 1, 1, minf(0.26 * dense, 0.6))); p.color_ramp = g
 	p.emitting = true
 	get_tree().create_timer(2.2, false).timeout.connect(p.queue_free)
 func _ivgl_shade_poof() -> void:      # (her shadow in the image swells a little and is gone in a puff of grey-blue mist that bursts out of it and thins; it does not come back)
@@ -11099,7 +11099,9 @@ func _ivgd_far() -> void:
 ## level is (tools/go/guard_far_plan.py cols), their image in the water (the owner, 22/11: "in the background, in the
 ## depth, add columns that stick up out of the water"); IV_COLS=0 leaves them out, IV_COLS_K tries another haze
 const IVGD_COLS_ON := true
-const IVGD_COLS_K := 0.6      # (further in the haze than the island in the air (0.3): far off; at 0.45 they stood as white as the level's slabs)
+const IVGD_COLS_K := 0.72      # (further in the haze than the island in the air (0.3): far off; at 0.45 they stood as white as the level's slabs; 0.6 before they went further back)
+const IVGD_COLS_AT := Vector3(-1.4, -1.4, 0.6)      # (further back still (the owner, 22/11: "the crooked columns in 5 even further back"): 1.4 m back along both ways, up the picture toward the haze, and 0.6 their size about their middle, as farther things are smaller and closer together; built where tools/go/guard_far_plan.py FAR_COLS has them)
+const IVGD_COLS_C := Vector3(-4.28, -0.3, -8.67)      # (their middle, at the water)
 func _ivgd_far_cols() -> void:
 	var fp := go_dir + "far_cols.glb"
 	if not IVGD_COLS_ON or OS.get_environment("IV_COLS") == "0" or not FileAccess.file_exists(fp): return
@@ -11108,6 +11110,10 @@ func _ivgd_far_cols() -> void:
 	var fv := doc.generate_scene(st) as Node3D
 	if fv == null: return
 	iv_root.add_child(fv)
+	var ca := IVGD_COLS_AT
+	if OS.get_environment("IV_COLS_AT") != "":      # (to try them elsewhere: "dx,dz[,scale]")
+		var c3 := OS.get_environment("IV_COLS_AT").split_floats(","); ca = Vector3(c3[0], c3[1], c3[2] if c3.size() > 2 else 1.0)
+	fv.scale = Vector3.ONE * ca.z; fv.position = IVGD_COLS_C * (1.0 - ca.z) + Vector3(ca.x, 0.0, ca.y)      # (smaller about their own middle at the water, and moved back: up the picture, toward the haze)
 	var fk := float(OS.get_environment("IV_COLS_K")) if OS.get_environment("IV_COLS_K") != "" else IVGD_COLS_K
 	for m in fv.find_children("*", "MeshInstance3D", true, false):
 		var mi := m as MeshInstance3D
@@ -11246,7 +11252,7 @@ const IVGD_SEEN_RED := Color(0.88, 0.13, 0.11)
 const IVGD_SEEN_BLACK := Color(0.07, 0.05, 0.08)
 const IVGD_SEEN_K := [0.95, 0.34, 0.15]      # (its three passes: the body, a soft edge, a fainter one further out)
 const IVGD_SEEN_GROW := [0.0, 0.03, 0.065]
-const IVGD_POOF_COL := Color(0.27, 0.23, 0.29)      # (the puff: dark smoke, a little lighter than the shadow, thinning)
+const IVGD_POOF_COL := Color(0.33, 0.29, 0.36)      # (the puff: dark smoke, a little lighter than the shadow, thinning; denser than the fourth level's, over the white slabs (at its density it read faint))
 var ivgd_shade: Array = []
 var ivgd_her_save: Array = []      # ([her mesh, its surfaces' materials, its shadow casting, [[her image's pass, its fade]]])
 var ivgd_her_gone := false
@@ -11291,7 +11297,7 @@ func _ivgd_seen_out() -> void:
 	await t2.finished
 	await wait(0.12)
 	if ivgd_poof_m == null: ivgd_poof_m = _ivt_dust_material().duplicate() as StandardMaterial3D; ivgd_poof_m.albedo_color = IVGD_POOF_COL
-	_iv_puff(pos + Vector3(0, 0.85, 0), ivgd_poof_m)      # (3: poof, as the fourth level's shadow goes: it swells a little as it fades, and a cloud bursts out of it)
+	_iv_puff(pos + Vector3(0, 0.85, 0), ivgd_poof_m, 1.5)      # (3: poof, as the fourth level's shadow goes: it swells a little as it fades, and a cloud bursts out of it)
 	var t3 := create_tween()
 	t3.tween_method(func(u: float) -> void: _ivgd_shade_set(1.0 - u, IVGD_SEEN_BLACK, 0.14 * u), 0.0, 1.0, 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	await t3.finished

@@ -497,8 +497,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   behind, in the sky, in the background": the image model had painted its haze in long faint horizontal strokes, in the
   plate and in the head painting alike): `tools/go/backdrop_destreak.py` (a row's residue against the rows about it, held
   along the row, taken out in three passes; the sky down to 0.40 of the height, fading out by 0.47, never within the
-  head) → `backdrop_plate_clean.jpg`, `backdrop_head_game_clean.jpg`, from which the game's is made. The third and fifth
-  levels' skies have the same lines a little fainter (not asked: to ask).
+  head) → `backdrop_plate_clean.jpg`, `backdrop_head_game_clean.jpg`, from which the game's is made. The fifth level's sky
+  was cleaned the same way when the owner saw its lines too; the third's has them as well (not asked: to ask).
   **No darkening at the screen's edges here** (`vr` hidden for `go_glass`): its concept is clear to
   the corners, and the waking's plum vignette turned its sky pink there. The slabs a touch warmer (`marble2`, the
   concept's `ddcfd4` lit) and the near sea a little lighter (`grade_near`, its `99a6bb`), measured against the concept
@@ -636,7 +636,13 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   <scratch>/far_cols.json 91 24 goguard/far_cols_plan.json`, copied to `goguard/far_cols.glb`, packed; a sea column's
   seventh value turns and leans it as a column's third does), laid further in the haze than the island (`IVGD_COLS_K`
   0.6; at 0.45 they stood as white as the slabs), their image in the water (`_ivgd_far_cols`; `IV_COLS=0` leaves them
-  out, `IV_COLS_K` tries another haze).
+  out, `IV_COLS_K` tries another haze). **Then further back still** (the owner, 22/11: "the crooked columns in 5 even
+  further back"): the game sets them 1.4 m back along both ways, up the picture toward the haze, at 0.6 their size about
+  their middle at the water, as farther things are smaller and closer together (`IVGD_COLS_AT`, `IVGD_COLS_C`;
+  `IV_COLS_AT="dx,dz[,scale]"` tries others), and further in the haze (`IVGD_COLS_K` 0.72): their feet about 0.33 to 0.37
+  of the screen's height at the start, their tops under 0.29. **The sky without its horizontal lines** (the owner,
+  22/11: "the sky there has lines too", as the fourth level's): `goguard/backdrop.jpg` through
+  `tools/go/backdrop_destreak.py ... 0.40 0.47` (no mask: nothing painted in it).
   **Blurred columns before the eye** (the owner, 22/11: "can we have blurred columns at the front of the screen?"): two
   broken fluted columns of our own, at the left and the right edges, their feet behind the rocks before the eye
   (`goguard/col_l.png`, `col_r.png` by `tools/go/fg_columns.py`: rendered from the game's eye, lit from behind, darkened
