@@ -11041,7 +11041,7 @@ const IVGD_FAR_ON := true      # (the island in the air, 3D, on the plain sky (t
 const IVGD_FAR_FILE := "far.glb"
 const IVGD_FAR_C := Vector3(-11.2, 0.0, -6.9)      # (its own middle, as built: it is made smaller about it)
 const IVGD_FAR_LIFT := 2.0      # (off the water: an island in the air)
-const IVGD_FAR_AT := Vector3(3.98, 0.0, 2.9)      # (a little to the right and lower on the screen than the owner first chose it (22/11: "the island a little more to the right and lower"; 2.6, 0, 2.6 before): about 0.07 of the screen's width right and 0.035 of its height down, its rock clear of the gate under it (0.05 down was tried: it came onto the gate's top); 1.2, 1.2 on the water before that)
+const IVGD_FAR_AT := Vector3(5.72, 0.0, 3.56)      # (lower and further right again (the owner, 22/11: "the floating island lower and more to the right"): about 0.07 of the screen's width right and 0.05 of its height down from 3.98, 0, 2.9, which was itself 0.07 right and 0.035 down from 2.6, 0, 2.6, the place the owner first chose; 0.09 and 0.07 further was tried and sat on the level; 1.2, 1.2 on the water before all that)
 func _ivgd_far() -> void:
 	var fp := OS.get_environment("IV_FAR_FILE") if OS.get_environment("IV_FAR_FILE") != "" else go_dir + IVGD_FAR_FILE      # (IV_FAR_FILE tries another build of it)
 	if not (IVGD_FAR_ON or OS.get_environment("IV_FAR") == "1") or OS.get_environment("IV_FAR") == "0" or not FileAccess.file_exists(fp): return

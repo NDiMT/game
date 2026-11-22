@@ -572,9 +572,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   third value in a plan, [turn, lean, lean's way] in degrees, `turn_column` in the builder; the owner, of the first 3D
   one: "shadows, more detail, a column less, randomly slightly turned"), its rock under the old water line drawn into
   one jagged point under it (`hang` in a plan); the game lifts it 2 m off the water (`IVGD_FAR_LIFT`) and sets it
-  nearer than built (`IVGD_FAR_AT` 3.98, 0, 2.9 since 22/11, "the island a little more to the right and lower": about
-  0.07 of the screen's width right and 0.035 of its height down from 2.6, 0, 2.6, the picture the owner chose; 0.05 down
-  set its rock on the gate's top), its image in the water, and it casts its shadows (`IVGD_FAR_ON` true; `IV_FAR_FILE`,
+  nearer than built (`IVGD_FAR_AT` 5.72, 0, 3.56 since 22/11: "the island a little more to the right and lower", then
+  "the floating island lower and more to the right": each time about 0.07 of the screen's width right and 0.035, then
+  0.05, of its height down, from 2.6, 0, 2.6, the picture the owner chose; 0.09 and 0.07 further sat it on the level; its
+  rock now comes before the two dark rocks in the sea at its lower right), its image in the water, and it casts its shadows (`IVGD_FAR_ON` true; `IV_FAR_FILE`,
   `IV_FAR_LIFT`, `IV_FAR_AT="dx,dz[,scale about its own middle]"` try others). **More detail on it** (the owner, 22/11:
   "on the island let's put more detail, and the short column in the trio a little more to the left"): its upper terrace
   paved in four slabs a little out of level, meeting edge to edge so the joints are thin steps (0.14 m apart the rock
