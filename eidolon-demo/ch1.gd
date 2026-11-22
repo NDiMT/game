@@ -10094,7 +10094,8 @@ var ivm_beam: Array = []      # (the beam's straight runs: [core, halo] each)
 var ivm_gold := OS.get_environment("IV_L3_GOLD") == "1"      # (the light its warm gold, as it was until 22/11)
 var ivm_spark: MeshInstance3D      # (where the light ends on a thing: a bright spot)
 var ivm_leaves: Array = []      # (the gate's leaves: [hinge, its shut basis, the turn that opens it])
-const IVM_LIGHT_COL := Color(1.0, 0.98, 0.95)      # (the statue's light white, as the ring is (the owner, 22/11: "in 3 make the light's colour white"; a white tried on 21/11 was turned down then, "the yellow beam was better", and the warm gold, 1.0, 0.88, 0.58, came back); IV_L3_GOLD=1 shows the gold)
+const IVM_LIGHT_COL := Color(0.55, 0.82, 1.0)      # (the statue's light a light sky blue (the owner, 22/11: "in the third map can you make the beam of light light blue?"); white the same day, Color(1.0, 0.98, 0.95) ("in 3 make the light's colour white"; a white tried on 21/11 was turned down then, "the yellow beam was better"), the warm gold 1.0, 0.88, 0.58 before; IV_L3_GOLD=1 shows the gold)
+const IVM_CORE_COL := Vector3(0.88, 0.96, 1.0)      # (its core a white just touched with the blue, so the line stays bright)
 const IVM_DISC_H := 1.02      # (the mirror's disc stands this high over its floor: _ivq_mirror)
 const IVM_BLOCK_HALF := 0.53      # (the stone as the light meets it: half its breadth, its height; a cube of 1.06 m since 20/11)
 const IVM_BLOCK_H := 1.06
@@ -10104,13 +10105,14 @@ const IVM_BEAM_SH := """
 shader_type spatial;
 render_mode unshaded, blend_mix, cull_back, depth_draw_never, shadows_disabled;
 uniform vec3 col : source_color = vec3(1.0, 0.88, 0.58);
+uniform vec3 core_c : source_color = vec3(1.0, 0.99, 0.95);
 uniform float k = 1.0;
 uniform float core = 0.0;
 void fragment(){
 	float f = abs(dot(NORMAL, VIEW));
 	float a = core > 0.5 ? smoothstep(0.1, 0.8, f) * 0.95 : pow(f, 2.4) * 0.4;
 	float flick = 0.94 + 0.06 * sin(TIME * 2.3 + FRAGCOORD.y * 0.013);
-	ALBEDO = core > 0.5 ? mix(col, vec3(1.0, 0.99, 0.95), 0.8) : col;
+	ALBEDO = core > 0.5 ? mix(col, core_c, 0.8) : col;
 	ALPHA = clamp(a * k * flick, 0.0, 1.0);
 }
 """
@@ -10127,7 +10129,7 @@ func _ivm_setup() -> void:
 			var cm := CylinderMesh.new(); cm.top_radius = 0.032 if c == 0 else 0.13; cm.bottom_radius = cm.top_radius; cm.height = 1.0
 			cm.radial_segments = 12; cm.rings = 1; cm.cap_top = false; cm.cap_bottom = false
 			var mt := ShaderMaterial.new(); mt.shader = sh; mt.set_shader_parameter("core", 1.0 if c == 0 else 0.0); mt.render_priority = 4 + c
-			if not ivm_gold: mt.set_shader_parameter("col", Vector3(IVM_LIGHT_COL.r, IVM_LIGHT_COL.g, IVM_LIGHT_COL.b))
+			if not ivm_gold: mt.set_shader_parameter("col", Vector3(IVM_LIGHT_COL.r, IVM_LIGHT_COL.g, IVM_LIGHT_COL.b)); mt.set_shader_parameter("core_c", IVM_CORE_COL)
 			var mi := MeshInstance3D.new(); mi.mesh = cm; mi.material_override = mt; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; mi.visible = false
 			iv_root.add_child(mi); pair.append(mi)
 		ivm_beam.append(pair)
@@ -11041,7 +11043,7 @@ const IVGD_FAR_ON := true      # (the island in the air, 3D, on the plain sky (t
 const IVGD_FAR_FILE := "far.glb"
 const IVGD_FAR_C := Vector3(-11.2, 0.0, -6.9)      # (its own middle, as built: it is made smaller about it)
 const IVGD_FAR_LIFT := 2.0      # (off the water: an island in the air)
-const IVGD_FAR_AT := Vector3(5.72, 0.0, 3.56)      # (lower and further right again (the owner, 22/11: "the floating island lower and more to the right"): about 0.07 of the screen's width right and 0.05 of its height down from 3.98, 0, 2.9, which was itself 0.07 right and 0.035 down from 2.6, 0, 2.6, the place the owner first chose; 0.09 and 0.07 further was tried and sat on the level; 1.2, 1.2 on the water before all that)
+const IVGD_FAR_AT := Vector3(3.98, 0.0, 2.9)      # (a little to the right and lower on the screen than the owner first chose it (22/11: "the island a little more to the right and lower"; 2.6, 0, 2.6 before): about 0.07 of the screen's width right and 0.035 of its height down; then lower and further right again, 5.72, 0, 3.56, and the owner: "the floating island, leave it where it was"; 1.2, 1.2 on the water before all that)
 func _ivgd_far() -> void:
 	var fp := OS.get_environment("IV_FAR_FILE") if OS.get_environment("IV_FAR_FILE") != "" else go_dir + IVGD_FAR_FILE      # (IV_FAR_FILE tries another build of it)
 	if not (IVGD_FAR_ON or OS.get_environment("IV_FAR") == "1") or OS.get_environment("IV_FAR") == "0" or not FileAccess.file_exists(fp): return

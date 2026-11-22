@@ -572,9 +572,14 @@ def faceted(poly, keep=(), seg=(0.5, 0.95), jit=0.06):
     return out
 
 
+LAST_CUTS = []      # (each corner the last cut_corners cut: (corner, where the cut leaves the edge before it, where it meets the edge after))
+CORNER_CUTS = []      # (every floor's cut corners: (corner, the floor's height, the cut's two ends, the floor's name))
+
+
 def cut_corners(poly, keep=()):
     """every corner of a floor that stands out, cut off aslant as a mason cuts it (the picture's floors): each cut its
     own size, not quite square to the corner; not where a flight meets the floor (keep: (point, radius))"""
+    del LAST_CUTS[:]
     P = ccw(poly); n = len(P); out = []
     for i in range(n):
         a_, b_, c_ = P[i - 1], P[i], P[(i + 1) % n]
@@ -584,6 +589,31 @@ def cut_corners(poly, keep=()):
             out.append(b_); continue
         d0 = min(rnd.uniform(0.14, 0.3), L0 * 0.3); d1 = min(d0 * rnd.uniform(0.7, 1.35), L1 * 0.3)
         out.append((b_[0] - e0[0] / L0 * d0, b_[1] - e0[1] / L0 * d0)); out.append((b_[0] + e1[0] / L1 * d1, b_[1] + e1[1] / L1 * d1))
+        LAST_CUTS.append((b_, out[-2], out[-1]))
+    return out
+
+
+def joint_lines():
+    """where two floors of one height meet edge to edge: the shared stretch of their edges, [(h, a, b)]"""
+    ris = set(PLAN.get('risers', []))
+    fl = [(f['h'], [tuple(q) for q in f['xz']]) for k_, f in PLAN.get('floors', {}).items() if k_ not in ris]
+    out = []
+    for ia in range(len(fl)):
+        for ib in range(ia + 1, len(fl)):
+            (ha, pa), (hb, pb) = fl[ia], fl[ib]
+            if abs(ha - hb) > 0.03: continue
+            for i_ in range(len(pa)):
+                a0, a1 = pa[i_], pa[(i_ + 1) % len(pa)]
+                ax, az = a1[0] - a0[0], a1[1] - a0[1]; L = math.hypot(ax, az)
+                if L < 0.2: continue
+                ux, uz = ax / L, az / L
+                for k_ in range(len(pb)):
+                    b0, b1 = pb[k_], pb[(k_ + 1) % len(pb)]
+                    if abs((b0[0] - a0[0]) * uz - (b0[1] - a0[1]) * ux) > 0.02 or abs((b1[0] - a0[0]) * uz - (b1[1] - a0[1]) * ux) > 0.02: continue      # (not on one line)
+                    t0, t1 = sorted(((b0[0] - a0[0]) * ux + (b0[1] - a0[1]) * uz, (b1[0] - a0[0]) * ux + (b1[1] - a0[1]) * uz))
+                    t0, t1 = max(t0, 0.0), min(t1, L)
+                    if t1 - t0 < 0.1: continue
+                    out.append((min(ha, hb), (a0[0] + ux * t0, a0[1] + uz * t0), (a0[0] + ux * t1, a0[1] + uz * t1)))
     return out
 
 
@@ -611,6 +641,7 @@ def floor(name, x0, x1, z0, z1, h, ch, poly=None):
         wp = [(wx0 + (wx1 - wx0) * k / nx_, z_) for k in range(nx_ + 1) for z_ in (wz0, wz1)] + [(x_, wz0 + (wz1 - wz0) * k / nz_) for k in range(nz_ + 1) for x_ in (wx0, wx1)]
         kp += [(q, 0.45) for q in wp]
     poly = cut_corners(poly, kp)
+    CORNER_CUTS.extend((c_, h, p0_, p1_, name) for (c_, p0_, p1_) in LAST_CUTS)
     out = square_to_flights(broken(faceted(grow(poly, 0.05), keep), seg=0.3, jit=0.012, chip=0.06), h)
     poly = simplify(square_to_flights(densify(ccw(poly), 0.3), h))
     vol = (PLAN or {}).get('volute')
@@ -1228,7 +1259,8 @@ if RC and rock:      # (no tip of the rock through a slab: where it rises a litt
             nx_, nz_ = (bz_ - az_) / L_ * sg_, -(bx_ - ax_) / L_ * sg_
             if (nx_ + nz_) * 0.7071 > 0.2: es_.append((ax_, az_, bx_, bz_, nx_, nz_, L_))
         fe_.append(es_)
-    n_cl = n_out = n_up = n_fr = 0
+    n_cl = n_out = n_up = n_fr = n_jn = 0
+    jl_ = joint_lines()      # (where two floors of one height meet edge to edge, their eased edges make a groove 6 to 16 cm deep, and the rock under them, at the floors' height less lo_, showed in it as a dark stain (the owner, 22/11: "here there's a stain from the brown slab behind, try not to let it happen"; "don't add nonsense, I just want it not to show"): there it goes under the groove)
     for ob in rock + [o_ for (m_, r_) in RISERS.items() for o_ in (r_[1] or [])]:      # (the stones that rise as well: their own rock under their own slab)
         mw = ob.matrix_world; mi = mw.inverted()
         for v in ob.data.vertices:
@@ -1241,6 +1273,8 @@ if RC and rock:      # (no tip of the rock through a slab: where it rises a litt
                         t_ = ((gx - ax_) * (bx_ - ax_) + (gz - az_) * (bz_ - az_)) / (L_ * L_); dd_ = (gx - ax_) * nx_ + (gz - az_) * nz_
                         if 0.0 <= t_ <= 1.0 and 0.0 < dd_ <= front_: hit_ = True; break
                     if hit_: w.z = h_ - 0.6; v.co = mi @ w; n_fr += 1; break
+                if h_ - 0.24 < gy < h_ + hi_ and any(abs(hj_ - h_) < 0.03 and seg_dist((gx, gz), ja_, jb_) < 0.22 for (hj_, ja_, jb_) in jl_):
+                    w.z = h_ - 0.24; v.co = mi @ w; n_jn += 1; break
                 if h_ - lo_ < gy < h_ + hi_ and (ins_ or min(seg_dist((gx, gz), poly_[i], poly_[(i + 1) % np_]) for i in range(np_)) < mg_):
                     w.z = h_ - lo_; v.co = mi @ w; n_cl += 1; break
                 if clear_ is not None and ins_ and h_ + hi_ <= gy < h_ + clear_:
@@ -1255,7 +1289,7 @@ if RC and rock:      # (no tip of the rock through a slab: where it rises a litt
                     else:
                         w.z = h_ + clear_; n_up += 1
                     v.co = mi @ w; break
-    print('ROCK CLAMPED under the floors:', n_cl, 'vertices; cut back to their edges:', n_out, '; lifted clear over them:', n_up, '; sunk before their sides toward the eye:', n_fr)
+    print('ROCK CLAMPED under the floors:', n_cl, 'vertices; cut back to their edges:', n_out, '; lifted clear over them:', n_up, '; sunk before their sides toward the eye:', n_fr, '; under the meetings of floors:', n_jn)
 CV = PLAN.get('rock_carve') if PLAN else None
 if CV and rock:      # (room cut out of the rock where something stands or goes: the niche cut for the block, the space over a floor; boxes [x0, x1, z0, z1, y0, y1] in the game's axes; the owner, 18/11: "no rock through things, one in another")
     n_cv = 0

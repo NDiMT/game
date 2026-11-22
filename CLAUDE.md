@@ -212,8 +212,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   opens"): a beam of light, seen, leaves a statue (the owner: "the beam should leave from a statue, and be blocked by a
   stone"): a veiled marble woman standing in the water at the channel's lower end, a light in her hands (no plinth: the
   busts on plinths looked staged); it runs up the channel to the goddess's bronze mirror (on its square marble plinth,
-  its light white since 22/11 (`IVM_LIGHT_COL`; the owner: "in 3 make the light's colour white"; a white tried on 21/11
-  was turned down then, "the yellow beam was better", and the warm gold came back; `IV_L3_GOLD=1` shows the gold);
+  its light a light sky blue since 22/11 (`IVM_LIGHT_COL` 0.55, 0.82, 1.0, its core `IVM_CORE_COL` a white touched with
+  the blue; the owner: "in the third map can you make the beam of light light blue?"; white the same day before it, "in 3
+  make the light's colour white", and a white tried on 21/11 was turned down then, "the yellow beam was better";
+  `IV_L3_GOLD=1` shows the warm gold);
   the bronze under its stand a round foot since 21/11, `_ivq_mirror`: the owner, "the metal part below round"; the
   plinth made round instead was turned down: "I didn't ask you to raise anything and break something else"; the
   fifth level uses the same mirror); a swipe into the mirror turns
@@ -265,13 +267,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   lower"): `python3 -I tools/go/backdrop_figure.py design/level3/goddess_painted.png design/level3/backdrop_plain.jpg
   gomilos/backdrop.jpg 0.25 0.105 0.395 0.3 1 --onto design/level3/backdrop_whole.jpg 70,130,458,1240` (laid on the plain
   backdrop, then only the box about her, its edge feathered, set into the whole one, so its far rocks stay as they are);
-  a little more haze over her (0.3, was 0.2; the owner: "the statue here a little more subdued"). **Since 22/11 rounder**
-  (the owner: "can the backgrounds in 3 and 4 look more 3D? In 3 Aphrodite, in 4 the head"): her own light and shade
-  drawn out and each row of her shaded as a turning form, darker as it turns from the light on the left, the shadow a
-  touch cooler (`python3 -I tools/go/figure_volume.py round design/level3/goddess_painted.png <scratch>/goddess_round.png
-  2.4 0.4 0.12`), then laid in as above with her haze 0.22 (`backdrop_figure.py <scratch>/goddess_round.png ... 0.25
-  0.105 0.395 0.22 1 --onto ...`); at haze 0.3 and less drawn out, the change hardly showed in the game. Gemini asked to
-  relight her made her warm as flesh and drew a white rim round her, a cut-out: not used.
+  a little more haze over her (0.3, was 0.2; the owner: "the statue here a little more subdued"). On 22/11 (the owner: "can the backgrounds in 3 and 4 look more 3D? In 3 Aphrodite, in 4 the head") her
+  light and shade were drawn out and she was shaded as a turning form (`tools/go/figure_volume.py round`), and turned
+  down at once: "you didn't make them like 3D, you just made them more intense, I didn't want that"; the backdrop is back
+  as it was. What "3D" means is still to be settled with the owner (a real 3D statue in the world, as the fifth level's
+  island, was being tried).
   Turned down on the way: the goddess smooth and polished or softly painted, darker, a whole backdrop with her big and the
   haze low, rocks laid in by us (`tools/go/far_rocks.py`) or painted too near, too many or below her. No birds over this level (the owner: "take
   those stupid birds out of the third level"). The 3D goddess is out of the plan
@@ -288,6 +288,13 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   for painted light and shade, a trial not yet on by default (the owner asked for "the actual light and shade painted, not
   a texture on the rock"): `IV_PAINT_LIGHT=1 IV_PAINT_AO=0.5` (`paint_light`: the light on smoothed normals in soft
   bands); levels 1 and 2 would need their own rebuild with `smooth_normals`.
+- **The ring before every gate stands clear of its door** (the owner, 22/11: "the bright circles should never be right at
+  the door"; and of the first level: "no second-to-last dot: the stair's path takes you straight to the last bright
+  circle"): each ring set back along the way to 1.15 m from its arch's middle (level 4's 1.1; 0.6 to 0.9 before, its
+  stone band all but touching the door), and in the first two levels the dot at the stair's head, 0.9 m short of the
+  ring, taken out (the second's was the same, and the ring set back would have lain on it): one swipe takes her up the
+  stair and to the ring (levels 1 and 2 are 8 swipes). `tools/go/ring_clear.py` does it to a level's puzzle.json (the
+  game reads its nodes there; the built level is untouched): run it again whenever a plan script makes a puzzle.json anew.
 - **The ring before every gate** is a soft white light (`fbf9f4`, `emit` 0.3, a soft white glow; the owner, 19/11: "the
   ring white light", after a bright yellowish ochre read as lemon and a very soft ochre); level 3's unlit ring a light
   grey-lilac (`d2cee0`; the owner asked twice for it lighter) that lights to the white; the brown stone within it, and
@@ -307,6 +314,14 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   steps break in strokes) and has its own tone, the darker a little cooler. The rock's hollows shaded (`ao_k` 0.5).
   `IV_BRUSH=0` shows the levels as before; `IV_BRUSH=<k>` another strength. Turned down on the way: soft gradients alone
   ("not like that"), small noisy strokes (they read as a grainy texture), strokes per face (cut at every facet).
+- **No stain where two slabs meet** (the owner, 22/11, of the fourth level's terrace by her start: "here there's a stain
+  from the brown slab behind, try not to let it happen"; then of pieces of marble laid in the joint at runtime: "don't
+  add nonsense, I just want it not to show"): where two floors of one height meet edge to edge, their eased edges (9 to
+  17 cm across, as much as 16 cm down) make a groove, and the rock the clamp holds 4 cm under the floors showed in it
+  dark. The builder now sinks the rock under such a meeting below the groove, 24 cm under the floors (`joint_lines`, in
+  the rock clamp); nothing is added. Levels 3, 4 and 5 rebuilt with it (their own seeds as below; only those rock
+  vertices moved, 14, 11 and 36, everything else the same to the vertex; their level.json the same); levels 1 and 2 have
+  no such meetings.
 - **No rock through things** (the owner, 18/11: "make sure the rocks are clean, none through objects, one in another"):
   the builder's `rock_clamp` [below, above, margin, clear, edge] sinks rock tips under the floors (the stones that rise
   too: in level 1 their rock lay level with their slabs' tops), cuts tall rock reaching in over a floor back to its edge,
@@ -459,13 +474,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   third and we're done"): `tools/go/backdrop_haze.py` lays the painting back toward its clean plate within the head's
   mask, keeping 0.46 of its own light and shade (`design/level4/game/`: `backdrop_head_game.jpg` the strong one as it
   was in the game, `backdrop_plate.jpg` the plate without the head, `head_mask.png`).
-  **Since 22/11 more 3D** (the owner: "... in 4 the head"): Gemini asked to model only its light and shade more strongly,
-  all else kept (`design/level4/game/backdrop_head_3d_prompt.txt`, its raw edit `backdrop_head_3d_gemini.jpg`, unmoved
-  within a pixel), laid into the strong one within the mask with a little local relief (`python3 -I
-  tools/go/figure_volume.py relief design/level4/game/backdrop_head_3d_gemini.jpg design/level4/game/backdrop_head_game.jpg
-  design/level4/game/head_mask.png design/level4/game/backdrop_head_3d.jpg`), then laid back keeping 0.58 of it (0.46
-  before): `backdrop_haze.py design/level4/game/backdrop_head_3d.jpg design/level4/game/backdrop_plate.jpg
-  design/level4/game/head_mask.png 0.58 goglass/backdrop.jpg`.
+  On 22/11 the head was modelled more strongly by Gemini and kept stronger in its haze (`backdrop_head_3d*.jpg`,
+  `figure_volume.py relief`, 0.58), and turned down with the goddess's: "just more intense"; the backdrop is back as it
+  was (0.46).
   **No darkening at the screen's edges here** (`vr` hidden for `go_glass`): its concept is clear to
   the corners, and the waking's plum vignette turned its sky pink there. The slabs a touch warmer (`marble2`, the
   concept's `ddcfd4` lit) and the near sea a little lighter (`grade_near`, its `99a6bb`), measured against the concept
@@ -572,10 +583,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   third value in a plan, [turn, lean, lean's way] in degrees, `turn_column` in the builder; the owner, of the first 3D
   one: "shadows, more detail, a column less, randomly slightly turned"), its rock under the old water line drawn into
   one jagged point under it (`hang` in a plan); the game lifts it 2 m off the water (`IVGD_FAR_LIFT`) and sets it
-  nearer than built (`IVGD_FAR_AT` 5.72, 0, 3.56 since 22/11: "the island a little more to the right and lower", then
-  "the floating island lower and more to the right": each time about 0.07 of the screen's width right and 0.035, then
-  0.05, of its height down, from 2.6, 0, 2.6, the picture the owner chose; 0.09 and 0.07 further sat it on the level; its
-  rock now comes before the two dark rocks in the sea at its lower right), its image in the water, and it casts its shadows (`IVGD_FAR_ON` true; `IV_FAR_FILE`,
+  nearer than built (`IVGD_FAR_AT` 3.98, 0, 2.9 since 22/11, "the island a little more to the right and lower": about
+  0.07 of the screen's width right and 0.035 of its height down from 2.6, 0, 2.6, the picture the owner chose; then
+  "lower and more to the right" again, 5.72, 0, 3.56, and the owner: "the floating island, leave it where it was"), its
+  image in the water, and it casts its shadows (`IVGD_FAR_ON` true; `IV_FAR_FILE`,
   `IV_FAR_LIFT`, `IV_FAR_AT="dx,dz[,scale about its own middle]"` try others). **More detail on it** (the owner, 22/11:
   "on the island let's put more detail, and the short column in the trio a little more to the left"): its upper terrace
   paved in four slabs a little out of level, meeting edge to edge so the joints are thin steps (0.14 m apart the rock
