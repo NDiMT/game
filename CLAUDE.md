@@ -181,7 +181,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   then "a more brown beige", "and the meander a little lighter"; and "in all levels the cube with the meander like the
   first": the fourth level's own lighter, softer colours for it are gone, it is the second level's; since 21/11 a light brown, `d6b18a` lit, in every level: "the stone with the meander in
   all levels light brown"; then a little lighter and greyer, `d2baa0` lit: "the cube with the meander a little lighter
-  brown and greyer"), its meander a darker shade of it, its veins as discreet as before (`block`, `meander` in `IV_WAKE_PAL`, `IV_GLASS_PAL`);
+  brown and greyer"; **since 22/11 a lilac grey, `bfb4c9` lit, its meander white, `f6f1ef`**, of ten offered: "the lilac
+  grey with white, I liked it", see level 5), its meander a darker shade of it, its veins as discreet as before (`block`, `meander` in `IV_WAKE_PAL`, `IV_GLASS_PAL`);
   its single great key cut in each face (`tools/go/block_cube.py ... one`; four small square keys on each face, two by
   two, as the fifth level's concept has them, were tried on 21/11, `four`, and the same day the owner: "put back the
   previous cube you push"); it tumbles over onto the next place, and into the gap
@@ -561,7 +562,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   owner: "give a few more options for the cube"): 5 pale blue-grey, ivory (`c3cad6`; `f5f6f9`), 6 dusty rose, ivory
   (`d4aeb0`; `f8f0ef`), 7 rose-white marble, lilac-grey meander (`f3e6e6`; `9d93ad`), 8 dark slate blue-grey, ivory
   (`7b8499`; `f2f1f4`), 9 warm grey, dark meander (`cfc6bd`; `6b6160`), 10 amethyst, ivory (`a38fb3`; `f4eef6`); every
-  option's four tones, lit to shade, in `IV_CUBE_PAL` form in `design/cube/options.txt`. The owner to choose.
+  option's four tones, lit to shade, in `IV_CUBE_PAL` form in `design/cube/options.txt`. He chose 3, the lilac grey
+  with white ("the lilac grey with white, I liked it"): `block`, `meander` in `IV_WAKE_PAL`, every level.
   The veiled bust is out again (`observer` None). Before it (the owner, 21/11: "make something else for the
   background, whatever you like, but matching the perspective and the colours"; then of it: "I don't like the new
   background"): the ruins of a drowned sanctuary far
