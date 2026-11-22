@@ -1,0 +1,5 @@
+This is a crop of a painted game backdrop: a colossal carved marble head of a young goddess lying in a calm, misty lilac sea, the sun glowing behind it at the upper right.
+
+Repaint ONLY the head (and its reflection in the water below it) so that it reads a little more as a solid, three-dimensional carved sculpture with a subtle low-poly look: its forms built of many small flat facets, like a finely faceted low-poly marble statue, each facet one flat tone that catches the light a little differently, the edges between the facets crisp but subtle. Keep it only slightly polygonal, never crude: the facets small enough that the features (the eyes, the nose, the lips, the locks of hair) stay exactly as they are and are clearly recognisable. A touch more contrast between its lit side and its shaded side than now, but not much.
+
+The head must keep exactly the same shape, outline, size, position, features, expression and colours, and the same light from the upper right. Do not change anything else in the picture: the sky, the sun's glow, the sea, the haze and the composition stay exactly as they are.

@@ -181,8 +181,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   then "a more brown beige", "and the meander a little lighter"; and "in all levels the cube with the meander like the
   first": the fourth level's own lighter, softer colours for it are gone, it is the second level's; since 21/11 a light brown, `d6b18a` lit, in every level: "the stone with the meander in
   all levels light brown"; then a little lighter and greyer, `d2baa0` lit: "the cube with the meander a little lighter
-  brown and greyer"; **since 22/11 a lilac grey, `bfb4c9` lit, its meander white, `f6f1ef`**, of ten offered: "the lilac
-  grey with white, I liked it", see level 5), its meander a darker shade of it, its veins as discreet as before (`block`, `meander` in `IV_WAKE_PAL`, `IV_GLASS_PAL`);
+  brown and greyer"; on 22/11 a lilac grey, `bfb4c9` lit, its meander white, `f6f1ef`, of ten offered: "the lilac
+  grey with white, I liked it", see level 5; **since later on 22/11 in each level's own slabs' colours, its meander the
+  colour of the way's line, drawn flat as the line is** (the owner: "make the cube in the slab's colours, and the meander
+  the colour of the path's line": `_iv_pal` gives `block` the level's `marble2` and `meander` its `groove`, the meander
+  with `flat_mode`; `block`, `meander` in `IV_WAKE_PAL` kept for the record), its veins as discreet as before;
   its single great key cut in each face (`tools/go/block_cube.py ... one`; four small square keys on each face, two by
   two, as the fifth level's concept has them, were tried on 21/11, `four`, and the same day the owner: "put back the
   previous cube you push"); it tumbles over onto the next place, and into the gap
@@ -270,8 +273,13 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   a little more haze over her (0.3, was 0.2; the owner: "the statue here a little more subdued"). On 22/11 (the owner: "can the backgrounds in 3 and 4 look more 3D? In 3 Aphrodite, in 4 the head") her
   light and shade were drawn out and she was shaded as a turning form (`tools/go/figure_volume.py round`), and turned
   down at once: "you didn't make them like 3D, you just made them more intense, I didn't want that"; the backdrop is back
-  as it was. What "3D" means is still to be settled with the owner (a real 3D statue in the world, as the fifth level's
-  island, was being tried).
+  as it was. Then he said what he meant (22/11: "the 3D ones, make them slightly more intense, not much, and look more
+  3D, slightly polygonal"): Gemini repainted her alone on green as a finely faceted low-poly marble statue, the same in
+  all else (`design/level3/goddess_facets_gemini.jpg`, `goddess_facets_prompt.txt`); it kept her drawing and place (no
+  shift, no change of scale) but not her colours, so only its light and shade are laid over hers within her, at 0.75,
+  her colours kept (`tools/go/figure_facets.py` → `goddess_facets.png`), and she is laid in as before with a little
+  less haze (0.25, was 0.3): `backdrop_figure.py design/level3/goddess_facets.png ... 0.25 1 --onto ...`. A triangulation
+  of our own (each triangle the mean of the painting in it) read as a filter over a picture: not used.
   Turned down on the way: the goddess smooth and polished or softly painted, darker, a whole backdrop with her big and the
   haze low, rocks laid in by us (`tools/go/far_rocks.py`) or painted too near, too many or below her. No birds over this level (the owner: "take
   those stupid birds out of the third level"). The 3D goddess is out of the plan
@@ -295,6 +303,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   ring, taken out (the second's was the same, and the ring set back would have lain on it): one swipe takes her up the
   stair and to the ring (levels 1 and 2 are 8 swipes). `tools/go/ring_clear.py` does it to a level's puzzle.json (the
   game reads its nodes there; the built level is untouched): run it again whenever a plan script makes a puzzle.json anew.
+- **The way's line never runs onto a ring or a square** (the owner, 22/11: "the path's line should never fall on a
+  bright circle, ever: it should stop as soon as the bright circle's frame begins"): it stops where the frame's outer
+  stone begins, the ring's low brown ring (`IV_RING_OUT` + its tube) and the start square's brown square (`IVGL_PAD_OUT`
+  + its tube), a centimetre short (`_ivr_way_gap`); on stairs too (over the stair's last stretch it ran on into the first
+  two levels' rings, to their middles).
 - **The ring before every gate** is a soft white light (`fbf9f4`, `emit` 0.3, a soft white glow; the owner, 19/11: "the
   ring white light", after a bright yellowish ochre read as lemon and a very soft ochre); level 3's unlit ring a light
   grey-lilac (`d2cee0`; the owner asked twice for it lighter) that lights to the white; the brown stone within it, and
@@ -476,7 +489,16 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   was in the game, `backdrop_plate.jpg` the plate without the head, `head_mask.png`).
   On 22/11 the head was modelled more strongly by Gemini and kept stronger in its haze (`backdrop_head_3d*.jpg`,
   `figure_volume.py relief`, 0.58), and turned down with the goddess's: "just more intense"; the backdrop is back as it
-  was (0.46).
+  was (0.46). **Then slightly polygonal and a little more intense**, as the goddess (the owner, 22/11, of both): Gemini
+  repainted a crop of the head (430,180, 650 square) finely faceted (`backdrop_head_facets_gemini.jpg`,
+  `head_facets_prompt.txt`); its light and shade at 0.85 within the head (`head_tight.png`: where the head painting
+  differs from the plate), the colours kept (`figure_facets.py` → `backdrop_head_facets.jpg`), and laid into its haze at
+  0.52 (was 0.46). **The sky's fine horizontal lines taken out** (the owner, 22/11: "in 4 it makes some strange lines
+  behind, in the sky, in the background": the image model had painted its haze in long faint horizontal strokes, in the
+  plate and in the head painting alike): `tools/go/backdrop_destreak.py` (a row's residue against the rows about it, held
+  along the row, taken out in three passes; the sky down to 0.40 of the height, fading out by 0.47, never within the
+  head) → `backdrop_plate_clean.jpg`, `backdrop_head_game_clean.jpg`, from which the game's is made. The third and fifth
+  levels' skies have the same lines a little fainter (not asked: to ask).
   **No darkening at the screen's edges here** (`vr` hidden for `go_glass`): its concept is clear to
   the corners, and the waking's plum vignette turned its sky pink there. The slabs a touch warmer (`marble2`, the
   concept's `ddcfd4` lit) and the near sea a little lighter (`grade_near`, its `99a6bb`), measured against the concept
@@ -535,7 +557,18 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   subdued"); over the lit discs alone, and a thinner line with a bright middle, before that. Before, a broad band of light on the floor from his pedestal along it was "a
   pointless laser blur" and a ring on each place "an extra circle" (the owner, 21/11); where he will look next, a fainter
   band then, is no longer shown; where he looks now or
-  next she may not end a move: seen, back to the start (`_ivg_fail`). She hides behind the stone on the pier, turns the
+  next she may not end a move: seen, back to the start (`_ivg_fail`). **Seen, she goes into a red shadow, then a black
+  one, and is gone in a puff** (the owner, 22/11: "if the laser finds you, fade to a red shadow and then black, and go
+  poof like the black shadow does"; `_ivgd_seen_out`): the fourth level's shadow (`IVGL_SHADE_SH`, its three passes,
+  denser) laid over her as it reddens, her image in the water going with it (0.5 s); then only the shadow, her own look
+  and her cast shadow gone; red to black (0.45 s); the puff as the fourth level's (`_iv_puff`, dark smoke); his look runs
+  on past where she stood; then a shorter fade back to the start, she herself again (`_ivgd_her_back`). Stepped into his
+  look as it lies, she is seen there before he turns (unless his turn now brings his look back off the mirror). **Smoother**
+  (the owner, 22/11: "improve the gameplay in the fifth map a little, everything a little smoother"): at each turn his old
+  look goes out where it lies, he comes round slowly (`IVGD_TURN_T` 0.5 s, in and out of it), and the new look comes in
+  as he arrives (before, it dimmed and jumped at once to its new way while he turned), and her next move waits till he
+  is round; his look is cut where she and the stone really are as they move (`_ivgd_cut`: before, at the node they were
+  going to, ahead of them). She hides behind the stone on the pier, turns the
   goddess's mirror (level 3's, flat here, a quarter a swipe) to face him, pushes the stone off the walk into the deep
   water (it sinks), steps off his line; he looks into the mirror, sees himself, frosts over, and the gate opens. Board
   `gaze_trial.py guardian()` (19 swipes, one way, the stone needed), plan `tools/go/guard_plan.py`, build
