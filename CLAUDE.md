@@ -553,7 +553,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   **Blurred columns before the eye** (the owner, 22/11: "can we have blurred columns at the front of the screen?"): two
   broken fluted columns of our own, at the left and the right edges, their feet behind the rocks before the eye
   (`goguard/col_l.png`, `col_r.png` by `tools/go/fg_columns.py`: rendered from the game's eye, lit from behind, darkened
-  toward the rocks' plum and blurred; laid on before the rocks in `ch1.gd`, for `go_guard`). **The Guardian casts his
+  toward the rocks' plum and blurred, lit from the right so their flutes read; laid on in `ch1.gd` for `go_guard`); no
+  rocks before the eye in this level (the owner: "you've left blurred rocks in front too"), so each shaft runs on below
+  the picture's edge (`below` in the tool: a drum of its own dice, the rest as it was). **The Guardian casts his
   shadow** on his pedestal and the way (22/11: "the guardian looks as if he stands in the air": his glass cast none).
   **The cube, four offered** (22/11: "for the square with the meander I want something else, try something yourself,
   to match in colour, and in style if you want"; `IV_CUBE_PAL="block:h,h,h,h;meander:h,h,h,h"` tries one): 1 white

@@ -36,8 +36,11 @@ def render(out_dir):
             bm.faces.new((lo[i], lo[(i + 1) % n], hi[(i + 1) % n], hi[i]))
         bm.faces.new(list(reversed(lo))); bm.faces.new(hi)
 
-    def column(name, r, drums, lean=(0.0, 0.0), chips=0):
+    def column(name, r, drums, lean=(0.0, 0.0), chips=0, below=0.0):
         bm = bmesh.new(); z = 0.0
+        if below > 0.0:      # (its shaft on down below the picture's edge, a drum of its own dice so the rest is as it was)
+            rb = random.Random(name)
+            drum(bm, r, -below, -0.012, rb.uniform(-0.06, 0.06), rb.uniform(-0.02, 0.02), rb.uniform(-0.02, 0.02))
         for k, h in enumerate(drums):
             drum(bm, r * (1.0 - 0.012 * k), z + (0.012 if k else 0.0), z + h, rnd.uniform(-0.06, 0.06), rnd.uniform(-0.02, 0.02), rnd.uniform(-0.02, 0.02)); z += h
         top = z
@@ -66,18 +69,18 @@ def render(out_dir):
     co.rotation_euler = (math.radians(55), 0.0, math.radians(45))      # (the game's eye: 35 degrees down, along the diagonal)
     fwd = co.rotation_euler.to_matrix() @ Vector((0, 0, -1))
 
-    def shot(ob, top, name, w, h, scale):
+    def shot(ob, top, name, w, h, scale, below=0.0):
         for o in sc.objects:
             if o.type == 'MESH': o.hide_render = (o != ob)
-        c = Vector((0, 0, top * 0.5)); co.location = c - fwd * 40.0
+        c = Vector((0, 0, top * 0.5 - below * 0.5)); co.location = c - fwd * 40.0
         cam.ortho_scale = scale; sc.render.resolution_x = w; sc.render.resolution_y = h
         sc.render.filepath = out_dir + '/' + name + '.png'; bpy.ops.render.render(write_still=True)
 
-    L, tl = column('colL', 1.0, [1.7, 1.6, 1.7, 1.5], lean=(math.radians(-2.5), math.radians(1.5)))
-    R, tr = column('colR', 0.95, [1.6, 1.4, 1.3], lean=(math.radians(2.0), math.radians(-3.0)))
+    L, tl = column('colL', 1.0, [1.7, 1.6, 1.7, 1.5], lean=(math.radians(-2.5), math.radians(1.5)), below=2.5)
+    R, tr = column('colR', 0.95, [1.6, 1.4, 1.3], lean=(math.radians(2.0), math.radians(-3.0)), below=2.5)
     L.location = (0, 0, -1.0); R.location = (0, 0, -1.0)
-    shot(L, tl, 'col_l', 520, 1300, 9.2)
-    shot(R, tr, 'col_r', 560, 1100, 8.2)
+    shot(L, tl, 'col_l', 520, 1625, 11.5, 2.5)      # (2.5 of shaft more below the picture's edge, the scale as before: the columns' tops as they were)
+    shot(R, tr, 'col_r', 560, 1409, 10.5, 2.5)
     print('DONE')
 
 
