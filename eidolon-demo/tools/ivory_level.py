@@ -1154,6 +1154,24 @@ else:
         obs_s = column(cx_, cy_, cz_, ch_, cr_, cb_)
         if len(sc_) > 6: turn_column(obs_s, cx_, cy_, cz_, sc_[6])
         marble += obs_s
+    for dr_ in PLAN.get('drums', []):      # (a column's drum fallen on its side, [x, y, z, length, radius, yaw]: a ruin's rubble (the fifth level's far island, the owner, 22/11: "more detail on the island"))
+        x_, y_, z_, L_, r_, yw_ = dr_[:6]
+        bm = bmesh.new(); fl_ = []
+        for k in range(24):
+            aa = 2.0 * math.pi * k / 24.0; rr = r_ if k % 2 == 0 else r_ * 0.87
+            fl_.append((math.cos(aa) * rr, math.sin(aa) * rr))
+        prism(bm, fl_, -L_ / 2.0, L_ / 2.0)      # (made upright about the origin, then laid down on its side)
+        chisel(bm, 2, depth=(0.02, 0.06), tilt=(-0.3, 0.3))
+        Rm = Matrix.Translation(G(x_, y_ + r_ * 0.94, z_)) @ Matrix.Rotation(math.radians(yw_), 4, 'Z') @ Matrix.Rotation(math.pi / 2.0, 4, 'X')
+        bmesh.ops.transform(bm, matrix=Rm, verts=bm.verts[:])
+        marble.append(finish(bm, 'drum', fine=0.5))
+    for st_ in PLAN.get('stones', []):      # (a cut block lying on the floor, a fallen architrave or rubble, [x, y, z, length, depth, height, yaw])
+        x_, y_, z_, L_, D_, H_, yw_ = st_[:7]
+        bm = bmesh.new(); box(bm, (-L_ / 2.0, 0.0, -D_ / 2.0), (L_ / 2.0, H_, D_ / 2.0))
+        chisel(bm, 3, depth=(0.015, 0.05), tilt=(-0.4, 0.4))
+        Rm = Matrix.Translation(G(x_, y_ - 0.01, z_)) @ Matrix.Rotation(math.radians(yw_), 4, 'Z')
+        bmesh.ops.transform(bm, matrix=Rm, verts=bm.verts[:])
+        marble.append(finish(bm, 'stone', fine=0.5))
     for pd_ in PLAN.get('pedestals', []):      # (a square marble pedestal standing out of the still water, a statue on it; a fifth value turns it about the up as the game turns its statue: rotation.y)
         px, pz, top, hs = pd_[:4]; ty = float(pd_[4]) if len(pd_) > 4 else 0.0
         cs, sn = math.cos(ty), math.sin(ty)

@@ -1,0 +1,10 @@
+This is a painted backdrop for a game: a colossal carved marble head of a young goddess lying in a calm, misty sea under a soft hazy lilac sky, the sun glowing behind it at the upper right.
+
+Repaint ONLY the light and shade on the head, so that it reads much more strongly as a solid, three-dimensional carved sculpture:
+- keep the warm sunlight on the brow, the nose, the near cheek and the top of the hair;
+- make the form shadows on its far side, in the eye sockets, under the brow ridge, under the nose, around the lips, under the chin and between the locks of hair deeper and cooler (blue-lilac), so every form turns clearly away from the light;
+- soft occlusion where the forms meet, and where the head meets the water;
+- a gentle cool reflected light from the water on its underside;
+- a thin bright rim of light along its upper right contour.
+
+The head must keep exactly the same shape, size, position, features and expression, and the same soft painterly style. Do not change anything else in the picture at all: the sky, the sun, the sea, the haze, the head's reflection in the water, the colours and the composition stay exactly as they are.

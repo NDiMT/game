@@ -265,7 +265,13 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   lower"): `python3 -I tools/go/backdrop_figure.py design/level3/goddess_painted.png design/level3/backdrop_plain.jpg
   gomilos/backdrop.jpg 0.25 0.105 0.395 0.3 1 --onto design/level3/backdrop_whole.jpg 70,130,458,1240` (laid on the plain
   backdrop, then only the box about her, its edge feathered, set into the whole one, so its far rocks stay as they are);
-  a little more haze over her (0.3, was 0.2; the owner: "the statue here a little more subdued").
+  a little more haze over her (0.3, was 0.2; the owner: "the statue here a little more subdued"). **Since 22/11 rounder**
+  (the owner: "can the backgrounds in 3 and 4 look more 3D? In 3 Aphrodite, in 4 the head"): her own light and shade
+  drawn out and each row of her shaded as a turning form, darker as it turns from the light on the left, the shadow a
+  touch cooler (`python3 -I tools/go/figure_volume.py round design/level3/goddess_painted.png <scratch>/goddess_round.png
+  2.4 0.4 0.12`), then laid in as above with her haze 0.22 (`backdrop_figure.py <scratch>/goddess_round.png ... 0.25
+  0.105 0.395 0.22 1 --onto ...`); at haze 0.3 and less drawn out, the change hardly showed in the game. Gemini asked to
+  relight her made her warm as flesh and drew a white rim round her, a cut-out: not used.
   Turned down on the way: the goddess smooth and polished or softly painted, darker, a whole backdrop with her big and the
   haze low, rocks laid in by us (`tools/go/far_rocks.py`) or painted too near, too many or below her. No birds over this level (the owner: "take
   those stupid birds out of the third level"). The 3D goddess is out of the plan
@@ -285,9 +291,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
 - **The ring before every gate** is a soft white light (`fbf9f4`, `emit` 0.3, a soft white glow; the owner, 19/11: "the
   ring white light", after a bright yellowish ochre read as lemon and a very soft ochre); level 3's unlit ring a light
   grey-lilac (`d2cee0`; the owner asked twice for it lighter) that lights to the white; the brown stone within it, and
-  since 22/11 a low ring of the same brown stone round its white (`IV_RING_OUT` 0.52, tube 0.05, as the squares' stone
-  round their light; the owner: "on the round rings at the gate another small outer layer in the colour of the inside,
-  round the white"). A
+  since 22/11 a low ring of the same brown stone round its white (`IV_RING_OUT` 0.495, tube 0.055, its inner edge under
+  the white; the owner: "on the round rings at the gate another small outer layer in the colour of the inside, round the
+  white", then "the darker outer circle a little further in": at 0.52 a line of the floor showed between them), flat
+  (squashed to 0.16) so its top is lit as the stone within and reads its colour (squashed to 0.3, as the squares'
+  stone, it read darker). A
   terracotta disc within and a terracotta ring round it were tried for a day (20/11) and the owner had it back "exactly
   as it was".
 - **The levels are painted in brushstrokes** (the owner, 19/11: "softly, as with a brush", "the brushstrokes on the
@@ -450,7 +458,15 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   statue less intense, about as it is in the first frame", the concept; of three strengths, "10% more intense than the
   third and we're done"): `tools/go/backdrop_haze.py` lays the painting back toward its clean plate within the head's
   mask, keeping 0.46 of its own light and shade (`design/level4/game/`: `backdrop_head_game.jpg` the strong one as it
-  was in the game, `backdrop_plate.jpg` the plate without the head, `head_mask.png`). **No darkening at the screen's edges here** (`vr` hidden for `go_glass`): its concept is clear to
+  was in the game, `backdrop_plate.jpg` the plate without the head, `head_mask.png`).
+  **Since 22/11 more 3D** (the owner: "... in 4 the head"): Gemini asked to model only its light and shade more strongly,
+  all else kept (`design/level4/game/backdrop_head_3d_prompt.txt`, its raw edit `backdrop_head_3d_gemini.jpg`, unmoved
+  within a pixel), laid into the strong one within the mask with a little local relief (`python3 -I
+  tools/go/figure_volume.py relief design/level4/game/backdrop_head_3d_gemini.jpg design/level4/game/backdrop_head_game.jpg
+  design/level4/game/head_mask.png design/level4/game/backdrop_head_3d.jpg`), then laid back keeping 0.58 of it (0.46
+  before): `backdrop_haze.py design/level4/game/backdrop_head_3d.jpg design/level4/game/backdrop_plate.jpg
+  design/level4/game/head_mask.png 0.58 goglass/backdrop.jpg`.
+  **No darkening at the screen's edges here** (`vr` hidden for `go_glass`): its concept is clear to
   the corners, and the waking's plum vignette turned its sky pink there. The slabs a touch warmer (`marble2`, the
   concept's `ddcfd4` lit) and the near sea a little lighter (`grade_near`, its `99a6bb`), measured against the concept
   region by region (sky, sea, the image's stones, slabs, rock, block, mist).
@@ -559,11 +575,18 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   nearer than built (`IVGD_FAR_AT` 3.98, 0, 2.9 since 22/11, "the island a little more to the right and lower": about
   0.07 of the screen's width right and 0.035 of its height down from 2.6, 0, 2.6, the picture the owner chose; 0.05 down
   set its rock on the gate's top), its image in the water, and it casts its shadows (`IVGD_FAR_ON` true; `IV_FAR_FILE`,
-  `IV_FAR_LIFT`, `IV_FAR_AT="dx,dz[,scale about its own middle]"` try others). `goguard/backdrop.jpg` is the plain sky
+  `IV_FAR_LIFT`, `IV_FAR_AT="dx,dz[,scale about its own middle]"` try others). **More detail on it** (the owner, 22/11:
+  "on the island let's put more detail, and the short column in the trio a little more to the left"): its upper terrace
+  paved in four slabs a little out of level, meeting edge to edge so the joints are thin steps (0.14 m apart the rock
+  showed between them and it fell into pieces); drums of fallen columns on their sides and cut blocks lying about, an
+  architrave fallen before the colonnade (the builder's `drums` [x, y, z, length, radius, yaw] and `stones` [x, y, z,
+  length, depth, height, yaw] in a plan); the back row's short column a little to the left on the screen (-10.2, -7.95,
+  was -9.95, -8.2). `goguard/backdrop.jpg` is the plain sky
   again (`backdrop_source.jpg` at 1080 wide, its middle 1920); `goguard/far.glb` is packed again.
   **Columns standing out of the water far behind the level** (the owner, 22/11: "in the background, in the depth, add
-  columns that stick up out of the water"): five, one whole and four broken, each turned and leaning a little, a drowned
-  colonnade in the haze under the sun at the upper right, clear of the island and the level (`FAR_COLS` in
+  columns that stick up out of the water"; then "a little crooked, and more random"): seven, one whole and six broken,
+  each turned and leaning 5 to 14 degrees its own way, of other heights and girths, scattered in depth, not in a row, a
+  drowned colonnade in the haze under the sun at the upper right, clear of the island and the level (`FAR_COLS` in
   `tools/go/guard_far_plan.py`, `cols` → `goguard/far_cols_plan.json`; built `ivory_level.py -- <scratch>/far_cols.glb
   <scratch>/far_cols.json 91 24 goguard/far_cols_plan.json`, copied to `goguard/far_cols.glb`, packed; a sea column's
   seventh value turns and leans it as a column's third does), laid further in the haze than the island (`IVGD_COLS_K`

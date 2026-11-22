@@ -10615,7 +10615,7 @@ var ivgl_reset_mat: ShaderMaterial
 var ivgl_reset_glow: MeshInstance3D
 const IVGL_PAD_HALF := 0.39      # (half the frame's side along its tube's middle: as wide as the ring)
 const IVGL_PAD_TUBE := 0.075
-const IV_RING_OUT := 0.52      # (the low ring of brown stone round the white ring before every gate: its middle's radius and its tube, as the squares' (0.53, 0.05); 0 none)
+const IV_RING_OUT := 0.495      # (the low ring of brown stone round the white ring before every gate: its middle's radius and its tube; tight to the white, its inner edge under it (the owner, 22/11: "the darker outer circle a little further in"; 0.52 left a line of the floor between them); 0 none)
 const IV_RING_OUT_TUBE := 0.055
 const IVGL_PAD_OUT := 0.53      # (the square of brown stone round it: half its side, and its tube)
 const IVGL_PAD_OUT_TUBE := 0.05

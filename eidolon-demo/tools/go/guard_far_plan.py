@@ -51,6 +51,19 @@ def float_plan():
     turn = [[17, 3.0, 40], [-23, 2.5, 200], [35, 4.0, 120], [8, 3.5, 300], [-12, 2.0, 80]]
     cols = [c for c in pl['columns'] if not (abs(c[0][0] + 11.8) < 0.01 and abs(c[0][2] + 8.2) < 0.01)]      # (the back row's second, the middle one)
     pl['columns'] = [c + [turn[i]] for i, c in enumerate(cols)]
+    for c in pl['columns']:      # (the short one of the back row's three a little to the left on the screen, clear of the tall one's plinth (the owner, 22/11: "the short column in the trio a little more to the left"))
+        if abs(c[0][0] + 9.95) < 0.01 and abs(c[0][2] + 8.2) < 0.01: c[0] = [-10.2, HI, -7.95]
+    # more detail (the owner, 22/11: "on the island let's put more detail"): the upper terrace paved in four slabs, a
+    # little out of level, joints between them; drums of fallen columns on their sides; a fallen architrave before the
+    # colonnade; a few cut blocks lying about
+    R = lambda x0, x1, z0, z1: [[x0, z0], [x1, z0], [x1, z1], [x0, z1]]
+    pl['floors'] = {'FA1': {'h': HI, 'xz': R(-13.2, -11.8, -8.7, -7.43)}, 'FA2': {'h': HI + 0.03, 'xz': R(-11.8, -9.6, -8.7, -7.43)},
+                    'FA3': {'h': HI - 0.02, 'xz': R(-13.2, -11.8, -7.43, -6.2)}, 'FA4': {'h': HI + 0.015, 'xz': R(-11.8, -9.6, -7.43, -6.2)},
+                    'FB': pl['floors']['FB']}      # (the four meet edge to edge, a little out of level, so the joints are thin steps; 0.14 apart, the rock showed between them and the terrace fell into pieces)
+    pl['drums'] = [[-10.45, HI + 0.015, -6.65, 0.72, 0.2, 32], [-12.2, HI - 0.02, -6.95, 0.6, 0.2, -52], [-10.15, LO, -5.15, 0.55, 0.18, 74]]
+    pl['stones'] = [[-11.85, HI + 0.02, -7.62, 1.75, 0.34, 0.3, 11],      # (an architrave fallen before the colonnade)
+                    [-12.95, HI - 0.02, -7.25, 0.32, 0.24, 0.25, 22], [-9.88, HI + 0.015, -6.5, 0.27, 0.22, 0.21, -37],
+                    [-12.2, HI, -8.5, 0.3, 0.28, 0.24, 8], [-8.98, LO, -4.98, 0.32, 0.26, 0.2, 51]]
     pl['rocks'] = [r for r in pl['rocks'] if r[2] >= LO - 0.13]      # (the island's own rock, under its slabs; the small ones out in the sea about it are gone)
     pl['sea_columns'] = []
     pl['hang'] = [SEA, 2.8, -11.2, -6.9, 1.3]
@@ -62,12 +75,14 @@ def float_plan():
 # broken, [turn, lean, lean's way]], their plinths under the water (a column's foot 0.6 under it), so each comes up out
 # of the sea; laid where the picture at the level's start has open sea under the haze, clear of the island in the air
 # and of the level (each at about these points of the screen, x and y: 0.60 0.385, 0.67 0.375, 0.78 0.395, 0.95 0.37,
-# 0.50 0.375; tools: the level's eye, its follow lifting the picture 0.07 at the start)
-FAR_COLS = [[-5.52, SEA - 0.6, -7.82, 3.0, 0.22, False, [12, 1.5, 30]],
-            [-5.21, SEA - 0.6, -8.60, 2.1, 0.22, True, [-20, 3.0, 160]],
-            [-3.88, SEA - 0.6, -8.97, 2.6, 0.22, True, [28, 2.0, 250]],
-            [-3.17, SEA - 0.6, -10.89, 1.7, 0.22, True, [-8, 4.0, 300]],
-            [-6.53, SEA - 0.6, -7.28, 1.9, 0.22, True, [40, 2.5, 100]]]
+# 0.50 0.375, at first; the level's eye, its follow lifting the picture 0.07 at the start)
+FAR_COLS = [[-5.48, SEA - 0.6, -7.23, 3.0, 0.24, False, [14, 7, 20]],
+            [-5.56, SEA - 0.6, -8.40, 1.85, 0.21, True, [-31, 13, 150]],
+            [-3.68, SEA - 0.6, -8.07, 2.5, 0.25, True, [47, 9, 300]],
+            [-4.10, SEA - 0.6, -9.42, 1.22, 0.22, True, [-8, 5, 210]],
+            [-2.91, SEA - 0.6, -10.09, 2.15, 0.23, True, [22, 14, 60]],
+            [-1.50, SEA - 0.6, -9.76, 1.65, 0.2, True, [-40, 10, 330]],
+            [-6.73, SEA - 0.6, -7.71, 1.45, 0.2, True, [5, 11, 250]]]      # (then crooked and more at random (the owner, 22/11: "the columns in the water a little crooked, and more random"): seven, leaning 5 to 14 degrees each its own way, of other heights and girths, scattered in depth, not in a row; their feet at about these points of the screen at the start: 0.565 0.398, 0.635 0.372, 0.735 0.418, 0.795 0.381, 0.915 0.392, 0.985 0.428, 0.515 0.362)
 
 
 def cols_plan():
