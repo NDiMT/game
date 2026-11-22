@@ -557,7 +557,12 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   **The cube, four offered** (22/11: "for the square with the meander I want something else, try something yourself,
   to match in colour, and in style if you want"; `IV_CUBE_PAL="block:h,h,h,h;meander:h,h,h,h"` tries one): 1 white
   marble, its meander the rock's dark plum (`f2ebe3`; `6e5f6e`), 2 dark plum stone, its meander ivory (`857684`;
-  `f1eae2`), 3 lavender grey, ivory (`bfb4c9`; `f6f1ef`), 4 terracotta, cream (`c98d76`; `f2e4d6`). The owner to choose.
+  `f1eae2`), 3 lavender grey, ivory (`bfb4c9`; `f6f1ef`), 4 terracotta, cream (`c98d76`; `f2e4d6`); then six more (the
+  owner: "give a few more options for the cube"): 5 pale blue-grey, ivory (`c3cad6`; `f5f6f9`), 6 dusty rose, ivory
+  (`d4aeb0`; `f8f0ef`), 7 rose-white marble, lilac-grey meander (`f3e6e6`; `9d93ad`), 8 dark slate blue-grey, ivory
+  (`7b8499`; `f2f1f4`), 9 warm grey, dark meander (`cfc6bd`; `6b6160`), 10 amethyst, ivory (`a38fb3`; `f4eef6`); each
+  its four tones lit to shade in `IV_CUBE_PAL` form in the scratchpad's `cubes.env`, `cubes2.env` (as `block:` and
+  `meander:` lists). The owner to choose.
   The veiled bust is out again (`observer` None). Before it (the owner, 21/11: "make something else for the
   background, whatever you like, but matching the perspective and the colours"; then of it: "I don't like the new
   background"): the ruins of a drowned sanctuary far
