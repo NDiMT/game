@@ -537,8 +537,27 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   island, a thread of water falling from it (0.68, 0.25, 0.225); 2 an island on a slender stem of rock, a round temple
   on it and a stair winding up (0.62, 0.24, 0.235); 3 an island coming apart upward, its stones drifting into the sky
   (0.6, 0.25, 0.146, faded out above 0.17 to 0.24); 4 an island held up in a colossal marble hand (0.6, 0.25, 0.23); 5 an
-  island and its upside-down twin in the sky (0.5, 0.25, 0.215). The owner to choose; the painted island of ruins stays
-  until then.
+  island and its upside-down twin in the sky (0.5, 0.25, 0.215). None was liked (22/11: "I don't like the background").
+  **Since 22/11 the 3D island in the air, on the plain sky** (the owner, of it: "I liked this background"): the far
+  island built again by `python3 -I tools/go/guard_far_plan.py goguard/far_plan.json float` (then `ivory_level.py --
+  <scratch>/far.glb <scratch>/far.json 77 24 goguard/far_plan.json`, copied to `goguard/far.glb`): no rocks or columns in
+  the sea about it, the back row's middle column gone, every column turned and leaning a little its own way (a column's
+  third value in a plan, [turn, lean, lean's way] in degrees, `turn_column` in the builder; the owner, of the first 3D
+  one: "shadows, more detail, a column less, randomly slightly turned"), its rock under the old water line drawn into
+  one jagged point under it (`hang` in a plan); the game lifts it 2 m off the water (`IVGD_FAR_LIFT`) and sets it
+  nearer than built (`IVGD_FAR_AT` 2.6, 0, 2.6), its image in the water, and it casts its shadows (`IVGD_FAR_ON` true;
+  `IV_FAR_FILE`, `IV_FAR_LIFT`, `IV_FAR_AT="dx,dz[,scale about its own middle]"` try others). Its columns reach up into
+  the story's first line at the start, as in the picture the owner chose. `goguard/backdrop.jpg` is the plain sky again
+  (`backdrop_source.jpg` at 1080 wide, its middle 1920); `goguard/far.glb` is packed again.
+  **Blurred columns before the eye** (the owner, 22/11: "can we have blurred columns at the front of the screen?"): two
+  broken fluted columns of our own, at the left and the right edges, their feet behind the rocks before the eye
+  (`goguard/col_l.png`, `col_r.png` by `tools/go/fg_columns.py`: rendered from the game's eye, lit from behind, darkened
+  toward the rocks' plum and blurred; laid on before the rocks in `ch1.gd`, for `go_guard`). **The Guardian casts his
+  shadow** on his pedestal and the way (22/11: "the guardian looks as if he stands in the air": his glass cast none).
+  **The cube, four offered** (22/11: "for the square with the meander I want something else, try something yourself,
+  to match in colour, and in style if you want"; `IV_CUBE_PAL="block:h,h,h,h;meander:h,h,h,h"` tries one): 1 white
+  marble, its meander the rock's dark plum (`f2ebe3`; `6e5f6e`), 2 dark plum stone, its meander ivory (`857684`;
+  `f1eae2`), 3 lavender grey, ivory (`bfb4c9`; `f6f1ef`), 4 terracotta, cream (`c98d76`; `f2e4d6`). The owner to choose.
   The veiled bust is out again (`observer` None). Before it (the owner, 21/11: "make something else for the
   background, whatever you like, but matching the perspective and the colours"; then of it: "I don't like the new
   background"): the ruins of a drowned sanctuary far

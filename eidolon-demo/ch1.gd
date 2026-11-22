@@ -6610,6 +6610,9 @@ func _ivr_build() -> void:
 		iv_leaves.modulate = plum; iv_leaves.size = Vector2(420, 420) * k; iv_leaves.position = Vector2(-80, -100) * k
 		var lp := ResourceLoader.exists("res://gowake/rock_br_lp.png")      # (the user: "low poly rocks, not just shapes", "a little blurred", "darker": rocks of the level's own cut, rendered dark and softened as things close before the eye)
 		var lpc := Color(0.94, 0.88, 0.97, 0.98)
+		if go_guard and ResourceLoader.exists("res://goguard/col_l.png"):      # (the fifth level: two broken columns before the eye, blurred, at the left and the right, their feet behind the rocks (the owner, 22/11: "blurred columns at the front of the screen"); our own fluted columns, tools/go/fg_columns.py)
+			_iv_overlay(cl, "res://goguard/col_l.png", Vector2(-106 * k, vh - 490 * k), Vector2(232, 518) * k)
+			_iv_overlay(cl, "res://goguard/col_r.png", Vector2(627 * k, vh - 390 * k), Vector2(217, 391) * k)
 		var rb := _iv_overlay(cl, "res://gowake/rock_br_lp.png" if lp else "res://goiv/rock_br.png", Vector2(720 * k - 345 * k, vh - 400 * k), Vector2(400, 400) * k); rb.modulate = lpc if lp else plum      # (a rock before the eye at the lower right: off the way, the sea there is open)
 		var rbl := _iv_overlay(cl, "res://gowake/rock_bl_lp.png" if lp else "res://goiv/rock_bl.png", Vector2(-80 * k, vh - 360 * k), Vector2(360, 360) * k); rbl.modulate = lpc if lp else plum      # (and one at the lower left, short of the threshold)
 		if go_veil: iv_leaves.visible = false      # (the second and third levels: no leaves above (the owner, 18/11: "no blurry leaves above"))
@@ -10970,10 +10973,11 @@ func _ivgd_dir(ph: int) -> String: return IVGD_ORDER[(ivgd_d0 + ph) % 4]
 ## the haze, its image in the water (the owner, 21/11: "something else in the background, and let it be 3D"; of the ways
 ## offered, "a 3D island with ruins"); IV_FAR=0 leaves it out, IV_FAR_K tries another haze
 const IVGD_FAR_K := 0.3
-const IVGD_FAR_ON := false      # (the owner, 21/11: "can't you make the island as a picture?": it is painted in the backdrop now; IV_FAR=1 brings the 3D one back)
+const IVGD_FAR_ON := true      # (the island in the air, 3D, on the plain sky (the owner, 22/11, of it: "I liked this background"); before, painted into the backdrop (21/11: "can't you make the island as a picture?"); IV_FAR=0 leaves it out)
 const IVGD_FAR_FILE := "far.glb"
-const IVGD_FAR_LIFT := 0.0
-const IVGD_FAR_AT := Vector3(1.2, 0.0, 1.2)      # (set down a little nearer than it was built, so its columns stay under the story's lines)
+const IVGD_FAR_C := Vector3(-11.2, 0.0, -6.9)      # (its own middle, as built: it is made smaller about it)
+const IVGD_FAR_LIFT := 2.0      # (off the water: an island in the air)
+const IVGD_FAR_AT := Vector3(2.6, 0.0, 2.6)      # (nearer than built, as the owner chose it; 1.2, 1.2 on the water before)      # (set down a little nearer than it was built, so its columns stay under the story's lines)
 func _ivgd_far() -> void:
 	var fp := OS.get_environment("IV_FAR_FILE") if OS.get_environment("IV_FAR_FILE") != "" else go_dir + IVGD_FAR_FILE      # (IV_FAR_FILE tries another build of it)
 	if not (IVGD_FAR_ON or OS.get_environment("IV_FAR") == "1") or OS.get_environment("IV_FAR") == "0" or not FileAccess.file_exists(fp): return
@@ -10984,7 +10988,8 @@ func _ivgd_far() -> void:
 	iv_root.add_child(fv)
 	var fo := IVGD_FAR_AT
 	if OS.get_environment("IV_FAR_AT") != "":      # (to try it elsewhere: "dx,dz" from where it was built, and a third value its scale)
-		var f3 := OS.get_environment("IV_FAR_AT").split_floats(","); fo = Vector3(f3[0], 0.0, f3[1]); if f3.size() > 2: fv.scale = Vector3.ONE * f3[2]
+		var f3 := OS.get_environment("IV_FAR_AT").split_floats(","); fo = Vector3(f3[0], 0.0, f3[1])
+		if f3.size() > 2: fv.scale = Vector3.ONE * f3[2]; fo += IVGD_FAR_C * (1.0 - f3[2])      # (smaller about its own middle, not the level's)
 	fo.y += float(OS.get_environment("IV_FAR_LIFT")) if OS.get_environment("IV_FAR_LIFT") != "" else IVGD_FAR_LIFT      # (an island in the air is lifted off the water)
 	fv.position += fo
 	var fk := float(OS.get_environment("IV_FAR_K")) if OS.get_environment("IV_FAR_K") != "" else IVGD_FAR_K
