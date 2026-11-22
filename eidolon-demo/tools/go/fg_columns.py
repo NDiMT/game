@@ -60,7 +60,7 @@ def render(out_dir):
 
     sun = bpy.data.lights.new('sun', 'SUN'); sun.energy = 3.2; sun.angle = math.radians(6)
     so = bpy.data.objects.new('sun', sun); sc.collection.objects.link(so)
-    so.rotation_euler = (math.radians(62), 0.0, math.radians(45 + 150))      # (low, from behind at the upper right of the picture)
+    so.rotation_euler = (math.radians(58), 0.0, math.radians(105))      # (from the right of the picture and a little behind: the flutes and the round of each read even blurred; from behind they were flat)
     cam = bpy.data.cameras.new('cam'); cam.type = 'ORTHO'
     co = bpy.data.objects.new('cam', cam); sc.collection.objects.link(co); sc.camera = co
     co.rotation_euler = (math.radians(55), 0.0, math.radians(45))      # (the game's eye: 35 degrees down, along the diagonal)
@@ -90,7 +90,7 @@ def soften(raw, out):
         ys, xs = np.where(a[..., 3] > 0.08); a = a[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
         k = w2 / a.shape[1]; blur2 = 14; pad = blur2 * 3
         a = np.asarray(Image.fromarray((a * 255).astype(np.uint8), 'RGBA').resize((w2, int(a.shape[0] * k)), Image.LANCZOS)).astype(np.float32) / 255.0
-        rgb = a[..., :3] * np.array((0.5, 0.44, 0.55)); al = a[..., 3:4]      # (darker, toward the plum of the rocks before the eye)
+        rgb = a[..., :3] * np.array((0.6, 0.54, 0.64)); al = a[..., 3:4]      # (darker, toward the plum of the rocks before the eye, still marble)
         pm = np.concatenate([rgb * al, al], 2); H, W = pm.shape[:2]
         big = np.zeros((H + 2 * pad, W + 2 * pad, 4), np.float32); big[pad:pad + H, pad:pad + W] = pm
         p = np.asarray(Image.fromarray((np.clip(big, 0, 1) * 255).astype(np.uint8), 'RGBA').filter(ImageFilter.GaussianBlur(blur2))).astype(np.float32) / 255.0
