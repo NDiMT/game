@@ -104,8 +104,16 @@ NEAR_YAW = round(math.degrees(math.atan2(-(NEAR_ROW[-1][1] - NEAR_ROW[0][1]), NE
 # capitals' volutes along the row; the architrave in two blocks meeting over the middle column, the far one settled a
 # little and its end broken off, the piece fallen into the water at the third column's foot
 ION = lambda cap=None, drum=0.62: {'style': 'ionic', 'cap': NEAR_YAW if cap is None else cap, 'drum': drum}
-NEAR_COLS = [[x, SEA - 0.6, z, NEAR_H, 0.2, False, [t, 0, 0], ION()] for (x, z), t in zip(NEAR_ROW, (1.5, -2.0, 2.5))] + \
-            [[-9.92, SEA - 0.6, -3.862, 2.1, 0.19, True, [25, 9, 140], ION(10)], [-6.064, SEA - 0.6, -6.78, 1.7, 0.18, True, [-30, 12, 320], ION(-40)]]
+# more massive (the owner, 23/11: "in general I want them more massive"): every column a good deal stouter, the row a
+# little taller; and random broken columns in the open water he marked between the row, the gate and the island
+# (frame pixels at her start, the foot of each: 190 712 and 362 664, a drum half sunk at 282 722; four and two drums
+# were too many: "I think you've put too many below"; and nearer and further apart: "a little more forward and more
+# spread out")
+NEAR_H = 3.1
+NEAR_COLS = [[x, SEA - 0.6, z, NEAR_H, 0.28, False, [t, 0, 0], ION(drum=0.7)] for (x, z), t in zip(NEAR_ROW, (1.5, -2.0, 2.5))] + \
+            [[-9.92, SEA - 0.6, -3.862, 2.4, 0.27, True, [25, 9, 140], ION(10)], [-6.064, SEA - 0.6, -6.78, 2.0, 0.26, True, [-30, 12, 320], ION(-40)]] + \
+            [[-4.453, SEA - 0.6, -1.190, 2.3, 0.29, True, [-20, 11, 315], ION()], [-3.503, SEA - 0.6, -3.940, 1.6, 0.31, True, [40, 7, 200], ION()]]      # (two only, the owner: "I think you've put too many below"; then "a little more forward and more spread out")
+MARK_DRUMS = [[-3.276, SEA - 0.94 * 0.29, -1.992, 0.6, 0.29, 30]]
 
 
 def near_plan():
@@ -113,7 +121,7 @@ def near_plan():
     pl = cols_plan()
     (x0, z0), (x1, z1), (x2, z2) = NEAR_ROW
     d = ((x2 - x0), (z2 - z0)); L = math.hypot(*d); d = (d[0] / L, d[1] / L); e = (0.96, 0.29)      # (along the row; across it, toward the eye)
-    yA = SEA - 0.6 + NEAR_H; D, H = 0.36, 0.34
+    yA = SEA - 0.6 + NEAR_H; D, H = 0.5, 0.44
     def blk(a, b, opt):      # (a block from a to b along the row, measured from the first column)
         m = (a + b) / 2.0
         return [round(x0 + d[0] * m, 3), round(yA, 3), round(z0 + d[1] * m, 3), round(b - a, 3), D, H, NEAR_YAW, opt]
@@ -123,7 +131,7 @@ def near_plan():
     fx, fz = x2 + d[0] * 0.62 + e[0] * 0.38, z2 + d[1] * 0.62 + e[1] * 0.38      # (the piece broken off its end, fallen into the water by the third column)
     arch.append([round(fx, 3), SEA - 0.2, round(fz, 3), 0.62, D, H, NEAR_YAW + 38, {'break': 'both', 'roll': 24, 'pitch': 11}])
     pl.update({'sea_columns': NEAR_COLS, 'stones': [], 'architraves': arch,
-               'drums': [[-9.92 + 0.62, SEA - 0.94 * 0.19, -3.862 + 0.3, 0.55, 0.19, 64]]})      # (a drum of the far lone column, half sunk beside it)
+               'drums': [[-9.92 + 0.62, SEA - 0.94 * 0.27, -3.862 + 0.3, 0.6, 0.27, 64]] + MARK_DRUMS})      # (a drum of the far lone column, half sunk beside it; two more among the random ones)
     return pl
 
 
@@ -131,7 +139,7 @@ def near_plan():
 # water, its volutes facing the eye; built about the level's origin, the game sets it where it stands (IVGD_ISLE_COL)
 def isle_plan():
     pl = cols_plan()
-    pl.update({'sea_columns': [[0.0, SEA - 0.6, 0.0, 2.9, 0.2, False, [0, 0, 0], ION(45)]], 'stones': [], 'drums': []})
+    pl.update({'sea_columns': [[0.0, SEA - 0.6, 0.0, 3.1, 0.28, False, [0, 7, 315], ION(45, 0.7)]], 'stones': [], 'drums': []})      # (stouter, and leaning a little to the screen's left: the owner, "can the near one be a little slanted?")
     return pl
 
 
