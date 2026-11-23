@@ -316,7 +316,8 @@ for f in bm.faces:
 print('meander faces', sum(f[mark] for f in bm.faces))
 
 # the meander uneven, as cut by hand (as tools/go/block_meander.py)
-WOB = {'one': (0.02, 0.0125, 0.015), 'four': (0.006, 0.004, 0.006), 'frame_thin': (0.004, 0.0025, 0.004), 'frame_calm': (0.004, 0.0025, 0.004)}.get(PATTERN, (0.008, 0.005, 0.008))      # (thin grooves waver less, or they would close)
+CRISP = PATTERN.startswith('frame')      # (the frames cut true: straight lines, every stroke meeting the next, the faces nearly flat, the corners only chipped (the owner, 23/11, of the first frame: "it looks crooked, as if not all the meander's surfaces touch"))
+WOB = (0.0, 0.0, 0.0) if CRISP else {'one': (0.02, 0.0125, 0.015), 'four': (0.006, 0.004, 0.006)}.get(PATTERN, (0.008, 0.005, 0.008))      # (thin grooves waver less, or they would close)
 SEG = 0.035
 def split_long(e):
     A, B = e.verts[0].co.copy(), e.verts[1].co.copy(); n = int((B - A).length / SEG) + 1
@@ -343,7 +344,7 @@ for v in bm.verts:
 bmesh.ops.triangulate(bm, faces=bm.faces[:], quad_method='BEAUTY', ngon_method='BEAUTY')
 print('uneven: verts moved', moved, 'faces', len(bm.faces))
 
-LEAN = [(rnd.uniform(-0.022, 0.022), rnd.uniform(-0.022, 0.022)) for _ in range(6)]      # (each face out of true its own way)
+LEAN = [(rnd.uniform(-0.022, 0.022) * (0.25 if CRISP else 1.0), rnd.uniform(-0.022, 0.022) * (0.25 if CRISP else 1.0)) for _ in range(6)]      # (each face out of true its own way; the frames' nearly flat)
 def bend(co):
     p = co.copy()
     for k, (n, sa, ta) in enumerate(FACES):
@@ -363,10 +364,10 @@ def cutp(b, co, no):
         for f in made.get('faces', []): f[mark] = 0
 corners = [(sx, sy, sz) for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)]
 rnd.shuffle(corners)
-for (sx, sy, sz) in corners[:5]:      # (corners broken off aslant, each its own size)
+for (sx, sy, sz) in corners[:(3 if CRISP else 5)]:      # (corners broken off aslant, each its own size; the frames' only chipped, clear of their keys)
     c = Vector((sx * HF, sy * HF, sz * HF))
     n = Vector((sx * rnd.uniform(0.6, 1.0), sy * rnd.uniform(0.6, 1.0), sz * rnd.uniform(0.6, 1.0))).normalized()
-    cutp(bm, bend(c) - n * rnd.uniform(0.03, 0.065), n)
+    cutp(bm, bend(c) - n * (rnd.uniform(0.012, 0.02) if CRISP else rnd.uniform(0.03, 0.065)), n)
 
 holes = [e for e in bm.edges if e.is_boundary]
 if holes: bmesh.ops.holes_fill(bm, edges=holes, sides=0)
