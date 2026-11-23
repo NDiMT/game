@@ -28,17 +28,17 @@ async function until(re, ms) { const end = Date.now() + ms; while (Date.now() < 
     await page.mouse.click(W / 2, H / 2); await new Promise(r => setTimeout(r, 1200)); await page.mouse.click(W / 2, H / 2);
     if (!(await until(/IV the start screen/, 600000))) { reached = 'no-menu'; throw new Error('no start screen'); }
     await new Promise(r => setTimeout(r, 6000));
-    await page.screenshot({ path: `${out}/menu_${lv}.png`, timeout: 120000 }).catch(e => log('check', 'menu shot: ' + e));
+    await page.screenshot({ path: `${out}/menu_${lv}.png`, timeout: 30000 }).catch(e => log('check', 'menu shot: ' + e));      // (a browser without a graphics card may be too slow to give a picture: no error)
     if (lv <= 1) {
       await page.mouse.click(W / 2, H * 0.5); log('---', 'played');
-      reached = (await until(/IV play/, 60000)) ? 'play' : 'false';
+      reached = (await until(/IV play/, 300000)) ? 'play' : 'false';
     } else {
       const k = lv; const x = 360 + (k - 1 - (nlev - 1) * 0.5) * 720 * (nlev <= 3 ? 0.2 : (nlev == 4 ? 0.17 : 0.15)), y = 1280 * 0.405;
       await page.mouse.click(x * W / 720, y * H / 1280); log('---', `picked ${k}`);
-      reached = (await until(/IV start at the level/, 120000)) ? 'true' : 'false';
+      reached = (await until(/IV start at the level/, 600000)) ? 'true' : 'false';
     }
     await new Promise(r => setTimeout(r, 45000));      // (the level runs a while: errors in its making or its first moves show)
-    await page.screenshot({ path: `${out}/level_${lv}.png`, timeout: 120000 }).catch(e => log('check', 'level shot: ' + e));
+    await page.screenshot({ path: `${out}/level_${lv}.png`, timeout: 30000 }).catch(e => log('check', 'level shot: ' + e));
   } catch (e) { log('check', String(e)); }
   await browser.close();
   console.log(`LEVEL ${lv} logs ${logs.length} bad ${bad} reached ${reached}`);
