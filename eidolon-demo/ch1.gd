@@ -6650,8 +6650,15 @@ func _ivr_build() -> void:
 		var lpc := Color(0.94, 0.88, 0.97, 0.98)
 		if go_guard:      # (the fifth level, before the eye: a figure of its story, blurred, dark against the light (the owner, 22/11: "in the fifth I don't like the blurred columns below, put something else"): a youth of marble gazing into a hand mirror, at the lower right; a marble hand holding a mirror up, at the lower left; painted alone by the image model, tools/go/fg_figure.py; IV_FG5=youth|hand|both|cols tries another)
 			var fgm := OS.get_environment("IV_FG5") if OS.get_environment("IV_FG5") != "" else IVGD_FG
-			if (fgm == "youth" or fgm == "both") and ResourceLoader.exists("res://goguard/fg_youth.png"): _iv_overlay(cl, "res://goguard/fg_youth.png", Vector2(IVGD_FG_YOUTH.x * k, vh - IVGD_FG_YOUTH.y * k), Vector2(IVGD_FG_YOUTH.z, IVGD_FG_YOUTH.z * 1100.0 / 750.0) * k)
-			if (fgm == "hand" or fgm == "both") and ResourceLoader.exists("res://goguard/fg_hand.png"): _iv_overlay(cl, "res://goguard/fg_hand.png", Vector2(IVGD_FG_HAND.x * k, vh - IVGD_FG_HAND.y * k), Vector2(IVGD_FG_HAND.z, IVGD_FG_HAND.z * 1100.0 / 793.0) * k)
+			var fk := float(OS.get_environment("IV_FG5_K")) if OS.get_environment("IV_FG5_K") != "" else IVGD_FG_K      # (their size, each held at its outer foot: smaller, more discreet)
+			var fa := float(OS.get_environment("IV_FG5_A")) if OS.get_environment("IV_FG5_A") != "" else IVGD_FG_A      # (and how much they show)
+			if (fgm == "youth" or fgm == "both") and ResourceLoader.exists("res://goguard/fg_youth.png"):
+				var ys := Vector2(IVGD_FG_YOUTH.z, IVGD_FG_YOUTH.z * 1100.0 / 750.0) * fk
+				var yo := _iv_overlay(cl, "res://goguard/fg_youth.png", Vector2(IVGD_FG_YOUTH.x * k, vh - (ys.y - (IVGD_FG_YOUTH.z * 1100.0 / 750.0 - IVGD_FG_YOUTH.y)) * k), ys * k); yo.modulate.a = fa
+			if (fgm == "hand" or fgm == "both") and ResourceLoader.exists("res://goguard/fg_hand.png"):
+				var hs := Vector2(IVGD_FG_HAND.z, IVGD_FG_HAND.z * 1100.0 / 793.0) * fk
+				var hx := IVGD_FG_HAND.x + IVGD_FG_HAND.z - hs.x      # (held at its right edge)
+				var ho := _iv_overlay(cl, "res://goguard/fg_hand.png", Vector2(hx * k, vh - (hs.y - (IVGD_FG_HAND.z * 1100.0 / 793.0 - IVGD_FG_HAND.y)) * k), hs * k); ho.modulate.a = fa
 			if fgm == "cols" and ResourceLoader.exists("res://goguard/col_l.png"):      # (before: two broken columns, their feet below the picture's edge (22/11: "blurred columns at the front of the screen"), tools/go/fg_columns.py)
 				_iv_overlay(cl, "res://goguard/col_l.png", Vector2(-106 * k, vh - 490 * k), Vector2(232, 656) * k)
 				_iv_overlay(cl, "res://goguard/col_r.png", Vector2(627 * k, vh - 390 * k), Vector2(217, 525) * k)
@@ -6665,6 +6672,9 @@ func _ivr_build() -> void:
 		elif go_milos: rb.modulate = Color(0.66, 0.72, 0.96, 0.98); rbl.modulate = rb.modulate
 		if go_glass:      # (the fourth level, as its concept: no rocks before the eye; a bank of mist at the left, over the glass's edge)
 			rb.visible = false; rbl.visible = false
+			if ResourceLoader.exists("res://goglass/fg_head.png") and OS.get_environment("IV_FG4") != "0":      # (the back of a statue's head before the eye at the lower right, blurred (the owner, 23/11: "at the lower right in 4 put the back of a statue's head, blurred"): our own goddess seen from behind, tools/go/fg_head.py; IV_FG4=0 leaves it out)
+				var hs := Vector2(IVGL_FG_HEAD.z, IVGL_FG_HEAD.z * IVGL_FG_HEAD_AR)
+				_iv_overlay(cl, "res://goglass/fg_head.png", Vector2(IVGL_FG_HEAD.x * k, vh - IVGL_FG_HEAD.y * k), hs * k)
 			if ResourceLoader.exists("res://goglass/mist_l.png") and OS.get_environment("IV_ZOOM") == "" and OS.get_environment("IV_MIST_L") == "1":      # (laid on the screen for the game's own eye: not for a close look; off since 20/11: a flat white blot over the island's end ("the mist arranged better"), a bank of cloud standing on the water in its place; IV_MIST_L=1 brings it back)
 				var ml := _iv_overlay(cl, "res://goglass/mist_l.png", Vector2(-70 * k, vh * 0.27), Vector2(400, 475) * k); ml.modulate = Color(1, 1, 1, 0.92)
 		if go_veil and not go_milos and not go_glass and not go_guard and ResourceLoader.exists("res://goveil/statue_fg.png"):      # (the second level: a veiled statue standing before the eye at the lower right, blurred, dark against the light, one of the thousand (the owner, 18/11: "fantastic, the blurred statue"); clear of the way, the gate and the rocks in the sea)
@@ -11073,7 +11083,11 @@ func _ivgd_dir(ph: int) -> String: return IVGD_ORDER[(ivgd_d0 + ph) % 4]
 ## the haze, its image in the water (the owner, 21/11: "something else in the background, and let it be 3D"; of the ways
 ## offered, "a 3D island with ruins"); IV_FAR=0 leaves it out, IV_FAR_K tries another haze
 const IVGD_FAR_K := 0.3
+const IVGL_FG_HEAD := Vector3(430.0, 400.0, 380.0)      # (the fourth level's head before the eye: its left, its top over the picture's foot, its width, at 720 wide; its shoulder runs on below the picture's edge)
+const IVGL_FG_HEAD_AR := 1100.0 / 1015.0      # (goglass/fg_head.png's height over its width)
 const IVGD_FG := "both"      # (what stands before the eye at its lower corners: see _ivr_build's corners)
+const IVGD_FG_K := 1.0      # (their size; IV_FG5_K tries another (the owner, 23/11: "in 5 put something more discreet"))
+const IVGD_FG_A := 1.0      # (how much they show; IV_FG5_A tries another)
 const IVGD_FG_YOUTH := Vector3(-130.0, 330.0, 340.0)      # (its left, its top over the picture's foot, its width; at 720 wide: at the lower left, in the open water under the gate's rocks, facing in, his mirror toward the middle)
 const IVGD_FG_HAND := Vector3(430.0, 340.0, 340.0)      # (at the lower right, under the walk's right arm, clear of it)
 const IVGD_FAR_ON := false      # (the island in the air painted into the backdrop since 22/11 (the owner, of the image model's repaint of the 3D one: "the new floating island!! but a little more to the right"; design/level5/isle_painted/lay_in.py); before, 3D on the plain sky (22/11, of it: "I liked this background"), and before that painted (21/11: "can't you make the island as a picture?"); IV_FAR=1 brings the 3D one back, with IV_BG_FILE=design/level5/backdrop_plain_clean.jpg for its plain sky)
