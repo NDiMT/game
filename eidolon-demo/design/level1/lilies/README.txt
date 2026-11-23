@@ -35,3 +35,7 @@ cut abruptly"): so the lilies are cut out of that green take itself (their cover
 from it, the green spill out), whole pads only, none within 60 px of the frame's edge, the left group and the lower right
 only; the painting's water about them (lilies3 lifted against frame.png with lilies2_green.jpg for the pads, under 0.8 of
 cover) kept within 24 px of them, soft 6; scaled to 1080x1920: gowake/wd_lily_ring.png.
+
+Each bud's image in the water (the owner: "I'd like a reflection on the bud"): design/level1/lilies/lilies_final.py makes
+the game's layer from the chosen take (lilies3_green.jpg) and the lift of lilies3 (its water), each bud turned over about
+where its stem leaves the water, under the pads (the lower right one's falls under its pads, as it would).
