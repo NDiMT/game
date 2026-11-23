@@ -685,8 +685,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   reeds, a fallen column; the owner: "the column is fantastic"), then painted the column anew at the lower right, lying
   in the water with no rock under it (the owner: "make it anew from the right", "not on stupid rocks", "and blurred";
   `design/level5/fg_edit/column_water*.png`), turned the water about it green (`water_green_prompt.txt`), and it is cut
-  out against the green (only the light marble where it touches the level's rocks), darkened to 0.75, blurred 3 px and
-  laid 40 px lower than painted ("just a liiittle lower"). Lifted out by difference or mirrored, it looked "badly cut".
+  out against the green (only the light marble where it touches the level's rocks), as painted (darkened and blurred
+  by us: "blurred too much, I liked it as it was"), laid 40 px lower than painted ("just a liiittle lower"). Lifted out by difference or mirrored, it looked "badly cut".
   **The island in the air
   painted by Gemini, a trial** (the owner, 22/11: "try making the floating island in Gemini"): the 3D island cut from a
   still of the level (with it, without it) and laid into the clean plain backdrop where it lies in the game (the screen
