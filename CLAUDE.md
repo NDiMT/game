@@ -561,11 +561,12 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   subdued"); over the lit discs alone, and a thinner line with a bright middle, before that. Before, a broad band of light on the floor from his pedestal along it was "a
   pointless laser blur" and a ring on each place "an extra circle" (the owner, 21/11); where he will look next, a fainter
   band then, is no longer shown; where he looks now or
-  next she may not end a move: seen, back to the start (`_ivg_fail`). **Seen, she goes into a red shadow, then a black
-  one, and is gone in a puff** (the owner, 22/11: "if the laser finds you, fade to a red shadow and then black, and go
-  poof like the black shadow does"; `_ivgd_seen_out`): the fourth level's shadow (`IVGL_SHADE_SH`, its three passes,
-  denser) laid over her as it reddens, her image in the water going with it (0.5 s); then only the shadow, her own look
-  and her cast shadow gone; red to black (0.45 s); the puff as the fourth level's (`_iv_puff`, dark smoke); his look runs
+  next she may not end a move: seen, back to the start (`_ivg_fail`). **Seen, she goes into a red shadow and is gone
+  in a red puff** (the owner, 22/11: "if the laser finds you, fade to a red shadow and then black, and go poof like the
+  black shadow does"; then the same day "when it goes poof, a red shadow -> poof": no black; `_ivgd_seen_out`): the
+  fourth level's shadow (`IVGL_SHADE_SH`, its three passes, denser) laid over her as it reddens, her image in the water
+  going with it (0.5 s); then only the shadow, her own look and her cast shadow gone, a breath (0.2 s); the puff as the
+  fourth level's (`_iv_puff`), in red smoke a little lighter than the shadow (`IVGD_POOF_COL`); his look runs
   on past where she stood; then a shorter fade back to the start, she herself again (`_ivgd_her_back`). Stepped into his
   look as it lies, she is seen there before he turns (unless his turn now brings his look back off the mirror). **Smoother**
   (the owner, 22/11: "improve the gameplay in the fifth map a little, everything a little smoother"): at each turn his old
@@ -665,8 +666,13 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   `IVR_FOLLOW_LOG`), then Gemini asked to repaint only it in the painting's style (it made the back row a colonnade with
   its architrave, and drew its rock down into a longer point); only the island's region of its picture set into the
   plain backdrop: `design/level5/isle_painted/` (backdrop.jpg, its prompt, what Gemini was given and gave); offered
-  beside the 3D one (`IV_FAR=0 IV_BG_FILE=design/level5/isle_painted/backdrop.jpg` shows it);
-  the 3D one stays until the owner chooses. **The Guardian casts his
+  beside the 3D one (`IV_FAR=0 IV_BG_FILE=design/level5/isle_painted/backdrop.jpg` shows it). **He chose the painted
+  one, a little to the right** (22/11: "the new floating island!! but a little more to the right"): `goguard/backdrop.jpg`
+  is the plain sky with it laid in 76 px (0.07 of the width) to the right, as a difference from the sky it was painted
+  on, so its soft edge leaves no seam (`python3 -I design/level5/isle_painted/lay_in.py 76 goguard/backdrop.jpg`; the
+  plain sky kept as `design/level5/backdrop_plain_clean.jpg`, the 3D island's place as `island3d_mask.png`); the 3D island
+  is off (`IVGD_FAR_ON` false) and `goguard/far.glb` out of the builds (`IV_FAR=1
+  IV_BG_FILE=design/level5/backdrop_plain_clean.jpg` shows it on a desktop). **The Guardian casts his
   shadow** on his pedestal and the way (22/11: "the guardian looks as if he stands in the air": his glass cast none).
   **Frosted, his shade is a soft lilac grey** (`frost_fill` in `IVGD_GLASS_SH`, as the slabs' shade): lit by the sun
   alone, the side away from it and his own shadow on him stayed near black as he whitened (the owner, 22/11: "when he

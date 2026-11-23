@@ -7229,7 +7229,7 @@ func _ivg_fail(why: String, at: String, fi := -1) -> void:
 		var lk: Vector3 = ivp_nodes[_ivg_watched(ivg_faces[fi])] - (ivp_nodes[ivg_faces[fi].node] as Vector3)
 		var lu := create_tween(); lu.tween_property(hn, "position", p0 + Vector3(lk.x, 0, lk.z).normalized() * 0.25, 0.15); lu.tween_property(hn, "position", p0, 0.3)
 	var gd_ := go_guard and ivgd_n != null
-	if gd_: await _ivgd_seen_out()      # (the fifth level: a red shadow, then black, then a puff)
+	if gd_: await _ivgd_seen_out()      # (the fifth level: a red shadow, then a puff)
 	var f := create_tween(); f.tween_property(iv_fade, "color:a", 1.0, 0.5 if gd_ else 0.8).set_delay(0.0 if gd_ else 0.3).set_trans(Tween.TRANS_SINE); await f.finished
 	_ivg_reset()
 	await wait(0.25 if gd_ else 0.4)
@@ -11064,7 +11064,7 @@ const IVGD_FAR_K := 0.3
 const IVGD_FG := "both"      # (what stands before the eye at its lower corners: see _ivr_build's corners)
 const IVGD_FG_YOUTH := Vector3(-130.0, 330.0, 340.0)      # (its left, its top over the picture's foot, its width; at 720 wide: at the lower left, in the open water under the gate's rocks, facing in, his mirror toward the middle)
 const IVGD_FG_HAND := Vector3(430.0, 340.0, 340.0)      # (at the lower right, under the walk's right arm, clear of it)
-const IVGD_FAR_ON := true      # (the island in the air, 3D, on the plain sky (the owner, 22/11, of it: "I liked this background"); before, painted into the backdrop (21/11: "can't you make the island as a picture?"); IV_FAR=0 leaves it out)
+const IVGD_FAR_ON := false      # (the island in the air painted into the backdrop since 22/11 (the owner, of the image model's repaint of the 3D one: "the new floating island!! but a little more to the right"; design/level5/isle_painted/lay_in.py); before, 3D on the plain sky (22/11, of it: "I liked this background"), and before that painted (21/11: "can't you make the island as a picture?"); IV_FAR=1 brings the 3D one back, with IV_BG_FILE=design/level5/backdrop_plain_clean.jpg for its plain sky)
 const IVGD_FAR_FILE := "far.glb"
 const IVGD_FAR_C := Vector3(-11.2, 0.0, -6.9)      # (its own middle, as built: it is made smaller about it)
 const IVGD_FAR_LIFT := 2.0      # (off the water: an island in the air)
@@ -11243,16 +11243,15 @@ func _ivgd_sink(nb: String, into: String) -> void:
 	iv_block_n.visible = false
 	iv_busy = false
 
-## seen by the Guardian: she goes into a red shadow, then a black one, and is gone in a puff, as her shadow in the
-## fourth level's glass goes (the owner, 22/11: "if the laser finds you, fade to a red shadow and then black, and go poof
-## like the black shadow does"); then back to the start. Her own look gives way under the shadow (laid over her first,
+## seen by the Guardian: she goes into a red shadow and is gone in a red puff, as her shadow in the fourth level's glass
+## goes (the owner, 22/11: "if the laser finds you, fade to a red shadow and then black, and go poof like the black shadow
+## does"; then, the same day, "when it goes poof, a red shadow -> poof": no black); then back to the start. Her own look gives way under the shadow (laid over her first,
 ## her image in the water going with it), then only the shadow is drawn, a soft-edged silhouette of three passes as the
 ## fourth level's (IVGL_SHADE_SH), denser here
 const IVGD_SEEN_RED := Color(0.88, 0.13, 0.11)
-const IVGD_SEEN_BLACK := Color(0.07, 0.05, 0.08)
 const IVGD_SEEN_K := [0.95, 0.34, 0.15]      # (its three passes: the body, a soft edge, a fainter one further out)
 const IVGD_SEEN_GROW := [0.0, 0.03, 0.065]
-const IVGD_POOF_COL := Color(0.33, 0.29, 0.36)      # (the puff: dark smoke, a little lighter than the shadow, thinning; denser than the fourth level's, over the white slabs (at its density it read faint))
+const IVGD_POOF_COL := Color(0.9, 0.3, 0.26)      # (the puff: red smoke, a little lighter than the red shadow it bursts out of, thinning; denser than the fourth level's, over the white slabs (at its density it read faint); dark smoke when the shadow went black first, before 22/11)
 var ivgd_shade: Array = []
 var ivgd_her_save: Array = []      # ([her mesh, its surfaces' materials, its shadow casting, [[her image's pass, its fade]]])
 var ivgd_her_gone := false
@@ -11270,7 +11269,7 @@ func _ivgd_shade_set(k: float, col: Color, grow := 0.0) -> void:
 func _ivgd_seen_out() -> void:
 	var hm: Dictionary = H.get("main", {})
 	if hm.is_empty() or hm.get("holder") == null: return
-	print("IV seen: she goes into a red shadow, then black, and is gone in a puff")
+	print("IV seen: she goes into a red shadow and is gone in a puff")
 	_ivgd_shade_set(0.0, IVGD_SEEN_RED)
 	ivgd_her_save = []
 	for m in (hm.holder as Node).find_children("*", "MeshInstance3D", true, false):
@@ -11292,14 +11291,11 @@ func _ivgd_seen_out() -> void:
 	for sv in ivgd_her_save:      # (only the shadow now: her own look, and her shadow on the stone, gone)
 		var mi: MeshInstance3D = sv[0]; mi.material_overlay = null; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		for si in (sv[1] as Array).size(): mi.set_surface_override_material(si, ivgd_shade[0])
-	var t2 := create_tween()      # (2: the red goes black)
-	t2.tween_method(func(u: float) -> void: _ivgd_shade_set(1.0, IVGD_SEEN_RED.lerp(IVGD_SEEN_BLACK, u)), 0.0, 1.0, 0.45).set_trans(Tween.TRANS_SINE)
-	await t2.finished
-	await wait(0.12)
+	await wait(0.2)      # (2: a breath as a red shadow; no black since 22/11, the owner: "when it goes poof, a red shadow -> poof")
 	if ivgd_poof_m == null: ivgd_poof_m = _ivt_dust_material().duplicate() as StandardMaterial3D; ivgd_poof_m.albedo_color = IVGD_POOF_COL
 	_iv_puff(pos + Vector3(0, 0.85, 0), ivgd_poof_m, 1.5)      # (3: poof, as the fourth level's shadow goes: it swells a little as it fades, and a cloud bursts out of it)
 	var t3 := create_tween()
-	t3.tween_method(func(u: float) -> void: _ivgd_shade_set(1.0 - u, IVGD_SEEN_BLACK, 0.14 * u), 0.0, 1.0, 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	t3.tween_method(func(u: float) -> void: _ivgd_shade_set(1.0 - u, IVGD_SEEN_RED, 0.14 * u), 0.0, 1.0, 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	await t3.finished
 	(hm.holder as Node3D).visible = false; ivgd_her_gone = true      # (gone: his look runs on past where she stood)
 	await wait(0.35)
