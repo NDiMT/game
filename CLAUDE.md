@@ -11,6 +11,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   or design would help, ask first.
 - When the owner names a side ("the right arm"), it may be the side **of the picture**, not hers. Check both.
 - Videos only when asked; short check clips of the thing being fixed are fine.
+- Show the **whole level**, its full frame, not only a crop of what changed (the owner, 23/11: "and show me the whole
+  level"); a close-up may go beside it.
 - Game text is English. Controls are swipes. The title is plain "EIDOLON".
 - Commit and push at the end of every turn (see Git below).
 
