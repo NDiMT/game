@@ -5,7 +5,7 @@ water under it: a column about its foot, a row of columns and their architrave a
 going toward the sea's colour as it goes down (as `img_k` in the game's shaders: 0.28, and 0.5 more over 3.2 m), never
 whole (the sea's glints show through it), its lines a little shaken, as on still water.
 
-  python3 -I tools/go/card_reflect.py <card.png> <out.png> <pixels a metre of height> [--k 0.75] [--wave 2.5] [--contact 22] [--fade 0.85] [--part x0,y0,x1,y1]... [--contour]
+  python3 -I tools/go/card_reflect.py <card.png> <out.png> <pixels a metre of height> [--k 0.75] [--wave 2.5] [--contact 22] [--fade 0.85] [--part x0,y0,x1,y1]... [--contour] [--soft]
 
 Each solid part of the card (cover over 0.9) is one thing; one wider than 120 pixels whose underside rises between its
 legs (a row of columns under an architrave) is turned over about the line through its legs' feet.
@@ -13,7 +13,7 @@ legs (a row of columns under an architrave) is turned over about the line throug
 import sys, math
 import numpy as np
 from PIL import Image
-from scipy.ndimage import label, binary_dilation, binary_erosion, gaussian_filter, distance_transform_edt
+from scipy.ndimage import label, binary_dilation, binary_erosion, gaussian_filter, gaussian_filter1d, distance_transform_edt
 
 
 def main(v):
@@ -23,6 +23,7 @@ def main(v):
     CB = int(rest[rest.index('--contact') + 1]) if '--contact' in rest else 22
     FADE = float(rest[rest.index('--fade') + 1]) if '--fade' in rest else 0.85
     CONTOUR = '--contour' in rest
+    SOFT = '--soft' in rest      # (as water gives it back, not as a mirror: the owner, 23/11, "it comes out like a bad mirror")
     a = np.asarray(Image.open(src).convert('RGBA')).astype(np.float32) / 255.0
     H, W = a.shape[:2]
     solid = a[..., 3] > 0.9
@@ -42,6 +43,7 @@ def main(v):
         x0_, y0_, x1_, y1_ = [int(q) for q in rest[i_ + 1].split(',')]
         n += 1; box_ = np.zeros_like(solid); box_[y0_:y1_, x0_:x1_] = True; lab = np.where(solid & box_, n, lab)
     refl = np.zeros((H, W, 4), np.float32)
+    dep = np.zeros((H, W), np.float32)      # (how far down its image each point lies, 0 at the water's edge, 1 where it is gone)
     contact = []
     for k in range(1, n + 1):
         m = lab == k
@@ -96,9 +98,12 @@ def main(v):
         wob = np.sin(yr * 0.21 + 1.7 * np.sin(yr * 0.047)) * 0.65 + np.sin(yr * 0.53 + 0.8) * 0.35      # (no one wave: two, the slow one bending the quick)
         xr = np.round(xs + WAVE * wob * np.clip(d / 0.4, 0.0, 1.0)).astype(int)      # (its lines a little shaken, more the further down)
         ok = (yr >= 0) & (yr < H) & (xr >= 0) & (xr < W)
-        yr, xr, al, ys2, xs2 = yr[ok], xr[ok], al[ok], ys[ok], xs[ok]
+        yr, xr, al, ys2, xs2, f = yr[ok], xr[ok], al[ok], ys[ok], xs[ok], f[ok]
         better = al > refl[yr, xr, 3]
         refl[yr[better], xr[better], :3] = a[ys2[better], xs2[better], :3]; refl[yr[better], xr[better], 3] = al[better]
+        dep[yr[better], xr[better]] = f[better]
+    if SOFT:
+        refl = soften(refl, dep, WAVE)
     pm = refl[..., :3] * refl[..., 3:4]
     pm = np.stack([gaussian_filter(pm[..., i], (1.6, 0.6)) for i in range(3)], -1); ra = gaussian_filter(refl[..., 3], (1.6, 0.6))      # (soft, more along the up than across)
     rc = pm / np.maximum(ra, 1e-4)[..., None]
@@ -121,6 +126,39 @@ def main(v):
     oc = (thing[..., :3] * ta + rc * ra[..., None] * (1.0 - ta)) / np.maximum(oa, 1e-4)
     Image.fromarray(np.round(np.dstack([np.clip(oc, 0, 1), np.clip(oa, 0, 1)]) * 255).astype(np.uint8), 'RGBA').save(dst)
     print('reflected', dst)
+
+
+def soften(refl, dep, wave):
+    """The image as still water gives it back: shaken across by small waves, more the further down, each row its own way
+    (not one sine); its detail gone soft (the facets, the carving), long upright and little across, more the further
+    down; less contrast, a little darker and greyer than the thing; broken by thin level lines where the water catches
+    the sky."""
+    H, W = refl.shape[:2]
+    rng = np.random.default_rng(7)
+    yy, xx = np.mgrid[0:H, 0:W]
+    dep = gaussian_filter(dep, 2.0)
+    n1 = gaussian_filter1d(rng.standard_normal(H), 2.2); n1 /= n1.std() + 1e-6
+    n2 = gaussian_filter1d(rng.standard_normal(H), 8.0); n2 /= n2.std() + 1e-6
+    sh = (0.55 * n1 + 0.45 * n2)[:, None] * wave * (0.5 + 3.0 * dep)
+    xs = np.clip(np.round(xx - sh).astype(int), 0, W - 1)
+    r = refl[yy, xs]; d = dep[yy, xs]
+    a = r[..., 3]; pm = r[..., :3] * a[..., None]
+    lv = [(1.6, 0.7), (4.5, 1.3), (9.0, 2.2)]
+    P = [np.stack([gaussian_filter(pm[..., i], s) for i in range(3)], -1) for s in lv]
+    A = [gaussian_filter(a, s) for s in lv]
+    t = np.clip(d * 2.0, 0, 2)
+    w0 = np.clip(1 - t, 0, 1); w2 = np.clip(t - 1, 0, 1); w1 = 1 - w0 - w2
+    pmb = P[0] * w0[..., None] + P[1] * w1[..., None] + P[2] * w2[..., None]
+    ab = A[0] * w0 + A[1] * w1 + A[2] * w2
+    c = pmb / np.maximum(ab, 1e-4)[..., None]
+    loc = np.stack([gaussian_filter(c[..., i] * ab, 7.0) for i in range(3)], -1) / np.maximum(gaussian_filter(ab, 7.0), 1e-4)[..., None]
+    c = loc + (c - loc) * 0.45      # (its detail half gone)
+    g = c.mean(-1, keepdims=True); c = (g + (c - g) * 0.8) * 0.93      # (a little greyer and darker)
+    br = gaussian_filter1d(rng.standard_normal(H), 0.8); br /= br.std() + 1e-6; br = np.clip((br - 0.75) / 0.7, 0, 1)      # (thin level breaks)
+    seg = gaussian_filter(rng.standard_normal((H, W)), (0.6, 14.0)); seg = np.clip(seg / (seg.std() + 1e-6) + 0.4, 0, 1)      # (each a short dash, not a whole line)
+    k = br[:, None] * seg * (0.45 + 0.55 * np.clip(d * 1.5, 0, 1))
+    ab = ab * (1.0 - 0.7 * k)
+    return np.dstack([np.clip(c, 0, 1), np.clip(ab, 0, 1)]).astype(np.float32)
 
 
 if __name__ == '__main__':
