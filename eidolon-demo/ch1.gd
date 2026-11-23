@@ -4199,6 +4199,7 @@ func _ivr_way() -> void:
 			var la: Vector3 = pts[0]; var lb: Vector3 = ivp_nodes[e[1]]
 			var ld := (lb - la); ld.y = 0.0; ld = ld.normalized()
 			lb -= ld * _ivr_way_gap(String(e[1])); la += ld * _ivr_way_gap(String(e[0]))      # (the line ends where the ring's frame, or the square's at her start, begins: never over it)
+			if ivg_on and (ivg_holes.has(String(e[0])) or ivg_holes.has(String(e[1]))): continue      # (no line of the way to a hole, not even once the cube fills it: its own lines and ring are all (the owner, 23/11: "no path line should come out at all in 2"))
 			_iv_line(_ivv_way_parent(String(e[0]), String(e[1])), la - IV_O, lb - IV_O)
 	for k in ivp_nodes:
 		if k == "r" or k == "s" or (ivg_on and (k == ivg_exit or k == ivg_vol)) or (ivg_on and (ivg.get("unwalked", []) as Array).has(k)): continue
@@ -6466,6 +6467,7 @@ func _ivr_block() -> Node3D:
 	# (its meander shaded as the stone is; drawn flat, as the way's line, for a day (22/11): mx["flat_mode"] = 1.0)
 	for m in n.find_children("*", "MeshInstance3D", true, false):
 		if go_veil and String(m.name).to_lower().contains("meander"): (m as MeshInstance3D).material_override = _iv_mat("meander", 0.0, mx); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON; continue      # (its meander apart, a darker stone)
+		if go_veil and String(m.name).to_lower().contains("disc"): (m as MeshInstance3D).material_override = (_iv_mat("block", 0.0, bx) as ShaderMaterial).duplicate(); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON; continue      # (the stone within its ring: the block's own stone, its own material, so it can light white with the lines (the owner, 23/11))
 		(m as MeshInstance3D).material_override = _iv_mat("block", 0.0, bx) if go_veil else _ivr_mat("marble2"); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON      # (the second level: an uncut block of the statues' own marble, lit as softly)
 	if go_veil and OS.get_environment("IV_CUBE_EX") != "":      # (for a picture of another cube: "block:emit=0.2,veins=0.5;meander:emit=0.5,flat_mode=1,vein_tint=#8a9a90", its two materials' own values)
 		for part in OS.get_environment("IV_CUBE_EX").split(";"):
@@ -10800,7 +10802,8 @@ func _ivgl_meander(on: bool) -> void:      # (the block's meander lights white w
 		if pr[0] == iv_block_n and is_instance_valid(pr[1]): holders.append(pr[1])
 	for h in holders:
 		for m in (h as Node).find_children("*", "MeshInstance3D", true, false):
-			if String(m.name).to_lower().contains("meander") and (m as MeshInstance3D).material_override is ShaderMaterial: ms.append((m as MeshInstance3D).material_override)
+			var mn := String(m.name).to_lower()
+			if (mn.contains("meander") or mn.contains("disc")) and (m as MeshInstance3D).material_override is ShaderMaterial: ms.append((m as MeshInstance3D).material_override)      # (its lines, and the stone within its ring: the whole circle white (the owner, 23/11: "the whole inside of the circle should turn white too"))
 	var lit := Color(String((_iv_pal("ring") as Array)[0]))      # (the ring's own soft white light)
 	for mm in ms:
 		var sm := mm as ShaderMaterial

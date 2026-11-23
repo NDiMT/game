@@ -721,9 +721,14 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   the circle at its centre should light"): `props/block_cube.glb` is `block_cube.py -- props/block_cube.glb 0.92 11
   path4` (cut 0.6 cm), its colours `block` `bfb4c9`, `meander` (its lines and ring) `8a7a93` in `IV_WAKE_PAL`, every
   level (the meander cube kept in the scratchpad's way only; `one` rebuilds it); lit, its lines and ring take the
-  rings' white. **Level 2: it lights in its gap, and no disc of the way over it** ("in the first level no extra path
-  should come out on the square, it should just activate"): the hole's node has no disc (the cube's own ring is it),
-  the way's lines to the hole stop at the cube's edge (`_ivr_way_gap`: half its side), where its own lines go on.
+  rings' white, **and the whole circle with them** ("the whole inside of the circle should turn white when it activates,
+  in 2 and in 4"): the stone within each ring is its own part, `disc` (`DISCS` in the builder), the block's stone with
+  its own material, lit with the lines. **Level 2: it lights in its gap, and no mark of the way over it or to it**
+  ("in the first level no extra path should come out on the square, it should just activate"; "no path line should
+  come out at all in 2"): the hole's node has no disc and no line of the way runs to it (their lines once rose out of the
+  water as it filled). **The stone hewn rough** ("can we make the cube more crooked, cut and hewn? it's too straight";
+  `HEWN` for the way's designs): its faces out of true 1.45 times the first cube's, seven corners broken (3.5 to 8 cm),
+  five chips running out along its edges; its marks cut true.
   The veiled bust is out again (`observer` None). Before it (the owner, 21/11: "make something else for the
   background, whatever you like, but matching the perspective and the colours"; then of it: "I don't like the new
   background"): the ruins of a drowned sanctuary far

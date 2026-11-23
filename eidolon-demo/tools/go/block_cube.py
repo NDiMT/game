@@ -117,6 +117,7 @@ def spiral_at(cx, cy, r0, pitch, turns, hw, n_per_turn=26, a0=0.0):      # (a sm
     def c(th): r = r0 + pitch * th / (2 * math.pi); return (cx + r * math.cos(th + a0), cy + r * math.sin(th + a0))
     for i in range(n): P.append(bar(c(th1 * i / n), c(th1 * (i + 1) / n), hw, 0.003))
     return P
+DISCS = []      # (the stone within each ring of the way's marks: its own part, "disc", lit white with the lines (the owner, 23/11: "and the whole inside of the circle should turn white when it activates"))
 def motif():
     P = []
     if PATTERN == 'rosette':
@@ -198,20 +199,24 @@ def motif():
         def line(A, B): return bar(A, B, lw, 0.0)
         if PATTERN == 'path4':      # (a disc where four ways meet; the lines run on over the face's edges, so they meet the next face's and cut the edge clean)
             R = 0.15; P += ring_at(0, 0, R)
+            DISCS[:] = [(0.0, 0.0, R - 0.042)]
             for ang in range(4):
                 d = rot([(1.0, 0.0)], ang * math.pi / 2)[0]
                 P.append(line((d[0] * (R + 0.012), d[1] * (R + 0.012)), (d[0] * 0.54, d[1] * 0.54)))
         elif PATTERN == 'path2':      # (a disc on a straight way)
             R = 0.15; P += ring_at(0, 0, R)
+            DISCS[:] = [(0.0, 0.0, R - 0.042)]
             P += [line((R + 0.012, 0), (0.54, 0)), line((-R - 0.012, 0), (-0.54, 0))]
         elif PATTERN == 'path3':      # (three discs on a way)
             R = 0.085
             for x in (-0.29, 0.0, 0.29): P += ring_at(x, 0, R)
+            DISCS[:] = [(x, 0.0, R - 0.042) for x in (-0.29, 0.0, 0.29)]
             P += [line((-0.29 + R + 0.012, 0), (-R - 0.012, 0)), line((R + 0.012, 0), (0.29 - R - 0.012, 0)),
                   line((-0.54, 0), (-0.29 - R - 0.012, 0)), line((0.29 + R + 0.012, 0), (0.54, 0))]
         elif PATTERN == 'pathsq':      # (four discs in a square, the way round it)
             R = 0.085; c = 0.22
             for (x, y) in ((-c, -c), (c, -c), (c, c), (-c, c)): P += ring_at(x, y, R)
+            DISCS[:] = [(x, y, R - 0.042) for (x, y) in ((-c, -c), (c, -c), (c, c), (-c, c))]
             g = R + 0.012
             P += [line((-c + g, -c), (c - g, -c)), line((c, -c + g), (c, c - g)), line((c - g, c), (-c + g, c)), line((-c, c - g), (-c, -c + g))]
     elif PATTERN == 'frame_wide':      # (a wider frame, its lines a little bolder, two keys a side spaced evenly, the outer line running round the face's edge unbroken, a hooked square in each corner (the owner, 23/11: "a little thicker frame"))
@@ -350,6 +355,10 @@ for f in bm.faces:
     c = f.calc_center_median(); k, n, sa, ta, depth, u, v, w = side_of(c)
     lim = 0.83 if PATTERN == 'one' else 0.95      # (the four small keys, and the motifs, reach nearer the face's edges)
     f[mark] = 1 if ((0.0015 if CRISP else 0.003) < depth < DEPTH + 0.008 and abs(u) < HF * lim and abs(v) < HF * lim) else 0      # (a shallow frame's floor lies only millimetres under the face)
+    if f[mark] == 0 and DISCS and abs(depth) < 0.0015:
+        for (dx, dy, rr) in DISCS:
+            for _ in range(TURN[k]): dx, dy = -dy, dx
+            if (u / L - dx) ** 2 + (v / L - dy) ** 2 < (rr - 0.004) ** 2: f[mark] = 2; break
 print('meander faces', sum(f[mark] for f in bm.faces))
 
 # the meander uneven, as cut by hand (as tools/go/block_meander.py)
@@ -380,7 +389,9 @@ for v in bm.verts:
 bmesh.ops.triangulate(bm, faces=bm.faces[:], quad_method='BEAUTY', ngon_method='BEAUTY')
 print('uneven: verts moved', moved, 'faces', len(bm.faces))
 
-LEAN = [(rnd.uniform(-0.022, 0.022) * (0.25 if CRISP else 1.0), rnd.uniform(-0.022, 0.022) * (0.25 if CRISP else 1.0)) for _ in range(6)]      # (each face out of true its own way; the frames' nearly flat)
+HEWN = PATTERN.startswith('path')      # (the way's designs on a stone hewn rough: its faces well out of true, many corners broken, chips along its edges; its marks cut true (the owner, 23/11: "can we make the cube more crooked, cut and hewn? it's too straight"))
+LK = 1.45 if HEWN else (0.25 if CRISP else 1.0)
+LEAN = [(rnd.uniform(-0.022, 0.022) * LK, rnd.uniform(-0.022, 0.022) * LK) for _ in range(6)]      # (each face out of true its own way; the frames' nearly flat)
 def bend(co):
     p = co.copy()
     for k, (n, sa, ta) in enumerate(FACES):
@@ -400,10 +411,19 @@ def cutp(b, co, no):
         for f in made.get('faces', []): f[mark] = 0
 corners = [(sx, sy, sz) for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)]
 rnd.shuffle(corners)
-for (sx, sy, sz) in corners[:(3 if CRISP else 5)]:      # (corners broken off aslant, each its own size; the frames' only chipped, clear of their keys)
+for (sx, sy, sz) in corners[:(7 if HEWN else (3 if CRISP else 5))]:      # (corners broken off aslant, each its own size; the frames' only chipped, clear of their keys)
     c = Vector((sx * HF, sy * HF, sz * HF))
     n = Vector((sx * rnd.uniform(0.6, 1.0), sy * rnd.uniform(0.6, 1.0), sz * rnd.uniform(0.6, 1.0))).normalized()
-    cutp(bm, bend(c) - n * (rnd.uniform(0.012, 0.02) if CRISP else rnd.uniform(0.03, 0.065)), n)
+    cutp(bm, bend(c) - n * (rnd.uniform(0.035, 0.08) if HEWN else (rnd.uniform(0.012, 0.02) if CRISP else rnd.uniform(0.03, 0.065))), n)
+if HEWN:      # (chips along the edges, near their ends: a plane leaning off the edge's two faces and along it, so the chip runs out along the edge)
+    axes = [Vector((1, 0, 0)), Vector((0, 1, 0)), Vector((0, 0, 1))]
+    for _ in range(5):
+        i, j = rnd.sample(range(3), 2); m_ = 3 - i - j
+        si, sj, sm = rnd.choice((-1, 1)), rnd.choice((-1, 1)), rnd.choice((-1, 1))
+        e = axes[i] * si + axes[j] * sj      # (the edge between face i and face j, running along axis m)
+        p0 = axes[i] * (si * HF) + axes[j] * (sj * HF) + axes[m_] * (sm * HF * rnd.uniform(0.35, 0.7))
+        n = (e.normalized() + axes[m_] * (sm * rnd.uniform(0.35, 0.7))).normalized()
+        cutp(bm, bend(p0) - n * rnd.uniform(0.016, 0.03), n)
 
 holes = [e for e in bm.edges if e.is_boundary]
 if holes: bmesh.ops.holes_fill(bm, edges=holes, sides=0)
@@ -422,17 +442,17 @@ def part(val):
         try: b2.faces.new(vs)
         except ValueError: pass
     return b2
-body = part(0); mbm = part(1)
-print('parted: block', len(body.faces), 'faces, meander', len(mbm.faces), 'faces')
+body = part(0); mbm = part(1); dbm = part(2)
+print('parted: block', len(body.faces), 'faces, meander', len(mbm.faces), 'faces, disc', len(dbm.faces), 'faces')
 S = SIDE / L
-for b, name in ((body, 'block'), (mbm, 'meander')):
+for b, name in ((body, 'block'), (mbm, 'meander')) + (((dbm, 'disc'),) if len(dbm.faces) else ()):
     for v in b.verts: v.co = Vector((v.co.x * S, v.co.y * S, (v.co.z + HF) * S))      # (its foot at its origin)
     m2 = bpy.data.meshes.new(name); b.to_mesh(m2); b.free()
     for p in m2.polygons: p.use_smooth = False
     o = bpy.data.objects.new(name, m2); bpy.context.scene.collection.objects.link(o)
 bpy.ops.object.select_all(action='DESELECT')
 for o in bpy.context.scene.objects:
-    if o.name in ('block', 'meander'): o.select_set(True)
+    if o.name in ('block', 'meander', 'disc'): o.select_set(True)
 bpy.data.objects.remove(cube); bpy.data.objects.remove(cut)
 bpy.ops.export_scene.gltf(filepath=OUT, export_format='GLB', use_selection=True, export_normals=True, export_materials='NONE')
 print('SAVED', OUT)
