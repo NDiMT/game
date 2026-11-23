@@ -769,7 +769,16 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   with its image in the water; painted by the image model after the island's own colonnade, then repainted by it as
   finely faceted low-poly marble and laid in as it is (`design/level5/columns_painted/`, `lay_in.py`), the two lone
   ones moved clear of the gate and the rock before them; the backdrop with the island kept as
-  `design/level5/backdrop_island.jpg`. **The Guardian casts his
+  `design/level5/backdrop_island.jpg`. **Then real 3D columns there, on the plain sky** (the owner: "a little lower
+  the upper one, but make other columns"; of three painted Ionic ones, "I don't like them"; "make columns again so they
+  fit the place better"): built as the far columns are (`python3 -I tools/go/guard_far_plan.py
+  goguard/near_cols_plan.json near`, then `ivory_level.py -- <scratch>/near_cols.glb <scratch>/near_cols.json 93 24
+  goguard/near_cols_plan.json`, copied to `goguard/near_cols.glb`, `importer="keep"`, packed): three whole columns 2.7 m
+  in a row going away to the right, an architrave across them, and two lone broken ones leaning, their feet at the
+  frame's pixels in `NEAR_COLS` (a little lower than the painted one raised 120 px); the game lays them in the haze at
+  0.48 with their image in the water (`_ivgd_near_cols`, `IVGD_NEAR_K`; `IV_NEAR=0` leaves them out, `IV_NEAR_K` tries
+  another); `goguard/backdrop.jpg` is the plain sky again (`design/level5/backdrop_plain_clean.jpg`). A frame's pixel
+  to the sea: `IV_WD_PICK="x,y;x,y"` prints the level-local point. **The Guardian casts his
   shadow** on his pedestal and the way (22/11: "the guardian looks as if he stands in the air": his glass cast none).
   **Frosted, his shade is a soft lilac grey** (`frost_fill` in `IVGD_GLASS_SH`, as the slabs' shade): lit by the sun
   alone, the side away from it and his own shadow on him stayed near black as he whitened (the owner, 22/11: "when he

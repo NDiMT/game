@@ -6,13 +6,15 @@ something else in the background, and let it be 3D"; of the ways offered he chos
 No one walks there: it has no way, no nodes, no shore of its own. It is built in its own place in the level's axes, so
 the game sets it down where it was made.
 
-usage: python3 -I tools/go/guard_far_plan.py <out far_plan.json> [float | cols]
+usage: python3 -I tools/go/guard_far_plan.py <out far_plan.json> [float | cols | near]
   float: the island in the air (the owner, 22/11, after the painted ones: "I don't like the background"; of the 3D one
   before, "shadows, more detail, a column less, the columns randomly, slightly turned"): its rock under the old water
   line drawn into one jagged point under it (`hang`), no rocks or columns in the sea about it, the back row's second
   column gone, every column turned and leaning a little its own way; the game lifts it (IV_FAR_LIFT)
   cols: only the far columns standing out of the water behind the level (FAR_COLS; the owner, 22/11), built as
   goguard/far_cols.glb from goguard/far_cols_plan.json the same way (seed 91)
+  near: the island's colonnade in the water where the island was, and two lone columns (NEAR_COLS; 23/11), built as
+  goguard/near_cols.glb from goguard/near_cols_plan.json the same way (seed 93)
 then:  python3.11 -I tools/ivory_level.py -- <scratch>/far.glb <scratch>/far.json 77 24 goguard/far_plan.json
        and copy far.glb into goguard/ (built elsewhere so its json and no shore map touch the level's own)
 """
@@ -85,6 +87,30 @@ FAR_COLS = [[-5.48, SEA - 0.6, -7.23, 3.0, 0.24, False, [14, 7, 20]],
             [-6.73, SEA - 0.6, -7.71, 1.45, 0.2, True, [5, 11, 250]]]      # (then crooked and more at random (the owner, 22/11: "the columns in the water a little crooked, and more random"): seven, leaning 5 to 14 degrees each its own way, of other heights and girths, scattered in depth, not in a row; their feet at about these points of the screen at the start: 0.565 0.398, 0.635 0.372, 0.735 0.418, 0.795 0.381, 0.915 0.392, 0.985 0.428, 0.515 0.362)
 
 
+# the island's colonnade standing in the sea where the island was, and two lone broken columns about it (the owner,
+# 23/11: "instead of the island, can we put the triptych of the island's columns in the water, and another 2 random
+# columns?"; painted ones were "out of place"; "make columns again so they fit the place better"): built as the far
+# columns are, so they are the same world, nearer and less in the haze. Three whole columns in a row going a little away
+# to the right, an architrave across their tops; their feet where the level's frame at her start has open sea, at these
+# pixels of it (720 by 1280): 148 575, 213 555, 278 535 (the row: a little lower than the painted one raised 120 px,
+# which the owner asked "a little lower"), 60 495 and 375 520 (the two, further back), from the game's own map of the
+# frame to the sea (IV_WD_PICK); each column's foot 0.6 under the water
+NEAR_ROW = [(-7.474, -3.307), (-7.15, -4.381), (-6.826, -5.455)]
+NEAR_H = 2.7
+NEAR_COLS = [[x, SEA - 0.6, z, NEAR_H, 0.2, False, [t, 0, 0]] for (x, z), t in zip(NEAR_ROW, (8, -12, 20))] + \
+            [[-9.92, SEA - 0.6, -3.862, 2.1, 0.19, True, [25, 9, 140]], [-6.064, SEA - 0.6, -6.78, 1.7, 0.18, True, [-30, 12, 320]]]
+
+
+def near_plan():
+    """the colonnade and the two lone columns, in the water at the left: no floors, no rock"""
+    import math
+    pl = cols_plan()
+    (x0, z0), (x1, z1) = NEAR_ROW[0], NEAR_ROW[-1]
+    L = math.hypot(x1 - x0, z1 - z0) + 0.6; yaw = math.degrees(math.atan2(-(z1 - z0), x1 - x0))
+    pl.update({'sea_columns': NEAR_COLS, 'stones': [[(x0 + x1) / 2, SEA - 0.6 + NEAR_H + 0.16, (z0 + z1) / 2, round(L, 3), 0.5, 0.34, round(yaw, 2)]], 'drums': []})
+    return pl
+
+
 def cols_plan():
     """only the far columns in the water: no floors, no rock"""
     pl = far_plan()
@@ -96,5 +122,5 @@ def cols_plan():
 if __name__ == '__main__':
     out = sys.argv[1] if len(sys.argv) > 1 else 'goguard/far_plan.json'
     mode = sys.argv[2] if len(sys.argv) > 2 else ''
-    json.dump({'float': float_plan, 'cols': cols_plan}.get(mode, far_plan)(), open(out, 'w'), indent=1)
+    json.dump({'float': float_plan, 'cols': cols_plan, 'near': near_plan}.get(mode, far_plan)(), open(out, 'w'), indent=1)
     print('wrote', out)

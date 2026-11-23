@@ -11029,6 +11029,7 @@ void fragment(){
 func _ivgd_setup() -> void:
 	_ivgd_far()
 	_ivgd_far_cols()
+	_ivgd_near_cols()
 	var gd: Dictionary = ivg.get("guard", {})
 	ivgd_d0 = maxi(IVGD_ORDER.find(String(gd.get("d0", "S"))), 0); ivgd_phase = 0; ivgd_draw_ph = 0; ivgd_kept = false; ivgd_gk = 1.0
 	var at: Vector3 = ivp_nodes[String(gd.get("node", "G"))]
@@ -11131,6 +11132,11 @@ func _iv_water_details() -> void:
 	if not ivr_floors.is_empty():      # (the eye as it is at her start on a screen of 9 by 16, where the frame was painted)
 		var fo := _ivr_follow_tg(b, c, w, w * 16.0 / 9.0, pos); c += b.x * fo.x + b.y * fo.y
 	var ppm := 720.0 / w; var sea := IV_O.y + ivr_sea_y
+	if OS.get_environment("IV_WD_PICK") != "":      # ("x,y;x,y": where those pixels of the frame at her start fall on the sea, from the level's origin, to place things there)
+		for pk in OS.get_environment("IV_WD_PICK").split(";"):
+			var xy := pk.split_floats(",")
+			var pp := c + b.x * ((xy[0] - 360.0) / ppm) + b.y * ((640.0 - xy[1]) / ppm)
+			print("WD PICK %s -> %s" % [pk, str(pp - b.z * ((pp.y - sea) / b.z.y) - IV_O)])
 	for d in ds:
 		if not ResourceLoader.exists(String(d[0])): continue
 		var l := float(d[1]); var t := float(d[2]); var dw := float(d[3]); var dh := float(d[4]); var fx := float(d[5]); var fy := float(d[6])
@@ -11218,6 +11224,29 @@ func _ivgd_far_cols() -> void:
 		var c3 := OS.get_environment("IV_COLS_AT").split_floats(","); ca = Vector3(c3[0], c3[1], c3[2] if c3.size() > 2 else 1.0)
 	fv.scale = Vector3.ONE * ca.z; fv.position = IVGD_COLS_C * (1.0 - ca.z) + Vector3(ca.x, 0.0, ca.y)      # (smaller about their own middle at the water, and moved back: up the picture, toward the haze)
 	var fk := float(OS.get_environment("IV_COLS_K")) if OS.get_environment("IV_COLS_K") != "" else IVGD_COLS_K
+	for m in fv.find_children("*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		mi.material_override = _iv_mat("marble2", fk, _ivr_ex("marble2", 1.0, true)); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	if iv_at_sea:
+		_ivs_mirror(fv, func(_mi: MeshInstance3D) -> Array:
+			return ["marble2", fk, {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.15, "veins": 0.6, "haze": 1.0}])
+
+## the island's colonnade standing in the sea at the upper left where the island was, its architrave across the three,
+## and two lone broken columns about it, built as the level is (tools/go/guard_far_plan.py near), where they were built,
+## a little in the haze, their image in the water (the owner, 23/11: "instead of the island, can we put the triptych of
+## the island's columns in the water, and another 2 random columns?"; painted, they were "out of place": "make columns
+## again so they fit the place better"); IV_NEAR=0 leaves them out, IV_NEAR_K tries another haze
+const IVGD_NEAR_ON := true
+const IVGD_NEAR_K := 0.48
+func _ivgd_near_cols() -> void:
+	var fp := go_dir + "near_cols.glb"
+	if not IVGD_NEAR_ON or OS.get_environment("IV_NEAR") == "0" or not FileAccess.file_exists(fp): return
+	var st := GLTFState.new(); var doc := GLTFDocument.new()
+	doc.append_from_buffer(FileAccess.get_file_as_bytes(fp), "", st)
+	var fv := doc.generate_scene(st) as Node3D
+	if fv == null: return
+	iv_root.add_child(fv)
+	var fk := float(OS.get_environment("IV_NEAR_K")) if OS.get_environment("IV_NEAR_K") != "" else IVGD_NEAR_K
 	for m in fv.find_children("*", "MeshInstance3D", true, false):
 		var mi := m as MeshInstance3D
 		mi.material_override = _iv_mat("marble2", fk, _ivr_ex("marble2", 1.0, true)); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
