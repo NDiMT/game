@@ -688,7 +688,12 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   one stood before the island's rock; further right, move the columns with it; the
   plain sky kept as `design/level5/backdrop_plain_clean.jpg`, the 3D island's place as `island3d_mask.png`); the 3D island
   is off (`IVGD_FAR_ON` false) and `goguard/far.glb` out of the builds (`IV_FAR=1
-  IV_BG_FILE=design/level5/backdrop_plain_clean.jpg` shows it on a desktop). **The Guardian casts his
+  IV_BG_FILE=design/level5/backdrop_plain_clean.jpg` shows it on a desktop). **The painted island's image in the
+  water** (the owner, 23/11: "shouldn't the floating island in 5 show a reflection below too?"): tried with the 3D
+  island it was painted from, drawn only as its image (`IVGD_FAR_IMG`, `IVGD_FAR_IMG_AT`; `IV_FAR_IMG_AT="dx,dy,dz"`):
+  where the 3D one stood its image fell over the painted island's own rock (the painting draws the rock's point longer),
+  and raised 5.2 m so it falls under the point it lies wholly behind the walk and the gate: from the game's eye it does
+  not show. Off (`IVGD_FAR_IMG` false) until the owner says. **The Guardian casts his
   shadow** on his pedestal and the way (22/11: "the guardian looks as if he stands in the air": his glass cast none).
   **Frosted, his shade is a soft lilac grey** (`frost_fill` in `IVGD_GLASS_SH`, as the slabs' shade): lit by the sun
   alone, the side away from it and his own shadow on him stayed near black as he whitened (the owner, 22/11: "when he
