@@ -52,7 +52,12 @@ Then its image in the water made from the card itself (the owner: "the reflectio
 with the painted water (wd_cols_painted_water.png) through
 
   python3 -I tools/go/card_reflect.py design/level5/columns_facets/wd_cols_painted_water.png goguard/wd_cols.png 107.8 \
-      --k 0.7 --wave 1.6
+      --k 0.7 --wave 1.6 --contact 22
 
 (107.8: pixels a metre of height in the card at twice the frame's size; the row turned over about the line through its
 legs' feet, every other thing about its own foot).
+
+At first each thing was turned over about its lowest point and the painted water all taken away, and they looked as if
+they flew (the owner: "they look like they're flying"): now each is turned over about where it really meets the water at
+each x (an upright column's base arc, a drum lying in the water; between legs and under a leaning shaft, the line under
+it), and the painted water is kept in a band 22 pixels under that, fading (its ripples and the dark of its foot going in).

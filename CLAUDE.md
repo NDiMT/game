@@ -803,7 +803,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   from the card itself** (the owner: "the reflection in the water is tragic": the model's painted one was faint,
   broken and cut short): `tools/go/card_reflect.py` takes the painted water away and turns each thing over about where
   it meets the water, as the game's own images are (a column about its foot; the row and its architrave about the line
-  through its legs' feet), going toward the sea's colour as it goes down as `img_k` does, never whole, a little shaken. A model's green take may keep
+  through its legs' feet), going toward the sea's colour as it goes down as `img_k` does, never whole, a little shaken;
+  about where each really meets the water at each x, the painted water kept in a band where it goes in (turned over
+  about its lowest point, with no painted water left, they looked as if they flew: "they look like they're flying"). A model's green take may keep
   the haze band at a crop's top: make it green there, all but the things, before the lift. **The Guardian casts his
   shadow** on his pedestal and the way (22/11: "the guardian looks as if he stands in the air": his glass cast none).
   **Frosted, his shade is a soft lilac grey** (`frost_fill` in `IVGD_GLASS_SH`, as the slabs' shade): lit by the sun
