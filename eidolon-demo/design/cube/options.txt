@@ -40,3 +40,14 @@ m5 blue-grey, its meander dark blue      IV_CUBE_PAL=block:9aa5bb,8a93aa,737c92,
 m6 ochre, its meander dark bronze      IV_CUBE_PAL=block:c9a66e,b39464,967d56,715f42;meander:5c4430,523d2c,453325,34271d      IV_CUBE_EX=meander:flat_mode=0
 m7 dark plum, its meander gold      IV_CUBE_PAL=block:5d5165,53485c,453d4f,342e3d;meander:d4a95c,bd9754,9e7f48,776137      IV_CUBE_EX=meander:flat_mode=0
 m8 sage, its meander dark green      IV_CUBE_PAL=block:a3b3a0,92a092,7a877d,5c6760;meander:4a5c4c,425245,37453b,2a352e      IV_CUBE_EX=meander:flat_mode=0
+
+# eight colours on the path design (path4, cut 0.006), offered on 23/11 (the owner: "I'd like to see other colours too"):
+# its lines a soft tone of its own colour; IV_CUBE_PAL as above, IV_CUBE_GLB=<block_cube.py ... path4>
+p1 lilac grey, soft plum lines      IV_CUBE_PAL=block:bfb4c9,aba1b7,8e889d,6b6779;meander:8a7a93,7b6d86,675c73,4e4658
+p2 beige, soft brown      IV_CUBE_PAL=block:d2baa0,bca692,9d8c7d,766b60;meander:a8917a,96816f,7d6d5f,5e5349
+p3 white marble, soft grey-lilac      IV_CUBE_PAL=block:ece4dc,d3ccc8,b0acac,858384;meander:b9adb3,a59aa3,8a828c,68636b
+p4 dusty rose, soft rosewood      IV_CUBE_PAL=block:c99fa3,b38e94,96787f,715b62;meander:9f7a80,8e6d74,775c64,59464d
+p5 blue-grey, soft slate      IV_CUBE_PAL=block:b9c1d0,a5acbd,8a92a2,686f7d;meander:8a94a8,7b8499,677083,4e5565
+p6 sage, soft green-grey      IV_CUBE_PAL=block:a9b5a2,97a293,7e887e,5f6861;meander:838f80,758074,626c64,4a524d
+p7 warm grey, soft taupe      IV_CUBE_PAL=block:c9c1b8,b3aca7,969290,716f6e;meander:9b9188,8a817c,746d6a,575352
+p8 dark plum, light lilac      IV_CUBE_PAL=block:6e6075,62566a,52485b,3e3746;meander:a597ad,93879d,7b7287,5d5768

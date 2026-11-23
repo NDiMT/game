@@ -707,10 +707,17 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   `scroll`, `herringbone`. He liked `frame` ("I liked 1; can we do something around it with softer lines?"): `frame_thin`
   (finer, less deep) and `frame_calm` (two larger keys a side), each also with a lighter plum, offered. **Its lines
   light when the cube is placed right, in every level** (the owner: "and they light up when the cube is activated
-  correctly"; `_ivgl_meander`, the fourth level's white light on its meander, IVGL_MEA_EMIT): the second level's as it
-  comes to rest in the gap, the third's as it comes into its niche (`IVM_BLOCK_HOME` "NI"), the fourth's as before while
-  its image stands in the square, the fifth's as it comes to rest in the deep water, before it sinks (dark again if the
-  level starts over); `IV_MEA_LIT=1` lights it from the first, for a picture.
+  correctly"; `_ivgl_meander`, the fourth level's white light on its meander, IVGL_MEA_EMIT): the third's as it comes
+  into its niche (`IVM_BLOCK_HOME` "NI"), the fourth's as before while its image stands in the square, the fifth's as it
+  comes to rest in the deep water, before it sinks (dark again if the level starts over); not the second's, in its gap
+  (the owner: "in the first the cube doesn't need to light up": level 2, the first with the cube); `IV_MEA_LIT=1`
+  lights it from the first, for a picture. Of the frame cut true he said "it's too much relief, does it need so much?":
+  `block_cube.py` takes a depth (its 5th value, in the source block's units, 0.726 a side; the frames were 0.026, 3.3 cm
+  at 0.92 m), and the frame was offered at 0.006 (0.8 cm); then (23/11: "what if the design on the cube had lines and
+  circles in the middle, like the path's?") `path4` (a ring where four ways meet, its lines running on over the edges to
+  the next face's), `path2`, `path3`, `pathsq`, each line stopping at a ring's rim as the way's does, cut 0.006, subdued;
+  and eight colours on `path4` ("I'd like to see other colours too"; `design/cube/options.txt` p1-p8, its lines a soft
+  tone of its own colour); the owner to choose.
   The veiled bust is out again (`observer` None). Before it (the owner, 21/11: "make something else for the
   background, whatever you like, but matching the perspective and the colours"; then of it: "I don't like the new
   background"): the ruins of a drowned sanctuary far
