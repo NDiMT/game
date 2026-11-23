@@ -3637,7 +3637,7 @@ func _ivp_begin() -> void:
 	var s0: Vector3 = ivp_nodes["s"]; var s1: Vector3 = ivp_nodes[String(ivg.start) if ivg_on else "n0"]
 	pos = s0; yaw = atan2(s1.x - s0.x, s1.z - s0.z); route.clear()
 	ivp_wp_cur = s0; ivp_wp_prev = s0
-	if ivr_on: _ivr_cam()
+	if ivr_on: _ivr_cam(); _iv_water_details()
 	else: _ivp_cam()
 	var cl2 := CanvasLayer.new(); cl2.layer = 5; add_child(cl2)
 	iv_fade = ColorRect.new(); iv_fade.color = Color(0.86, 0.92, 1.0, 0.0) if go_moon else Color(1.0, 0.95, 0.86, 0.0); iv_fade.set_anchors_preset(Control.PRESET_FULL_RECT); iv_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl2.add_child(iv_fade)
@@ -4089,22 +4089,26 @@ func _ivr_map_box(b: Basis, c: Vector3) -> Rect2:
 			lo = Vector2(minf(lo.x, x), minf(lo.y, p.dot(b.y))); hi = Vector2(maxf(hi.x, x), maxf(hi.y, (p + Vector3(0, 2.0, 0)).dot(b.y)))      # (and up to 2 m over it: her, a gate)
 	return Rect2(lo, hi - lo) if lo.x <= hi.x else Rect2()
 
+func _ivr_follow_tg(b: Basis, c: Vector3, vw: float, vh: float, at: Vector3) -> Vector2:      # (where the eye goes with her at `at`: across and up from the level's own middle)
+	var tg := Vector2.ZERO
+	if not ivr_mb_ok: ivr_mb = _ivr_map_box(b, c); ivr_mb_ok = true
+	var hp := at + Vector3(0, 0.5, 0) - c
+	var ho := Vector2(hp.dot(b.x), hp.dot(b.y))      # (where she is, from the level's own middle)
+	var box := Vector2(vw, vh) * IVR_BOX
+	var hv := Vector2(vw, vh) * 0.5; var lo := ivr_mb.position; var hi := ivr_mb.end
+	for i in 2:
+		var a0: float; var a1: float
+		if hi[i] - lo[i] + 2.0 * IVR_EDGE <= 2.0 * hv[i]:      # (the map fits the screen this way: a little with her, and all of it stays on the screen)
+			tg[i] = ho[i] * IVR_FOLLOW; a0 = hi[i] + IVR_EDGE - hv[i]; a1 = lo[i] - IVR_EDGE + hv[i]
+		else:      # (larger: with her as far as keeps her in the middle part of the screen, and no more than a little past its edges)
+			var inb := clampf(ho[i], -box[i], box[i]); tg[i] = (ho[i] - inb) + inb * IVR_FOLLOW
+			a0 = lo[i] - IVR_EDGE + hv[i]; a1 = hi[i] + IVR_EDGE - hv[i]
+		tg[i] = clampf(tg[i], minf(a0, 0.0), maxf(a1, 0.0))      # (the level's own eye is always allowed)
+	return tg
+
 func _ivr_follow(b: Basis, c: Vector3, vw: float, vh: float, dt: float) -> void:
 	var tg := Vector2.ZERO
-	if not ivw_menu_on and not ivr_floors.is_empty():
-		if not ivr_mb_ok: ivr_mb = _ivr_map_box(b, c); ivr_mb_ok = true
-		var hp := pos + Vector3(0, 0.5, 0) - c
-		var ho := Vector2(hp.dot(b.x), hp.dot(b.y))      # (where she is, from the level's own middle)
-		var box := Vector2(vw, vh) * IVR_BOX
-		var hv := Vector2(vw, vh) * 0.5; var lo := ivr_mb.position; var hi := ivr_mb.end
-		for i in 2:
-			var a0: float; var a1: float
-			if hi[i] - lo[i] + 2.0 * IVR_EDGE <= 2.0 * hv[i]:      # (the map fits the screen this way: a little with her, and all of it stays on the screen)
-				tg[i] = ho[i] * IVR_FOLLOW; a0 = hi[i] + IVR_EDGE - hv[i]; a1 = lo[i] - IVR_EDGE + hv[i]
-			else:      # (larger: with her as far as keeps her in the middle part of the screen, and no more than a little past its edges)
-				var inb := clampf(ho[i], -box[i], box[i]); tg[i] = (ho[i] - inb) + inb * IVR_FOLLOW
-				a0 = lo[i] - IVR_EDGE + hv[i]; a1 = hi[i] + IVR_EDGE - hv[i]
-			tg[i] = clampf(tg[i], minf(a0, 0.0), maxf(a1, 0.0))      # (the level's own eye is always allowed)
+	if not ivw_menu_on and not ivr_floors.is_empty(): tg = _ivr_follow_tg(b, c, vw, vh, pos)
 	if dt < 0.0: ivr_fo = tg; ivr_fv = Vector2.ZERO; return
 	if OS.get_environment("IVR_FOLLOW_LOG") != "" and Engine.get_process_frames() % 15 == 0: print("FOLLOW t=%.1f her=(%.2f,%.2f) tg=(%.2f,%.2f) fo=(%.2f,%.2f) map=%s" % [iv_t, (pos - c).dot(b.x), (pos + Vector3(0, 0.5, 0) - c).dot(b.y), tg.x, tg.y, ivr_fo.x, ivr_fo.y, str(ivr_mb)])
 	var om := 2.0 / IVR_FOLLOW_T; var x := om * dt; var ex := 1.0 / (1.0 + x + 0.48 * x * x + 0.235 * x * x * x)
@@ -6640,6 +6644,7 @@ func _ivr_build() -> void:
 	var vt := GradientTexture2D.new(); vt.gradient = vg; vt.fill = GradientTexture2D.FILL_RADIAL; vt.fill_from = Vector2(0.5, 0.5); vt.fill_to = Vector2(1.15, 0.5); vt.width = 256; vt.height = 256
 	var vr := TextureRect.new(); vr.texture = vt; vr.stretch_mode = TextureRect.STRETCH_SCALE; vr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	vr.set_anchors_preset(Control.PRESET_FULL_RECT); vr.mouse_filter = Control.MOUSE_FILTER_IGNORE; cl.add_child(vr)
+	var fg_from := cl.get_child_count()      # (the things before the eye begin here)
 	iv_leaves = _iv_overlay(cl, "res://goiv/leaves_tl.png", Vector2(-70, -90) * k, Vector2(470, 470) * k)
 	var lr := _iv_overlay(cl, "res://goiv/leaves_tl.png", Vector2(720 * k + 60 * k, -150 * k), Vector2(440, 440) * k); lr.flip_h = true; lr.position.x -= 440 * k; lr.rotation = 0.18
 	if go_wake:      # (the first dawn: dark shapes before the eye at the corners, a branch above at the left, as Lara Croft GO frames its places)
@@ -6678,7 +6683,7 @@ func _ivr_build() -> void:
 		if go_glass:      # (the fourth level, as its concept: no rocks before the eye; a bank of mist at the left, over the glass's edge)
 			rb.visible = false; rbl.visible = false
 			var f4 := OS.get_environment("IV_FG4") if OS.get_environment("IV_FG4") != "" else IVGL_FG      # (what stands before the eye: IV_FG4=grass|head|0)
-			if f4 == "grass" and ResourceLoader.exists("res://goglass/fg_grass.png"):      # (wild grasses at the lower left, low and out of focus (the owner, 23/11: "in 4 put the grasses, but lower so they don't take so much of the screen, and a less clear shape", "more discreet grasses, not half the screen", "new grasses, just lower and more horizontal", "other grasses, more monochrome", "maybe like reeds?"): since 23/11 two pale lily buds on their stems with ordinary long leaves ("I liked the lily", "more leaves and another lily", "normal leaves", "lower"), painted alone by the image model on green after its own lily in the level's frame (design/level4/fg_edit/lilies3_b.png, its prompt beside it), keyed against the green, the green unmixed out of its soft edges; before: short monochrome reeds; lifted out of its edit of the level's own frame, grasses carried a ghost of her, repainted beside her)
+			if f4 == "grass" and ResourceLoader.exists("res://goglass/fg_grass.png"):      # (wild grasses with a lily bud at the lower left, dark and out of focus before the eye as the second level's statue is (the owner, 23/11: "much better grasses with a lily at the lower left", "blurred in front and dark, as we did in other maps"): painted alone by the image model on green (design/fg_plate/lilygrass_green.png, its prompt beside it), keyed, the green unmixed out of its edge, multiplied by the blue-plum (0.5, 0.52, 0.66), blurred 5 px, 300 wide; before: reeds, grasses, lilies of other kinds)
 				var gt := load("res://goglass/fg_grass.png") as Texture2D
 				_iv_overlay(cl, "res://goglass/fg_grass.png", Vector2(IVGL_FG_GRASS.x * k, vh - IVGL_FG_GRASS.y * k), Vector2(IVGL_FG_GRASS.z, IVGL_FG_GRASS.z * float(gt.get_height()) / float(gt.get_width())) * k)
 			if f4 == "head" and ResourceLoader.exists("res://goglass/fg_head.png"):      # (before: the back of a statue's head at the lower right, blurred (the owner, 23/11: "at the lower right in 4 put the back of a statue's head, blurred"; then "I want other blurred things in front, in 4 and 5"): our own goddess seen from behind, tools/go/fg_head.py)
@@ -6688,6 +6693,8 @@ func _ivr_build() -> void:
 				var ml := _iv_overlay(cl, "res://goglass/mist_l.png", Vector2(-70 * k, vh * 0.27), Vector2(400, 475) * k); ml.modulate = Color(1, 1, 1, 0.92)
 		if go_veil and not go_milos and not go_glass and not go_guard and ResourceLoader.exists("res://goveil/statue_fg.png"):      # (the second level: a veiled statue standing before the eye at the lower right, blurred, dark against the light, one of the thousand (the owner, 18/11: "fantastic, the blurred statue"); clear of the way, the gate and the rocks in the sea)
 			var sfg := _iv_overlay(cl, "res://goveil/statue_fg.png", Vector2(487 * k, vh - 468 * k), Vector2(341, 532) * k); sfg.modulate = Color(0.55, 0.42, 0.58, 0.95)
+		if not (IV_FG_ON or OS.get_environment("IV_FG") == "1"):      # (nothing before the eye in any of the waking's levels since 23/11 (the owner: "take the blurred things in front out of all the levels, but I'd like details in the water, as those you made at some point, in all the levels"): leaves, rocks, figures, column, grasses; IV_FG=1 shows them again)
+			for ci in range(fg_from, cl.get_child_count()): (cl.get_child(ci) as CanvasItem).visible = false
 		vg.colors = PackedColorArray([Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0.05), Color(0.26, 0.16, 0.3, 0.2)])      # (a soft darkening at the edges: the eye drawn in)
 		if go_glass: vr.visible = false      # (the fourth level: none; its concept is clear to the corners, and the plum darkening turned its sky pink there (the owner, 20/11: "fix the colours well and very carefully, look at the Gemini sample"))
 		_ivw_hand_make(cl)
@@ -11092,15 +11099,60 @@ func _ivgd_dir(ph: int) -> String: return IVGD_ORDER[(ivgd_d0 + ph) % 4]
 ## the haze, its image in the water (the owner, 21/11: "something else in the background, and let it be 3D"; of the ways
 ## offered, "a 3D island with ruins"); IV_FAR=0 leaves it out, IV_FAR_K tries another haze
 const IVGD_FAR_K := 0.3
+## details in the water, part of the scene (the owner, 23/11: "take the blurred things in front out of every level, but
+## I'd like details in the water, like the ones you made at some point in between, in all the levels"; "the water lilies
+## in 4 I liked"; "and they needn't all be striking"): each painted by the image model into the level's own frame, lifted
+## out of it with what it does to the water about it (tools/go/water_lift.py; the lilies tools/go/water_cut.py; the sources
+## and the steps in design/water/), and stood in the world as a card facing the eye on the water
+## where it was painted, so it goes with the level as the eye follows her (painted on the screen it would slide over the
+## water). Each [file, left, top, width, height, its foot's x, y, (drawn after: 7)], in the pixels of the level's frame at
+## 720 by 1280 as the eye has it at her start (the level's own eye and its follow, whatever the screen's shape); its
+## foot, where it meets the water, sets how near it stands, so the level's rocks before it hide it and those behind it do
+## not. `IV_WD=0` leaves them out; `IV_WD_ADD="file,left,top,width,height,x,y[,after]"` tries one more.
+const IV_WATER_DETAILS := {
+	"gowake": [["res://gowake/wd_amphora.png", 464.1, 1055.8, 225.0, 172.1, 570.3, 1181.4]],      # (an amphora with a meander band, half sunk at the lower right: the film's own vessel)
+	"goveil": [["res://goveil/wd_hand.png", 135.9, 1032.6, 201.6, 204.7, 218.0, 1158.1]],      # (a statue's marble hand rising from the water at the lower left, one of the thousand)
+	"gomilos": [["res://gomilos/wd_capital.png", 435.9, 972.1, 243.8, 227.9, 494.3, 1100.5]],      # (a fallen Ionic capital half sunk at the lower right)
+	"goglass": [["res://goglass/wd_lilies.png", -118.1, 1067.0, 586.9, 369.8, 78.8, 1286.0, 22]],      # (the lilies the owner liked: two pads and a bud at the lower left, whole beyond the frame's edge for taller screens; over the mist sheet that lies there, as painted in it)
+	"goguard": [["res://goguard/wd_mirror.png", 28.1, 1041.9, 234.4, 204.7, 120.6, 1170.7]],      # (a bronze hand mirror half sunk at the lower left, green with age: the mirror that kept him)
+}
+
+func _iv_water_details() -> void:
+	if ivr_eye.is_empty() or OS.get_environment("IV_WD") == "0": return
+	var ds: Array = (IV_WATER_DETAILS.get(go_dir.get_base_dir().get_file(), []) as Array).duplicate()
+	if OS.get_environment("IV_WD_ADD") != "":
+		var e := OS.get_environment("IV_WD_ADD").split(","); var d: Array = [e[0]]
+		for k in range(1, e.size()): d.append(float(e[k]))
+		ds.append(d)
+	if ds.is_empty(): return
+	var b := _ivp_basis()
+	var ce: Array = ivr_eye.centre; var w := float(ivr_eye.width)
+	var c := IV_O + Vector3(float(ce[0]), float(ce[1]), float(ce[2]))
+	if not ivr_floors.is_empty():      # (the eye as it is at her start on a screen of 9 by 16, where the frame was painted)
+		var fo := _ivr_follow_tg(b, c, w, w * 16.0 / 9.0, pos); c += b.x * fo.x + b.y * fo.y
+	var ppm := 720.0 / w; var sea := IV_O.y + ivr_sea_y
+	for d in ds:
+		if not ResourceLoader.exists(String(d[0])): continue
+		var l := float(d[1]); var t := float(d[2]); var dw := float(d[3]); var dh := float(d[4]); var fx := float(d[5]); var fy := float(d[6])
+		var p := c + b.x * ((fx - 360.0) / ppm) + b.y * ((640.0 - fy) / ppm)
+		var f := p - b.z * ((p.y - sea) / b.z.y)      # (its foot on the water, along the eye's ray)
+		var q := QuadMesh.new(); q.size = Vector2(dw, dh) / ppm
+		var m := StandardMaterial3D.new(); m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.albedo_texture = load(String(d[0])); m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		m.render_priority = int(d[7]) if d.size() > 7 else 7      # (after the sea, its foam and its lights)
+		var mi := MeshInstance3D.new(); mi.mesh = q; mi.material_override = m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		iv_root.add_child(mi); mi.global_transform = Transform3D(b, f + b.x * ((l + dw * 0.5 - fx) / ppm) + b.y * ((fy - t - dh * 0.5) / ppm))
+
+const IV_FG_ON := false      # (the things before the eye at the corners of the waking's levels: off since 23/11, details in the water instead)
 const IVGL_FG := "grass"      # (before the eye in the fourth level)
-const IVGL_FG_GRASS := Vector3(-60.0, 250.0, 413.0)      # (the grasses: their left, their top over the picture's foot, their width, at 720 wide)
+const IVGL_FG_GRASS := Vector3(-40.0, 375.0, 334.0)      # (the grasses: their left, their top over the picture's foot, their width, at 720 wide)
 const IVGL_FG_HEAD := Vector3(430.0, 215.0, 380.0)      # (the fourth level's head before the eye: its left, its top over the picture's foot, its width, at 720 wide; only the head shows, its neck and shoulder below the picture's edge (the owner, 23/11: "less of the statue, only the head"; its top was 400 over the foot, its shoulder in the picture))
 const IVGL_FG_HEAD_AR := 1100.0 / 1015.0      # (goglass/fg_head.png's height over its width)
-const IVGD_FG := "column"      # (what stands before the eye at its lower corners: see _ivr_build's corners; since 23/11 a fallen marble column at the lower right (the owner, of the image model's edit of the level's frame with one at the lower left: "the column is fantastic, mirror it to the right, lower, a little darker"; mirrored and lifted out it looked "badly cut", so: "make it anew from the right"): painted by the image model into the level's own frame at the lower right, lying in the water, no rock under it (the owner: "can't it make it anew so it isn't on stupid rocks?", "and blurred", "the right one, just a liiittle lower"; design/level5/fg_edit/column_water*.png, the prompts beside them), the first of two takes ("put the first column"), cut out of the model's own take of it with the water made green: its cover the green's lack at its own size (soft where it is out of focus), its colour the green unmixed out of it, its outer ten pixels given the marble's colour from within (the green take left a light, greenish rim there), only the light marble where it meets the level's rocks; laid low, its capital clear of the level's rocks ("I don't want it over the rocks, I want it discreet, low"), darkened to 0.68 ("let's darken it a little, so it isn't so prominent", "a little darker"); then lower still and its edge cleaner ("a little lower, and clean the edges a little more"): only its one body (bits and thin strokes off it opened away), its faint outer haze cut, its outer twelve pixels the marble's colour from within; lifted by its difference from the frame it came out ragged, with holes)
+const IVGD_FG := "column"      # (what stands before the eye at its lower corners: see _ivr_build's corners; since 23/11 a fallen Ionic column at the lower right, dark and out of focus before the eye as the second level's statue is (the owner, after many takes of one painted into the level's frame and cut out of it: "I want them blurred, in front, dark, as we did in other maps, not part of the map: they are there for perspective"): painted alone by the image model on green after the column he liked (design/fg_plate/column_green.png, its prompt beside it), keyed, the green unmixed out of its edge, multiplied by the plum (0.56, 0.45, 0.6), blurred 5.5 px, 460 wide)
 const IVGD_FG_K := 1.0      # (their size; IV_FG5_K tries another (the owner, 23/11: "in 5 put something more discreet"))
 const IVGD_FG_A := 1.0      # (how much they show; IV_FG5_A tries another)
 const IVGD_FG_YOUTH := Vector3(-130.0, 330.0, 340.0)      # (its left, its top over the picture's foot, its width; at 720 wide: at the lower left, in the open water under the gate's rocks, facing in, his mirror toward the middle)
-const IVGD_FG_MORE := {"column": ["res://goguard/fg_column.png", 273.0, 230.0, 447.0], "veiled": ["res://goguard/fg_veiled.png", 470.0, 330.0, 280.0], "amphora": ["res://goguard/fg_amphora.png", -60.0, 300.0, 300.0], "mask": ["res://goguard/fg_mask.png", -50.0, 280.0, 280.0]}      # (others before the eye, each alone, painted by the image model (design/level5/fg/, their prompts beside them) and cut out by tools/go/fg_figure.py: a veiled woman from behind at the lower right, her head turned in; an amphora, or a broken marble face looking in, at the lower left; its picture, its left, its top over the picture's foot, its width, at 720 wide)
+const IVGD_FG_MORE := {"column": ["res://goguard/fg_column.png", 284.0, 309.0, 496.0], "veiled": ["res://goguard/fg_veiled.png", 470.0, 330.0, 280.0], "amphora": ["res://goguard/fg_amphora.png", -60.0, 300.0, 300.0], "mask": ["res://goguard/fg_mask.png", -50.0, 280.0, 280.0]}      # (others before the eye, each alone, painted by the image model (design/level5/fg/, their prompts beside them) and cut out by tools/go/fg_figure.py: a veiled woman from behind at the lower right, her head turned in; an amphora, or a broken marble face looking in, at the lower left; its picture, its left, its top over the picture's foot, its width, at 720 wide)
 const IVGD_FG_HAND := Vector3(430.0, 340.0, 340.0)      # (at the lower right, under the walk's right arm, clear of it)
 const IVGD_FAR_ON := false      # (the island in the air painted into the backdrop since 22/11 (the owner, of the image model's repaint of the 3D one: "the new floating island!! but a little more to the right"; design/level5/isle_painted/lay_in.py); before, 3D on the plain sky (22/11, of it: "I liked this background"), and before that painted (21/11: "can't you make the island as a picture?"); IV_FAR=1 brings the 3D one back, with IV_BG_FILE=design/level5/backdrop_plain_clean.jpg for its plain sky)
 const IVGD_FAR_IMG := false      # (the painted island's image in the water (the owner, 23/11: "on the floating island in 5, shouldn't a reflection show below too?"): the 3D island it was painted from, drawn only as its image under it; IV_FAR_IMG=0 leaves it out)

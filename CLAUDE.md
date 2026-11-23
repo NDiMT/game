@@ -299,6 +299,32 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   for painted light and shade, a trial not yet on by default (the owner asked for "the actual light and shade painted, not
   a texture on the rock"): `IV_PAINT_LIGHT=1 IV_PAINT_AO=0.5` (`paint_light`: the light on smoothed normals in soft
   bands); levels 1 and 2 would need their own rebuild with `smooth_normals`.
+- **Nothing before the eye; details in the water instead** (the owner, 23/11: "take the blurred things in front out of
+  all the levels, but I'd like details in the water, like the ones you made at some point in between, in all the
+  levels"; "the water lilies in 4 I liked"; "and they needn't all be striking"): the things before the eye at the
+  corners (the leaves above, the rocks below, level 2's veiled statue, level 4's lilies with leaves, level 5's fallen
+  column, the last two made dark and blurred as the second level's statue just before) are all hidden (`IV_FG_ON` false
+  in `ch1.gd`; `IV_FG=1` shows them again). In their place one thing in each level's water, part of the scene
+  (`IV_WATER_DETAILS`, `_iv_water_details`): level 1 an amphora with a meander band half sunk at the lower right (the
+  film's own vessel), level 2 a statue's marble hand rising from the water at the lower left, level 3 a fallen Ionic
+  capital at the lower right, level 4 the lilies he liked (a bud on its stem and round pads at the lower left), level 5 a
+  bronze hand mirror green with age at the lower left (three of them the things kept for another map, see level 4).
+  Each was painted by the image model into the level's own frame (the game's still at her start, 720 by 1280, with
+  nothing before the eye: "keep the whole picture exactly as it is ... add only one thing, in the open water ... part of
+  the scene, in sharp focus, small, about a fifth of the frame's width"), then the same painting with its open water
+  made flat green; `tools/go/water_lift.py` lifts the thing from the green take (whole where the take has it whole, even
+  a green bronze) and, about it, what it does to the water (its ripples, its image, its part under the water) from the
+  painting against the game's frame, its colours always the painting's own, so laid over the game's water it gives back
+  the painting; it prints the cut's place in the frame and its foot. The game stands each in the world as a card facing
+  the eye (`StandardMaterial3D` unshaded, its texture imported with mipmaps), placed from those pixels by the level's
+  own eye and its follow at her start on a 9:16 screen (`_ivr_follow_tg`), its foot on the sea along the eye's ray: it
+  goes with the level as the eye follows her, and the level's rocks nearer the eye than its foot hide it. Drawn after
+  the sea and its foam (7), level 4's after its mist sheets (22), as painted. The lilies were cut from the very take he
+  liked (`tools/go/water_cut.py`: its dark rock behind the bud, its half-green pad given back its colour from the
+  painting), their pads cut by the frame's edges completed by the model in a green margin, so a taller screen never
+  shows a straight cut. A thing painted into a frame where the tutorial hand shows takes the hand's place: paint the
+  hand out of the frame first. Sources: `design/water/` (each level's frame, prompts, painting, green take; the lilies'
+  canvas and completion). `IV_WD=0` leaves them out; `IV_WD_ADD="file,left,top,width,height,x,y[,after]"` tries one.
 - **The ring before every gate stands clear of its door** (the owner, 22/11: "the bright circles should never be right at
   the door"; and of the first level: "no second-to-last dot: the stair's path takes you straight to the last bright
   circle"): each ring set back along the way to 1.15 m from its arch's middle (level 4's 1.1; 0.6 to 0.9 before, its
@@ -827,7 +853,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   by a first `godot --headless --path eidolon-demo --import`) `export/android/android_sdk_path`, `java_sdk_path`
   (`/usr/lib/jvm/java-21-openjdk-amd64`), `debug_keystore`, `debug_keystore_user` (androiddebugkey), `debug_keystore_pass`
   (android); the site's branch as a worktree (`git fetch --depth 1 origin claude/solo-game-ideas-balatro-yj6hqw`, then
-  `git worktree add --detach <dir> FETCH_HEAD`). The API keys must come from the owner again.
+  `git worktree add --detach <dir> FETCH_HEAD`). The API keys must come from the owner again (on 23/11 he pasted the
+  Gemini key in the chat; it was stored, never shown, in `~/.config/eidolon/gemini_curl` and `gemini_key` with umask 077).
 - Browser build: export preset `WebWake` (feature `gowake`; other levels and unused music left out) into an empty
   folder as `eidolon-<v>.html` (`<v>` the commit's short hash), then `python3 eidolon-demo/tools/web_stamp.py <folder> <v>`:
   every file carries the version in its name, and `index.html` checks `version.txt` past all caches and moves an old
