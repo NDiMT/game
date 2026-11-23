@@ -11125,8 +11125,7 @@ const IV_WATER_DETAILS := {      # (since 23/11, of twelve natural ones offered,
 ## are, lifted as one layer over the whole frame (design/level1/lilies/), and laid on the water's own plane, the frame's
 ## corners taken down to the sea along the eye's rays: so the layer lies where it was painted, moves with the level as the
 ## eye follows her, and the island hides what lies behind it, as it hides the water itself. IV_WD=0 leaves them out.
-const IV_WATER_DECALS := {
-	"gowake": "res://gowake/wd_lily_ring.png",
+const IV_WATER_DECALS := {      # (none since 23/11: the first level's lilies, then "bro I don't like them, do something else in 1"; design/level1/lilies/)
 }
 const IV_DECAL_LIFT := 0.006      # (over the water, under nothing that stands in it)
 
@@ -11170,7 +11169,11 @@ func _iv_water_details() -> void:
 			var xy := pk.split_floats(",")
 			var pp := c + b.x * ((xy[0] - 360.0) / ppm) + b.y * ((640.0 - xy[1]) / ppm)
 			print("WD PICK %s -> %s" % [pk, str(pp - b.z * ((pp.y - sea) / b.z.y) - IV_O)])
-	for d in ds:
+	for d0 in ds:
+		var d: Array = (d0 as Array).duplicate()      # (the table's own arrays are read-only)
+		for sub in OS.get_environment("IV_WD_SUB").split(";", false):      # ("res://a.png=res://b.png;...": another picture in a card's place, to try it)
+			var sp := sub.split("=")
+			if sp.size() == 2 and String(d[0]) == sp[0]: d[0] = sp[1]
 		if not ResourceLoader.exists(String(d[0])): continue
 		var l := float(d[1]); var t := float(d[2]); var dw := float(d[3]); var dh := float(d[4]); var fx := float(d[5]); var fy := float(d[6])
 		var p := c + b.x * ((fx - 360.0) / ppm) + b.y * ((640.0 - fy) / ppm)

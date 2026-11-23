@@ -31,13 +31,16 @@ for k in range(1, n + 1):
 A = a * binary_dilation(keep[lab], iterations=3)
 ra = np.zeros((H, W), np.float32); rc = np.zeros((H, W, 3), np.float32)
 for k in buds:
-    ys, xs = np.nonzero(binary_dilation(lab == k, iterations=3)); yl = ys.max(); hob = float(yl - ys.min())
-    yr = (2 * yl - ys).astype(int); d = (yr - yl) / hob
-    al = a[ys, xs] * 0.8 * np.clip(1.0 - d / 1.0, 0, 1) ** 1.2
-    xr = np.round(xs + 2.0 * np.sin(yr * 0.25 + 0.7) * np.clip((yr - yl) / 12.0, 0, 1)).astype(int)
+    # the whole bud, its thin stem's faint foot too, so its image starts where the stem leaves the water and touches it
+    # (the owner: "the reflection should touch the bud")
+    near_k = binary_dilation(lab == k, iterations=8) & (a > 0.15)
+    ys, xs = np.nonzero(near_k); yl = ys.max(); hob = float(yl - ys.min())
+    yr = (2 * yl - ys + 1).astype(int); d = (yr - yl) / hob
+    al = np.clip(a[ys, xs] * 1.4, 0, 1) * 0.85 * np.clip(1.0 - d / 1.0, 0, 1) ** 1.1
+    xr = np.round(xs + 1.6 * np.sin(yr * 0.25 + 0.7) * np.clip((yr - yl) / 18.0, 0, 1)).astype(int)
     ok = (yr < H) & (xr >= 0) & (xr < W); yr, xr, al, ys2, xs2 = yr[ok], xr[ok], al[ok], ys[ok], xs[ok]
     better = al > ra[yr, xr]; ra[yr[better], xr[better]] = al[better]; rc[yr[better], xr[better]] = rgb[ys2[better], xs2[better]] * 0.85
-pmr = np.stack([gaussian_filter(rc[..., i] * ra, (1.4, 0.6)) for i in range(3)], -1); ra = gaussian_filter(ra, (1.4, 0.6)); rc = pmr / np.maximum(ra, 1e-4)[..., None]
+pmr = np.stack([gaussian_filter(rc[..., i] * ra, (0.8, 0.0)) for i in range(3)], -1); ra = gaussian_filter(ra, (0.8, 0.0)); rc = pmr / np.maximum(ra, 1e-4)[..., None]      # (soft only along the up: across it, the thin stem's image would fade away and the bud's float off)
 cut = np.asarray(Image.open(cutp).convert('RGBA').resize((W, H), Image.LANCZOS)).astype(np.float32) / 255
 w = gaussian_filter(binary_dilation(keep[lab], iterations=24).astype(np.float32), 6.0)
 wa = np.where(cut[..., 3] < 0.8, cut[..., 3], 0.0) * w

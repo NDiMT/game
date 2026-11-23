@@ -346,6 +346,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   lily is pointless") and the group at the island's right, and of the takes he chose the one with small open pink lotus
   flowers on the pads ("this I liked, only one lily is cut abruptly"): cut out of that green take itself, whole pads
   only, none at the frame's edge, at the left and the lower right.
+  **Then turned down** (23/11, after their buds were given images in the water: "bro I don't like them, do something
+  else in 1"): `IV_WATER_DECALS` is empty, `gowake/wd_lily_ring.png` gone (its making in `design/level1/lilies/`). Three
+  things painted at the lower right in their place (a fallen veiled head, a fallen column, an empty boat) he liked but
+  kept for another map ("make others too; I liked these, but keep them for elsewhere"): `design/fg_spare/level1_water/`.
+  A take that names the place by the start slab may move the slab and her: name all that must stay ("nothing moves").
   The rules he has given for painted things are in the skill (`go-level`, "Things painted into a level").
 - **The ring before every gate stands clear of its door** (the owner, 22/11: "the bright circles should never be right at
   the door"; and of the first level: "no second-to-last dot: the stair's path takes you straight to the last bright
@@ -812,7 +817,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   row, the gate and the island), lifted again, the row a quarter into the haze behind it; the fallen column and drum at
   the lower right graded into the same marble (`design/level5/columns_facets/grade.py`); then the two broken columns
   made irregular, of offset, chipped drums with jagged tops ("they are straight like cucumbers"), and the fallen column
-  and drum at the lower right at 0.85 of their size ("a little smaller still"). **Their image in the water is made
+  and drum at the lower right at 0.85 of their size ("a little smaller still"). Tried and taken back the same day (23/11): the far
+  columns out of focus ("I want them blurry"; `design/level5/far_painted/blur.py`) and the fallen column as painted, at
+  its full size and place, alone (he sent the painting itself: "this here is fantastic, can you put it in 5 actually?");
+  seen in the game: "bring 5 back as it was before these two changes". `IV_WD_SUB="res://a.png=res://b.png"` tries
+  another picture in a card's place. **Their image in the water is made
   from the card itself** (the owner: "the reflection in the water is tragic": the model's painted one was faint,
   broken and cut short): `tools/go/card_reflect.py` takes the painted water away and turns each thing over about where
   it meets the water, as the game's own images are (a column about its foot; the row and its architrave about the line
