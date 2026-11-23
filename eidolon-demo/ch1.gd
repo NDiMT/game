@@ -2174,8 +2174,8 @@ const IV_WAKE_PAL := {      # the waking: dawn over a still sea. Pearl and rose 
 	"rock2": ["c39f98", "93727c", "684a57", "4a3140"],
 	"observer": ["f5e7e1", "decdd0", "c6b0bc", "9d8599"],
 	"statue": ["fcf5f1", "f4e6e1", "d8c2c8", "ae96a9"],      # (the Observer as the concepts paint their statues: white marble warmed by the dawn on its lit side, a light rose-lilac shade; the user: "smoother and better lit")      # (the lighter stone's own: the white marble of the slabs; the user's ask)      # (the rock's own hues, its shade a little lighter so her face under the veil still reads)      # (her shade soft: the face under the veil must never fall into a dark hole)
-	"block": ["bfb4c9", "aba1b9", "8d84a0", "6c6481"],      # (no longer used: since 22/11 the cube takes each level's slabs' colours and its meander the way's line's, _iv_pal; before, the cube a lilac grey in every level, its meander white (the owner, 22/11, of ten offered: "the lilac grey with white, I liked it"; design/cube/options.txt); a light grey-brown before, "d2baa0", "c0a88d", "a58d73", "87705a" (21/11: "a little lighter brown and greyer"); a light brown before that, "d6b18a", "c49f78", "a7845f", "84674b" ("the stone with the meander in all levels light brown"); a brown beige before that, "dbcbb6", "ccbaa3", "b29f89", "8f7e6f", and before it a paler beige, "f2eade", "e9dfd1", "d1c4b7", "ab9f96", and a sandier marble, "f6e6d0", "ecd8c0", "d3bba4", "ae968a")
-	"meander": ["f6f1ef", "e6dfdf", "cbc2c6", "a097a3"],      # (its meander white on the lilac grey (22/11); a darker shade of the grey-brown before, "ae977d", "9e856b", "876f59", "6b5948"; of the light brown before that, "b18e69", "9e7c59", "84664a", "66503b"; of the brown beige before that, "baa58d", "a8937d", "8f7c6b", "706155")
+	"block": ["bfb4c9", "aba1b7", "8e889d", "6b6779"],      # (the cube in every level since 23/11: a lilac grey, its meander plum, shaded as the stone is (the owner, of eight offered with a meander of its own colour, "make others, I don't want the meander white": "lilac grey"; m1 in design/cube/options.txt); for a day before (22/11) in each level's slabs' colours and its meander the way's line's, flat (_iv_pal's marble2 and groove), not liked; before that a lilac grey, its meander white (the owner, 22/11, of ten offered: "the lilac grey with white, I liked it"; "bfb4c9", "aba1b9", "8d84a0", "6c6481"); a light grey-brown before, "d2baa0", "c0a88d", "a58d73", "87705a" (21/11: "a little lighter brown and greyer"); a light brown before that, "d6b18a", "c49f78", "a7845f", "84674b" ("the stone with the meander in all levels light brown"); a brown beige before that, "dbcbb6", "ccbaa3", "b29f89", "8f7e6f", and before it a paler beige, "f2eade", "e9dfd1", "d1c4b7", "ab9f96", and a sandier marble, "f6e6d0", "ecd8c0", "d3bba4", "ae968a")
+	"meander": ["5e4a66", "54425d", "463850", "352a3d"],      # (its meander plum on the lilac grey (23/11); white before, "f6f1ef", "e6dfdf", "cbc2c6", "a097a3" (22/11); a darker shade of the grey-brown before, "ae977d", "9e856b", "876f59", "6b5948"; of the light brown before that, "b18e69", "9e7c59", "84664a", "66503b"; of the brown beige before that, "baa58d", "a8937d", "8f7c6b", "706155")
 	"phead": ["f3e4df", "dcc4c4", "b9a0ad", "917b93"],
 	"groove": ["e2cac6", "e2cac6", "e2cac6", "e2cac6"],
 	"line": ["fff4ee", "fff4ee", "fff4ee", "fff4ee"],
@@ -2233,7 +2233,7 @@ func _iv_pal(kind: String) -> Array:
 	if (kind == "block" or kind == "meander") and OS.get_environment("IV_CUBE_PAL") != "":      # (another cube to try: "block:h,h,h,h;meander:h,h,h,h", lit to shade)
 		for part in OS.get_environment("IV_CUBE_PAL").split(";"):
 			if part.begins_with(kind + ":"): return Array(part.get_slice(":", 1).split(","))
-	if go_veil and (kind == "block" or kind == "meander"): return _iv_pal("marble2" if kind == "block" else "groove")      # (the cube in each level's own slabs' colours, its meander the colour of the way's line, drawn flat as the line is (the owner, 22/11: "make the cube in the slab's colours, and the meander the colour of the path's line"); the lilac grey with white before, "block" and "meander" in IV_WAKE_PAL)
+	if go_veil and (kind == "block" or kind == "meander"): return IV_WAKE_PAL[kind] as Array      # (the cube the same in every level: the lilac grey, its meander plum (23/11); for a day before, in each level's own slabs' colours, its meander the colour of the way's line, drawn flat as the line is (22/11: "make the cube in the slab's colours, and the meander the colour of the path's line"), _iv_pal("marble2"), _iv_pal("groove"))
 	if (go_glass or go_guard) and IV_GLASS_PAL.has(kind): return IV_GLASS_PAL[kind] as Array      # (the fifth level, for now, in the fourth's colours: its concept's are near them)
 	if go_milos and IV_MILOS_PAL.has(kind): return IV_MILOS_PAL[kind] as Array
 	if go_wake and IV_WAKE_PAL.has(kind): return IV_WAKE_PAL[kind] as Array
@@ -5428,6 +5428,7 @@ func _ivw_intro_end() -> void:      # (at its end, or at a tap: the film fades i
 	ivw_intro_box.get_parent().queue_free(); ivw_intro_box = null; ivf_vid = null; ivf_mat = null; ivf_rect = null; ivf_tex.clear(); ivw_skip_lb = null
 	if ivw_film_audio != null: ivw_film_audio.queue_free(); ivw_film_audio = null; ivw_streams.erase("res://intro/intro_audio.ogg")
 	if not ivw_theme_on: ivw_theme_on = true; _ivw_music("res://music/theme.ogg", 2.5)      # (skipped early: the theme now; at its end it came in already, and goes on)
+	print("IV the start screen")      # (for the browser check: the film is gone, the name, PLAY and the levels' numbers can be touched)
 
 func _ivw_jump(nx: String) -> void:      # (for the tests: from the start screen straight into a later level, as its gate would lead there)
 	ivw_menu_on = false
@@ -5442,6 +5443,7 @@ func _ivw_jump(nx: String) -> void:      # (for the tests: from the start screen
 
 func _ivw_play() -> void:      # (PLAY: the name and the haze go, the eye goes down to her where she lies, and she wakes)
 	ivw_menu_on = false
+	print("IV play")      # (for the browser check)
 	_ivw_music(_go_level_music(), 5.0, -5.0)      # (the theme gives way to the level's own piece, slowly, quieter: it plays while she thinks)
 	get_tree().create_timer(6.5).timeout.connect(_ivw_theme_drop)      # (a browser's decoded theme given up: the levels' pieces are enough to keep)
 	for f in 2: await get_tree().process_frame      # (a browser copies a long piece's whole sound as it starts it: that moment passes before anything moves)
@@ -6451,13 +6453,14 @@ func _ivr_block() -> Node3D:
 		return b0
 	var st := GLTFState.new(); var doc := GLTFDocument.new()
 	var bf := "res://props/block_cube.glb" if go_veil else "res://goiv/block.glb"      # (a true cube in the second, third and fourth levels (the owner, 20/11: "this holds for maps 2 and 3 with the cube too"))      # (the fourth level: a true cube, its meander on all six faces, as it tumbles (the owner, 20/11: "the cube looks rectangular rather than square"; tools/go/block_cube.py))      # (the second level: the carved cube made rougher, its faces out of true, corners broken, its meander uneven as cut by hand and apart, to be coloured (tools/go/block_meander.py))
+	if go_veil and OS.get_environment("IV_CUBE_GLB") != "": bf = OS.get_environment("IV_CUBE_GLB")      # (another cube's model to try: a file's path; tools/go/block_cube.py makes them)
 	doc.append_from_buffer(FileAccess.get_file_as_bytes(bf), "", st)
 	var n := Node3D.new(); iv_root.add_child(n)
 	n.add_child(doc.generate_scene(st))
 	var bx := _ivv_ex(0.0); bx["veins"] = 0.3; bx["ao_k"] = 0.0
 	if go_veil: bx.merge({"veins": 0.42, "vein_local": 1.0, "vein_sc": 1.1, "vein_w": 0.022, "vein_cloud": 0.06, "vein_tint": Color(0.86, 0.8, 0.76)}, true)      # (a few discreet veins, a little darker than the stone, its own so they go with it when pushed (the owner, 18/11))      # (a few discreet veins, a little darker than the stone, its own so they go with it when pushed (the owner, 18/11))
 	var mx := _ivv_ex(0.0); mx["veins"] = 0.0; mx["ao_k"] = 0.0
-	if go_veil: mx["flat_mode"] = 1.0      # (its meander one flat colour, as the way's line is drawn (22/11))
+	# (its meander shaded as the stone is; drawn flat, as the way's line, for a day (22/11): mx["flat_mode"] = 1.0)
 	for m in n.find_children("*", "MeshInstance3D", true, false):
 		if go_veil and String(m.name).to_lower().contains("meander"): (m as MeshInstance3D).material_override = _iv_mat("meander", 0.0, mx); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON; continue      # (its meander apart, a darker stone)
 		(m as MeshInstance3D).material_override = _iv_mat("block", 0.0, bx) if go_veil else _ivr_mat("marble2"); (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON      # (the second level: an uncut block of the statues' own marble, lit as softly)

@@ -182,10 +182,12 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   first": the fourth level's own lighter, softer colours for it are gone, it is the second level's; since 21/11 a light brown, `d6b18a` lit, in every level: "the stone with the meander in
   all levels light brown"; then a little lighter and greyer, `d2baa0` lit: "the cube with the meander a little lighter
   brown and greyer"; on 22/11 a lilac grey, `bfb4c9` lit, its meander white, `f6f1ef`, of ten offered: "the lilac
-  grey with white, I liked it", see level 5; **since later on 22/11 in each level's own slabs' colours, its meander the
-  colour of the way's line, drawn flat as the line is** (the owner: "make the cube in the slab's colours, and the meander
-  the colour of the path's line": `_iv_pal` gives `block` the level's `marble2` and `meander` its `groove`, the meander
-  with `flat_mode`; `block`, `meander` in `IV_WAKE_PAL` kept for the record), its veins as discreet as before;
+  grey with white, I liked it", see level 5; later on 22/11 in each level's own slabs' colours, its meander the colour
+  of the way's line, drawn flat as the line is (the owner: "make the cube in the slab's colours, and the meander the
+  colour of the path's line"), and then not liked ("I don't like the colour of the cube with the meander"); **since 23/11
+  the lilac grey again, its meander plum, shaded as the stone is** (`bfb4c9` lit, `5e4a66`; of eight offered with a
+  meander of its own colour, the owner: "make others, I don't want the meander white", then "lilac grey", m1 in
+  `design/cube/options.txt`; `block`, `meander` in `IV_WAKE_PAL`, every level), its veins as discreet as before;
   its single great key cut in each face (`tools/go/block_cube.py ... one`; four small square keys on each face, two by
   two, as the fifth level's concept has them, were tried on 21/11, `four`, and the same day the owner: "put back the
   previous cube you push"); it tumbles over onto the next place, and into the gap
@@ -692,7 +694,13 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   kept, its stone and finish new (`design/cube/options.txt` s1-s4; `IV_CUBE_EX="block:k=v,...;meander:k=v"` sets its
   materials' own values, emit, flat_mode, veins): 1 bronze, its meander a green patina; 2 terracotta, its meander a
   black glaze, as a black-figure vase; 3 white marble, its meander gold; 4 dark veined stone, its meander a white light
-  as the rings'; the owner to choose.
+  as the rings'; then eight bodies with the meander in the way's line colour (k1-k8), and eight with a meander of its own
+  colour, shaded (m1-m8, 23/11: lilac grey/plum, beige/terracotta, white marble/terracotta, dusty rose/burgundy,
+  blue-grey/dark blue, ochre/dark bronze, dark plum/gold, sage/dark green); he chose m1 (see level 2). Then (23/11: "is
+  there something other than one big meander in the middle we can try?") six other carvings, each cut on every face by
+  `tools/go/block_cube.py -- <out.glb> 0.92 11 <rosette|sun|spiral|eye|zigzag|mirror>` (a rosette of eight petals, the
+  Vergina sun, a volute, the eye of ships and cups, three geometric zigzags as the film's amphora, a hand mirror), tried
+  in the game with `IV_CUBE_GLB=<path>`; the owner to choose.
   The veiled bust is out again (`observer` None). Before it (the owner, 21/11: "make something else for the
   background, whatever you like, but matching the perspective and the colours"; then of it: "I don't like the new
   background"): the ruins of a drowned sanctuary far
@@ -720,6 +728,21 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   res://chapter1.tscn -- godemo`, then ffmpeg to MP4. Env: `IV_ZOOM` close-up (`IV_ZOOM_AT=dx,dz` aims it that far
   from her start), `IVW_SNAPS=1` + `SHOT_DIR` + `IVW_QUIT_AT=<snap>` stills, `IVW_SKIP=1` start awake,
   `IV_NO_MUSIC=1`, `HAND=1` tutorial hand; `--quit-after <frames>` for a short check clip.
+- **Build and check in one go**: `bash eidolon-demo/tools/web_build.sh <v> [work dir]` (the web build, stamped, its pack
+  listed, the APK, then every level in a headless browser by `tools/web_check.js`: the film skipped, PLAY or the level's
+  number touched, the level run 45 s; it waits on the game's logs "IV the start screen", "IV play", "IV start at the
+  level"; a line "LEVEL n logs .. bad 0 reached play|true" each). Then deploy (below) and check `version.txt` on the site.
+- **A fresh container** (the cloud machine is replaced now and then: the scratchpad, `/opt/godot`, the templates, the
+  Android SDK, the Python packages and the API keys in `~/.config/eidolon/`, `~/.tripo/` are all gone; 23/11): Godot
+  4.5.1 from github.com/godotengine/godot/releases (`Godot_v4.5.1-stable_linux.x86_64.zip` → `/opt/godot/godot`); from
+  its `..._export_templates.tpz` only `web_nothreads_release/debug.zip`, `web_release/debug.zip`, `android_debug.apk`,
+  `android_release.apk`, `android_source.zip`, `version.txt` into `~/.local/share/godot/export_templates/4.5.1.stable/`;
+  `python3 -m pip install numpy scipy` and `--ignore-installed pillow` (the system's Pillow is another Python's);
+  `python3.11 -m pip install bpy` (5.0.1); the APK's needs below, and in `~/.config/godot/editor_settings-4.5.tres` (made
+  by a first `godot --headless --path eidolon-demo --import`) `export/android/android_sdk_path`, `java_sdk_path`
+  (`/usr/lib/jvm/java-21-openjdk-amd64`), `debug_keystore`, `debug_keystore_user` (androiddebugkey), `debug_keystore_pass`
+  (android); the site's branch as a worktree (`git fetch --depth 1 origin claude/solo-game-ideas-balatro-yj6hqw`, then
+  `git worktree add --detach <dir> FETCH_HEAD`). The API keys must come from the owner again.
 - Browser build: export preset `WebWake` (feature `gowake`; other levels and unused music left out) into an empty
   folder as `eidolon-<v>.html` (`<v>` the commit's short hash), then `python3 eidolon-demo/tools/web_stamp.py <folder> <v>`:
   every file carries the version in its name, and `index.html` checks `version.txt` past all caches and moves an old

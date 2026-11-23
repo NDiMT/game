@@ -10,10 +10,14 @@ owner, 20/11: "the cube looks rectangular rather than square, not the same heigh
   - Parted in two, block and meander, so the game can colour the meander (and light it); made SIDE metres on a side,
     its foot at its origin.
 
-usage: python3.11 -I tools/go/block_cube.py -- <out.glb> [side metres] [seed] [one|four]
+usage: python3.11 -I tools/go/block_cube.py -- <out.glb> [side metres] [seed] [one|four|rosette|sun|spiral|eye|zigzag|mirror]
   one (the game's): the single great key of each face; four: on each face four small square keys, two by two, cut thin
   and fine (tried 21/11, the owner: "can we make the designs on the cube like this?", showing the fifth level's concept;
   the same day: "put back the previous cube you push").
+  The rest offered 23/11 (the owner: "is there something other than one big meander in the middle we can try?"), each
+  cut on every face: rosette (eight petals about a boss, as on a grave stele), sun (the Vergina star, sixteen rays),
+  spiral (a volute), eye (the eye painted on ships and cups), zigzag (three bands, as the geometric amphora of the film),
+  mirror (a hand mirror, the story's: its disc in its rim and its handle).
 """
 import bpy, bmesh, sys, random, math
 from mathutils import Vector, noise
@@ -25,7 +29,7 @@ rnd = random.Random(SEED)
 bpy.ops.wm.read_factory_settings(use_empty=True)
 
 L = 0.726; HF = L / 2.0      # (the source block's width, and half of it)
-DEPTH = 0.033 if PATTERN == 'one' else 0.02      # (the four small keys cut thin and less deep)
+DEPTH = {'one': 0.033, 'four': 0.02}.get(PATTERN, 0.028)      # (the four small keys cut thin and less deep; the motifs between)
 # the key, in a face's own square (s across, t up, -0.5..0.5): a band from the lower left along the bottom, up the right,
 # back along the top, down the left, along the inner bottom and up into the middle, as the first block's
 BARS = [(-0.40, 0.40, -0.40, -0.305), (0.305, 0.40, -0.40, 0.40), (-0.28, 0.40, 0.305, 0.40), (-0.28, -0.185, -0.12, 0.40),
@@ -55,18 +59,75 @@ def key_rects(k):
         for _ in range(q): s0, s1, t0, t1 = -t1, -t0, s0, s1      # (a quarter turn of the rectangle in the face)
         yield s0, s1, t0, t1
 
+# the motifs (23/11), each a list of convex outlines in a face's own square (-0.5..0.5), cut as prisms
+def rot(pts, a): ca, sa_ = math.cos(a), math.sin(a); return [(x * ca - y * sa_, x * sa_ + y * ca) for (x, y) in pts]
+def disc(r, n=28, cx=0.0, cy=0.0): return [(cx + r * math.cos(2 * math.pi * i / n), cy + r * math.sin(2 * math.pi * i / n)) for i in range(n)]
+def ring(r0, r1, n=36, a0=0.0, a1=2 * math.pi, cx=0.0, cy=0.0):      # (an annulus, or an arc of one, in short convex pieces)
+    out = []
+    for i in range(n):
+        u0, u1 = a0 + (a1 - a0) * i / n, a0 + (a1 - a0) * (i + 1) / n
+        out.append([(cx + r0 * math.cos(u0), cy + r0 * math.sin(u0)), (cx + r1 * math.cos(u0), cy + r1 * math.sin(u0)),
+                    (cx + r1 * math.cos(u1), cy + r1 * math.sin(u1)), (cx + r0 * math.cos(u1), cy + r0 * math.sin(u1))])
+    return out
+def bar(A, B, hw, ext=0.0):      # (a straight stroke from A to B, hw either side, run on ext past its ends so strokes meet)
+    dx, dy = B[0] - A[0], B[1] - A[1]; ln = math.hypot(dx, dy); ux, uy = dx / ln, dy / ln; px, py = -uy * hw, ux * hw
+    A2 = (A[0] - ux * ext, A[1] - uy * ext); B2 = (B[0] + ux * ext, B[1] + uy * ext)
+    return [(A2[0] + px, A2[1] + py), (B2[0] + px, B2[1] + py), (B2[0] - px, B2[1] - py), (A2[0] - px, A2[1] - py)]
+def lens(a, r0, r1, w, n=10):      # (a petal along the angle a, from r0 to r1, w either side at its widest)
+    up = [(r0 + (r1 - r0) * i / n, w * math.sin(math.pi * i / n) ** 0.8) for i in range(n + 1)]
+    lo = [(x, -y) for (x, y) in up[1:-1]][::-1]
+    return rot(up + lo, a)
+def motif():
+    P = []
+    if PATTERN == 'rosette':
+        P += [disc(0.07)] + [lens(i * math.pi / 4.0, 0.115, 0.40, 0.078) for i in range(8)]
+    elif PATTERN == 'sun':
+        P.append(disc(0.1))
+        for i in range(16):
+            a = i * math.pi / 8.0; r1, hw = (0.44, 0.03) if i % 2 == 0 else (0.35, 0.024)
+            P.append(rot([(0.15, -hw), (r1, 0.0), (0.15, hw)], a))
+    elif PATTERN == 'spiral':
+        P.append(disc(0.06))
+        th0, th1, n = math.pi * 0.5, 2 * math.pi * 2.55, 70
+        def c(th): r = 0.04 + 0.118 * th / (2 * math.pi); return (r * math.cos(th), r * math.sin(th))
+        for i in range(n):
+            a, b = th0 + (th1 - th0) * i / n, th0 + (th1 - th0) * (i + 1) / n
+            P.append(bar(c(a), c(b), 0.029, 0.004))
+    elif PATTERN == 'eye':
+        a, h = 0.42, 0.2; R = (a * a + h * h) / (2 * h); ang = math.asin(a / R)
+        P += ring(R - 0.022, R + 0.022, 24, math.pi / 2 - ang, math.pi / 2 + ang, 0.0, h - R)      # (its upper lid)
+        P += ring(R - 0.022, R + 0.022, 24, -math.pi / 2 - ang, -math.pi / 2 + ang, 0.0, R - h)      # (its lower lid)
+        P += ring(0.088, 0.14, 30) + [disc(0.045, 20)]      # (the iris a ring, the pupil a dot)
+    elif PATTERN == 'zigzag':
+        for ty in (-0.24, 0.0, 0.24):
+            xs = [-0.42 + 0.84 * i / 8 for i in range(9)]
+            pts = [(x, ty + (0.06 if i % 2 else -0.06)) for i, x in enumerate(xs)]
+            P += [bar(pts[i], pts[i + 1], 0.024, 0.012) for i in range(8)]
+    elif PATTERN == 'mirror':
+        cy = 0.08
+        P += ring(0.235, 0.29, 40, 0, 2 * math.pi, 0.0, cy) + [disc(0.175, 32, 0.0, cy)]      # (its rim and its disc)
+        P.append([(-0.04, cy - 0.29 - 0.005), (0.04, cy - 0.29 - 0.005), (0.032, -0.43), (-0.032, -0.43)])      # (its handle)
+        P.append(disc(0.05, 16, 0.0, -0.43))      # (the handle's end)
+    return P
+def polys(k):
+    if PATTERN in ('one', 'four'):
+        for (s0, s1, t0, t1) in key_rects(k): yield [(s0, t0), (s1, t0), (s1, t1), (s0, t1)]
+        return
+    for pg in motif():
+        for _ in range(TURN[k]): pg = [(-y, x) for (x, y) in pg]
+        yield pg
+
 # the cube, centred, and the cutter: a thin box for every bar of every face, reaching out past the face
 me = bpy.data.meshes.new('cube'); bm = bmesh.new(); bmesh.ops.create_cube(bm, size=L); bm.to_mesh(me); bm.free()
 cube = bpy.data.objects.new('cube', me); bpy.context.scene.collection.objects.link(cube)
 cm = bpy.data.meshes.new('cut'); cb = bmesh.new()
 for k, (n, sa, ta) in enumerate(FACES):
-    for (s0, s1, t0, t1) in key_rects(k):
-        c = n * (HF - DEPTH * 0.5 + 0.01) + sa * ((s0 + s1) * 0.5 * L) + ta * ((t0 + t1) * 0.5 * L)
-        r = bmesh.ops.create_cube(cb, size=1.0)
-        hs = Vector(((s1 - s0) * L, (t1 - t0) * L, DEPTH + 0.02))
-        for v in r['verts']:
-            p = v.co.copy()
-            v.co = c + sa * (p.x * hs.x) + ta * (p.y * hs.y) + n * (p.z * hs.z)
+    for pg in polys(k):      # (each outline a prism from DEPTH under the face to 2 cm over it)
+        lo = [cb.verts.new(n * (HF - DEPTH) + sa * (x * L) + ta * (y * L)) for (x, y) in pg]
+        hi = [cb.verts.new(n * (HF + 0.02) + sa * (x * L) + ta * (y * L)) for (x, y) in pg]
+        cb.faces.new(lo[::-1]); cb.faces.new(hi)
+        for i in range(len(pg)): j = (i + 1) % len(pg); cb.faces.new((lo[i], lo[j], hi[j], hi[i]))
+bmesh.ops.recalc_face_normals(cb, faces=cb.faces[:])
 cb.to_mesh(cm); cb.free()
 cut = bpy.data.objects.new('cut', cm); bpy.context.scene.collection.objects.link(cut)
 mod = cube.modifiers.new('cut', 'BOOLEAN'); mod.operation = 'DIFFERENCE'; mod.object = cut; mod.solver = 'EXACT'
@@ -91,12 +152,12 @@ def side_of(co):      # (the face a point lies nearest, its across and its up th
 mark = bm.faces.layers.int.new('mea')
 for f in bm.faces:
     c = f.calc_center_median(); k, n, sa, ta, depth, u, v, w = side_of(c)
-    lim = 0.83 if PATTERN == 'one' else 0.95      # (the four small keys reach nearer the face's edges)
+    lim = 0.83 if PATTERN == 'one' else 0.95      # (the four small keys, and the motifs, reach nearer the face's edges)
     f[mark] = 1 if (0.003 < depth < DEPTH + 0.008 and abs(u) < HF * lim and abs(v) < HF * lim) else 0
 print('meander faces', sum(f[mark] for f in bm.faces))
 
 # the meander uneven, as cut by hand (as tools/go/block_meander.py)
-WOB = (0.02, 0.0125, 0.015) if PATTERN == 'one' else (0.006, 0.004, 0.006)      # (thin grooves waver less, or they would close)
+WOB = {'one': (0.02, 0.0125, 0.015), 'four': (0.006, 0.004, 0.006)}.get(PATTERN, (0.008, 0.005, 0.008))      # (thin grooves waver less, or they would close)
 SEG = 0.035
 def split_long(e):
     A, B = e.verts[0].co.copy(), e.verts[1].co.copy(); n = int((B - A).length / SEG) + 1
