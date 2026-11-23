@@ -702,7 +702,15 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   Vergina sun, a volute, the eye of ships and cups, three geometric zigzags as the film's amphora, a hand mirror), tried
   in the game with `IV_CUBE_GLB=<path>`; then patterns over the whole face (23/11: "can you try other designs too? as
   patterns?"): `checker`, `scales`, `diamonds`, `teeth`, `rings`, `waves`, `keyband` (two bands of a running meander),
-  `spirals` (four small ones; 36k faces, too heavy for the game as it is); the owner to choose.
+  `spirals` (four small ones; 36k faces, too heavy for the game as it is); and eight more (23/11: "try other designs
+  too"): `frame` (a running meander round the face's edge), `wreath`, `palmette`, `eggdart`, `basket`, `flutes`,
+  `scroll`, `herringbone`. He liked `frame` ("I liked 1; can we do something around it with softer lines?"): `frame_thin`
+  (finer, less deep) and `frame_calm` (two larger keys a side), each also with a lighter plum, offered. **Its lines
+  light when the cube is placed right, in every level** (the owner: "and they light up when the cube is activated
+  correctly"; `_ivgl_meander`, the fourth level's white light on its meander, IVGL_MEA_EMIT): the second level's as it
+  comes to rest in the gap, the third's as it comes into its niche (`IVM_BLOCK_HOME` "NI"), the fourth's as before while
+  its image stands in the square, the fifth's as it comes to rest in the deep water, before it sinks (dark again if the
+  level starts over); `IV_MEA_LIT=1` lights it from the first, for a picture.
   The veiled bust is out again (`observer` None). Before it (the owner, 21/11: "make something else for the
   background, whatever you like, but matching the perspective and the colours"; then of it: "I don't like the new
   background"): the ruins of a drowned sanctuary far

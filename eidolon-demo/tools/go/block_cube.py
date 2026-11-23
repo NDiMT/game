@@ -24,7 +24,8 @@ usage: python3.11 -I tools/go/block_cube.py -- <out.glb> [side metres] [seed] [o
   rings, each with its dot), waves (four rows of waves), keyband (two bands of a running meander), spirals (four small
   spirals, two by two, as the Minoan and Mycenaean).
   And eight more (23/11, the owner: "try other designs too"): frame (a running meander round the face's edge, a plain
-  middle), wreath (a laurel wreath), palmette (an anthemion: a fan of leaves over two little volutes), eggdart (rows of
+  middle; the owner liked it, "with softer lines": frame_thin, its lines finer and less deep, frame_calm, two larger keys
+  a side, fine), wreath (a laurel wreath), palmette (an anthemion: a fan of leaves over two little volutes), eggdart (rows of
   eggs and darts, the Ionic moulding), basket (a weave of three bars each way, cell by cell), flutes (a column's flutes),
   scroll (two bands of the running wave, the Vitruvian scroll), herringbone (rows of slanted strokes, turned each row).
 """
@@ -38,7 +39,7 @@ rnd = random.Random(SEED)
 bpy.ops.wm.read_factory_settings(use_empty=True)
 
 L = 0.726; HF = L / 2.0      # (the source block's width, and half of it)
-DEPTH = {'one': 0.033, 'four': 0.02}.get(PATTERN, 0.028)      # (the four small keys cut thin and less deep; the motifs between)
+DEPTH = {'one': 0.033, 'four': 0.02, 'frame_thin': 0.02, 'frame_calm': 0.02}.get(PATTERN, 0.028)      # (the four small keys, and the fine frames, cut thin and less deep; the motifs between)
 # the key, in a face's own square (s across, t up, -0.5..0.5): a band from the lower left along the bottom, up the right,
 # back along the top, down the left, along the inner bottom and up into the middle, as the first block's
 BARS = [(-0.40, 0.40, -0.40, -0.305), (0.305, 0.40, -0.40, 0.40), (-0.28, 0.40, 0.305, 0.40), (-0.28, -0.185, -0.12, 0.40),
@@ -188,12 +189,15 @@ def motif():
     elif PATTERN == 'spirals':
         for (cx, cy, a0) in ((-0.21, 0.21, 0.0), (0.21, 0.21, math.pi / 2), (0.21, -0.21, math.pi), (-0.21, -0.21, -math.pi / 2)):
             P.append(disc(0.03, 12, cx, cy)); P += spiral_at(cx, cy, 0.03, 0.062, 2.4, 0.018, 26, a0)
-    elif PATTERN == 'frame':      # (a running key on each side, square keys at the corners, the middle plain)
-        w = 0.017; yb, yt = -0.44 + w, -0.27 - w      # (the band's baseline at the face's edge and its top)
+    elif PATTERN in ('frame', 'frame_thin', 'frame_calm'):      # (a running key on each side, square keys at the corners, the middle plain; thin: finer lines; calm: two larger keys a side, fine)
+        w = {'frame': 0.017, 'frame_thin': 0.011, 'frame_calm': 0.012}[PATTERN]; nk = 2 if PATTERN == 'frame_calm' else 3
+        yb, yt = -0.44 + w, -0.27 - w      # (the band's baseline at the face's edge and its top)
         side = [bar((-0.27, yb), (0.27, yb), w, w)]
-        for k in range(3):
-            x0 = -0.27 + k * 0.18
-            path = [(x0 + 0.02, yb), (x0 + 0.02, yt), (x0 + 0.155, yt), (x0 + 0.155, yb + 0.06), (x0 + 0.085, yb + 0.06), (x0 + 0.085, yb + 0.105)]
+        U = 0.54 / nk; sc = U / 0.18
+        for k in range(nk):
+            x0 = -0.27 + k * U
+            path = [(x0 + 0.02 * sc, yb), (x0 + 0.02 * sc, yt), (x0 + 0.155 * sc, yt), (x0 + 0.155 * sc, yb + 0.06), (x0 + 0.085 * sc, yb + 0.06), (x0 + 0.085 * sc, yb + 0.105)]
+            if PATTERN == 'frame_calm': path[3:] = [(x0 + 0.155 * sc, yb + 0.055), (x0 + 0.075 * sc, yb + 0.055), (x0 + 0.075 * sc, yt - 0.05), (x0 + 0.115 * sc, yt - 0.05)]
             side += [bar(path[m], path[m + 1], w, w) for m in range(len(path) - 1)]
         for q in range(4):
             P += [rot(pg, q * math.pi / 2) for pg in side]
@@ -312,7 +316,7 @@ for f in bm.faces:
 print('meander faces', sum(f[mark] for f in bm.faces))
 
 # the meander uneven, as cut by hand (as tools/go/block_meander.py)
-WOB = {'one': (0.02, 0.0125, 0.015), 'four': (0.006, 0.004, 0.006)}.get(PATTERN, (0.008, 0.005, 0.008))      # (thin grooves waver less, or they would close)
+WOB = {'one': (0.02, 0.0125, 0.015), 'four': (0.006, 0.004, 0.006), 'frame_thin': (0.004, 0.0025, 0.004), 'frame_calm': (0.004, 0.0025, 0.004)}.get(PATTERN, (0.008, 0.005, 0.008))      # (thin grooves waver less, or they would close)
 SEG = 0.035
 def split_long(e):
     A, B = e.verts[0].co.copy(), e.verts[1].co.copy(); n = int((B - A).length / SEG) + 1

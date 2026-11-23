@@ -5561,6 +5561,7 @@ func _ivv_push_in(nb: String, c: String) -> void:
 	ivv_filled[c] = true; iv_block = ""
 	var bc := iv_block_n.global_transform * _ivt_box_get().get_center()
 	print("IV the block rests in ", c, " at ", Vector3(snappedf(bc.x - qp.x, 0.001), snappedf(bc.y - qp.y, 0.001), snappedf(bc.z - qp.z, 0.001)), " from its middle")
+	_ivgl_meander(true)      # (its work done: the missing stone of the way, or, in the fifth level, out of his look's way; its lines light (the owner, 23/11))
 	if ivs_sea_mat != null:      # (and then the still water's own thin foam and small waves round it, as round every stone: its place is in the shore map's green, tools/go/shore_hole.py)
 		var tu := create_tween(); tu.tween_interval(1.2)
 		tu.tween_method(func(v: float) -> void: ivs_sea_mat.set_shader_parameter("riser_up", v), 0.0, 1.0, 2.4).set_trans(Tween.TRANS_SINE)
@@ -6550,6 +6551,7 @@ func _ivr_build() -> void:
 	if ivp_nodes.has(iv_block): iv_block_n.global_position = ivp_nodes[iv_block]
 	else: iv_block_n.visible = false; iv_block_n.global_position = IV_O + Vector3(0, -60, 0)      # (a trial without the stone)
 	ivt_home = iv_block_n.global_transform      # (where it began, and as it stood)
+	if go_veil and OS.get_environment("IV_MEA_LIT") != "": _ivgl_meander.call_deferred(true)      # (for a picture: its meander lit from the first)
 	if ivg_vol != "":
 		if go_wake: _ivw_winch(ivp_nodes[ivg_vol])
 		elif go_quarry: _ivq_capstan(ivp_nodes[ivg_vol])
@@ -7014,6 +7016,7 @@ func _ivg_push(nb: String, c: String, first := "", into := false) -> void:
 		else: sl.tween_property(iv_block_n, "global_position", qp + off, 0.18)
 		await sl.finished
 	iv_me = nb; iv_block = c; ivp_wp_cur = kp
+	if go_milos and c == IVM_BLOCK_HOME: _ivgl_meander(true)      # (the third level: in its niche, where it lets the light by, its lines light (the owner, 23/11))
 	var dn := tw(); dn.set_parallel(); dn.tween_property(self, "a_wL", 0.0, 0.35); dn.tween_property(self, "a_wR", 0.0, 0.35); dn.tween_property(self, "a_lean", 0.0, 0.35)
 	await dn.finished
 	iv_busy = false
@@ -10785,7 +10788,8 @@ func _ivgl_shade_poof() -> void:      # (her shadow in the image swells a little
 	tw.tween_callback(func() -> void: ivgl_her_root.visible = false; ivgl_her_root.process_mode = Node.PROCESS_MODE_DISABLED)      # (gone; nothing of it posed any more)
 
 var ivgl_mea_on := false
-func _ivgl_meander(on: bool) -> void:      # (the block's meander lights white while it stands where its image is in the square, and its image's with it (the owner, 20/11: "when the cube reaches the square, the meander lights up white"))
+const IVM_BLOCK_HOME := "NI"      # (the third level's niche under the highest rock, where the stone lets the light by)
+func _ivgl_meander(on: bool) -> void:      # (the block's meander lights white while it stands where its image is in the square, and its image's with it (the owner, 20/11: "when the cube reaches the square, the meander lights up white"); since 23/11 in every level when the cube is where it should be (the owner: "and they light up when the cube is activated correctly"): the second level's gap, the third's niche, the fifth's deep water)
 	if on == ivgl_mea_on or iv_block_n == null: return
 	ivgl_mea_on = on
 	var ms: Array = []
@@ -11321,7 +11325,7 @@ func _ivgd_reset() -> void:
 	_ivgd_aim(0.0)
 	_ivgd_her_back()
 	if ivgd_mir != "": ivgd_face = ivgd_face0; _ivgd_mir_pose(0.0)
-	if ivgd_sunk: ivgd_sunk = false; iv_block_n.visible = true; ivv_filled.clear()
+	if ivgd_sunk: ivgd_sunk = false; iv_block_n.visible = true; ivv_filled.clear(); _ivgl_meander(false)
 	_ivgd_frost(0.0)
 
 ## his gaze drawn as it is now: the discs of the way it falls on a little red, and the line from his eyes to where it ends
