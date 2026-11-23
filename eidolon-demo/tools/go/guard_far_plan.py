@@ -81,25 +81,16 @@ def float_plan():
 # and of the level (each at about these points of the screen, x and y: 0.60 0.385, 0.67 0.375, 0.78 0.395, 0.95 0.37,
 # 0.50 0.375, at first; the level's eye, its follow lifting the picture 0.07 at the start)
 FAR_LOD = lambda cap=None: {'style': 'ionic', 'cap': cap if cap is not None else 30, 'drum': 0.8, 'lod': 1}
-# then more of them, and most whole with their Ionic capitals, as faint as before (the owner, 23/11: "can we put here,
-# faint as they are, but more columns with capitals?"): the seven above (two of their broken ones made whole), and seven
-# more scattered further out about them (their feet at the frame's 690 455, 700 410, 600 405, 530 400, 430 395, 610 490,
-# 480 480 at her start; the game sets them back as before, IVGD_COLS_AT); stouter, as every column since ("more
-# massive"), made as the near ones are, lighter (FAR_LOD)
-FAR_COLS = [[-5.48, SEA - 0.6, -7.23, 3.0, 0.27, False, [14, 3, 20], FAR_LOD(20)],
-            [-5.56, SEA - 0.6, -8.40, 1.85, 0.25, True, [-31, 13, 150], FAR_LOD()],
-            [-3.68, SEA - 0.6, -8.07, 3.0, 0.28, False, [47, 2, 300], FAR_LOD(75)],
-            [-4.10, SEA - 0.6, -9.42, 1.22, 0.26, True, [-8, 5, 210], FAR_LOD()],
-            [-2.91, SEA - 0.6, -10.09, 3.1, 0.27, False, [22, 4, 60], FAR_LOD(140)],
-            [-1.50, SEA - 0.6, -9.76, 1.65, 0.24, True, [-40, 10, 330], FAR_LOD()],
-            [-6.73, SEA - 0.6, -7.71, 1.45, 0.24, True, [5, 11, 250], FAR_LOD()],
-            [-1.31, SEA - 0.6, -10.87, 3.2, 0.28, False, [10, 3, 100], FAR_LOD(50)],
-            [-2.53, SEA - 0.6, -12.45, 2.6, 0.27, True, [-25, 9, 20], FAR_LOD()],
-            [-4.48, SEA - 0.6, -10.81, 3.4, 0.29, False, [-15, 2, 200], FAR_LOD(110)],
-            [-5.89, SEA - 0.6, -9.72, 3.0, 0.27, False, [35, 4, 280], FAR_LOD(160)],
-            [-7.84, SEA - 0.6, -8.08, 2.8, 0.27, False, [-5, 3, 60], FAR_LOD(10)],
-            [-1.65, SEA - 0.6, -8.34, 1.6, 0.26, True, [30, 12, 230], FAR_LOD()],
-            [-4.29, SEA - 0.6, -6.32, 2.2, 0.27, True, [-12, 8, 120], FAR_LOD()]]
+# then the same seven, three of them whole with their Ionic capitals, every one much stouter (the owner, 23/11: "can we
+# put here, faint as they are, but more columns with capitals?", then "actually not more: more massive"); made as the
+# near ones are, lighter (FAR_LOD), as faint as before
+FAR_COLS = [[-5.48, SEA - 0.6, -7.23, 3.5, 0.42, False, [14, 3, 20], FAR_LOD(20)],
+            [-5.56, SEA - 0.6, -8.40, 2.1, 0.38, True, [-31, 13, 150], FAR_LOD()],
+            [-3.68, SEA - 0.6, -8.07, 3.4, 0.42, False, [47, 2, 300], FAR_LOD(75)],
+            [-4.10, SEA - 0.6, -9.42, 1.5, 0.4, True, [-8, 5, 210], FAR_LOD()],
+            [-2.91, SEA - 0.6, -10.09, 3.6, 0.42, False, [22, 4, 60], FAR_LOD(140)],
+            [-1.50, SEA - 0.6, -9.76, 1.9, 0.38, True, [-40, 10, 330], FAR_LOD()],
+            [-6.73, SEA - 0.6, -7.71, 1.7, 0.38, True, [5, 11, 250], FAR_LOD()]]
 
 
 # the island's colonnade standing in the sea where the island was, and two lone broken columns about it (the owner,

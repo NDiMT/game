@@ -708,7 +708,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   of the screen's height at the start, their tops under 0.29. **Then more of them, most whole with Ionic capitals, as
   faint** (the owner, 23/11: "can we put here, faint as they are, but more columns with capitals?"): fourteen, seven
   whole with their capitals, made as the near ones are but lighter (`FAR_LOD`: a sea column's `{'lod': 1}`, twelve
-  flutes, no spirals; 19.6k triangles), stouter, scattered further out (`FAR_COLS`). **The sky without its horizontal lines** (the owner,
+  flutes, no spirals), scattered further out; then "actually not more: more massive": the same seven again, much
+  stouter (0.38 to 0.42 before the game's 0.6), three whole with their capitals (`FAR_COLS`; 10.6k triangles). **The sky without its horizontal lines** (the owner,
   22/11: "the sky there has lines too", as the fourth level's): `goguard/backdrop.jpg` through
   `tools/go/backdrop_destreak.py ... 0.40 0.47` (no mask: nothing painted in it).
   **Blurred columns before the eye** (the owner, 22/11: "can we have blurred columns at the front of the screen?"): two
