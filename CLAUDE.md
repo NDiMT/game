@@ -661,7 +661,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   to the painting: uv = screen + `bg_off`, the painting 1.5 times the 720 screen; the follow at that moment from
   `IVR_FOLLOW_LOG`), then Gemini asked to repaint only it in the painting's style (it made the back row a colonnade with
   its architrave, and drew its rock down into a longer point); only the island's region of its picture set into the
-  plain backdrop. Kept in the scratch work so far, offered beside the 3D one (`IV_FAR=0 IV_BG_FILE=<it>` shows it);
+  plain backdrop: `design/level5/isle_painted/` (backdrop.jpg, its prompt, what Gemini was given and gave); offered
+  beside the 3D one (`IV_FAR=0 IV_BG_FILE=design/level5/isle_painted/backdrop.jpg` shows it);
   the 3D one stays until the owner chooses. **The Guardian casts his
   shadow** on his pedestal and the way (22/11: "the guardian looks as if he stands in the air": his glass cast none).
   **Frosted, his shade is a soft lilac grey** (`frost_fill` in `IVGD_GLASS_SH`, as the slabs' shade): lit by the sun
