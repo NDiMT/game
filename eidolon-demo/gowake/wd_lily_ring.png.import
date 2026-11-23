@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ctrrsmqanm81q"
-path="res://.godot/imported/wd_reeds.png-0a4a7d554b3d5c65ec700e8456bf08cf.ctex"
+uid="uid://0jjvgthint1b"
+path="res://.godot/imported/wd_lily_ring.png-b10882b34b6865a465fbfb1309d92e92.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://gowake/wd_reeds.png"
-dest_files=["res://.godot/imported/wd_reeds.png-0a4a7d554b3d5c65ec700e8456bf08cf.ctex"]
+source_file="res://gowake/wd_lily_ring.png"
+dest_files=["res://.godot/imported/wd_lily_ring.png-b10882b34b6865a465fbfb1309d92e92.ctex"]
 
 [params]
 

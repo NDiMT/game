@@ -11112,7 +11112,7 @@ const IVGD_FAR_K := 0.3
 ## foot, where it meets the water, sets how near it stands, so the level's rocks before it hide it and those behind it do
 ## not. `IV_WD=0` leaves them out; `IV_WD_ADD="file,left,top,width,height,x,y[,after]"` tries one more.
 const IV_WATER_DETAILS := {      # (since 23/11, of twelve natural ones offered, the owner chose one a level: "2c", "3a"; the fifth a fallen column made to look carved; the first still to be settled, one by one from it; before, all three in 1, 2 and 3 for a while, and an amphora, a marble hand, a capital and a bronze mirror: "I don't like these")
-	"gowake": [["res://gowake/wd_lilies.png", 372.2, 990.2, 347.8, 314.0, 661.7, 1234.0], ["res://gowake/wd_reeds.png", 445.3, 764.0, 304.7, 386.0, 633.6, 1008.1], ["res://gowake/wd_petals.png", -152.2, 1036.9, 402.2, 310.7, 133.9, 1279.7]],      # (rose lily pads and a bud at the lower right; reeds by the rocks at the right; petals and leaves at the lower left)
+	"gowake": [],      # (water lilies all round the island instead, IV_WATER_DECALS; before, rose lily pads and a bud at the lower right, reeds by the rocks at the right, petals and leaves at the lower left)
 	"goveil": [["res://goveil/wd_petals.png", 0.9, 1020.9, 419.1, 259.1, 90.0, 1222.8]],      # (petals, leaves and a small flower floating at the lower left, as offered: the owner chose "2c")
 	"gomilos": [["res://gomilos/wd_lilies.png", 312.7, 928.4, 407.3, 323.7, 586.5, 1189.3]],      # (pale lilac lily pads and a bud at the right, as offered: the owner chose "3a")
 	"goglass": [["res://goglass/wd_lilies.png", -118.1, 1067.0, 586.9, 369.8, 78.8, 1286.0, 22]],      # (the lilies the owner liked: two pads and a bud at the lower left, whole beyond the frame's edge for taller screens; over the mist sheet that lies there, as painted in it)
@@ -11120,8 +11120,39 @@ const IV_WATER_DETAILS := {      # (since 23/11, of twelve natural ones offered,
 		["res://goguard/wd_cols.png", 0.0, 330.0, 460.0, 460.0, 215.0, 694.3], ["res://goguard/wd_far.png", 380.0, 280.0, 340.0, 340.0, 651.0, 476.8]]      # (a fallen Ionic column at the lower right, made to look carved and slightly polygonal as the third level's goddess (the owner: "the column doesn't look 3D"; "how did you do the others with facets in Gemini?"; "lower right"), and a short piece broken off it beside it, the second of two takes, lit as the column ("I liked this more, but the short column should match the lighting more"); both at 0.56 of their painted size, whole in the corner ("smaller so they are not cut at the lower right"; then "make the ones below a little smaller still", 0.78 before; then 0.66; then "the fallen ones at the lower right a little smaller still", 0.85 of that about the column's foot); drawn after it) (and at the upper left the colonnade, a broken column, a fallen piece and two broken columns and a drum before it, painted as the fallen column is, in the map's marble (the owner, 23/11: "make it like the ones below, but standing, with a capital", "random columns where I marked", "more massive", "the triptych slightly fainter", "the lower and the upper ones should match the colours of the rest of the map", "remove these", "a little more random"): design/level5/columns_facets/README.txt)
 }
 
+## things lying flat on the water all about a level, as water lilies round the first level's island (the owner, 23/11:
+## "impress me with level 1; all around I want water lilies"): painted into the level's frame at her start as the details
+## are, lifted as one layer over the whole frame (design/level1/lilies/), and laid on the water's own plane, the frame's
+## corners taken down to the sea along the eye's rays: so the layer lies where it was painted, moves with the level as the
+## eye follows her, and the island hides what lies behind it, as it hides the water itself. IV_WD=0 leaves them out.
+const IV_WATER_DECALS := {
+	"gowake": "res://gowake/wd_lily_ring.png",
+}
+const IV_DECAL_LIFT := 0.006      # (over the water, under nothing that stands in it)
+
 func _iv_water_details() -> void:
 	if ivr_eye.is_empty() or OS.get_environment("IV_WD") == "0": return
+	var dec := String(IV_WATER_DECALS.get(go_dir.get_base_dir().get_file(), ""))
+	if dec != "" and ResourceLoader.exists(dec):
+		var b0 := _ivp_basis()
+		var ce0: Array = ivr_eye.centre; var w0 := float(ivr_eye.width)
+		var c0 := IV_O + Vector3(float(ce0[0]), float(ce0[1]), float(ce0[2]))
+		if not ivr_floors.is_empty():
+			var fo0 := _ivr_follow_tg(b0, c0, w0, w0 * 16.0 / 9.0, pos); c0 += b0.x * fo0.x + b0.y * fo0.y
+		var ppm0 := 720.0 / w0; var sea0 := IV_O.y + ivr_sea_y
+		var pts: Array = []
+		for cc in [Vector2(0, 0), Vector2(720, 0), Vector2(720, 1280), Vector2(0, 1280)]:
+			var p0: Vector3 = c0 + b0.x * ((cc.x - 360.0) / ppm0) + b0.y * ((640.0 - cc.y) / ppm0)
+			pts.append(p0 - b0.z * ((p0.y - sea0) / b0.z.y) + Vector3(0.0, IV_DECAL_LIFT, 0.0))
+		var uvs := [Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]
+		var stl := SurfaceTool.new(); stl.begin(Mesh.PRIMITIVE_TRIANGLES)
+		for i in [0, 1, 2, 0, 2, 3]:
+			stl.set_uv(uvs[i]); stl.add_vertex(pts[i])
+		var dm := StandardMaterial3D.new(); dm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; dm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		dm.albedo_texture = load(dec); dm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS; dm.cull_mode = BaseMaterial3D.CULL_DISABLED
+		dm.render_priority = 7      # (after the sea, its foam and its lights, as the details)
+		var dmi := MeshInstance3D.new(); dmi.mesh = stl.commit(); dmi.material_override = dm; dmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		iv_root.add_child(dmi); dmi.global_transform = Transform3D.IDENTITY
 	var ds: Array = (IV_WATER_DETAILS.get(go_dir.get_base_dir().get_file(), []) as Array).duplicate()
 	if OS.get_environment("IV_WD_ADD") != "":
 		var e := OS.get_environment("IV_WD_ADD").split(","); var d: Array = [e[0]]

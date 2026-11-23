@@ -334,6 +334,13 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   the hand out of the frame first. Sources: `design/water/` (each level's frame, prompts, painting, green take; the
   lilies' canvas and completion). `IV_WD=0` leaves them out; `IV_WD_ADD="file,left,top,width,height,x,y[,after]"` tries
   one.
+- **Water lilies all round the first level's island** (the owner, 23/11: "impress me with level 1; all around I want
+  water lilies"): painted by the image model into its frame at her start, lifted as one layer over the whole frame and
+  laid on the water's own plane (`IV_WATER_DECALS` in `ch1.gd`, `gowake/wd_lily_ring.png`; `design/level1/lilies/`):
+  the frame's corners taken down to the sea along the eye's rays, so it lies where it was painted, goes with the level
+  as the eye follows her, and the island hides what lies behind it. Kept to the clean frame's open water, or the model's
+  small repaints of the text and the figures come back as ghosts on the water. The three details of before are out.
+  The rules he has given for painted things are in the skill (`go-level`, "Things painted into a level").
 - **The ring before every gate stands clear of its door** (the owner, 22/11: "the bright circles should never be right at
   the door"; and of the first level: "no second-to-last dot: the stair's path takes you straight to the last bright
   circle"): each ring set back along the way to 1.15 m from its arch's middle (level 4's 1.1; 0.6 to 0.9 before, its

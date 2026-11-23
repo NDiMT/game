@@ -352,6 +352,37 @@ The levels are many, in one system. A new level is made in this order (the secon
   - A trial may have no stone (`block: ""`), and its dial may be a capstan.
   - A mirror at 45° is seen edge on by this eye in one of its two states, so a bronze bar on its floor shows the way it turns a look.
 
+## 4b. Things painted into a level (the owner's rules, 23/11)
+
+What he wants, learned over the fifth level's ruins and the first level's lilies:
+- **Painted, not plain 3D.** The image model's look wins ("I liked the Gemini one more"): crisp, finely faceted low-poly
+  marble, each facet one flat tone, lit faces warm white, shade cool lilac, as the fifth level's fallen column at the
+  lower right (`design/level5/columns_facets/style_ref.png`), in the level's own marble colours
+  (`design/level5/columns_facets/grade.py`). Give it the style reference with every repaint.
+- **Where perspective and fit matter, 3D first.** Build the thing with the builder (columns: a sea column's
+  `{'style': 'ionic'}`), render the game at twice the size (1440 by 2560, `IV_WD=0 IV_NO_HAND=1`) with it and without
+  it, and have the model repaint only it in the style: it keeps place, size and perspective, so it fits ("out of place"
+  when the model placed things itself). The model will not change a thing's proportions in an edit ("make them taller"
+  changed nothing): change them in the 3D.
+- **Small changes straight on the painting** ("why not Gemini directly?"): remove this, add two there, more random.
+  Check what else it took away (it removed a column unasked; set it back from the painting before).
+- **Shapes**: nothing squat ("why so stubby?"), nothing "straight like cucumbers": ruins of offset, chipped drums,
+  broken aslant, varied heights, a lean here and there; few ("you've put too many"); more massive means stout yet a
+  column's own proportions. Far things fainter (laid 0.25 to 0.35 toward the haze behind them), feet into the haze.
+- **Never the model's reflections** (faint, broken, cut short: "tragic"): `tools/go/card_reflect.py` makes each thing's
+  image from the card: turned over about where it meets the water (standing or lying: its underside at each x;
+  leaning: its foot; a row on legs: the line through their feet), toward the sea's colour as it goes down, gone by 0.85 of
+  its height ("they should fade toward the bottom"), the painted water kept where each goes in (without it they "look
+  like they're flying"); things that touch on the card split (`--part`). Check that every thing has its image.
+- **Standing things are cards** (`IV_WATER_DETAILS`: a quad facing the eye at its foot's depth). **Flat things on the
+  water are a decal on the water's plane** (`IV_WATER_DECALS`: the frame's corners taken down to the sea along the
+  eye's rays, the layer over the whole frame): the island hides what lies behind it, as it hides the water. Keep the
+  layer to the clean frame's own open water (its green take), or the model's small repaints of the text, the island and
+  the figures come back as ghosts on the water; keep water clear where things rise from it.
+- **Lifting**: `tools/go/water_lift.py` (a darker green is found by itself; `--dropt`, `--pix`, `--min`); a model's
+  green take may keep the haze band at a crop's top: make it green there, all but the things, before the lift.
+- Show the whole level each time, a close-up beside it; leave a level only when he says ("don't close it yet").
+
 ## 5. Review loop (before showing anything)
 
 - Render a clean frame: `tools/ivory/render.sh <dir>` (`RES=1080x1920 TMO=1700` for a large one; `IV_DBG=4` shows how much mist each pixel has).
