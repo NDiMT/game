@@ -17,6 +17,6 @@ PORT=8791; export PORT
 (cd $W && exec python3 -m http.server $PORT --bind 127.0.0.1 > $P/http.log 2>&1) & HP=$!
 sleep 2
 export NLEV=5
-for lv in 1 2 3 4 5; do timeout 900 node $D/tools/web_check.js $P $lv > $P/out$lv.txt 2>&1; head -1 $P/out$lv.txt; done
+for lv in 1 2 3 4 5; do timeout 1500 node $D/tools/web_check.js $P $lv > $P/out$lv.txt 2>&1; head -1 $P/out$lv.txt; done
 kill $HP 2>/dev/null
 echo "BUILD $v DONE"

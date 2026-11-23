@@ -23,6 +23,10 @@ usage: python3.11 -I tools/go/block_cube.py -- <out.glb> [side metres] [seed] [o
   of grooves crossing aslant), teeth (rows of triangles, the wolf's teeth of the geometric vases), rings (three by three
   rings, each with its dot), waves (four rows of waves), keyband (two bands of a running meander), spirals (four small
   spirals, two by two, as the Minoan and Mycenaean).
+  And eight more (23/11, the owner: "try other designs too"): frame (a running meander round the face's edge, a plain
+  middle), wreath (a laurel wreath), palmette (an anthemion: a fan of leaves over two little volutes), eggdart (rows of
+  eggs and darts, the Ionic moulding), basket (a weave of three bars each way, cell by cell), flutes (a column's flutes),
+  scroll (two bands of the running wave, the Vitruvian scroll), herringbone (rows of slanted strokes, turned each row).
 """
 import bpy, bmesh, sys, random, math
 from mathutils import Vector, noise
@@ -184,6 +188,76 @@ def motif():
     elif PATTERN == 'spirals':
         for (cx, cy, a0) in ((-0.21, 0.21, 0.0), (0.21, 0.21, math.pi / 2), (0.21, -0.21, math.pi), (-0.21, -0.21, -math.pi / 2)):
             P.append(disc(0.03, 12, cx, cy)); P += spiral_at(cx, cy, 0.03, 0.062, 2.4, 0.018, 26, a0)
+    elif PATTERN == 'frame':      # (a running key on each side, square keys at the corners, the middle plain)
+        w = 0.017; yb, yt = -0.44 + w, -0.27 - w      # (the band's baseline at the face's edge and its top)
+        side = [bar((-0.27, yb), (0.27, yb), w, w)]
+        for k in range(3):
+            x0 = -0.27 + k * 0.18
+            path = [(x0 + 0.02, yb), (x0 + 0.02, yt), (x0 + 0.155, yt), (x0 + 0.155, yb + 0.06), (x0 + 0.085, yb + 0.06), (x0 + 0.085, yb + 0.105)]
+            side += [bar(path[m], path[m + 1], w, w) for m in range(len(path) - 1)]
+        for q in range(4):
+            P += [rot(pg, q * math.pi / 2) for pg in side]
+            c = 0.355; h = 0.06
+            corner = [bar((c - h, -c - h), (c + h, -c - h), w, w), bar((c + h, -c - h), (c + h, -c + h), w, w),
+                      bar((c + h, -c + h), (c - h, -c + h), w, w), bar((c - h, -c + h), (c - h, -c - 0.005), w, w)]
+            P += [rot(pg, q * math.pi / 2) for pg in corner]
+    elif PATTERN == 'wreath':      # (leaves either side of a round stem, open at the foot where a ribbon ties it)
+        R = 0.29; a0, a1 = -math.pi / 2 + 0.32, 3 * math.pi / 2 - 0.32
+        P += ring(R - 0.011, R + 0.011, 40, a0, a1)
+        n = 14
+        for i in range(n):
+            a = a0 + (a1 - a0) * (i + 0.5) / n; side = 1 if a < math.pi / 2 else -1      # (the leaves point up the wreath from its foot on either side)
+            for out in (1, -1):
+                bx, by = R * math.cos(a), R * math.sin(a)
+                t = (-math.sin(a) * side, math.cos(a) * side); nrm = (math.cos(a) * out, math.sin(a) * out)
+                d = (t[0] * 0.8 + nrm[0] * 0.6, t[1] * 0.8 + nrm[1] * 0.6); L_ = 0.105
+                leaf = lens(0.0, 0.0, L_, 0.032)
+                ang = math.atan2(d[1], d[0])
+                P.append([(bx + x, by + y) for (x, y) in rot(leaf, ang)])
+        P += [bar((-0.05, -R - 0.01), (-0.12, -0.42), 0.02, 0.01), bar((0.05, -R - 0.01), (0.12, -0.42), 0.02, 0.01)]      # (the ribbon's ends)
+    elif PATTERN == 'palmette':
+        base = (0.0, -0.22)
+        for i in range(7):
+            a = math.radians(30 + i * 20); r1 = 0.36 + 0.07 * math.cos(math.radians(i * 30 - 90)) ** 2 * (1 if i == 3 else 0.6)
+            P.append([(base[0] + x, base[1] + y) for (x, y) in lens(a, 0.07, r1 + 0.02, 0.048)])
+        P.append(disc(0.045, 16, base[0], base[1]))
+        P += spiral_at(-0.17, -0.33, 0.02, 0.05, 1.6, 0.017, 24, 0.0) + spiral_at(0.17, -0.33, 0.02, 0.05, 1.6, 0.017, 24, math.pi)
+    elif PATTERN == 'eggdart':
+        for row, cy in enumerate((0.29, 0.0, -0.29)):
+            P.append(bar((-0.43, cy + 0.125), (0.43, cy + 0.125), 0.014, 0.0))
+            for k in range(4):
+                cx = -0.315 + k * 0.21
+                P.append([(cx + 0.062 * math.cos(2 * math.pi * j / 20), cy + 0.012 + 0.088 * math.sin(2 * math.pi * j / 20)) for j in range(20)])
+                if k < 3: P.append([(cx + 0.105 - 0.022, cy + 0.1), (cx + 0.105 + 0.022, cy + 0.1), (cx + 0.105, cy - 0.09)])
+    elif PATTERN == 'basket':
+        g = 0.84 / 3.0
+        for i in range(3):
+            for j in range(3):
+                cx, cy = -0.42 + g * (i + 0.5), -0.42 + g * (j + 0.5)
+                for k in (-1, 0, 1):
+                    if (i + j) % 2 == 0: P.append(bar((cx - 0.1, cy + k * 0.075), (cx + 0.1, cy + k * 0.075), 0.023, 0.0))
+                    else: P.append(bar((cx + k * 0.075, cy - 0.1), (cx + k * 0.075, cy + 0.1), 0.023, 0.0))
+    elif PATTERN == 'flutes':
+        for k in range(5):
+            x = -0.32 + k * 0.16
+            P.append([(x - 0.045, -0.36), (x + 0.045, -0.36), (x + 0.045, 0.36), (x - 0.045, 0.36)])
+            P.append(disc(0.045, 16, x, 0.36)); P.append(disc(0.045, 16, x, -0.36))
+    elif PATTERN == 'scroll':      # (the running wave: a line rising into a curl, then down to the next, two bands)
+        for by in (0.2, -0.2):
+            for k in range(3):
+                cx = -0.28 + k * 0.28; cy = by + 0.015
+                P += spiral_at(cx, cy, 0.018, 0.055, 1.25, 0.019, 24, math.pi)
+                end = (cx - (0.018 + 0.055 * 1.25), cy)      # (the curl's outer end, at its left)
+                nxt = (cx - 0.28 + 0.08, by - 0.11) if k > 0 else (-0.43, by - 0.11)
+                mid = ((end[0] + nxt[0]) * 0.5 - 0.01, by - 0.085)
+                P += [bar(end, mid, 0.019, 0.006), bar(mid, nxt, 0.019, 0.006)]
+            P.append(bar((-0.43, by - 0.11), (0.43, by - 0.11), 0.017, 0.0))
+    elif PATTERN == 'herringbone':
+        for row in range(6):
+            cy = -0.36 + row * 0.144
+            for k in range(6):
+                cx = -0.36 + k * 0.144; d = 0.055 if row % 2 == 0 else -0.055
+                P.append(bar((cx - 0.05, cy - d), (cx + 0.05, cy + d), 0.02, 0.0))
     elif PATTERN == 'mirror':
         cy = 0.08
         P += ring(0.235, 0.29, 40, 0, 2 * math.pi, 0.0, cy) + [disc(0.175, 32, 0.0, cy)]      # (its rim and its disc)

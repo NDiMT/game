@@ -23,13 +23,12 @@ async function until(re, ms) { const end = Date.now() + ms; while (Date.now() < 
     // the film starts by itself: wait for the engine, then a touch shows "tap to skip" and a second skips it
     await until(/Build configuration|Godot Engine/i, 180000);
     await new Promise(r => setTimeout(r, 20000));
-    for (let i = 0; i < 6 && !seen(/IV the start screen/); i++) {
-      await page.mouse.click(W / 2, H / 2); await new Promise(r => setTimeout(r, 700)); await page.mouse.click(W / 2, H / 2);
-      if (await until(/IV the start screen/, 25000)) break;
-    }
-    if (!seen(/IV the start screen/)) { reached = 'no-menu'; throw new Error('no start screen'); }
+    // one touch shows "tap to skip", a second skips; then no more touches until the start screen is up (after the
+    // film the level is warmed up under the plum, minutes in a browser without a graphics card; a touch then is PLAY)
+    await page.mouse.click(W / 2, H / 2); await new Promise(r => setTimeout(r, 1200)); await page.mouse.click(W / 2, H / 2);
+    if (!(await until(/IV the start screen/, 600000))) { reached = 'no-menu'; throw new Error('no start screen'); }
     await new Promise(r => setTimeout(r, 6000));
-    await page.screenshot({ path: `${out}/menu_${lv}.png` });
+    await page.screenshot({ path: `${out}/menu_${lv}.png`, timeout: 120000 }).catch(e => log('check', 'menu shot: ' + e));
     if (lv <= 1) {
       await page.mouse.click(W / 2, H * 0.5); log('---', 'played');
       reached = (await until(/IV play/, 60000)) ? 'play' : 'false';
@@ -39,7 +38,7 @@ async function until(re, ms) { const end = Date.now() + ms; while (Date.now() < 
       reached = (await until(/IV start at the level/, 120000)) ? 'true' : 'false';
     }
     await new Promise(r => setTimeout(r, 45000));      // (the level runs a while: errors in its making or its first moves show)
-    await page.screenshot({ path: `${out}/level_${lv}.png` });
+    await page.screenshot({ path: `${out}/level_${lv}.png`, timeout: 120000 }).catch(e => log('check', 'level shot: ' + e));
   } catch (e) { log('check', String(e)); }
   await browser.close();
   console.log(`LEVEL ${lv} logs ${logs.length} bad ${bad} reached ${reached}`);
