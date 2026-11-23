@@ -20,9 +20,14 @@ shade laid on the painting within the column's mask (from the green take, the ro
       --drop 820,1940,1205,2140 --drop 1185,1940,1365,2075 --dropw 685,1843,1205,2330 --dropw 685,1843,1536,2085
   laid 20 px right and 85 px down of where it was painted ("lower right"). Then the frame with it laid there
   (level5_drum_frame.png) given to the model for "a second piece of column" (level5_drum_prompt.txt -> _painting.jpg,
-  the first of two takes), its green take, and the drum lifted against that frame, so only it is new:
-  python3 -I tools/go/water_lift.py design/water/level5_drum_painting.jpg design/water/level5_drum_green.jpg \
-      design/water/level5_drum_frame.png goguard/wd_drum.png 512,2267,1060,2709 786,2488,274,221 --new 25 --dropw 900,2150,1536,2752
+  the second of two takes: "I liked this more"), its green take; the piece's warm glow taken off ("the short column
+  should match the lighting more"): a crop about it (646,2123, 629 a side) repainted by the model with only the piece
+  lit as the long column (level5_drum_relight_prompt.txt -> _relit_gemini.jpg), laid back over the piece and its image
+  in the water (660..1015 x 2300..2720, feathered 14 px); then lifted against that frame, so only it is new:
+  python3 -I tools/go/water_lift.py <relit painting> design/water/level5_drum_green.jpg design/water/level5_drum_frame.png \
+      goguard/wd_drum.png 624,2246,1073,2735 849,2491,224,245 --new 25 --dropw 950,2440,1536,2752 --dropw 1040,2200,1536,2752
+  Both laid at 0.78 of their size and moved together (x*0.78+130, y*0.78+220 in the frame), whole in the corner
+  ("smaller so they are not cut at the lower right").
 
 Level 4: the lilies, see level4_lilies_compose.py.
 Turned down, in the history: the amphora, the marble hand, the capital and the bronze mirror (c84d7f1f); all three of
