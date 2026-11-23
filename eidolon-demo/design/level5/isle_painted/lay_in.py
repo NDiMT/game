@@ -8,7 +8,8 @@ sky, near it; only that (grown 10 px, feathered 10) is taken, moved `dx` pixels 
 (design/level5/backdrop_plain_clean.jpg: backdrop_source.jpg at 1080 wide, its middle 1920, its sky's fine lines taken
 out) as a difference from the sky it was painted on, so its soft edge leaves no seam where the sky changes along x.
 
-  python3 -I design/level5/isle_painted/lay_in.py <dx px> <out.jpg>
+  python3 -I design/level5/isle_painted/lay_in.py <dx px> <out.jpg> [dy px]
+  (dy: down, so a negative one raises it; the owner, 23/11: "keep the floating island, but higher")
   the game's (22/11): python3 -I design/level5/isle_painted/lay_in.py 40 goguard/backdrop.jpg
   (0: as it was offered, design/level5/isle_painted/backdrop.jpg). 40 px (27 on a 720 screen) is as far as it goes clear
   of the far columns (goguard/far_cols.glb, drawn over the painting): at 48 the leftmost broken one stands before its
@@ -23,6 +24,7 @@ from scipy import ndimage
 D = os.path.dirname(os.path.abspath(__file__))
 if len(sys.argv) < 3: print(__doc__); sys.exit(1)
 dx, out = int(sys.argv[1]), sys.argv[2]
+dy = int(sys.argv[3]) if len(sys.argv) > 3 else 0
 bd = Image.open(os.path.join(D, '..', 'backdrop_plain_clean.jpg')).convert('RGB'); W, H = bd.size
 g = Image.open(os.path.join(D, 'gemini_raw.jpg')).convert('RGB').resize((W, H), Image.LANCZOS)
 b = np.asarray(bd).astype(np.float32); ga = np.asarray(g).astype(np.float32)
@@ -38,6 +40,11 @@ diff = (ga - b) * k
 sh = np.zeros_like(diff)
 if dx >= 0: sh[:, dx:] = diff[:, :W - dx]
 else: sh[:, :W + dx] = diff[:, -dx:]
+if dy:
+    sv = np.zeros_like(sh)
+    if dy > 0: sv[dy:] = sh[:H - dy]
+    else: sv[:H + dy] = sh[-dy:]
+    sh = sv
 o = b + sh
 Image.fromarray(np.clip(o, 0, 255).round().astype(np.uint8)).save(out, quality=95)
-ys, xs = np.nonzero(m); print('island laid in at x %d-%d, y %d-%d (moved %d px right)' % (xs.min() + dx, xs.max() + dx, ys.min(), ys.max(), dx))
+ys, xs = np.nonzero(m); print('island laid in at x %d-%d, y %d-%d (moved %d px right, %d down)' % (xs.min() + dx, xs.max() + dx, ys.min() + dy, ys.max() + dy, dx, dy))

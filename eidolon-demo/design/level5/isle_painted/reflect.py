@@ -5,7 +5,9 @@ island (where the backdrop differs from the plain sky) turned over about a line 
 rippled and softened, given to the sky's colour there. The sea lets the backdrop through where it lies open, so it shows
 in the water between the island's point and the walk, and the level hides the rest, as it would.
 
-  python3 -I design/level5/isle_painted/reflect.py <backdrop without it> <out.jpg> [gap px] [strength] [fade px] [sky] [dark]
+  python3 -I design/level5/isle_painted/reflect.py <backdrop without it> <out.jpg> [gap px] [strength] [fade px] [sky] [dark] [water line]
+  (water line: the row of the water it is turned over about; else a little under its point. Raised, the island keeps the
+  water where it was, so its image goes as far down as it went up)
   the game's (23/11; the owner of a darker one: "the reflection is too dark"):
   python3 -I design/level5/isle_painted/reflect.py design/level5/isle_painted/backdrop_noreflect.jpg goguard/backdrop.jpg 24 0.8 700 0.5 1.0
 """
@@ -23,6 +25,7 @@ k = float(sys.argv[4]) if len(sys.argv) > 4 else 0.55
 fade = float(sys.argv[5]) if len(sys.argv) > 5 else 260.0
 sky = float(sys.argv[6]) if len(sys.argv) > 6 else 0.28      # (how much of the sky's colour it is given)
 dark = float(sys.argv[7]) if len(sys.argv) > 7 else 0.9      # (how much darker than the island)
+wl = float(sys.argv[8]) if len(sys.argv) > 8 else None
 B = np.asarray(Image.open(src).convert('RGB')).astype(np.float32)
 P = np.asarray(Image.open(os.path.join(D, '..', 'backdrop_plain_clean.jpg')).convert('RGB').resize((B.shape[1], B.shape[0]), Image.LANCZOS)).astype(np.float32)
 H, W = B.shape[:2]
@@ -34,7 +37,7 @@ isl = ndimage.binary_dilation(lab == big, iterations=6)
 M = M * ndimage.gaussian_filter(isl.astype(np.float32), 3.0)
 ys, xs = np.nonzero(M > 0.5)
 y_tip = ys.max(); x_tip = int(np.median(xs[ys > y_tip - 6]))
-yw = y_tip + gap * 0.5      # (the water under its point: the image of its point lies `gap` under it)
+yw = y_tip + gap * 0.5 if wl is None else wl      # (the water under its point: the image of its point lies `gap` under it)
 print('island rows', ys.min(), '-', y_tip, 'point at x', x_tip, 'water line', yw)
 yy = np.arange(H, dtype=np.float32)
 src_y = 2.0 * yw - yy      # (each row below the line shows the row as far above it)

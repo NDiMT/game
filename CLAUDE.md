@@ -821,7 +821,16 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   columns out of focus ("I want them blurry"; `design/level5/far_painted/blur.py`) and the fallen column as painted, at
   its full size and place, alone (he sent the painting itself: "this here is fantastic, can you put it in 5 actually?");
   seen in the game: "bring 5 back as it was before these two changes". `IV_WD_SUB="res://a.png=res://b.png"` tries
-  another picture in a card's place. **Their image in the water is made
+  another picture in a card's place. **Then the painted island in the air back, higher, and of the columns only the far
+  ones** (the owner, 23/11: "in 5 bring only the columns, not the lower ones, only the upper ones, and the new
+  background", the floating island, of two put to him; then "keep the floating island, but higher" and "leave the text
+  at the top, move only the island"): `goguard/backdrop.jpg` is `lay_in.py 40 <noreflect> -150` (150 px higher, 100 on
+  the screen; its columns now reach behind the story's first line) then `reflect.py <noreflect> goguard/backdrop.jpg 24
+  0.8 700 0.5 1.0 1227` (its image turned over about the same water as before, so it goes as far down as the island
+  went up, behind the walk); `IV_WATER_DETAILS` holds only `wd_far`; the colonnade in the water at the upper left (it
+  lay over the island) and the fallen column and its drum at the lower right are kept in `design/fg_spare/level5/`
+  with their entries. He asked whether the story's lines should come at the foot, where there is more room, and then:
+  "leave the text at the top". **Their image in the water is made
   from the card itself** (the owner: "the reflection in the water is tragic": the model's painted one was faint,
   broken and cut short): `tools/go/card_reflect.py` takes the painted water away and turns each thing over about where
   it meets the water, as the game's own images are (a column about its foot; the row and its architrave about the line
