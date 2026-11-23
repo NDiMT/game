@@ -8,7 +8,8 @@ The plain sky (design/level5/backdrop_plain_clean.jpg) given to the image model 
 square crop about the new things (facets_crop.txt) repainted by it as finely faceted low-poly marble (facets_prompt.txt
 -> facets_gemini.jpg), taken as it is; only what it adds to the plain sky is laid on it, as a difference, feathered, the
 lone column at the left moved (-60, -105) and the one at the right (-22, -262), backdrop pixels, clear of the gate and of
-the rock before them in the game.
+the rock before them in the game; then all of them 180 higher, further off in the sea (the owner: "I don't like how
+it sits, it looks a little out of place, I'd like it higher").
 
   python3 -I design/level5/columns_painted/lay_in.py goguard/backdrop.jpg
 """
@@ -27,7 +28,7 @@ reg = np.zeros(d.shape, bool); reg[Y0:Y0 + sz, X0:X0 + sz] = True
 m = ndimage.binary_opening((d > 10) & reg, iterations=2)
 lab, n = ndimage.label(m); s = ndimage.sum(m, lab, range(1, n + 1))
 H, W = m.shape; out = plain.copy()
-MOVE = {'L': (-60, -105), 'R': (-22, -262), 'C': (0, 0)}
+MOVE = {'L': (-60, -285), 'R': (-22, -442), 'C': (0, -180)}      # (all 180 higher since 23/11: "I'd like it higher")
 def group(k):
     cx = np.nonzero(lab == k)[1].mean()
     return 'L' if cx < 200 else ('R' if cx > 520 else 'C')

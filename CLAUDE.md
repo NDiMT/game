@@ -764,7 +764,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   island, can we put the triptych of the island's columns in the water, and another 2 random columns?"; "3D with
   facets"; of the faceted repaint taken as it is beside its light laid on the painting: "make them again and not so
   subdued", "the second one I liked"): `goguard/backdrop.jpg` is the plain sky with the three columns and their
-  architrave standing in the water at the left, where the island was, and two lone broken columns, one leaning, each
+  architrave standing in the water at the left, where the island was (then 180 backdrop pixels higher, further off: "it
+  looks a little out of place, I would like it higher"), and two lone broken columns, one leaning, each
   with its image in the water; painted by the image model after the island's own colonnade, then repainted by it as
   finely faceted low-poly marble and laid in as it is (`design/level5/columns_painted/`, `lay_in.py`), the two lone
   ones moved clear of the gate and the rock before them; the backdrop with the island kept as
