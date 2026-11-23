@@ -277,8 +277,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   3D, slightly polygonal"): Gemini repainted her alone on green as a finely faceted low-poly marble statue, the same in
   all else (`design/level3/goddess_facets_gemini.jpg`, `goddess_facets_prompt.txt`); it kept her drawing and place (no
   shift, no change of scale) but not her colours, so only its light and shade are laid over hers within her, at 0.75,
-  her colours kept (`tools/go/figure_facets.py` → `goddess_facets.png`), and she is laid in as before with a little
-  less haze (0.25, was 0.3): `backdrop_figure.py design/level3/goddess_facets.png ... 0.25 1 --onto ...`. A triangulation
+  a little stronger than hers about their mean (1.18: at 1 she read paler than before), her colours kept (`tools/go/figure_facets.py` → `goddess_facets.png`), and she is laid in as before with a little
+  less haze (0.25, was 0.3): `backdrop_figure.py design/level3/goddess_facets.png ... 0.25 1 --onto ...`
+  (`figure_facets.py ... goddess_facets.png 0.75 green - 1.18`). A triangulation
   of our own (each triangle the mean of the painting in it) read as a filter over a picture: not used.
   Turned down on the way: the goddess smooth and polished or softly painted, darker, a whole backdrop with her big and the
   haze low, rocks laid in by us (`tools/go/far_rocks.py`) or painted too near, too many or below her. No birds over this level (the owner: "take

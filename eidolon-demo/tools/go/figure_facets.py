@@ -9,11 +9,13 @@ are taken, within the statue: its luminance, brought to the painting's own mean 
 painting's luminance at a share; the painting's colour is kept as it was. A triangulation of our own (each triangle the
 mean of the painting in it) was tried first and read as a filter laid over a picture, not as a carved form.
 
-  python3 -I tools/go/figure_facets.py <painting> <faceted repaint> <out> <share> <mask png | green> [x,y,w,h]
+  python3 -I tools/go/figure_facets.py <painting> <faceted repaint> <out> <share> <mask png | green> [x,y,w,h] [contrast]
 
   mask png: white where the statue is (the size of <painting>); green: the statue painted alone on flat green, as
             backdrop_figure.py takes it, the green left as it is
-  x,y,w,h:  a repaint of a crop of the painting: where the crop was (its top left and size, in the painting's pixels)
+  x,y,w,h:  a repaint of a crop of the painting: where the crop was (its top left and size, in the painting's pixels;
+            - for none)
+  contrast: its light and shade this much stronger than the painting's about their mean (1 the same)
 
 The fourth level's head (its painting and plate with the sky's streaks taken out, backdrop_destreak.py; then
 backdrop_haze.py with it and the plate at 0.52, 0.46 before: a little more intense):
@@ -22,7 +24,7 @@ backdrop_haze.py with it and the plate at 0.52, 0.46 before: a little more inten
       design/level4/game/head_tight.png 430,180,650,650
 The third level's goddess (then backdrop_figure.py with it, its haze 0.25, 0.3 before: a little more intense):
   python3 -I tools/go/figure_facets.py design/level3/goddess_painted.png design/level3/goddess_facets_gemini.jpg \\
-      design/level3/goddess_facets.png 0.75 green
+      design/level3/goddess_facets.png 0.75 green - 1.18
 """
 import sys
 import numpy as np
@@ -42,7 +44,8 @@ if __name__ == '__main__':
     src, rep, out, share, mask = sys.argv[1], sys.argv[2], sys.argv[3], float(sys.argv[4]), sys.argv[5]
     P = Image.open(src).convert('RGB'); a = np.asarray(P).astype(np.float32)
     R = Image.open(rep).convert('RGB')
-    if len(sys.argv) > 6:      # (a repaint of a crop: laid where the crop was, at the crop's size)
+    ctr = float(sys.argv[7]) if len(sys.argv) > 7 else 1.0
+    if len(sys.argv) > 6 and sys.argv[6] != '-':      # (a repaint of a crop: laid where the crop was, at the crop's size)
         x0, y0, cw, ch = [int(v) for v in sys.argv[6].split(',')]
         canvas = P.copy(); canvas.paste(R.resize((cw, ch), Image.LANCZOS), (x0, y0)); R = canvas
     else:
@@ -52,7 +55,7 @@ if __name__ == '__main__':
     yr = np.asarray(R.convert('YCbCr')).astype(np.float32)[..., 0]
     f = al > 0.5
     Yo, Yr = yo[..., 0], yr
-    Yr = (Yr - Yr[f].mean()) * (Yo[f].std() / max(Yr[f].std(), 1e-6)) + Yo[f].mean()      # (its light and shade at the painting's own mean and spread)
+    Yr = (Yr - Yr[f].mean()) * (ctr * Yo[f].std() / max(Yr[f].std(), 1e-6)) + Yo[f].mean()      # (its light and shade at the painting's own mean and spread, or a little stronger)
     k = share * np.asarray(Image.fromarray((np.clip(al, 0, 1) * 255).astype(np.uint8)).filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(1.5))).astype(np.float32) / 255.0
     o = yo.copy(); o[..., 0] = Yo + (Yr - Yo) * k
     im = Image.fromarray(np.clip(o, 0, 255).round().astype(np.uint8), 'YCbCr').convert('RGB')
