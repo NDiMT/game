@@ -718,13 +718,13 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   too"): `frame` (a running meander round the face's edge), `wreath`, `palmette`, `eggdart`, `basket`, `flutes`,
   `scroll`, `herringbone`. He liked `frame` ("I liked 1; can we do something around it with softer lines?"): `frame_thin`
   (finer, less deep) and `frame_calm` (two larger keys a side), each also with a lighter plum, offered. **Its lines
-  light when the cube is set right** (the owner: "and they light up when the cube is activated correctly";
-  `_ivgl_meander`, the fourth level's white light on its meander, IVGL_MEA_EMIT): the third's as it comes into its niche
-  (`IVM_BLOCK_HOME` "NI"), the fourth's as before while its image stands in the square; **never the one that falls into
-  the water**, the second's in its gap nor the fifth's in the deep water (the owner, 23/11: "not the one that falls into
-  the water", "in 2 no new path line should appear over the cube": lit, its white lines read as a new line of the way
-  over it; before, "in the first the cube doesn't need to light up"); `IV_MEA_LIT=1` lights it from the first, for a
-  picture. Of the frame cut true he said "it's too much relief, does it need so much?":
+  light when the cube is set right, in every level** (the owner: "and they light up when the cube is activated
+  correctly"; `_ivgl_meander`, the fourth level's white light on its meander, IVGL_MEA_EMIT): the second's as it comes to
+  rest in its gap, the third's as it comes into its niche (`IVM_BLOCK_HOME` "NI"), the fourth's as before while its image
+  stands in the square, the fifth's as it comes to rest in the deep water, before it sinks (dark again if the level
+  starts over). In the water too (the owner, 23/11: "in the water I WANT it to light, just no line should come out;
+  that's all I asked": it was put out there for a moment on a misreading); `IV_MEA_LIT=1` lights it from the first,
+  for a picture. Of the frame cut true he said "it's too much relief, does it need so much?":
   `block_cube.py` takes a depth (its 5th value, in the source block's units, 0.726 a side; the frames were 0.026, 3.3 cm
   at 0.92 m), and the frame was offered at 0.006 (0.8 cm); then (23/11: "what if the design on the cube had lines and
   circles in the middle, like the path's?") `path4` (a ring where four ways meet, its lines running on over the edges to
@@ -740,8 +740,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   the disc only if every corner of it lies within the ring: at first the builder took a face's middle by its corners,
   which lay within the ring for the four fields round it too (their many corners run along its arc), so they were the
   disc, and lit, the whole cube went white (the owner, 23/11: "why did you make it all white"). Check the parts' areas
-  after a build (the discs about 0.19 m2 in all). **Level 2: it does not light in its gap, and no mark of the way over
-  it or to it**
+  after a build (the discs about 0.19 m2 in all). **Level 2: it lights in its gap, and no mark of the way over it or
+  to it**
   ("in the first level no extra path should come out on the square, it should just activate"; "no path line should
   come out at all in 2"): the hole's node has no disc and no line of the way runs to it (their lines once rose out of the
   water as it filled). **The stone hewn** ("can we make the cube more crooked, cut and hewn? it's too straight";

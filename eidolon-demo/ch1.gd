@@ -5564,7 +5564,7 @@ func _ivv_push_in(nb: String, c: String) -> void:
 	ivv_filled[c] = true; iv_block = ""
 	var bc := iv_block_n.global_transform * _ivt_box_get().get_center()
 	print("IV the block rests in ", c, " at ", Vector3(snappedf(bc.x - qp.x, 0.001), snappedf(bc.y - qp.y, 0.001), snappedf(bc.z - qp.z, 0.001)), " from its middle")
-	# (the one that falls into the water never lights, the second's in its gap nor the fifth's in the deep water (the owner, 23/11: "not the one that falls into the water", "in 2 no new path line should appear over the cube"): lit, its white lines read as a new line of the way over it)
+	_ivgl_meander(true)      # (its work done: its lines and the stone within its ring light, the second's in its gap and the fifth's in the deep water before it sinks (the owner, 23/11: "in the water I WANT it to light, just no line should come out"); no line or disc of the way over it or to it)
 	if ivs_sea_mat != null:      # (and then the still water's own thin foam and small waves round it, as round every stone: its place is in the shore map's green, tools/go/shore_hole.py)
 		var tu := create_tween(); tu.tween_interval(1.2)
 		tu.tween_method(func(v: float) -> void: ivs_sea_mat.set_shader_parameter("riser_up", v), 0.0, 1.0, 2.4).set_trans(Tween.TRANS_SINE)
@@ -6659,7 +6659,7 @@ func _ivr_build() -> void:
 				var hs := Vector2(IVGD_FG_HAND.z, IVGD_FG_HAND.z * 1100.0 / 793.0) * fk
 				var hx := IVGD_FG_HAND.x + IVGD_FG_HAND.z - hs.x      # (held at its right edge)
 				var ho := _iv_overlay(cl, "res://goguard/fg_hand.png", Vector2(hx * k, vh - (hs.y - (IVGD_FG_HAND.z * 1100.0 / 793.0 - IVGD_FG_HAND.y)) * k), hs * k); ho.modulate.a = fa
-			if IVGD_FG_MORE.has(fgm) and ResourceLoader.exists(String((IVGD_FG_MORE[fgm] as Array)[0])):      # (others offered, one thing alone at one corner (the owner, 23/11: "put something else for the blurred one in 5"): our own statues rendered from the eye's side and blurred, tools/go/fg_head.py)
+			if IVGD_FG_MORE.has(fgm) and ResourceLoader.exists(String((IVGD_FG_MORE[fgm] as Array)[0])):      # (others offered, one thing alone at one corner (the owner, 23/11: "put something else for the blurred one in 5", "it needn't be 3D, it can be something from Gemini"))
 				var fe: Array = IVGD_FG_MORE[fgm]
 				var ft := load(String(fe[0])) as Texture2D
 				var fsz := Vector2(float(fe[3]), float(fe[3]) * float(ft.get_height()) / float(ft.get_width())) * fk
@@ -10808,7 +10808,7 @@ func _ivgl_shade_poof() -> void:      # (her shadow in the image swells a little
 
 var ivgl_mea_on := false
 const IVM_BLOCK_HOME := "NI"      # (the third level's niche under the highest rock, where the stone lets the light by)
-func _ivgl_meander(on: bool) -> void:      # (the block's meander lights white while it stands where its image is in the square, and its image's with it (the owner, 20/11: "when the cube reaches the square, the meander lights up white"); since 23/11 where the cube is set right (the owner: "and they light up when the cube is activated correctly"): the third's niche and the fourth's square; never the one that falls into the water, the second's or the fifth's (the owner: "in the first the cube doesn't need to light up", "not the one that falls into the water"); only its lines, its ring and the stone within it, never the whole cube (the owner: "I asked only the inside of the circle to become white, besides the lines"))
+func _ivgl_meander(on: bool) -> void:      # (the block's meander lights white while it stands where its image is in the square, and its image's with it (the owner, 20/11: "when the cube reaches the square, the meander lights up white"); since 23/11 where the cube is set right (the owner: "and they light up when the cube is activated correctly"): the second's gap, the third's niche, the fourth's square, the fifth's deep water (the owner: "in the water I WANT it to light, just no line should come out"); only its lines, its ring and the stone within it, never the whole cube (the owner: "I asked only the inside of the circle to become white, besides the lines"))
 	if on == ivgl_mea_on or iv_block_n == null: return
 	ivgl_mea_on = on
 	var ms: Array = []
@@ -11094,7 +11094,7 @@ const IVGD_FG := "both"      # (what stands before the eye at its lower corners:
 const IVGD_FG_K := 1.0      # (their size; IV_FG5_K tries another (the owner, 23/11: "in 5 put something more discreet"))
 const IVGD_FG_A := 1.0      # (how much they show; IV_FG5_A tries another)
 const IVGD_FG_YOUTH := Vector3(-130.0, 330.0, 340.0)      # (its left, its top over the picture's foot, its width; at 720 wide: at the lower left, in the open water under the gate's rocks, facing in, his mirror toward the middle)
-const IVGD_FG_MORE := {"veiled": ["res://goguard/fg_veiled.png", -40.0, 330.0, 300.0], "unfinished": ["res://goguard/fg_unfinished.png", 470.0, 330.0, 280.0], "amphora": ["res://goguard/fg_amphora.png", -60.0, 300.0, 300.0]}      # (others before the eye, each alone: its picture, its left, its top over the picture's foot, its width, at 720 wide)
+const IVGD_FG_MORE := {"veiled": ["res://goguard/fg_veiled.png", 470.0, 330.0, 280.0], "amphora": ["res://goguard/fg_amphora.png", -60.0, 300.0, 300.0], "mask": ["res://goguard/fg_mask.png", -50.0, 280.0, 280.0]}      # (others before the eye, each alone, painted by the image model (design/level5/fg/, their prompts beside them) and cut out by tools/go/fg_figure.py: a veiled woman from behind at the lower right, her head turned in; an amphora, or a broken marble face looking in, at the lower left; its picture, its left, its top over the picture's foot, its width, at 720 wide)
 const IVGD_FG_HAND := Vector3(430.0, 340.0, 340.0)      # (at the lower right, under the walk's right arm, clear of it)
 const IVGD_FAR_ON := false      # (the island in the air painted into the backdrop since 22/11 (the owner, of the image model's repaint of the 3D one: "the new floating island!! but a little more to the right"; design/level5/isle_painted/lay_in.py); before, 3D on the plain sky (22/11, of it: "I liked this background"), and before that painted (21/11: "can't you make the island as a picture?"); IV_FAR=1 brings the 3D one back, with IV_BG_FILE=design/level5/backdrop_plain_clean.jpg for its plain sky)
 const IVGD_FAR_FILE := "far.glb"
