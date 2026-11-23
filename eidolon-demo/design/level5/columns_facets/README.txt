@@ -61,3 +61,12 @@ At first each thing was turned over about its lowest point and the painted water
 they flew (the owner: "they look like they're flying"): now each is turned over about where it really meets the water at
 each x (an upright column's base arc, a drum lying in the water; between legs and under a leaning shaft, the line under
 it), and the painted water is kept in a band 22 pixels under that, fading (its ripples and the dark of its foot going in).
+
+Then (the owner: "the right one of the left part has no reflection"; of the drum: "the reflection is wrong"; "and they
+should fade toward the bottom"): touching things split apart (eroded, each part of the solid to the nearest; the drum
+lying before the short column's foot given its own part by hand, --part 664,440,745,662); leaning things turned over about
+their foot, things standing or lying in the water about their underside all along; each image gone by 0.85 of its
+thing's height:
+
+  python3 -I tools/go/card_reflect.py design/level5/columns_facets/wd_cols_painted_water.png goguard/wd_cols.png 107.8 \
+      --k 0.7 --wave 1.6 --contact 22 --fade 0.85 --part 664,440,745,662
