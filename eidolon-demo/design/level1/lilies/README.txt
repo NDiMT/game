@@ -13,3 +13,10 @@ frame's open water (its green take, opened 2, grown 4, soft 2.5) and, on the far
 edge which that take left in haze, to what the painting changed (more than 28: boxes 320,903-853,1204 and 0,1010-171,1419);
 scaled, weighted by its cover, to 1080x1920: gowake/wd_lily_ring.png, laid on the water's plane by the game
 (IV_WATER_DECALS).
+
+Then far fewer and discreet (the owner: "you overdid it, I want much fewer, and discreet"): of the layer's pads, buds and
+flowers (its solid parts, cover over 0.8) only eight kept with their ripples about them (grown 18, soft 3): a pad at the
+statue's feet, a pad at the island's right, a pad, a bud and one small flower at the lower right, two pads and a bud at
+the lower left; given 0.22 to the water under them, cover 0.9. The flower at the statue's feet lay against the rock
+there, and on the water's plane the rock hid half of it: a thing that rises out of the water against a rock or a figure
+does not lie on the decal well; keep such things away from them.

@@ -340,6 +340,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   the frame's corners taken down to the sea along the eye's rays, so it lies where it was painted, goes with the level
   as the eye follows her, and the island hides what lies behind it. Kept to the clean frame's open water, or the model's
   small repaints of the text and the figures come back as ghosts on the water. The three details of before are out.
+  Then far fewer and discreet ("you overdid it, I want much fewer, and discreet"): four small groups of pads, two buds,
+  one small flower, a little given to the water.
   The rules he has given for painted things are in the skill (`go-level`, "Things painted into a level").
 - **The ring before every gate stands clear of its door** (the owner, 22/11: "the bright circles should never be right at
   the door"; and of the first level: "no second-to-last dot: the stair's path takes you straight to the last bright
