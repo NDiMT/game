@@ -17,3 +17,15 @@ s1 bronze, its meander green with patina      IV_CUBE_PAL=block:d0a072,b08455,8a
 s2 terracotta, its meander black glaze, as a black-figure vase      IV_CUBE_PAL=block:de956a,c97d56,a9643f,7e4a30;meander:3b302f,30272a,262022,1b1618      IV_CUBE_EX=block:veins=0.0
 s3 white marble, its meander gold      IV_CUBE_PAL=block:f7f3ec,ece6dd,d6cdc3,b2a79e;meander:f3d78e,e2bd6c,c39a52,94713c      IV_CUBE_EX=meander:emit=0.18
 s4 dark veined stone, its meander a white light as the rings      IV_CUBE_PAL=block:5d5165,4c4154,3b3243,2b2432;meander:fbf9f4,fbf9f4,fbf9f4,fbf9f4      IV_CUBE_EX=meander:emit=0.5,flat_mode=1;block:veins=0.25
+
+# eight more, offered late on 22/11 after the slabs' own colours were not liked (the owner: "I don't like the colour of the cube
+# with the meander, so propose other colours"): the meander kept in the way's line colour (its level's groove, flat);
+# only the block's four tones, lit to shade (IV_CUBE_PAL=block:...)
+k1 terracotta      IV_CUBE_PAL=block:b97a64,a56d5b,8a5c4e,68463c
+k2 ochre sandstone      IV_CUBE_PAL=block:c9a66e,b39464,957c55,705d41
+k3 sage      IV_CUBE_PAL=block:9fb19c,8e9e8c,778376,5a635a
+k4 verdigris      IV_CUBE_PAL=block:82a3a2,759291,62797a,4a5b5d
+k5 dusty rose      IV_CUBE_PAL=block:c7999d,b1898d,947277,6f565a
+k6 slate blue      IV_CUBE_PAL=block:8395b2,7585a0,636f86,4b5465
+k7 amethyst      IV_CUBE_PAL=block:9080a8,817397,6c607f,524960
+k8 charcoal plum      IV_CUBE_PAL=block:625868,584f5e,4b4350,39333e
