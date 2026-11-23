@@ -40,3 +40,10 @@ scaled to 920x920 (goguard/wd_cols.png), the colonnade (rows 125-515, columns 24
 haze behind it; in IV_WATER_DETAILS at 0 330 460 460, foot 215.9 694.8. The column by the island is out. The fallen
 column and its drum at the lower right brought into the same marble (grade.py, k 0.85, the reference the two new
 columns of wd_cols.png: rows 520-820, columns 440-760, where solid).
+
+Then (the owner: "make the lower ones a little random, they are straight like cucumbers"): edited again from
+direct2_gemini.jpg (direct3_prompt.txt -> direct3_gemini.jpg: the two broken columns of offset, chipped drums, jagged tops,
+the drum battered), its green take direct3_green.jpg, the band cleared as before, lifted with the same drops and two
+more for strips of haze under the band (1712,380,2048,570; 1500,380,1712,556; 0,470,520,560), the colonnade faded as
+before; foot 215.0 694.3. The fallen column and drum at the lower right 0.85 of their size about the column's foot ("the
+fallen ones at the lower right a little smaller still").
