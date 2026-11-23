@@ -705,7 +705,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   further back"): the game sets them 1.4 m back along both ways, up the picture toward the haze, at 0.6 their size about
   their middle at the water, as farther things are smaller and closer together (`IVGD_COLS_AT`, `IVGD_COLS_C`;
   `IV_COLS_AT="dx,dz[,scale]"` tries others), and further in the haze (`IVGD_COLS_K` 0.72): their feet about 0.33 to 0.37
-  of the screen's height at the start, their tops under 0.29. **The sky without its horizontal lines** (the owner,
+  of the screen's height at the start, their tops under 0.29. **Then more of them, most whole with Ionic capitals, as
+  faint** (the owner, 23/11: "can we put here, faint as they are, but more columns with capitals?"): fourteen, seven
+  whole with their capitals, made as the near ones are but lighter (`FAR_LOD`: a sea column's `{'lod': 1}`, twelve
+  flutes, no spirals; 19.6k triangles), stouter, scattered further out (`FAR_COLS`). **The sky without its horizontal lines** (the owner,
   22/11: "the sky there has lines too", as the fourth level's): `goguard/backdrop.jpg` through
   `tools/go/backdrop_destreak.py ... 0.40 0.47` (no mask: nothing painted in it).
   **Blurred columns before the eye** (the owner, 22/11: "can we have blurred columns at the front of the screen?"): two

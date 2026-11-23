@@ -969,7 +969,7 @@ def chip_edge(bm, c, R, yb, up=True, deep=0.12):
     bmesh.ops.holes_fill(bm, edges=bm.edges[:], sides=0)
 
 
-def ionic_capital(x, y, z, R, uyaw):
+def ionic_capital(x, y, z, R, uyaw, lod=False):
     """an Ionic capital on a shaft of upper radius R whose top is at y: the astragal, the echinus with its eggs, the
     canalis and its two bolsters rolled into volutes, a spiral on each, and the abacus; its volutes along uyaw (the
     architrave's way, as the stones' yaw); its top at y + 1.18 R"""
@@ -978,9 +978,9 @@ def ionic_capital(x, y, z, R, uyaw):
     P = lambda u, v, w: (x + u * cu + w * cw, y + v, z + u * su + w * sw)
     obs = []
     bm = bmesh.new()
-    lathe(bm, [(R * 0.99, y - 0.01), (R * 1.06, y + R * 0.03), (R * 1.09, y + R * 0.07), (R * 1.06, y + R * 0.11), (R * 0.98, y + R * 0.14)], x, z, n=40)      # (the astragal, a bead about the shaft's top)
+    lathe(bm, [(R * 0.99, y - 0.01), (R * 1.06, y + R * 0.03), (R * 1.09, y + R * 0.07), (R * 1.06, y + R * 0.11), (R * 0.98, y + R * 0.14)], x, z, n=24 if lod else 40)      # (the astragal, a bead about the shaft's top)
     eggs = lambda k, i: 1.0 + (0.05 * max(0.0, math.cos(12 * 2.0 * math.pi * k / 48.0)) ** 2 if 0 < i < 4 else 0.0)
-    lathe(bm, [(R * 0.98, y + R * 0.14), (R * 1.1, y + R * 0.2), (R * 1.19, y + R * 0.28), (R * 1.22, y + R * 0.36), (R * 1.15, y + R * 0.42)], x, z, n=48, wob=eggs)      # (the echinus: an ovolo carved in twelve eggs)
+    lathe(bm, [(R * 0.98, y + R * 0.14), (R * 1.1, y + R * 0.2), (R * 1.19, y + R * 0.28), (R * 1.22, y + R * 0.36), (R * 1.15, y + R * 0.42)], x, z, n=24 if lod else 48, wob=None if lod else eggs)      # (the echinus: an ovolo carved in twelve eggs)
     obs.append(finish(bm, 'echinus', fine=0.3))
     rv, uc, top = R * 0.64, R * 1.22, R * 1.0      # (its volutes a little larger than the canon's, so they read from the game's eye)
     vc = top - rv
@@ -993,11 +993,12 @@ def ionic_capital(x, y, z, R, uyaw):
     for s in (-1.0, 1.0):
         rings = []
         for wv, fv in zip(ws, fs):
-            rings.append([P(s * uc + math.cos(2.0 * math.pi * k / 24) * rv * fv, vc + math.sin(2.0 * math.pi * k / 24) * rv * fv, wv * R) for k in range(24)])
+            nb = 12 if lod else 24
+            rings.append([P(s * uc + math.cos(2.0 * math.pi * k / nb) * rv * fv, vc + math.sin(2.0 * math.pi * k / nb) * rv * fv, wv * R) for k in range(nb)])
         loft(bm, rings)
     obs.append(finish(bm, 'volutes', fine=0.3))
-    bm = bmesh.new()      # (the spirals on the volutes' faces, front and back: a band standing out of each face, winding in two turns and a half to the eye)
-    for s in (-1.0, 1.0):
+    bm = bmesh.new()      # (the spirals on the volutes' faces, front and back: a band standing out of each face, winding in two turns and a half to the eye; none far off)
+    for s in (() if lod else (-1.0, 1.0)):
         for fw in (-1.0, 1.0):
             w0 = fw * R * 0.86; hh = fw * R * 0.05; turns = 2.5; nseg = 60; bw = rv * 0.09
             inner, outer = [], []
@@ -1017,7 +1018,8 @@ def ionic_capital(x, y, z, R, uyaw):
                 except ValueError: pass
             ring_ = [(s * uc + math.cos(2.0 * math.pi * k / 10) * rv * 0.14, vc + math.sin(2.0 * math.pi * k / 10) * rv * 0.14) for k in range(10)]
             loft(bm, [[P(u, v, w0 - hh * 0.3) for (u, v) in ring_], [P(u, v, w0 + hh * 1.3) for (u, v) in ring_]])      # (the volute's eye)
-    obs.append(finish(bm, 'spirals', fine=0.3))
+    if not lod: obs.append(finish(bm, 'spirals', fine=0.3))
+    else: bm.free()
     bm = bmesh.new()      # (the abacus: thin, its top a little out over its foot)
     hexa(bm, [P(-R * 1.24, top, -R * 0.98), P(R * 1.24, top, -R * 0.98), P(R * 1.24, top, R * 0.98), P(-R * 1.24, top, R * 0.98),
               P(-R * 1.24, top + R * 0.1, -R * 0.98), P(R * 1.24, top + R * 0.1, -R * 0.98), P(R * 1.24, top + R * 0.1, R * 0.98), P(-R * 1.24, top + R * 0.1, R * 0.98)])
@@ -1032,6 +1034,7 @@ def column_fine(x, y, z, h, r=0.2, broken=False, opt=None):
     """an Ionic column in detail, its foot at y (its plinth, under the water, is its first part, as column()'s, so
     turn_column turns and leans it the same way); h to its abacus' top, or to its break"""
     opt = opt or {}
+    lod = bool(opt.get('lod'))      # (far off: fewer flutes and rings, no spirals)
     m = []
     bm = bmesh.new()
     box(bm, (x - r * 1.45, y, z - r * 1.45), (x + r * 1.45, y + 0.2, z + r * 1.45))      # its plinth
@@ -1053,13 +1056,13 @@ def column_fine(x, y, z, h, r=0.2, broken=False, opt=None):
         yaw = rnd.uniform(-0.06, 0.06); ox, oz = (rnd.uniform(-0.006, 0.006), rnd.uniform(-0.006, 0.006)) if k > 0 else (0.0, 0.0)
         b_ = b + (0.2 if last else 0.0)      # (the drum that breaks runs on over the break, which cuts it)
         ys = [a, a + 0.012]
-        nmid = max(1, int((b_ - a) / 0.22))
+        nmid = max(1, int((b_ - a) / (0.45 if lod else 0.22)))
         ys += [a + 0.012 + (b_ - a - 0.024) * j / nmid for j in range(1, nmid)]
         ys += [b_ - 0.012, b_]
         rings = []
         for i, yy in enumerate(ys):
             RR = Rf(min(yy, y1)) - (0.009 if i in (0, len(ys) - 1) else 0.0)      # (its edges eased a hair: the joint reads as a fine line)
-            rings.append([(x + ox + dx, yy, z + oz + dz) for (dx, dz) in flute_ring(RR, yaw=yaw)])
+            rings.append([(x + ox + dx, yy, z + oz + dz) for (dx, dz) in (flute_ring(RR, nf=12, sub=1, yaw=yaw) if lod else flute_ring(RR, yaw=yaw))])
         bm = bmesh.new(); loft(bm, rings)
         c = G(x + ox, a, z + oz)
         if last:
@@ -1075,10 +1078,10 @@ def column_fine(x, y, z, h, r=0.2, broken=False, opt=None):
         else:
             if rnd.random() < 0.55: chip_edge(bm, c, Rf(b), b, up=True)
         if k > 0 and rnd.random() < 0.45: chip_edge(bm, c, Rf(a), a, up=False)
-        m.append(finish(bm, 'drum', fine=0.5))
+        m.append(finish(bm, 'drum', fine=1.2 if lod else 0.5))
         if last: break
     if not broken:
-        m += ionic_capital(x, y1, z, Rf(y1), float(opt.get('cap', rnd.uniform(0.0, 180.0))))
+        m += ionic_capital(x, y1, z, Rf(y1), float(opt.get('cap', rnd.uniform(0.0, 180.0))), lod=lod)
     return m
 
 
