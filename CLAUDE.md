@@ -523,7 +523,12 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   levels' from `backdrop_concept.jpg`; horizon 0.38), its palette sampled from it (`IV_GLASS_PAL`: slabs of a lilac white, dark plum-grey
   rock; a blue-lilac shade), the glass a pane whose left edge and top are seen (`IVGL_PANE`; the image is drawn only
   through it, `img_clip`), a bank of mist at the left over the pane's edge (`goglass/mist_l.png`), no rocks before the
-  eye. **More atmospheric** (the owner, 19/11): soft banks of mist standing on the water before the glass and two sheets
+  eye. **The back of a statue's head before the eye at the lower right, blurred** (the owner, 23/11: "at the lower right
+  in 4 put the back of a statue's head, blurred"): `goglass/fg_head.png` by `tools/go/fg_head.py` (our goddess's model
+  rendered from behind in Blender, turned 28 degrees and seen 14 from above, lit from the upper right, then brought into
+  the level's blue-lilac, `4f4a64` to `aeabc6`, and blurred); laid on at `IVGL_FG_HEAD` (left 430, top 400 over the
+  picture's foot, 380 wide, at 720 wide), its shoulder running on below the edge; `IV_FG4=0` leaves it out.
+  **More atmospheric** (the owner, 19/11): soft banks of mist standing on the water before the glass and two sheets
   lying on the open sea at the picture's lower corners (`IVGL_MISTS`, `IVGL_MIST_SH`: drifting billows, thinning to
   nothing at the water; a mist painted on the glass itself ended on a hard line at its foot), the glass's light in wide
   slanting sheens (its thin upright streaks read as lines over the story's words), no birds (they stood by the line as
@@ -661,7 +666,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   the things before the eye and blurred by `tools/go/fg_figure.py` → `goguard/fg_youth.png` (a marble youth seen from
   behind, gazing into a hand mirror, at the lower left, facing in) and `goguard/fg_hand.png` (a marble hand holding a
   mirror up, at the lower right); `IVGD_FG` "both" (`IVGD_FG_YOUTH`, `IVGD_FG_HAND`: left, top over the foot, width at
-  720 wide; `IV_FG5=youth|hand|both|cols` tries others); offered as three, the owner to choose. **The island in the air
+  720 wide; `IV_FG5=youth|hand|both|cols` tries others); offered as three, the owner to choose. Then more discreet
+  (23/11: "and in 5 something more discreet"): `IVGD_FG_K` scales them about their outer foot, `IVGD_FG_A` fades them
+  (`IV_FG5_K`, `IV_FG5_A` try others); offered: both at 0.75 and 0.75, the hand alone or the youth alone at 0.8 and
+  0.85, the owner to choose. **The island in the air
   painted by Gemini, a trial** (the owner, 22/11: "try making the floating island in Gemini"): the 3D island cut from a
   still of the level (with it, without it) and laid into the clean plain backdrop where it lies in the game (the screen
   to the painting: uv = screen + `bg_off`, the painting 1.5 times the 720 screen; the follow at that moment from
@@ -706,12 +714,13 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   too"): `frame` (a running meander round the face's edge), `wreath`, `palmette`, `eggdart`, `basket`, `flutes`,
   `scroll`, `herringbone`. He liked `frame` ("I liked 1; can we do something around it with softer lines?"): `frame_thin`
   (finer, less deep) and `frame_calm` (two larger keys a side), each also with a lighter plum, offered. **Its lines
-  light when the cube is placed right, in every level** (the owner: "and they light up when the cube is activated
-  correctly"; `_ivgl_meander`, the fourth level's white light on its meander, IVGL_MEA_EMIT): the third's as it comes
-  into its niche (`IVM_BLOCK_HOME` "NI"), the fourth's as before while its image stands in the square, the fifth's as it
-  comes to rest in the deep water, before it sinks (dark again if the level starts over); not the second's, in its gap
-  (the owner: "in the first the cube doesn't need to light up": level 2, the first with the cube); `IV_MEA_LIT=1`
-  lights it from the first, for a picture. Of the frame cut true he said "it's too much relief, does it need so much?":
+  light when the cube is set right** (the owner: "and they light up when the cube is activated correctly";
+  `_ivgl_meander`, the fourth level's white light on its meander, IVGL_MEA_EMIT): the third's as it comes into its niche
+  (`IVM_BLOCK_HOME` "NI"), the fourth's as before while its image stands in the square; **never the one that falls into
+  the water**, the second's in its gap nor the fifth's in the deep water (the owner, 23/11: "not the one that falls into
+  the water", "in 2 no new path line should appear over the cube": lit, its white lines read as a new line of the way
+  over it; before, "in the first the cube doesn't need to light up"); `IV_MEA_LIT=1` lights it from the first, for a
+  picture. Of the frame cut true he said "it's too much relief, does it need so much?":
   `block_cube.py` takes a depth (its 5th value, in the source block's units, 0.726 a side; the frames were 0.026, 3.3 cm
   at 0.92 m), and the frame was offered at 0.006 (0.8 cm); then (23/11: "what if the design on the cube had lines and
   circles in the middle, like the path's?") `path4` (a ring where four ways meet, its lines running on over the edges to
@@ -721,14 +730,21 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   the circle at its centre should light"): `props/block_cube.glb` is `block_cube.py -- props/block_cube.glb 0.92 11
   path4` (cut 0.6 cm), its colours `block` `bfb4c9`, `meander` (its lines and ring) `8a7a93` in `IV_WAKE_PAL`, every
   level (the meander cube kept in the scratchpad's way only; `one` rebuilds it); lit, its lines and ring take the
-  rings' white, **and the whole circle with them** ("the whole inside of the circle should turn white when it activates,
-  in 2 and in 4"): the stone within each ring is its own part, `disc` (`DISCS` in the builder), the block's stone with
-  its own material, lit with the lines. **Level 2: it lights in its gap, and no mark of the way over it or to it**
+  rings' white, **and the whole circle with them, never more** ("the whole inside of the circle should turn white when it
+  activates"; "I asked only the inside of the circle to become white, besides the lines"): the stone within each ring is
+  its own part, `disc` (`DISCS` in the builder), the block's stone with its own material, lit with the lines. A face is
+  the disc only if every corner of it lies within the ring: at first the builder took a face's middle by its corners,
+  which lay within the ring for the four fields round it too (their many corners run along its arc), so they were the
+  disc, and lit, the whole cube went white (the owner, 23/11: "why did you make it all white"). Check the parts' areas
+  after a build (the discs about 0.19 m2 in all). **Level 2: it does not light in its gap, and no mark of the way over
+  it or to it**
   ("in the first level no extra path should come out on the square, it should just activate"; "no path line should
   come out at all in 2"): the hole's node has no disc and no line of the way runs to it (their lines once rose out of the
-  water as it filled). **The stone hewn rough** ("can we make the cube more crooked, cut and hewn? it's too straight";
-  `HEWN` for the way's designs): its faces out of true 1.45 times the first cube's, seven corners broken (3.5 to 8 cm),
-  five chips running out along its edges; its marks cut true.
+  water as it filled). **The stone hewn** ("can we make the cube more crooked, cut and hewn? it's too straight";
+  `HEWN` for the way's designs): its faces out of true 1.45 times the first cube's, five corners broken (1.8 to 4 cm),
+  three small chips (0.9 to 1.8 cm) running out along its edges; its marks cut true. Seven corners of 4.4 to 10 cm and
+  five chips of 2 to 3.8 cm were too much (the owner, 23/11: "I said the cube in general should look hewn",
+  "make the cuts less intense").
   The veiled bust is out again (`observer` None). Before it (the owner, 21/11: "make something else for the
   background, whatever you like, but matching the perspective and the colours"; then of it: "I don't like the new
   background"): the ruins of a drowned sanctuary far
