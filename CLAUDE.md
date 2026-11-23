@@ -304,27 +304,34 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   levels"; "the water lilies in 4 I liked"; "and they needn't all be striking"): the things before the eye at the
   corners (the leaves above, the rocks below, level 2's veiled statue, level 4's lilies with leaves, level 5's fallen
   column, the last two made dark and blurred as the second level's statue just before) are all hidden (`IV_FG_ON` false
-  in `ch1.gd`; `IV_FG=1` shows them again). In their place one thing in each level's water, part of the scene
-  (`IV_WATER_DETAILS`, `_iv_water_details`): level 1 an amphora with a meander band half sunk at the lower right (the
-  film's own vessel), level 2 a statue's marble hand rising from the water at the lower left, level 3 a fallen Ionic
-  capital at the lower right, level 4 the lilies he liked (a bud on its stem and round pads at the lower left), level 5 a
-  bronze hand mirror green with age at the lower left (three of them the things kept for another map, see level 4).
-  Each was painted by the image model into the level's own frame (the game's still at her start, 720 by 1280, with
-  nothing before the eye: "keep the whole picture exactly as it is ... add only one thing, in the open water ... part of
-  the scene, in sharp focus, small, about a fifth of the frame's width"), then the same painting with its open water
-  made flat green; `tools/go/water_lift.py` lifts the thing from the green take (whole where the take has it whole, even
-  a green bronze) and, about it, what it does to the water (its ripples, its image, its part under the water) from the
-  painting against the game's frame, its colours always the painting's own, so laid over the game's water it gives back
-  the painting; it prints the cut's place in the frame and its foot. The game stands each in the world as a card facing
-  the eye (`StandardMaterial3D` unshaded, its texture imported with mipmaps), placed from those pixels by the level's
-  own eye and its follow at her start on a 9:16 screen (`_ivr_follow_tg`), its foot on the sea along the eye's ray: it
-  goes with the level as the eye follows her, and the level's rocks nearer the eye than its foot hide it. Drawn after
-  the sea and its foam (7), level 4's after its mist sheets (22), as painted. The lilies were cut from the very take he
-  liked (`tools/go/water_cut.py`: its dark rock behind the bud, its half-green pad given back its colour from the
-  painting), their pads cut by the frame's edges completed by the model in a green margin, so a taller screen never
-  shows a straight cut. A thing painted into a frame where the tutorial hand shows takes the hand's place: paint the
-  hand out of the frame first. Sources: `design/water/` (each level's frame, prompts, painting, green take; the lilies'
-  canvas and completion). `IV_WD=0` leaves them out; `IV_WD_ADD="file,left,top,width,height,x,y[,after]"` tries one.
+  in `ch1.gd`; `IV_FG=1` shows them again). In their place things in each level's water, part of the scene
+  (`IV_WATER_DETAILS`, `_iv_water_details`). First one each (an amphora, a statue's marble hand, a fallen capital, a
+  bronze hand mirror: "I don't like these"); then twelve natural ones offered, lilies with a bud, reeds, petals and
+  leaves, three a level (`design/water/options/`; the owner: "basically I like them; in 5 I'd like sunken columns"):
+  **levels 1, 2 and 3 have all three**, each at its own place in the open water (1: the lilies at the lower right, the
+  reeds by the rocks at the right, the petals at the lower left; 2: the lilies at the lower left, the reeds beside the
+  rock at the right, the petals between; 3: the lilies at the right, the reeds by the salt rocks at the lower left, the
+  flowers between), **level 4 the lilies he liked** (a bud on its stem and round pads at the lower left), **level 5 the
+  stumps of a drowned colonnade** standing in the water at the lower left, one leaning. Each was painted by the image
+  model into the level's own frame (the game's still at her start, 720 by 1280, with nothing before the eye: "keep the
+  whole picture exactly as it is ... add only one thing, in the open water ... a quiet, natural detail of the scene, not
+  a striking one ... small, about a sixth of the frame's width"), then the same painting with its open water made flat
+  green; `tools/go/water_lift.py` lifts the thing from the green take (whole where the take has it whole, even a green
+  bronze; with `--new` only what the painting added, never the level's own rocks and slabs the take kept) and, about it,
+  what it does to the water (its ripples, its image, its part under the water) from the painting against the game's
+  frame, its colours always the painting's own, so laid over the game's water it gives back the painting; it prints the
+  cut's place in the frame and its foot. `design/water/lift_all.py` does them all and prints their entries (the three of
+  a level were each painted at one place: `place.json` moves them apart). The game stands each in the world as a card
+  facing the eye (`StandardMaterial3D` unshaded, its texture imported with mipmaps), placed from those pixels by the
+  level's own eye and its follow at her start on a 9:16 screen (`_ivr_follow_tg`), its foot on the sea along the eye's
+  ray: it goes with the level as the eye follows her, and the level's rocks nearer the eye than its foot hide it. Drawn
+  after the sea and its foam (7), level 4's after its mist sheets (22), as painted. The lilies of level 4 were cut from
+  the very take he liked (`tools/go/water_cut.py`: its dark rock behind the bud, its half-green pad given back its colour
+  from the painting), their pads cut by the frame's edges completed by the model in a green margin, so a taller screen
+  never shows a straight cut. A thing painted into a frame where the tutorial hand shows takes the hand's place: paint
+  the hand out of the frame first. Sources: `design/water/` (each level's frame, prompts, painting, green take; the
+  lilies' canvas and completion). `IV_WD=0` leaves them out; `IV_WD_ADD="file,left,top,width,height,x,y[,after]"` tries
+  one.
 - **The ring before every gate stands clear of its door** (the owner, 22/11: "the bright circles should never be right at
   the door"; and of the first level: "no second-to-last dot: the stair's path takes you straight to the last bright
   circle"): each ring set back along the way to 1.15 m from its arch's middle (level 4's 1.1; 0.6 to 0.9 before, its

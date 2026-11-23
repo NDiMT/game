@@ -11109,12 +11109,12 @@ const IVGD_FAR_K := 0.3
 ## 720 by 1280 as the eye has it at her start (the level's own eye and its follow, whatever the screen's shape); its
 ## foot, where it meets the water, sets how near it stands, so the level's rocks before it hide it and those behind it do
 ## not. `IV_WD=0` leaves them out; `IV_WD_ADD="file,left,top,width,height,x,y[,after]"` tries one more.
-const IV_WATER_DETAILS := {
-	"gowake": [["res://gowake/wd_amphora.png", 464.1, 1055.8, 225.0, 172.1, 570.3, 1181.4]],      # (an amphora with a meander band, half sunk at the lower right: the film's own vessel)
-	"goveil": [["res://goveil/wd_hand.png", 135.9, 1032.6, 201.6, 204.7, 218.0, 1158.1]],      # (a statue's marble hand rising from the water at the lower left, one of the thousand)
-	"gomilos": [["res://gomilos/wd_capital.png", 435.9, 972.1, 243.8, 227.9, 494.3, 1100.5]],      # (a fallen Ionic capital half sunk at the lower right)
+const IV_WATER_DETAILS := {      # (since 23/11, of twelve natural ones offered for the other levels, the owner: "basically I like them; in 5 I'd like sunken columns": in 1, 2 and 3 all three, lilies, reeds, petals, each at its own place in the open water; before, an amphora, a marble hand, a capital and a bronze mirror: "I don't like these")
+	"gowake": [["res://gowake/wd_lilies.png", 372.2, 990.2, 347.8, 314.0, 661.7, 1234.0], ["res://gowake/wd_reeds.png", 445.3, 764.0, 304.7, 386.0, 633.6, 1008.1], ["res://gowake/wd_petals.png", -152.2, 1036.9, 402.2, 310.7, 133.9, 1279.7]],      # (rose lily pads and a bud at the lower right; reeds by the rocks at the right; petals and leaves at the lower left)
+	"goveil": [["res://goveil/wd_lilies.png", 16.9, 991.2, 374.5, 288.8, 274.1, 1205.6], ["res://goveil/wd_reeds.png", 439.5, 837.5, 339.8, 346.5, 644.6, 1063.1], ["res://goveil/wd_petals.png", 260.9, 1105.9, 419.1, 259.1, 350.0, 1307.8]],      # (golden pads and a bud at the lower left; reeds beside the rock at the right; petals, leaves and a small flower between)
+	"gomilos": [["res://gomilos/wd_lilies.png", 312.7, 928.4, 407.3, 323.7, 586.5, 1189.3], ["res://gomilos/wd_reeds.png", -80.8, 941.7, 370.8, 409.3, 96.1, 1245.0], ["res://gomilos/wd_petals.png", 162.0, 1096.9, 398.0, 257.7, 397.2, 1292.2]],      # (pale lilac pads and a bud at the right; reeds by the salt rocks at the lower left; white and lilac flowers between)
 	"goglass": [["res://goglass/wd_lilies.png", -118.1, 1067.0, 586.9, 369.8, 78.8, 1286.0, 22]],      # (the lilies the owner liked: two pads and a bud at the lower left, whole beyond the frame's edge for taller screens; over the mist sheet that lies there, as painted in it)
-	"goguard": [["res://goguard/wd_mirror.png", 28.1, 1041.9, 234.4, 204.7, 120.6, 1170.7]],      # (a bronze hand mirror half sunk at the lower left, green with age: the mirror that kept him)
+	"goguard": [["res://goguard/wd_columns.png", 0.0, 923.7, 381.6, 356.3, 298.7, 1164.2]],      # (the stumps of a drowned colonnade standing in the water at the lower left, one leaning)
 }
 
 func _iv_water_details() -> void:
