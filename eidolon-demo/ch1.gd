@@ -6677,7 +6677,11 @@ func _ivr_build() -> void:
 		elif go_milos: rb.modulate = Color(0.66, 0.72, 0.96, 0.98); rbl.modulate = rb.modulate
 		if go_glass:      # (the fourth level, as its concept: no rocks before the eye; a bank of mist at the left, over the glass's edge)
 			rb.visible = false; rbl.visible = false
-			if ResourceLoader.exists("res://goglass/fg_head.png") and OS.get_environment("IV_FG4") != "0":      # (the back of a statue's head before the eye at the lower right, blurred (the owner, 23/11: "at the lower right in 4 put the back of a statue's head, blurred"): our own goddess seen from behind, tools/go/fg_head.py; IV_FG4=0 leaves it out)
+			var f4 := OS.get_environment("IV_FG4") if OS.get_environment("IV_FG4") != "" else IVGL_FG      # (what stands before the eye: IV_FG4=grass|head|0)
+			if f4 == "grass" and ResourceLoader.exists("res://goglass/fg_grass.png"):      # (wild grasses at the lower left, low and out of focus (the owner, 23/11: "in 4 put the grasses, but lower so they don't take so much of the screen, and a less clear shape", "more discreet grasses, not half the screen", "new grasses, just lower and more horizontal", "other grasses, more monochrome", "maybe like reeds?"): short reeds with a few cattail heads, leaning to the right, painted alone by the image model as a flat grey silhouette (design/level4/fg_edit/reeds_a.png, its prompt beside it), cut out by its lightness and laid in one tone of the level's blue-lilac (60627c); lifted out of its edit of the level's own frame, grasses carried a ghost of her, repainted beside her)
+				var gt := load("res://goglass/fg_grass.png") as Texture2D
+				_iv_overlay(cl, "res://goglass/fg_grass.png", Vector2(IVGL_FG_GRASS.x * k, vh - IVGL_FG_GRASS.y * k), Vector2(IVGL_FG_GRASS.z, IVGL_FG_GRASS.z * float(gt.get_height()) / float(gt.get_width())) * k)
+			if f4 == "head" and ResourceLoader.exists("res://goglass/fg_head.png"):      # (before: the back of a statue's head at the lower right, blurred (the owner, 23/11: "at the lower right in 4 put the back of a statue's head, blurred"; then "I want other blurred things in front, in 4 and 5"): our own goddess seen from behind, tools/go/fg_head.py)
 				var hs := Vector2(IVGL_FG_HEAD.z, IVGL_FG_HEAD.z * IVGL_FG_HEAD_AR)
 				_iv_overlay(cl, "res://goglass/fg_head.png", Vector2(IVGL_FG_HEAD.x * k, vh - IVGL_FG_HEAD.y * k), hs * k)
 			if ResourceLoader.exists("res://goglass/mist_l.png") and OS.get_environment("IV_ZOOM") == "" and OS.get_environment("IV_MIST_L") == "1":      # (laid on the screen for the game's own eye: not for a close look; off since 20/11: a flat white blot over the island's end ("the mist arranged better"), a bank of cloud standing on the water in its place; IV_MIST_L=1 brings it back)
@@ -11088,16 +11092,19 @@ func _ivgd_dir(ph: int) -> String: return IVGD_ORDER[(ivgd_d0 + ph) % 4]
 ## the haze, its image in the water (the owner, 21/11: "something else in the background, and let it be 3D"; of the ways
 ## offered, "a 3D island with ruins"); IV_FAR=0 leaves it out, IV_FAR_K tries another haze
 const IVGD_FAR_K := 0.3
+const IVGL_FG := "grass"      # (before the eye in the fourth level)
+const IVGL_FG_GRASS := Vector3(-60.0, 235.0, 582.0)      # (the grasses: their left, their top over the picture's foot, their width, at 720 wide)
 const IVGL_FG_HEAD := Vector3(430.0, 215.0, 380.0)      # (the fourth level's head before the eye: its left, its top over the picture's foot, its width, at 720 wide; only the head shows, its neck and shoulder below the picture's edge (the owner, 23/11: "less of the statue, only the head"; its top was 400 over the foot, its shoulder in the picture))
 const IVGL_FG_HEAD_AR := 1100.0 / 1015.0      # (goglass/fg_head.png's height over its width)
-const IVGD_FG := "both"      # (what stands before the eye at its lower corners: see _ivr_build's corners)
+const IVGD_FG := "column"      # (what stands before the eye at its lower corners: see _ivr_build's corners; since 23/11 a fallen marble column at the lower right (the owner, of the image model's edit of the level's frame with one at the lower left: "the column is fantastic, mirror it to the right, lower, a little darker"; mirrored and lifted out it looked "badly cut", so: "make it anew from the right"): painted by the image model into the level's own frame at the lower right, lying in the water, no rock under it (the owner: "can't it make it anew so it isn't on stupid rocks?", "and blurred", "the right one, just a liiittle lower"; design/level5/fg_edit/column_water*.png, the prompts beside them), the water about it then turned green by it, cut out against the green (only the light marble where it touches the level's rocks), darkened to 0.75, blurred (3 px), laid 40 px lower than painted)
 const IVGD_FG_K := 1.0      # (their size; IV_FG5_K tries another (the owner, 23/11: "in 5 put something more discreet"))
 const IVGD_FG_A := 1.0      # (how much they show; IV_FG5_A tries another)
 const IVGD_FG_YOUTH := Vector3(-130.0, 330.0, 340.0)      # (its left, its top over the picture's foot, its width; at 720 wide: at the lower left, in the open water under the gate's rocks, facing in, his mirror toward the middle)
-const IVGD_FG_MORE := {"veiled": ["res://goguard/fg_veiled.png", 470.0, 330.0, 280.0], "amphora": ["res://goguard/fg_amphora.png", -60.0, 300.0, 300.0], "mask": ["res://goguard/fg_mask.png", -50.0, 280.0, 280.0]}      # (others before the eye, each alone, painted by the image model (design/level5/fg/, their prompts beside them) and cut out by tools/go/fg_figure.py: a veiled woman from behind at the lower right, her head turned in; an amphora, or a broken marble face looking in, at the lower left; its picture, its left, its top over the picture's foot, its width, at 720 wide)
+const IVGD_FG_MORE := {"column": ["res://goguard/fg_column.png", 314.0, 281.0, 420.0], "veiled": ["res://goguard/fg_veiled.png", 470.0, 330.0, 280.0], "amphora": ["res://goguard/fg_amphora.png", -60.0, 300.0, 300.0], "mask": ["res://goguard/fg_mask.png", -50.0, 280.0, 280.0]}      # (others before the eye, each alone, painted by the image model (design/level5/fg/, their prompts beside them) and cut out by tools/go/fg_figure.py: a veiled woman from behind at the lower right, her head turned in; an amphora, or a broken marble face looking in, at the lower left; its picture, its left, its top over the picture's foot, its width, at 720 wide)
 const IVGD_FG_HAND := Vector3(430.0, 340.0, 340.0)      # (at the lower right, under the walk's right arm, clear of it)
 const IVGD_FAR_ON := false      # (the island in the air painted into the backdrop since 22/11 (the owner, of the image model's repaint of the 3D one: "the new floating island!! but a little more to the right"; design/level5/isle_painted/lay_in.py); before, 3D on the plain sky (22/11, of it: "I liked this background"), and before that painted (21/11: "can't you make the island as a picture?"); IV_FAR=1 brings the 3D one back, with IV_BG_FILE=design/level5/backdrop_plain_clean.jpg for its plain sky)
 const IVGD_FAR_IMG := false      # (the painted island's image in the water (the owner, 23/11: "on the floating island in 5, shouldn't a reflection show below too?"): the 3D island it was painted from, drawn only as its image under it; IV_FAR_IMG=0 leaves it out)
+const IVGD_FAR_IMG_FOG := Vector2(-0.6, -12.0)      # (its image's fade under the water, from and to (metres from the water): an island in the air is metres over it; IV_FAR_IMG_FOG="hi,lo" tries another)
 const IVGD_FAR_IMG_AT := Vector3(0.0, 0.0, 0.0)      # (from the 3D island's place, so its image lies under the painted one; IV_FAR_IMG_AT="dx,dy,dz" tries another)
 const IVGD_FAR_FILE := "far.glb"
 const IVGD_FAR_C := Vector3(-11.2, 0.0, -6.9)      # (its own middle, as built: it is made smaller about it)
@@ -11105,7 +11112,7 @@ const IVGD_FAR_LIFT := 2.0      # (off the water: an island in the air)
 const IVGD_FAR_AT := Vector3(3.98, 0.0, 2.9)      # (a little to the right and lower on the screen than the owner first chose it (22/11: "the island a little more to the right and lower"; 2.6, 0, 2.6 before): about 0.07 of the screen's width right and 0.035 of its height down; then lower and further right again, 5.72, 0, 3.56, and the owner: "the floating island, leave it where it was"; 1.2, 1.2 on the water before all that)
 func _ivgd_far() -> void:
 	var fp := OS.get_environment("IV_FAR_FILE") if OS.get_environment("IV_FAR_FILE") != "" else go_dir + IVGD_FAR_FILE      # (IV_FAR_FILE tries another build of it)
-	var img_only := not (IVGD_FAR_ON or OS.get_environment("IV_FAR") == "1") and IVGD_FAR_IMG and OS.get_environment("IV_FAR_IMG") != "0"      # (the painted island's image in the water: the 3D island it was painted from, drawn only as its image)
+	var img_only := not (IVGD_FAR_ON or OS.get_environment("IV_FAR") == "1") and (IVGD_FAR_IMG or OS.get_environment("IV_FAR_IMG") == "1") and OS.get_environment("IV_FAR_IMG") != "0"      # (the painted island's image in the water: the 3D island it was painted from, drawn only as its image)
 	if not (IVGD_FAR_ON or OS.get_environment("IV_FAR") == "1" or img_only) or OS.get_environment("IV_FAR") == "0" or not FileAccess.file_exists(fp): return
 	var st := GLTFState.new(); var doc := GLTFDocument.new()
 	doc.append_from_buffer(FileAccess.get_file_as_bytes(fp), "", st)
@@ -11129,10 +11136,14 @@ func _ivgd_far() -> void:
 		var kind := "rock2" if nm.contains("rock") else "marble2"
 		mi.material_override = _iv_mat(kind, fk, _ivr_ex(kind, 1.0, true)); mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON      # (its columns' shadows on its slabs: the owner, of it, "I want shadows")
 	if iv_at_sea:
+		var fh := 0.04; var fl := -0.15      # (an image fades into the water within a hand under it: things standing in it)
+		if img_only:      # (an island in the air: its whole image is metres under the water, so it fades over metres)
+			fh = IVGD_FAR_IMG_FOG.x; fl = IVGD_FAR_IMG_FOG.y
+			if OS.get_environment("IV_FAR_IMG_FOG") != "": var f2 := OS.get_environment("IV_FAR_IMG_FOG").split_floats(","); fh = f2[0]; fl = f2[1]
 		_ivs_mirror(fv, func(mi: MeshInstance3D) -> Array:
 			var nm := String(mi.name).to_lower() + "|" + String(mi.get_parent().name).to_lower()
 			var kd := "rock2" if nm.contains("rock") else "marble2"
-			return [kd, fk, {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.15, "veins": 0.6 if kd == "marble2" else 0.0, "haze": 1.0}])
+			return [kd, fk, {"fog_hi": ivr_sea_y + fh, "fog_lo": ivr_sea_y + fl, "veins": 0.6 if kd == "marble2" else 0.0, "haze": 1.0}])
 	if img_only: fv.visible = false      # (the island itself is the painting's; only its image in the water is drawn)
 
 ## columns standing out of the water far behind the level, a drowned colonnade in the haze under the sun, built as the

@@ -528,7 +528,14 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   rendered from behind in Blender, turned 28 degrees and seen 14 from above, lit from the upper right, then brought into
   the level's blue-lilac, `4f4a64` to `aeabc6`, and blurred); laid on at `IVGL_FG_HEAD` (left 430, top 215 over the
   picture's foot, 380 wide, at 720 wide): only the head shows, its neck and shoulder below the edge (the owner, 23/11:
-  "less of the statue, only the head"; its top was 400, its shoulder in the picture); `IV_FG4=0` leaves it out.
+  "less of the statue, only the head"; its top was 400, its shoulder in the picture); `IV_FG4=head` shows it. **Since
+  23/11 short reeds instead** (the owner: "I want other blurred things in front, in 4 and in 5"; of grasses: "lower, not
+  half the screen", "lower and more horizontal", "more monochrome", "maybe like reeds?"): `goglass/fg_grass.png`, short
+  reeds with a few cattail heads painted alone by the image model as a flat grey silhouette
+  (`design/level4/fg_edit/reeds_a.png`, its prompt beside it), cut out by its lightness and laid in one tone of the
+  level's blue-lilac (`60627c`, 0.88), at `IVGL_FG_GRASS` (`IVGL_FG` "grass"; `IV_FG4=0` leaves it out). Things lifted
+  out of the image model's edit of a level's frame (`tools/go/fg_from_edit.py`) carry ghosts of what it repainted near
+  them (her, a second time, beside her): paint a thing alone, or cut it against a green the model makes of the water.
   **More atmospheric** (the owner, 19/11): soft banks of mist standing on the water before the glass and two sheets
   lying on the open sea at the picture's lower corners (`IVGL_MISTS`, `IVGL_MIST_SH`: drifting billows, thinning to
   nothing at the water; a mist painted on the glass itself ended on a hard line at its foot), the glass's light in wide
@@ -672,7 +679,14 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   (`IV_FG5_K`, `IV_FG5_A` try others); offered: both at 0.75 and 0.75, the hand alone or the youth alone at 0.8 and
   0.85, the owner to choose; then "put something else for the blurred one in 5", and "it needn't be 3D, it can be
   something from Gemini": one thing alone at a corner, our own statues rendered by `tools/go/fg_head.py` (a veiled
-  woman from behind, the statue half out of its block, an amphora; `IVGD_FG_MORE`, `IV_FG5=veiled|unfinished|amphora`).
+  woman from behind, the statue half out of its block, an amphora; `IVGD_FG_MORE`, `IV_FG5=veiled|amphora|mask`),
+  turned down ("they don't look natural and don't match the colours"). **Since 23/11 a fallen Ionic column at the lower
+  right** (`IVGD_FG` "column", `goguard/fg_column.png`): the image model added things into the level's own frame (rocks,
+  reeds, a fallen column; the owner: "the column is fantastic"), then painted the column anew at the lower right, lying
+  in the water with no rock under it (the owner: "make it anew from the right", "not on stupid rocks", "and blurred";
+  `design/level5/fg_edit/column_water*.png`), turned the water about it green (`water_green_prompt.txt`), and it is cut
+  out against the green (only the light marble where it touches the level's rocks), darkened to 0.75, blurred 3 px and
+  laid 40 px lower than painted ("just a liiittle lower"). Lifted out by difference or mirrored, it looked "badly cut".
   **The island in the air
   painted by Gemini, a trial** (the owner, 22/11: "try making the floating island in Gemini"): the 3D island cut from a
   still of the level (with it, without it) and laid into the clean plain backdrop where it lies in the game (the screen
@@ -693,7 +707,12 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   island it was painted from, drawn only as its image (`IVGD_FAR_IMG`, `IVGD_FAR_IMG_AT`; `IV_FAR_IMG_AT="dx,dy,dz"`):
   where the 3D one stood its image fell over the painted island's own rock (the painting draws the rock's point longer),
   and raised 5.2 m so it falls under the point it lies wholly behind the walk and the gate: from the game's eye it does
-  not show. Off (`IVGD_FAR_IMG` false) until the owner says. **The Guardian casts his
+  not show. Off (`IVGD_FAR_IMG` false). **Painted into the backdrop instead** (the owner: "yes" to a faint one just
+  under the point; then "fix the damn reflection", "the reflection is too dark"): `design/level5/isle_painted/reflect.py`
+  turns the painted island over about a line a little under its point, faint, rippled, given half to the sky's colour,
+  and lays it into `goguard/backdrop.jpg` (from `backdrop_noreflect.jpg`, the backdrop without it); the sea lets the
+  backdrop through where it lies open, so it shows between the island's point and the walk, and the level hides the
+  rest. **The Guardian casts his
   shadow** on his pedestal and the way (22/11: "the guardian looks as if he stands in the air": his glass cast none).
   **Frosted, his shade is a soft lilac grey** (`frost_fill` in `IVGD_GLASS_SH`, as the slabs' shade): lit by the sun
   alone, the side away from it and his own shadow on him stayed near black as he whitened (the owner, 22/11: "when he
