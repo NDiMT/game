@@ -16,3 +16,7 @@ scaled to 680x680 and laid 0.35 into the haze behind it (far_painted_water.png),
       --wave 1.2 --contact 16 --fade 0.8 --contour
 
 In IV_WATER_DETAILS at 380 280 340 340, foot 651.0 476.8. The 3D far columns are off (IVGD_COLS_ON false; IV_COLS=1).
+
+Then slender (the owner: "why do you make the far ones so stubby?"): an edit asking the model to make them taller and
+thinner changed nothing (far2_prompt.txt), so the 3D ones were made slender again (FAR_COLS: the whole ones 4.0 to 4.4,
+0.28 before the game's 0.6) and the same steps run on them (far_frame.png now of these); the same lift, haze and images.

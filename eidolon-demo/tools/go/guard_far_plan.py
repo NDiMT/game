@@ -81,16 +81,17 @@ def float_plan():
 # and of the level (each at about these points of the screen, x and y: 0.60 0.385, 0.67 0.375, 0.78 0.395, 0.95 0.37,
 # 0.50 0.375, at first; the level's eye, its follow lifting the picture 0.07 at the start)
 FAR_LOD = lambda cap=None: {'style': 'ionic', 'cap': cap if cap is not None else 30, 'drum': 0.8, 'lod': 1}
-# then the same seven, three of them whole with their Ionic capitals, every one much stouter (the owner, 23/11: "can we
-# put here, faint as they are, but more columns with capitals?", then "actually not more: more massive"); made as the
-# near ones are, lighter (FAR_LOD), as faint as before
-FAR_COLS = [[-5.48, SEA - 0.6, -7.23, 3.5, 0.42, False, [14, 3, 20], FAR_LOD(20)],
-            [-5.56, SEA - 0.6, -8.40, 2.1, 0.38, True, [-31, 13, 150], FAR_LOD()],
-            [-3.68, SEA - 0.6, -8.07, 3.4, 0.42, False, [47, 2, 300], FAR_LOD(75)],
-            [-4.10, SEA - 0.6, -9.42, 1.5, 0.4, True, [-8, 5, 210], FAR_LOD()],
-            [-2.91, SEA - 0.6, -10.09, 3.6, 0.42, False, [22, 4, 60], FAR_LOD(140)],
-            [-1.50, SEA - 0.6, -9.76, 1.9, 0.38, True, [-40, 10, 330], FAR_LOD()],
-            [-6.73, SEA - 0.6, -7.71, 1.7, 0.38, True, [5, 11, 250], FAR_LOD()]]
+# then the same seven, three of them whole with their Ionic capitals (the owner, 23/11: "can we put here, faint as they
+# are, but more columns with capitals?", then "actually not more: more massive"); made far too stout, they read squat once
+# painted ("why do you make the far ones so stubby?"): slender again, of a column's own proportions, about six and a half
+# times as tall as they are wide, the whole ones tall; made as the near ones are, lighter (FAR_LOD)
+FAR_COLS = [[-5.48, SEA - 0.6, -7.23, 4.2, 0.28, False, [14, 2, 20], FAR_LOD(20)],
+            [-5.56, SEA - 0.6, -8.40, 2.6, 0.26, True, [-31, 11, 150], FAR_LOD()],
+            [-3.68, SEA - 0.6, -8.07, 4.0, 0.28, False, [47, 2, 300], FAR_LOD(75)],
+            [-4.10, SEA - 0.6, -9.42, 2.0, 0.26, True, [-8, 5, 210], FAR_LOD()],
+            [-2.91, SEA - 0.6, -10.09, 4.4, 0.28, False, [22, 3, 60], FAR_LOD(140)],
+            [-1.50, SEA - 0.6, -9.76, 2.4, 0.25, True, [-40, 9, 330], FAR_LOD()],
+            [-6.73, SEA - 0.6, -7.71, 2.2, 0.25, True, [5, 10, 250], FAR_LOD()]]
 
 
 # the island's colonnade standing in the sea where the island was, and two lone broken columns about it (the owner,

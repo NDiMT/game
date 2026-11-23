@@ -809,7 +809,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   touching things split apart (`--part` where two overlap), leaning ones about their foot, every image gone by 0.85 of its
   thing's height ("they should fade toward the bottom"). **The far columns painted the same way** (the owner, of the 3D
   ones made stouter: "you made them shit, I want them about like the ones at the left"): `goguard/wd_far.png`,
-  `design/level5/far_painted/README.txt`; the 3D ones off (`IVGD_COLS_ON` false, out of the builds; `IV_COLS=1`). A model's green take may keep
+  `design/level5/far_painted/README.txt`; the 3D ones off (`IVGD_COLS_ON` false, out of the builds; `IV_COLS=1`). Made
+  from the stout 3D ones they read squat ("why do you make the far ones so stubby?"): painted again from slender ones (the
+  whole ones about six and a half times as tall as wide). The model will not change a thing's proportions in an edit:
+  change them in the 3D it paints from. A model's green take may keep
   the haze band at a crop's top: make it green there, all but the things, before the lift. **The Guardian casts his
   shadow** on his pedestal and the way (22/11: "the guardian looks as if he stands in the air": his glass cast none).
   **Frosted, his shade is a soft lilac grey** (`frost_fill` in `IVGD_GLASS_SH`, as the slabs' shade): lit by the sun
