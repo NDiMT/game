@@ -18,6 +18,11 @@ usage: python3.11 -I tools/go/block_cube.py -- <out.glb> [side metres] [seed] [o
   cut on every face: rosette (eight petals about a boss, as on a grave stele), sun (the Vergina star, sixteen rays),
   spiral (a volute), eye (the eye painted on ships and cups), zigzag (three bands, as the geometric amphora of the film),
   mirror (a hand mirror, the story's: its disc in its rim and its handle).
+  And patterns over the whole face (23/11, the owner: "can you try other designs too? as patterns?"): checker (a board
+  of four by four, every other square cut), scales (rows of scales, as a roof's tiles or a cuirass), diamonds (a lattice
+  of grooves crossing aslant), teeth (rows of triangles, the wolf's teeth of the geometric vases), rings (three by three
+  rings, each with its dot), waves (four rows of waves), keyband (two bands of a running meander), spirals (four small
+  spirals, two by two, as the Minoan and Mycenaean).
 """
 import bpy, bmesh, sys, random, math
 from mathutils import Vector, noise
@@ -77,6 +82,33 @@ def lens(a, r0, r1, w, n=10):      # (a petal along the angle a, from r0 to r1, 
     up = [(r0 + (r1 - r0) * i / n, w * math.sin(math.pi * i / n) ** 0.8) for i in range(n + 1)]
     lo = [(x, -y) for (x, y) in up[1:-1]][::-1]
     return rot(up + lo, a)
+def clip(poly, lo=-0.44, hi=0.44):      # (a convex outline cut to the square [lo, hi] of the face: what lies outside it gone)
+    def cut(pts, inside, inter):
+        out = []
+        for i in range(len(pts)):
+            A, B = pts[i - 1], pts[i]
+            if inside(B):
+                if not inside(A): out.append(inter(A, B))
+                out.append(B)
+            elif inside(A): out.append(inter(A, B))
+        return out
+    def ix(c, keep_lo):
+        def inside(p): return p[0] >= c if keep_lo else p[0] <= c
+        def inter(A, B): t = (c - A[0]) / (B[0] - A[0]); return (c, A[1] + t * (B[1] - A[1]))
+        return inside, inter
+    def iy(c, keep_lo):
+        def inside(p): return p[1] >= c if keep_lo else p[1] <= c
+        def inter(A, B): t = (c - A[1]) / (B[1] - A[1]); return (A[0] + t * (B[0] - A[0]), c)
+        return inside, inter
+    for f in (ix(lo, True), ix(hi, False), iy(lo, True), iy(hi, False)):
+        if len(poly) < 3: return []
+        poly = cut(poly, *f)
+    return poly if len(poly) >= 3 else []
+def spiral_at(cx, cy, r0, pitch, turns, hw, n_per_turn=26, a0=0.0):      # (a small spiral band about (cx, cy))
+    P = []; th1 = 2 * math.pi * turns; n = max(8, int(n_per_turn * turns))
+    def c(th): r = r0 + pitch * th / (2 * math.pi); return (cx + r * math.cos(th + a0), cy + r * math.sin(th + a0))
+    for i in range(n): P.append(bar(c(th1 * i / n), c(th1 * (i + 1) / n), hw, 0.003))
+    return P
 def motif():
     P = []
     if PATTERN == 'rosette':
@@ -103,6 +135,55 @@ def motif():
             xs = [-0.42 + 0.84 * i / 8 for i in range(9)]
             pts = [(x, ty + (0.06 if i % 2 else -0.06)) for i, x in enumerate(xs)]
             P += [bar(pts[i], pts[i + 1], 0.024, 0.012) for i in range(8)]
+    elif PATTERN == 'checker':
+        g = 0.84 / 4.0; ins = 0.012
+        for i in range(4):
+            for j in range(4):
+                if (i + j) % 2: continue
+                x0, y0 = -0.42 + i * g + ins, -0.42 + j * g + ins
+                P.append([(x0, y0), (x0 + g - 2 * ins, y0), (x0 + g - 2 * ins, y0 + g - 2 * ins), (x0, y0 + g - 2 * ins)])
+    elif PATTERN == 'scales':
+        r = 0.105
+        for row in range(5):
+            cy = 0.40 - row * 0.19; off = 0.0 if row % 2 == 0 else r
+            for k in range(-3, 4):
+                cx = -0.42 + off + k * 2 * r + r
+                for pg in ring(r - 0.022, r + 0.006, 12, math.pi, 2 * math.pi, cx, cy):
+                    q = clip(pg)
+                    if q: P.append(q)
+    elif PATTERN == 'diamonds':
+        for k in range(-4, 5):
+            for sgn in (1, -1):
+                c0 = k * 0.21
+                A = (-0.7, sgn * (-0.7) + c0); B = (0.7, sgn * 0.7 + c0)
+                q = clip(bar(A, B, 0.02))
+                if q: P.append(q)
+    elif PATTERN == 'teeth':
+        for row in range(4):
+            y0 = -0.42 + row * 0.215
+            for k in range(5):
+                x0 = -0.42 + k * 0.168
+                P.append([(x0 + 0.012, y0 + 0.01), (x0 + 0.168 - 0.012, y0 + 0.01), (x0 + 0.084, y0 + 0.175)])
+    elif PATTERN == 'rings':
+        for i in (-1, 0, 1):
+            for j in (-1, 0, 1):
+                P += ring(0.083, 0.115, 20, 0, 2 * math.pi, i * 0.28, j * 0.28) + [disc(0.03, 12, i * 0.28, j * 0.28)]
+    elif PATTERN == 'waves':
+        for ty in (-0.315, -0.105, 0.105, 0.315):
+            pts = [(-0.43 + 0.86 * i / 32, ty + 0.045 * math.sin(2 * math.pi * (0.86 * i / 32) / 0.215)) for i in range(33)]
+            P += [bar(pts[i], pts[i + 1], 0.021, 0.004) for i in range(32)]
+    elif PATTERN == 'keyband':
+        U, w = 0.28, 0.028      # (a unit of the running key, and its stroke)
+        for by in (0.205, -0.205):      # (two bands, each a row of three units on a baseline)
+            y0 = by - 0.13
+            P.append(bar((-0.42, y0), (0.42, y0), w, w))      # (its baseline)
+            for k in range(3):
+                x0 = -0.42 + k * U
+                path = [(x0 + 0.03, y0), (x0 + 0.03, y0 + 0.23), (x0 + 0.23, y0 + 0.23), (x0 + 0.23, y0 + 0.085), (x0 + 0.115, y0 + 0.085), (x0 + 0.115, y0 + 0.155)]
+                P += [bar(path[i], path[i + 1], w, w) for i in range(len(path) - 1)]
+    elif PATTERN == 'spirals':
+        for (cx, cy, a0) in ((-0.21, 0.21, 0.0), (0.21, 0.21, math.pi / 2), (0.21, -0.21, math.pi), (-0.21, -0.21, -math.pi / 2)):
+            P.append(disc(0.03, 12, cx, cy)); P += spiral_at(cx, cy, 0.03, 0.062, 2.4, 0.018, 26, a0)
     elif PATTERN == 'mirror':
         cy = 0.08
         P += ring(0.235, 0.29, 40, 0, 2 * math.pi, 0.0, cy) + [disc(0.175, 32, 0.0, cy)]      # (its rim and its disc)

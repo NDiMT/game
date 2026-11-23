@@ -700,7 +700,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   there something other than one big meander in the middle we can try?") six other carvings, each cut on every face by
   `tools/go/block_cube.py -- <out.glb> 0.92 11 <rosette|sun|spiral|eye|zigzag|mirror>` (a rosette of eight petals, the
   Vergina sun, a volute, the eye of ships and cups, three geometric zigzags as the film's amphora, a hand mirror), tried
-  in the game with `IV_CUBE_GLB=<path>`; the owner to choose.
+  in the game with `IV_CUBE_GLB=<path>`; then patterns over the whole face (23/11: "can you try other designs too? as
+  patterns?"): `checker`, `scales`, `diamonds`, `teeth`, `rings`, `waves`, `keyband` (two bands of a running meander),
+  `spirals` (four small ones; 36k faces, too heavy for the game as it is); the owner to choose.
   The veiled bust is out again (`observer` None). Before it (the owner, 21/11: "make something else for the
   background, whatever you like, but matching the perspective and the colours"; then of it: "I don't like the new
   background"): the ruins of a drowned sanctuary far
