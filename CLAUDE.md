@@ -499,7 +499,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   plate and in the head painting alike): `tools/go/backdrop_destreak.py` (a row's residue against the rows about it, held
   along the row, taken out in three passes; the sky down to 0.40 of the height, fading out by 0.47, never within the
   head) → `backdrop_plate_clean.jpg`, `backdrop_head_game_clean.jpg`, from which the game's is made. The fifth level's sky
-  was cleaned the same way when the owner saw its lines too; the third's has them as well (not asked: to ask).
+  was cleaned the same way when the owner saw its lines too, and the third's when he said yes to it (22/11): its
+  finished backdrop through `backdrop_destreak.py gomilos/backdrop.jpg gomilos/backdrop.jpg 0.40 0.47
+  design/level3/goddess_mask.png` (her mask: where the backdrop differs from the plain one within her box), the far
+  rocks keeping their shapes.
   **No darkening at the screen's edges here** (`vr` hidden for `go_glass`): its concept is clear to
   the corners, and the waking's plum vignette turned its sky pink there. The slabs a touch warmer (`marble2`, the
   concept's `ddcfd4` lit) and the near sea a little lighter (`grade_near`, its `99a6bb`), measured against the concept
