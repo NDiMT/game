@@ -786,8 +786,15 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   column below** (the owner: "I liked it more from Gemini", "a little more intense, with facets", "make it like the ones
   below, they came out very well, but standing, with a capital"; of the result, "the last one I liked"): the 3D ones
   rendered from the game at twice the size, repainted by the image model in the lower column's style and lifted as
-  water details (`goguard/wd_cols.png`, `wd_isle.png`; `design/level5/columns_facets/README.txt`); the 3D ones are off
-  (`IVGD_NEAR_ON`, `IVGD_ISLE_ON` false; `IV_NEAR=1`, `IV_ISLE=1` show them) and out of the builds. **The Guardian casts his
+  water details (`goguard/wd_cols.png`; `design/level5/columns_facets/README.txt`); the 3D ones are off
+  (`IVGD_NEAR_ON`, `IVGD_ISLE_ON` false; `IV_NEAR=1`, `IV_ISLE=1` show them) and out of the builds. **Then edited by
+  the image model directly** (the owner: "why not Gemini directly?"; "random columns where I marked", "more massive",
+  "the triptych slightly fainter", "the lower and the upper ones should match the colours of the rest of the map",
+  "remove these" (the lone column at the far left and the column by the island), "a little more random"): the card on
+  the game's frame repainted by it (stouter, two broken columns, one leaning, and a drum in the open water between the
+  row, the gate and the island), lifted again, the row a quarter into the haze behind it; the fallen column and drum at
+  the lower right graded into the same marble (`design/level5/columns_facets/grade.py`). A model's green take may keep
+  the haze band at a crop's top: make it green there, all but the things, before the lift. **The Guardian casts his
   shadow** on his pedestal and the way (22/11: "the guardian looks as if he stands in the air": his glass cast none).
   **Frosted, his shade is a soft lilac grey** (`frost_fill` in `IVGD_GLASS_SH`, as the slabs' shade): lit by the sun
   alone, the side away from it and his own shadow on him stayed near black as he whitened (the owner, 22/11: "when he

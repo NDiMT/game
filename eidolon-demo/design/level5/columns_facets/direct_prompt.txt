@@ -1,0 +1,9 @@
+This is a crop of a frame of a game: an island of white marble slabs and dark rocks in a calm, misty lilac sea, its white marble gate at the lower left; at the upper left a ruin of marble columns stands in the water: three Ionic columns with their architrave across their capitals, two lone broken columns, a drum and a fallen piece, painted as finely faceted low-poly marble.
+
+Make these changes only:
+1. Make every column more massive: stouter, with thicker shafts and bigger capitals, the same heights, in the same places.
+2. Add two more broken marble columns of different heights, standing in the open water below the colonnade and to the right of the gate, nearer to us than the colonnade and a little apart from each other, and one drum of a column half sunk in the water between them, with their reflections in the water.
+3. Make the colonnade of three slightly fainter, a little more lost in the haze than the nearer columns.
+4. Paint all the columns in the colours of the island's white marble gate and slabs in this picture: lilac white in the light, cool lilac grey in the shade; in the same crisp, finely faceted low-poly style as now.
+
+Do not change anything else: the gate, the island, its slabs and rocks, the sea, the sky and the composition stay exactly as they are.
