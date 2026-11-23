@@ -20,3 +20,10 @@ statue's feet, a pad at the island's right, a pad, a bud and one small flower at
 the lower left; given 0.22 to the water under them, cover 0.9. The flower at the statue's feet lay against the rock
 there, and on the water's plane the rock hid half of it: a thing that rises out of the water against a rock or a figure
 does not lie on the decal well; keep such things away from them.
+
+Then (the owner: "not near the statue, and I want better water lilies"): painted again in the style of the fourth
+level's lilies he liked (style_ref_l4.png: goglass/wd_lilies.png on its lilac): three small groups of pale, softly
+faceted pads with closed lotus buds on curved stems, at the left, at the island's right and at the lower right, none near
+the statue nor over the sunken stones (lilies2_prompt.txt -> lilies2_gemini.jpg; its green take lilies2_green.jpg),
+lifted as before (--min 150), only the three groups kept (frame boxes 0,770-265,915; 605,695-720,805; 545,1065-705,1195),
+kept to the clean frame's open water: gowake/wd_lily_ring.png.
