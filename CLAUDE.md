@@ -717,7 +717,13 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   circles in the middle, like the path's?") `path4` (a ring where four ways meet, its lines running on over the edges to
   the next face's), `path2`, `path3`, `pathsq`, each line stopping at a ring's rim as the way's does, cut 0.006, subdued;
   and eight colours on `path4` ("I'd like to see other colours too"; `design/cube/options.txt` p1-p8, its lines a soft
-  tone of its own colour); the owner to choose.
+  tone of its own colour). **He chose 1, `path4` in the lilac grey** (23/11: "I like 1; when it activates, the path and
+  the circle at its centre should light"): `props/block_cube.glb` is `block_cube.py -- props/block_cube.glb 0.92 11
+  path4` (cut 0.6 cm), its colours `block` `bfb4c9`, `meander` (its lines and ring) `8a7a93` in `IV_WAKE_PAL`, every
+  level (the meander cube kept in the scratchpad's way only; `one` rebuilds it); lit, its lines and ring take the
+  rings' white. **Level 2: it lights in its gap, and no disc of the way over it** ("in the first level no extra path
+  should come out on the square, it should just activate"): the hole's node has no disc (the cube's own ring is it),
+  the way's lines to the hole stop at the cube's edge (`_ivr_way_gap`: half its side), where its own lines go on.
   The veiled bust is out again (`observer` None). Before it (the owner, 21/11: "make something else for the
   background, whatever you like, but matching the perspective and the colours"; then of it: "I don't like the new
   background"): the ruins of a drowned sanctuary far

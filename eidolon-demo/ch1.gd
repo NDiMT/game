@@ -2174,8 +2174,8 @@ const IV_WAKE_PAL := {      # the waking: dawn over a still sea. Pearl and rose 
 	"rock2": ["c39f98", "93727c", "684a57", "4a3140"],
 	"observer": ["f5e7e1", "decdd0", "c6b0bc", "9d8599"],
 	"statue": ["fcf5f1", "f4e6e1", "d8c2c8", "ae96a9"],      # (the Observer as the concepts paint their statues: white marble warmed by the dawn on its lit side, a light rose-lilac shade; the user: "smoother and better lit")      # (the lighter stone's own: the white marble of the slabs; the user's ask)      # (the rock's own hues, its shade a little lighter so her face under the veil still reads)      # (her shade soft: the face under the veil must never fall into a dark hole)
-	"block": ["bfb4c9", "aba1b7", "8e889d", "6b6779"],      # (the cube in every level since 23/11: a lilac grey, its meander plum, shaded as the stone is (the owner, of eight offered with a meander of its own colour, "make others, I don't want the meander white": "lilac grey"; m1 in design/cube/options.txt); for a day before (22/11) in each level's slabs' colours and its meander the way's line's, flat (_iv_pal's marble2 and groove), not liked; before that a lilac grey, its meander white (the owner, 22/11, of ten offered: "the lilac grey with white, I liked it"; "bfb4c9", "aba1b9", "8d84a0", "6c6481"); a light grey-brown before, "d2baa0", "c0a88d", "a58d73", "87705a" (21/11: "a little lighter brown and greyer"); a light brown before that, "d6b18a", "c49f78", "a7845f", "84674b" ("the stone with the meander in all levels light brown"); a brown beige before that, "dbcbb6", "ccbaa3", "b29f89", "8f7e6f", and before it a paler beige, "f2eade", "e9dfd1", "d1c4b7", "ab9f96", and a sandier marble, "f6e6d0", "ecd8c0", "d3bba4", "ae968a")
-	"meander": ["5e4a66", "54425d", "463850", "352a3d"],      # (its meander plum on the lilac grey (23/11); white before, "f6f1ef", "e6dfdf", "cbc2c6", "a097a3" (22/11); a darker shade of the grey-brown before, "ae977d", "9e856b", "876f59", "6b5948"; of the light brown before that, "b18e69", "9e7c59", "84664a", "66503b"; of the brown beige before that, "baa58d", "a8937d", "8f7c6b", "706155")
+	"block": ["bfb4c9", "aba1b7", "8e889d", "6b6779"],      # (the cube in every level since 23/11: a lilac grey, the way's own marks cut shallow in it, their lines a soft plum (the owner, of eight colours on the path design: "I like 1"; p1 in design/cube/options.txt); before, its meander plum, m1 (the owner, of eight offered with a meander of its own colour, "make others, I don't want the meander white": "lilac grey"); for a day before (22/11) in each level's slabs' colours and its meander the way's line's, flat (_iv_pal's marble2 and groove), not liked; before that a lilac grey, its meander white (the owner, 22/11, of ten offered: "the lilac grey with white, I liked it"; "bfb4c9", "aba1b9", "8d84a0", "6c6481"); a light grey-brown before, "d2baa0", "c0a88d", "a58d73", "87705a" (21/11: "a little lighter brown and greyer"); a light brown before that, "d6b18a", "c49f78", "a7845f", "84674b" ("the stone with the meander in all levels light brown"); a brown beige before that, "dbcbb6", "ccbaa3", "b29f89", "8f7e6f", and before it a paler beige, "f2eade", "e9dfd1", "d1c4b7", "ab9f96", and a sandier marble, "f6e6d0", "ecd8c0", "d3bba4", "ae968a")
+	"meander": ["8a7a93", "7b6d86", "675c73", "4e4658"],      # (its lines and ring a soft plum (23/11, p1); its meander plum before, "5e4a66", "54425d", "463850", "352a3d" (23/11, m1); white before, "f6f1ef", "e6dfdf", "cbc2c6", "a097a3" (22/11); a darker shade of the grey-brown before, "ae977d", "9e856b", "876f59", "6b5948"; of the light brown before that, "b18e69", "9e7c59", "84664a", "66503b"; of the brown beige before that, "baa58d", "a8937d", "8f7c6b", "706155")
 	"phead": ["f3e4df", "dcc4c4", "b9a0ad", "917b93"],
 	"groove": ["e2cac6", "e2cac6", "e2cac6", "e2cac6"],
 	"line": ["fff4ee", "fff4ee", "fff4ee", "fff4ee"],
@@ -4147,6 +4147,7 @@ func _ivr_ex(kind: String, ao := 1.0, local := false) -> Dictionary: return {"lf
 ## should never fall on a bright circle, ever: it should stop as soon as the bright circle's frame begins"; 0.52 and
 ## 0.47 before, under the frames' outer stone)
 func _ivr_way_gap(n: String) -> float:
+	if ivg_on and ivg_holes.has(n): return _ivv_bside() * 0.5      # (a hole: the line stops at the edge of the cube that fills it, where the cube's own line goes on)
 	if n == (String(ivg_exit) if ivg_on else "r"): return (IV_RING_OUT + IV_RING_OUT_TUBE if (ivr_on and IV_RING_OUT > 0.0) else 0.46) + 0.012
 	if ivg_on and n != "" and n == String(ivg.get("reset", "")): return IVGL_PAD_OUT + IVGL_PAD_OUT_TUBE + 0.012
 	return 0.0
@@ -4202,6 +4203,7 @@ func _ivr_way() -> void:
 	for k in ivp_nodes:
 		if k == "r" or k == "s" or (ivg_on and (k == ivg_exit or k == ivg_vol)) or (ivg_on and (ivg.get("unwalked", []) as Array).has(k)): continue
 		if ivg_on and k == String(ivg.get("reset", "")): continue      # (the square at her start has its brown stone within, as the ring: no disc of the way in it)
+		if ivg_on and ivg_holes.has(k): continue      # (a hole: the cube that fills it carries the way's own ring and lines on its top, so no disc of the way over it (the owner, 23/11: "no extra path should come out on the square"))
 		var p: Vector3 = (ivp_nodes[k] as Vector3) - IV_O
 		var rm := CylinderMesh.new(); rm.top_radius = 0.215; rm.bottom_radius = 0.215; rm.height = 0.02; rm.radial_segments = 24; rm.rings = 1
 		var wp_k := _ivv_way_parent(String(k), String(k))
@@ -5561,7 +5563,7 @@ func _ivv_push_in(nb: String, c: String) -> void:
 	ivv_filled[c] = true; iv_block = ""
 	var bc := iv_block_n.global_transform * _ivt_box_get().get_center()
 	print("IV the block rests in ", c, " at ", Vector3(snappedf(bc.x - qp.x, 0.001), snappedf(bc.y - qp.y, 0.001), snappedf(bc.z - qp.z, 0.001)), " from its middle")
-	if go_guard: _ivgl_meander(true)      # (the fifth level: out of his look's way, its lines light (the owner, 23/11); not in the second, the first with the cube, where it only becomes the missing stone of the way (the owner: "in the first the cube doesn't need to light up"))
+	_ivgl_meander(true)      # (its work done: its lines and its ring light; the second level's becomes the missing node of the way, its own marks the way's, so it only lights there (the owner, 23/11: "in the first level no extra path should come out on the square, it should just activate"); the fifth's, out of his look's way, before it sinks)
 	if ivs_sea_mat != null:      # (and then the still water's own thin foam and small waves round it, as round every stone: its place is in the shore map's green, tools/go/shore_hole.py)
 		var tu := create_tween(); tu.tween_interval(1.2)
 		tu.tween_method(func(v: float) -> void: ivs_sea_mat.set_shader_parameter("riser_up", v), 0.0, 1.0, 2.4).set_trans(Tween.TRANS_SINE)
