@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://djkyrvu0sqao8"
-path="res://.godot/imported/wd_petals.png-739d2d4372f5572d689df7fd8f8b6f5c.ctex"
+uid="uid://cqfxijjsstj14"
+path="res://.godot/imported/wd_column.png-16625e79ea5fd5d8fddd7146cc659ca8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://gomilos/wd_petals.png"
-dest_files=["res://.godot/imported/wd_petals.png-739d2d4372f5572d689df7fd8f8b6f5c.ctex"]
+source_file="res://goguard/wd_column.png"
+dest_files=["res://.godot/imported/wd_column.png-16625e79ea5fd5d8fddd7146cc659ca8.ctex"]
 
 [params]
 

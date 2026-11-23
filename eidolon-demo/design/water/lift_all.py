@@ -17,16 +17,10 @@ JOBS = {
     '1a': ('1', (900, 2080, 1536, 2700), [], 0.05, 'gowake/wd_lilies.png'),
     '1b': ('1', (1000, 2000, 1536, 2752), [], 0.05, 'gowake/wd_reeds.png'),
     '1c': ('1', (850, 2150, 1536, 2700), [], 0.05, 'gowake/wd_petals.png'),
-    '2a': ('2', (150, 2200, 760, 2720), [], 0.05, 'goveil/wd_lilies.png'),
-    '2b': ('2', (150, 2150, 700, 2700), [], 0.05, 'goveil/wd_reeds.png'),
     '2c': ('2', (100, 2250, 780, 2700), [], 0.05, 'goveil/wd_petals.png'),
     '3a': ('3', (760, 2120, 1420, 2650), [], 0.06, 'gomilos/wd_lilies.png'),
-    '3b': ('3', (850, 2000, 1420, 2700), [], 0.06, 'gomilos/wd_reeds.png'),
-    '3c': ('3', (780, 2200, 1450, 2650), [], 0.06, 'gomilos/wd_petals.png'),
-    '5_columns': ('5', (60, 2120, 720, 2740), [(330, 1980, 820, 2245)], 0.05, 'goguard/wd_columns.png'),
 }
 PLACE = {j: (dx, dy) for items in json.load(open(W + 'place.json')).values() for j, dx, dy in items}
-PLACE['5_columns'] = PLACE.pop('5col_left', (0, 0))
 for j in (sys.argv[1:] or list(JOBS)):
     lv, (x0, y0, x1, y1), drops, floor, dst = JOBS[j]
     paint, green, frame = W + 'level%s_painting.jpg' % j, W + 'level%s_green.jpg' % j, W + 'level%s_frame.png' % lv

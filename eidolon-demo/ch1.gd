@@ -5646,7 +5646,7 @@ func _ivw_birds_tick(dt: float) -> void:
 		(bd.n as MeshInstance3D).global_position = q + (bd.fwd as Vector3) * 14.0      # (far off over the sea: behind all the island, before the painted sky)
 
 func _ivw_hand_make(cl: CanvasLayer) -> void:
-	if not ResourceLoader.exists(go_dir + "hand.png"): return
+	if not ResourceLoader.exists(go_dir + "hand.png") or OS.get_environment("IV_NO_HAND") == "1": return      # (IV_NO_HAND=1: no tutorial hand, for a clean frame to paint on)
 	var k := get_viewport().get_visible_rect().size.x / 720.0
 	ivw_trail = Line2D.new(); ivw_trail.width = 7.0 * k; ivw_trail.default_color = Color(1, 1, 1, 0.0)
 	var g := Gradient.new(); g.offsets = PackedFloat32Array([0.0, 1.0]); g.colors = PackedColorArray([Color(1, 1, 1, 0.0), Color(1, 0.98, 0.95, 0.75)])
@@ -11109,12 +11109,12 @@ const IVGD_FAR_K := 0.3
 ## 720 by 1280 as the eye has it at her start (the level's own eye and its follow, whatever the screen's shape); its
 ## foot, where it meets the water, sets how near it stands, so the level's rocks before it hide it and those behind it do
 ## not. `IV_WD=0` leaves them out; `IV_WD_ADD="file,left,top,width,height,x,y[,after]"` tries one more.
-const IV_WATER_DETAILS := {      # (since 23/11, of twelve natural ones offered for the other levels, the owner: "basically I like them; in 5 I'd like sunken columns": in 1, 2 and 3 all three, lilies, reeds, petals, each at its own place in the open water; before, an amphora, a marble hand, a capital and a bronze mirror: "I don't like these")
+const IV_WATER_DETAILS := {      # (since 23/11, of twelve natural ones offered, the owner chose one a level: "2c", "3a"; the fifth a fallen column made to look carved; the first still to be settled, one by one from it; before, all three in 1, 2 and 3 for a while, and an amphora, a marble hand, a capital and a bronze mirror: "I don't like these")
 	"gowake": [["res://gowake/wd_lilies.png", 372.2, 990.2, 347.8, 314.0, 661.7, 1234.0], ["res://gowake/wd_reeds.png", 445.3, 764.0, 304.7, 386.0, 633.6, 1008.1], ["res://gowake/wd_petals.png", -152.2, 1036.9, 402.2, 310.7, 133.9, 1279.7]],      # (rose lily pads and a bud at the lower right; reeds by the rocks at the right; petals and leaves at the lower left)
-	"goveil": [["res://goveil/wd_lilies.png", 16.9, 991.2, 374.5, 288.8, 274.1, 1205.6], ["res://goveil/wd_reeds.png", 439.5, 837.5, 339.8, 346.5, 644.6, 1063.1], ["res://goveil/wd_petals.png", 260.9, 1105.9, 419.1, 259.1, 350.0, 1307.8]],      # (golden pads and a bud at the lower left; reeds beside the rock at the right; petals, leaves and a small flower between)
-	"gomilos": [["res://gomilos/wd_lilies.png", 312.7, 928.4, 407.3, 323.7, 586.5, 1189.3], ["res://gomilos/wd_reeds.png", -80.8, 941.7, 370.8, 409.3, 96.1, 1245.0], ["res://gomilos/wd_petals.png", 162.0, 1096.9, 398.0, 257.7, 397.2, 1292.2]],      # (pale lilac pads and a bud at the right; reeds by the salt rocks at the lower left; white and lilac flowers between)
+	"goveil": [["res://goveil/wd_petals.png", 0.9, 1020.9, 419.1, 259.1, 90.0, 1222.8]],      # (petals, leaves and a small flower floating at the lower left, as offered: the owner chose "2c")
+	"gomilos": [["res://gomilos/wd_lilies.png", 312.7, 928.4, 407.3, 323.7, 586.5, 1189.3]],      # (pale lilac lily pads and a bud at the right, as offered: the owner chose "3a")
 	"goglass": [["res://goglass/wd_lilies.png", -118.1, 1067.0, 586.9, 369.8, 78.8, 1286.0, 22]],      # (the lilies the owner liked: two pads and a bud at the lower left, whole beyond the frame's edge for taller screens; over the mist sheet that lies there, as painted in it)
-	"goguard": [["res://goguard/wd_columns.png", 0.0, 923.7, 381.6, 356.3, 298.7, 1164.2]],      # (the stumps of a drowned colonnade standing in the water at the lower left, one leaning)
+	"goguard": [["res://goguard/wd_column.png", 341.1, 942.2, 398.9, 422.8, 481.0, 1304.5], ["res://goguard/wd_drum.png", 240.0, 1054.4, 256.9, 205.6, 372.3, 1209.3, 8]],      # (a fallen Ionic column at the lower right, made to look carved and slightly polygonal as the third level's goddess (the owner: "the column doesn't look 3D"; "how did you do the others with facets in Gemini?"; "lower right"), and a drum broken off it beside it ("and a second piece of column"), drawn after it)
 }
 
 func _iv_water_details() -> void:

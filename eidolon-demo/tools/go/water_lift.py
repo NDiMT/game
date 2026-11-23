@@ -4,14 +4,15 @@ to the water (its ripples, its image in it, its part under it) from the painting
 painted on, so it sits in the water and is not laid on it.
 
   python3 -I tools/go/water_lift.py <edit.png> <green.png> <frame.png> <out.png> <x0,y0,x1,y1> <cx,cy,rx,ry>
-                                    [--drop x0,y0,x1,y1]... [--floor f] [--wk k] [--new t]
+                                    [--drop x0,y0,x1,y1]... [--dropw x0,y0,x1,y1]... [--floor f] [--wk k] [--new t]
 
   edit    the image model's painting: the game's frame with the thing added (its own size, 1536 by 2752)
   green   its take of that painting with the open water made flat green
   frame   the game's own frame it was painted on (720 by 1280)
   box     the thing and its water, in the painting's pixels
   ellipse where its water is (its ripples and its image), in the painting's pixels; soft at its rim
-  --drop  a box cleared (the level's own rocks the take kept)
+  --drop  a box cleared (the level's own rocks the take kept), the thing and its water alike
+  --dropw a box where no water is taken (over the level's rocks and slabs, whose edges the painting draws a pixel off)
   --floor how far the painting's water may stray from the frame's with nothing of the thing in it (0.05)
   --new   keep only the parts of the take that the painting added: those whose mean difference from the frame (0-255)
           is over this (25: the level's rocks, slabs and figures the take kept are left out)
@@ -79,6 +80,10 @@ def main(v):
     m = np.clip((1.0 - r) / 0.35, 0.0, 1.0) ** 1.5      # (how much of the painting's water is taken: only about the thing, fading out to its rim,)
     m *= np.clip(np.minimum(np.minimum(xx - x0, x1 - 1 - xx), np.minimum(yy - y0, y1 - 1 - yy)) / 30.0, 0.0, 1.0)      # (never cut by the box's own edge)
     m *= np.clip((gaussian_filter(amin, 1.0) - floor) / floor, 0.0, 1.0)      # (and none where it strays from the frame's no more than the painting's own noise)
+    dw = np.zeros_like(m)
+    for bx in boxes(rest, '--drop') + boxes(rest, '--dropw'):      # (no water taken over the level's own rocks and slabs: the painting draws their edges a pixel off, and they would show twice)
+        dw[max(bx[1] - y0, 0):max(bx[3] - y0, 0), max(bx[0] - x0, 0):max(bx[2] - x0, 0)] = 1.0
+    m *= 1.0 - np.clip(gaussian_filter(dw, 6.0) * 2.0, 0.0, 1.0)
     aw = np.clip(amin * m * wk, 0.0, 1.0)      # (so laid over the frame it goes that much of the way to the painting, never less where it is taken whole)
     aw = np.where(ao > 0.02, 0.0, aw)      # (where the thing is, even at its rim, it alone gives back the painting)
     A = ao + aw * (1.0 - ao)

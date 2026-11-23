@@ -307,12 +307,12 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   in `ch1.gd`; `IV_FG=1` shows them again). In their place things in each level's water, part of the scene
   (`IV_WATER_DETAILS`, `_iv_water_details`). First one each (an amphora, a statue's marble hand, a fallen capital, a
   bronze hand mirror: "I don't like these"); then twelve natural ones offered, lilies with a bud, reeds, petals and
-  leaves, three a level (`design/water/options/`; the owner: "basically I like them; in 5 I'd like sunken columns"):
-  **levels 1, 2 and 3 have all three**, each at its own place in the open water (1: the lilies at the lower right, the
-  reeds by the rocks at the right, the petals at the lower left; 2: the lilies at the lower left, the reeds beside the
-  rock at the right, the petals between; 3: the lilies at the right, the reeds by the salt rocks at the lower left, the
-  flowers between), **level 4 the lilies he liked** (a bud on its stem and round pads at the lower left), **level 5 the
-  stumps of a drowned colonnade** standing in the water at the lower left, one leaning. Each was painted by the image
+  leaves, three a level (`design/water/options/`), all three a level for a while; **he chose one a level: level 2 the
+  petals (2c), level 3 the lilies (3a), level 4 keeps the lilies he liked, level 5 a fallen Ionic column at the lower
+  right with a drum broken off it beside it** ("the column doesn't look 3D": made to look carved and slightly polygonal
+  as the third level's goddess, see `design/water/README.txt`; "lower right"; "and a second piece of column"); **level
+  1 is being settled, one level at a time from it** (the owner: "let's go to 5, then we'll start from 1 again and do them
+  one by one"; things that fit, "surprise me", looking 3D as the others we made). Each was painted by the image
   model into the level's own frame (the game's still at her start, 720 by 1280, with nothing before the eye: "keep the
   whole picture exactly as it is ... add only one thing, in the open water ... a quiet, natural detail of the scene, not
   a striking one ... small, about a sixth of the frame's width"), then the same painting with its open water made flat

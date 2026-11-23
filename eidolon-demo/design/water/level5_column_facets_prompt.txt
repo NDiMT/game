@@ -1,0 +1,5 @@
+This is a crop of a painted game scene: a fallen, broken white marble column with an Ionic capital lying half sunk in a calm, misty lilac sea, beside dark rocks.
+
+Repaint ONLY the column (and its reflection in the water below it) so that it reads clearly as a solid, three-dimensional carved object with a low-poly look: its forms built of many small flat facets, like a finely faceted low-poly marble sculpture, each facet one flat tone that catches the light a little differently, the edges between the facets crisp. Keep it slightly polygonal, never crude: the facets small enough that the flutes of the shaft, the crack, the broken end and the capital's volutes stay exactly as they are and are clearly recognisable. More contrast between its lit side and its shaded side than now, so its round form reads.
+
+The column must keep exactly the same shape, outline, size, position, details and colours, and the same light. Do not change anything else in the picture: the rocks, the water, the ripples and the composition stay exactly as they are.
