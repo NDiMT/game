@@ -799,7 +799,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   row, the gate and the island), lifted again, the row a quarter into the haze behind it; the fallen column and drum at
   the lower right graded into the same marble (`design/level5/columns_facets/grade.py`); then the two broken columns
   made irregular, of offset, chipped drums with jagged tops ("they are straight like cucumbers"), and the fallen column
-  and drum at the lower right at 0.85 of their size ("a little smaller still"). A model's green take may keep
+  and drum at the lower right at 0.85 of their size ("a little smaller still"). **Their image in the water is made
+  from the card itself** (the owner: "the reflection in the water is tragic": the model's painted one was faint,
+  broken and cut short): `tools/go/card_reflect.py` takes the painted water away and turns each thing over about where
+  it meets the water, as the game's own images are (a column about its foot; the row and its architrave about the line
+  through its legs' feet), going toward the sea's colour as it goes down as `img_k` does, never whole, a little shaken. A model's green take may keep
   the haze band at a crop's top: make it green there, all but the things, before the lift. **The Guardian casts his
   shadow** on his pedestal and the way (22/11: "the guardian looks as if he stands in the air": his glass cast none).
   **Frosted, his shade is a soft lilac grey** (`frost_fill` in `IVGD_GLASS_SH`, as the slabs' shade): lit by the sun

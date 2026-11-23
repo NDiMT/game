@@ -47,3 +47,12 @@ the drum battered), its green take direct3_green.jpg, the band cleared as before
 more for strips of haze under the band (1712,380,2048,570; 1500,380,1712,556; 0,470,520,560), the colonnade faded as
 before; foot 215.0 694.3. The fallen column and drum at the lower right 0.85 of their size about the column's foot ("the
 fallen ones at the lower right a little smaller still").
+
+Then its image in the water made from the card itself (the owner: "the reflection in the water is tragic"): the card
+with the painted water (wd_cols_painted_water.png) through
+
+  python3 -I tools/go/card_reflect.py design/level5/columns_facets/wd_cols_painted_water.png goguard/wd_cols.png 107.8 \
+      --k 0.7 --wave 1.6
+
+(107.8: pixels a metre of height in the card at twice the frame's size; the row turned over about the line through its
+legs' feet, every other thing about its own foot).
