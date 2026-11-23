@@ -536,6 +536,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   level's blue-lilac (`60627c`, 0.88), at `IVGL_FG_GRASS` (`IVGL_FG` "grass"; `IV_FG4=0` leaves it out). Things lifted
   out of the image model's edit of a level's frame (`tools/go/fg_from_edit.py`) carry ghosts of what it repainted near
   them (her, a second time, beside her): paint a thing alone, or cut it against a green the model makes of the water.
+  **Kept for another map** (the owner, 23/11, of three painted into level 4's frame at the lower right, where he had not
+  asked for anything: "keep the objects you made in the sea for another map, I liked them"): a fallen Corinthian capital,
+  an ancient bronze hand mirror and a statue's marble hand rising from the water, each half sunk; `design/fg_spare/`
+  (the painting, its prompt, the water made green, the thing cut out by `tools/go/fg_from_edit.py`). Level 4's thing
+  before the eye stays at the lower left.
   **More atmospheric** (the owner, 19/11): soft banks of mist standing on the water before the glass and two sheets
   lying on the open sea at the picture's lower corners (`IVGL_MISTS`, `IVGL_MIST_SH`: drifting billows, thinning to
   nothing at the water; a mist painted on the glass itself ended on a hard line at its foot), the glass's light in wide
