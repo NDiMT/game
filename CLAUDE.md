@@ -778,7 +778,16 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   frame's pixels in `NEAR_COLS` (a little lower than the painted one raised 120 px); the game lays them in the haze at
   0.48 with their image in the water (`_ivgd_near_cols`, `IVGD_NEAR_K`; `IV_NEAR=0` leaves them out, `IV_NEAR_K` tries
   another); `goguard/backdrop.jpg` is the plain sky again (`design/level5/backdrop_plain_clean.jpg`). A frame's pixel
-  to the sea: `IV_WD_PICK="x,y;x,y"` prints the level-local point. **The Guardian casts his
+  to the sea: `IV_WD_PICK="x,y;x,y"` prints the level-local point. Then in detail (the owner: "not bad, but with more
+  detail, and another one near the island"): Ionic columns of drums, fluted, their capitals' volutes and spirals, the
+  architrave in three fasciae in two blocks, a piece fallen (`column_fine`, `ionic_capital`, `architrave` in the
+  builder, a sea column's eighth value `{'style': 'ionic'}`, a plan's `architraves`), and one whole column by the
+  island (`guard_far_plan.py isle` → `goguard/isle_col.glb`, set by `IVGD_ISLE_COL`). **Then painted, as the fallen
+  column below** (the owner: "I liked it more from Gemini", "a little more intense, with facets", "make it like the ones
+  below, they came out very well, but standing, with a capital"; of the result, "the last one I liked"): the 3D ones
+  rendered from the game at twice the size, repainted by the image model in the lower column's style and lifted as
+  water details (`goguard/wd_cols.png`, `wd_isle.png`; `design/level5/columns_facets/README.txt`); the 3D ones are off
+  (`IVGD_NEAR_ON`, `IVGD_ISLE_ON` false; `IV_NEAR=1`, `IV_ISLE=1` show them) and out of the builds. **The Guardian casts his
   shadow** on his pedestal and the way (22/11: "the guardian looks as if he stands in the air": his glass cast none).
   **Frosted, his shade is a soft lilac grey** (`frost_fill` in `IVGD_GLASS_SH`, as the slabs' shade): lit by the sun
   alone, the side away from it and his own shadow on him stayed near black as he whitened (the owner, 22/11: "when he

@@ -11030,6 +11030,7 @@ func _ivgd_setup() -> void:
 	_ivgd_far()
 	_ivgd_far_cols()
 	_ivgd_near_cols()
+	_ivgd_isle_col()
 	var gd: Dictionary = ivg.get("guard", {})
 	ivgd_d0 = maxi(IVGD_ORDER.find(String(gd.get("d0", "S"))), 0); ivgd_phase = 0; ivgd_draw_ph = 0; ivgd_kept = false; ivgd_gk = 1.0
 	var at: Vector3 = ivp_nodes[String(gd.get("node", "G"))]
@@ -11115,7 +11116,8 @@ const IV_WATER_DETAILS := {      # (since 23/11, of twelve natural ones offered,
 	"goveil": [["res://goveil/wd_petals.png", 0.9, 1020.9, 419.1, 259.1, 90.0, 1222.8]],      # (petals, leaves and a small flower floating at the lower left, as offered: the owner chose "2c")
 	"gomilos": [["res://gomilos/wd_lilies.png", 312.7, 928.4, 407.3, 323.7, 586.5, 1189.3]],      # (pale lilac lily pads and a bud at the right, as offered: the owner chose "3a")
 	"goglass": [["res://goglass/wd_lilies.png", -118.1, 1067.0, 586.9, 369.8, 78.8, 1286.0, 22]],      # (the lilies the owner liked: two pads and a bud at the lower left, whole beyond the frame's edge for taller screens; over the mist sheet that lies there, as painted in it)
-	"goguard": [["res://goguard/wd_column.png", 443.1, 1001.9, 263.3, 279.0, 535.5, 1241.0], ["res://goguard/wd_drum.png", 411.1, 1069.5, 138.9, 150.1, 485.8, 1170.7, 8]],      # (a fallen Ionic column at the lower right, made to look carved and slightly polygonal as the third level's goddess (the owner: "the column doesn't look 3D"; "how did you do the others with facets in Gemini?"; "lower right"), and a short piece broken off it beside it, the second of two takes, lit as the column ("I liked this more, but the short column should match the lighting more"); both at 0.66 of their painted size, whole in the corner ("smaller so they are not cut at the lower right"; then "make the ones below a little smaller still", 0.78 before); drawn after it)
+	"goguard": [["res://goguard/wd_column.png", 443.1, 1001.9, 263.3, 279.0, 535.5, 1241.0], ["res://goguard/wd_drum.png", 411.1, 1069.5, 138.9, 150.1, 485.8, 1170.7, 8],
+		["res://goguard/wd_cols.png", 0.0, 345.0, 440.0, 293.0, 146.9, 580.5], ["res://goguard/wd_isle.png", 10.0, 840.0, 200.0, 300.0, 98.0, 1032.6]],      # (and the colonnade at the upper left and the column standing by the island, painted as the fallen column is (the owner, 23/11: "make it like the ones below, they came out very well, but standing, with a capital"): the 3D ones repainted by the image model in its style, design/level5/columns_facets/)      # (a fallen Ionic column at the lower right, made to look carved and slightly polygonal as the third level's goddess (the owner: "the column doesn't look 3D"; "how did you do the others with facets in Gemini?"; "lower right"), and a short piece broken off it beside it, the second of two takes, lit as the column ("I liked this more, but the short column should match the lighting more"); both at 0.66 of their painted size, whole in the corner ("smaller so they are not cut at the lower right"; then "make the ones below a little smaller still", 0.78 before); drawn after it)
 }
 
 func _iv_water_details() -> void:
@@ -11236,11 +11238,11 @@ func _ivgd_far_cols() -> void:
 ## a little in the haze, their image in the water (the owner, 23/11: "instead of the island, can we put the triptych of
 ## the island's columns in the water, and another 2 random columns?"; painted, they were "out of place": "make columns
 ## again so they fit the place better"); IV_NEAR=0 leaves them out, IV_NEAR_K tries another haze
-const IVGD_NEAR_ON := true
-const IVGD_NEAR_K := 0.48
+const IVGD_NEAR_ON := false      # (painted since 23/11, as the fallen column below: goguard/wd_cols.png in IV_WATER_DETAILS; IV_NEAR=1 shows the 3D ones)
+const IVGD_NEAR_K := 0.42
 func _ivgd_near_cols() -> void:
 	var fp := go_dir + "near_cols.glb"
-	if not IVGD_NEAR_ON or OS.get_environment("IV_NEAR") == "0" or not FileAccess.file_exists(fp): return
+	if not (IVGD_NEAR_ON or OS.get_environment("IV_NEAR") == "1") or OS.get_environment("IV_NEAR") == "0" or not FileAccess.file_exists(fp): return
 	var st := GLTFState.new(); var doc := GLTFDocument.new()
 	doc.append_from_buffer(FileAccess.get_file_as_bytes(fp), "", st)
 	var fv := doc.generate_scene(st) as Node3D
@@ -11253,6 +11255,37 @@ func _ivgd_near_cols() -> void:
 	if iv_at_sea:
 		_ivs_mirror(fv, func(_mi: MeshInstance3D) -> Array:
 			return ["marble2", fk, {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.15, "veins": 0.6, "haze": 1.0}])
+
+## one more column near the island (the owner, 23/11: "and another one near the island"): a whole Ionic column standing
+## in the water, built about the level's origin (tools/go/guard_far_plan.py isle), set here where it stands, its volutes
+## to the eye, a little in the haze, its image in the water and the still water's thin foam round its foot;
+## IV_ISLE=0 leaves it out, IV_ISLE_COL="x,z[,turn]" sets it elsewhere (the level's axes, metres; degrees)
+const IVGD_ISLE_ON := false      # (painted since 23/11: goguard/wd_isle.png; IV_ISLE=1 shows the 3D one)
+const IVGD_ISLE_COL := Vector3(0.45, 5.65, 0.0)      # (x, z, turn: in the water at the island's lower left, by her start's rocks; the frame's 100 1025 at her start)
+const IVGD_ISLE_K := 0.12
+func _ivgd_isle_col() -> void:
+	var fp := go_dir + "isle_col.glb"
+	if not (IVGD_ISLE_ON or OS.get_environment("IV_ISLE") == "1") or OS.get_environment("IV_ISLE") == "0" or not FileAccess.file_exists(fp): return
+	var st := GLTFState.new(); var doc := GLTFDocument.new()
+	doc.append_from_buffer(FileAccess.get_file_as_bytes(fp), "", st)
+	var fv := doc.generate_scene(st) as Node3D
+	if fv == null: return
+	iv_root.add_child(fv)
+	var at := IVGD_ISLE_COL
+	if OS.get_environment("IV_ISLE_COL") != "":
+		var c3 := OS.get_environment("IV_ISLE_COL").split_floats(","); at = Vector3(c3[0], c3[1], c3[2] if c3.size() > 2 else 0.0)
+	fv.position = Vector3(at.x, 0.0, at.y); fv.rotation.y = deg_to_rad(at.z)
+	var fk := float(OS.get_environment("IV_ISLE_K")) if OS.get_environment("IV_ISLE_K") != "" else IVGD_ISLE_K
+	for m in fv.find_children("*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		mi.material_override = _iv_mat("marble2", fk, _ivr_ex("marble2", 1.0, true))
+	if iv_at_sea:
+		_ivs_mirror(fv, func(_mi: MeshInstance3D) -> Array:
+			return ["marble2", fk, {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.15, "veins": 0.6, "haze": 1.0}])
+		var foot := iv_root.global_transform * Vector3(at.x, ivr_sea_y, at.y)
+		var fm := _ivv_churn_box(foot, 0.17)      # (the still water's thin foam round it, as round the Guardian)
+		var fmm := fm.material_override as ShaderMaterial
+		fmm.set_shader_parameter("boil", 0.0); fmm.set_shader_parameter("churn", IVGD_FOAM_K); fmm.set_shader_parameter("spread", 0.1)
 
 ## he turns to his look (a quarter at each of her moves; at once when the level starts or begins again)
 func _ivgd_aim(t: float) -> void:

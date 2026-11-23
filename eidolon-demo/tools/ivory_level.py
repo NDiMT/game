@@ -928,6 +928,181 @@ def turn_column(obs, x, y, z, rot):
             if i_ > 0: v.co = Rl @ (v.co - foot) + foot
 
 
+# ------------------------------------------------------------------ an Ionic column and its architrave, in detail
+# (the fifth level's ruin in the sea, the owner, 23/11: "it isn't bad, but I'd like it with more detail"): a shaft of
+# drums, tapering and swelling a little, cut in 24 hollow flutes between fillets, each drum a hair out of line with the
+# one under it and its edges eased, so the joints read; its top an astragal, an echinus of eggs, the volutes rolled on
+# their bolsters with their spirals, and a thin abacus; or, broken, its top drum snapped aslant and chipped; the
+# architrave over a row of them in three fasciae under a crowning moulding. Only a plan's sea column with a dict
+# {'style': 'ionic', ...} as its eighth value, and a plan's 'architraves', are made so: every other level is as it was.
+def flute_ring(R, nf=24, depth=0.085, fil=0.2, sub=3, yaw=0.0):
+    """the shaft's section about its axis: nf hollow flutes between fillets, R at the fillets; points (dx, dz)"""
+    out = []; span = 2.0 * math.pi / nf
+    for k in range(nf):
+        a0 = yaw + k * span
+        out.append((a0, R)); out.append((a0 + fil * span, R))
+        for j in range(sub):
+            t = (j + 1.0) / (sub + 1.0)
+            out.append((a0 + fil * span + t * (1.0 - fil) * span, R * (1.0 - depth * math.sqrt(max(0.0, 1.0 - (2.0 * t - 1.0) ** 2)))))
+    return [(math.cos(a) * rr, math.sin(a) * rr) for (a, rr) in out]
+
+
+def lathe(bm, prof, x, z, n=32, yaw=0.0, wob=None):
+    """a turned stone about the upright at (x, z): prof [(radius, y)] from the bottom up; wob(k, ring) a factor on a
+    ring's radius at its k-th point (the eggs of an echinus)"""
+    rings = []
+    for i, (rr, yy) in enumerate(prof):
+        ring = []
+        for k in range(n):
+            a = yaw + 2.0 * math.pi * k / n; f = wob(k, i) if wob else 1.0
+            ring.append((x + math.cos(a) * rr * f, yy, z + math.sin(a) * rr * f))
+        rings.append(ring)
+    return loft(bm, rings)
+
+
+def chip_edge(bm, c, R, yb, up=True, deep=0.12):
+    """a chip broken off a drum's edge (yb, the edge's height; c its axis's foot, Blender's axes)"""
+    ph = rnd.uniform(0.0, 2.0 * math.pi)
+    nrm = Vector((math.cos(ph) * 0.75, math.sin(ph) * 0.75, 0.66 if up else -0.66)).normalized()
+    p = Vector((c.x + math.cos(ph) * R * (1.0 - deep * rnd.uniform(0.6, 1.2)), c.y + math.sin(ph) * R * (1.0 - deep * rnd.uniform(0.6, 1.2)), yb))
+    bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=p, plane_no=nrm, clear_outer=True)
+    bmesh.ops.holes_fill(bm, edges=bm.edges[:], sides=0)
+
+
+def ionic_capital(x, y, z, R, uyaw):
+    """an Ionic capital on a shaft of upper radius R whose top is at y: the astragal, the echinus with its eggs, the
+    canalis and its two bolsters rolled into volutes, a spiral on each, and the abacus; its volutes along uyaw (the
+    architrave's way, as the stones' yaw); its top at y + 1.18 R"""
+    cu, su = math.cos(math.radians(uyaw)), -math.sin(math.radians(uyaw))      # (u: along the volutes, in x and z)
+    cw, sw = -su, cu      # (w: across them, the face of each volute)
+    P = lambda u, v, w: (x + u * cu + w * cw, y + v, z + u * su + w * sw)
+    obs = []
+    bm = bmesh.new()
+    lathe(bm, [(R * 0.99, y - 0.01), (R * 1.06, y + R * 0.03), (R * 1.09, y + R * 0.07), (R * 1.06, y + R * 0.11), (R * 0.98, y + R * 0.14)], x, z, n=40)      # (the astragal, a bead about the shaft's top)
+    eggs = lambda k, i: 1.0 + (0.05 * max(0.0, math.cos(12 * 2.0 * math.pi * k / 48.0)) ** 2 if 0 < i < 4 else 0.0)
+    lathe(bm, [(R * 0.98, y + R * 0.14), (R * 1.1, y + R * 0.2), (R * 1.19, y + R * 0.28), (R * 1.22, y + R * 0.36), (R * 1.15, y + R * 0.42)], x, z, n=48, wob=eggs)      # (the echinus: an ovolo carved in twelve eggs)
+    obs.append(finish(bm, 'echinus', fine=0.3))
+    rv, uc, top = R * 0.64, R * 1.22, R * 1.0      # (its volutes a little larger than the canon's, so they read from the game's eye)
+    vc = top - rv
+    bm = bmesh.new()
+    box_r = [P(-uc, R * 0.38, -R * 0.84), P(uc, R * 0.38, -R * 0.84), P(uc, R * 0.38, R * 0.84), P(-uc, R * 0.38, R * 0.84),
+             P(-uc, top, -R * 0.84), P(uc, top, -R * 0.84), P(uc, top, R * 0.84), P(-uc, top, R * 0.84)]
+    hexa(bm, box_r)      # (the canalis between the volutes)
+    ws = [-0.86, -0.72, -0.45, -0.1, -0.05, 0.05, 0.1, 0.45, 0.72, 0.86]
+    fs = [1.0, 0.95, 0.83, 0.75, 0.82, 0.82, 0.75, 0.83, 0.95, 1.0]      # (each bolster waisted, a bead (the balteus) about its middle)
+    for s in (-1.0, 1.0):
+        rings = []
+        for wv, fv in zip(ws, fs):
+            rings.append([P(s * uc + math.cos(2.0 * math.pi * k / 24) * rv * fv, vc + math.sin(2.0 * math.pi * k / 24) * rv * fv, wv * R) for k in range(24)])
+        loft(bm, rings)
+    obs.append(finish(bm, 'volutes', fine=0.3))
+    bm = bmesh.new()      # (the spirals on the volutes' faces, front and back: a band standing out of each face, winding in two turns and a half to the eye)
+    for s in (-1.0, 1.0):
+        for fw in (-1.0, 1.0):
+            w0 = fw * R * 0.86; hh = fw * R * 0.05; turns = 2.5; nseg = 60; bw = rv * 0.09
+            inner, outer = [], []
+            for i in range(nseg + 1):
+                t = i / nseg; ph = math.pi / 2.0 - s * 2.0 * math.pi * turns * t      # (from the top, winding outward first, then in)
+                rr = rv * (0.9 - 0.72 * t)
+                for lst, d in ((inner, -bw), (outer, bw)):
+                    lst.append((s * uc + math.cos(ph) * (rr + d), vc + math.sin(ph) * (rr + d)))
+            vs0 = [bm.verts.new(G(*P(u, v, w0 - hh * 0.3))) for (u, v) in inner]; vs1 = [bm.verts.new(G(*P(u, v, w0 - hh * 0.3))) for (u, v) in outer]
+            vt0 = [bm.verts.new(G(*P(u, v, w0 + hh))) for (u, v) in inner]; vt1 = [bm.verts.new(G(*P(u, v, w0 + hh))) for (u, v) in outer]
+            for i in range(nseg):      # (a closed band: its top, its two walls, its foot sunk a little in the face)
+                for q in ((vt0[i], vt1[i], vt1[i + 1], vt0[i + 1]), (vs1[i], vs1[i + 1], vt1[i + 1], vt1[i]), (vs0[i + 1], vs0[i], vt0[i], vt0[i + 1]), (vs0[i], vs0[i + 1], vs1[i + 1], vs1[i])):
+                    try: bm.faces.new(q)
+                    except ValueError: pass
+            for e in (0, nseg):
+                try: bm.faces.new((vs0[e], vs1[e], vt1[e], vt0[e]))
+                except ValueError: pass
+            ring_ = [(s * uc + math.cos(2.0 * math.pi * k / 10) * rv * 0.14, vc + math.sin(2.0 * math.pi * k / 10) * rv * 0.14) for k in range(10)]
+            loft(bm, [[P(u, v, w0 - hh * 0.3) for (u, v) in ring_], [P(u, v, w0 + hh * 1.3) for (u, v) in ring_]])      # (the volute's eye)
+    obs.append(finish(bm, 'spirals', fine=0.3))
+    bm = bmesh.new()      # (the abacus: thin, its top a little out over its foot)
+    hexa(bm, [P(-R * 1.24, top, -R * 0.98), P(R * 1.24, top, -R * 0.98), P(R * 1.24, top, R * 0.98), P(-R * 1.24, top, R * 0.98),
+              P(-R * 1.24, top + R * 0.1, -R * 0.98), P(R * 1.24, top + R * 0.1, -R * 0.98), P(R * 1.24, top + R * 0.1, R * 0.98), P(-R * 1.24, top + R * 0.1, R * 0.98)])
+    hexa(bm, [P(-R * 1.3, top + R * 0.1, -R * 1.03), P(R * 1.3, top + R * 0.1, -R * 1.03), P(R * 1.3, top + R * 0.1, R * 1.03), P(-R * 1.3, top + R * 0.1, R * 1.03),
+              P(-R * 1.3, top + R * 0.18, -R * 1.03), P(R * 1.3, top + R * 0.18, -R * 1.03), P(R * 1.3, top + R * 0.18, R * 1.03), P(-R * 1.3, top + R * 0.18, R * 1.03)])
+    chisel(bm, 2, depth=(0.008, 0.025), tilt=(-0.4, 0.6))
+    obs.append(finish(bm, 'abacus', fine=0.3))
+    return obs
+
+
+def column_fine(x, y, z, h, r=0.2, broken=False, opt=None):
+    """an Ionic column in detail, its foot at y (its plinth, under the water, is its first part, as column()'s, so
+    turn_column turns and leans it the same way); h to its abacus' top, or to its break"""
+    opt = opt or {}
+    m = []
+    bm = bmesh.new()
+    box(bm, (x - r * 1.45, y, z - r * 1.45), (x + r * 1.45, y + 0.2, z + r * 1.45))      # its plinth
+    box(bm, (x - r * 1.2, y + 0.2, z - r * 1.2), (x + r * 1.2, y + 0.3, z + r * 1.2))
+    m.append(finish(bm, 'plinth'))
+    R1 = r * 0.84; capH = 0.0 if broken else R1 * 1.18
+    y0, y1 = y + 0.3, y + h - capH
+    Rf = lambda yy: r - (r - R1) * ((yy - y0) / max(y1 - y0, 1e-3)) ** 1.25 + r * 0.018 * math.sin(math.pi * min(max((yy - y0) / max(y1 - y0, 1e-3), 0.0), 1.0))      # (tapering, and swelling a little: entasis)
+    nd = max(2, int(round((y1 - y0) / float(opt.get('drum', 0.62)))))
+    cuts = [y0 + (y1 - y0) * k / nd for k in range(nd + 1)]
+    for k in range(1, nd): cuts[k] += rnd.uniform(-0.06, 0.06)
+    yb = None
+    if broken:      # (the shaft snapped: the drums over the break are gone)
+        yb = y1 - rnd.uniform(0.02, 0.08)
+    for k in range(nd):
+        a, b = cuts[k], cuts[k + 1]
+        if yb is not None and a > yb - 0.1: break
+        last = yb is not None and k == nd - 1
+        yaw = rnd.uniform(-0.06, 0.06); ox, oz = (rnd.uniform(-0.006, 0.006), rnd.uniform(-0.006, 0.006)) if k > 0 else (0.0, 0.0)
+        b_ = b + (0.2 if last else 0.0)      # (the drum that breaks runs on over the break, which cuts it)
+        ys = [a, a + 0.012]
+        nmid = max(1, int((b_ - a) / 0.22))
+        ys += [a + 0.012 + (b_ - a - 0.024) * j / nmid for j in range(1, nmid)]
+        ys += [b_ - 0.012, b_]
+        rings = []
+        for i, yy in enumerate(ys):
+            RR = Rf(min(yy, y1)) - (0.009 if i in (0, len(ys) - 1) else 0.0)      # (its edges eased a hair: the joint reads as a fine line)
+            rings.append([(x + ox + dx, yy, z + oz + dz) for (dx, dz) in flute_ring(RR, yaw=yaw)])
+        bm = bmesh.new(); loft(bm, rings)
+        c = G(x + ox, a, z + oz)
+        if last:
+            nrm = Vector((rnd.uniform(-0.55, 0.55), rnd.uniform(-0.55, 0.55), 1.0)).normalized()
+            bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=G(x, yb, z), plane_no=nrm, clear_outer=True)
+            bmesh.ops.holes_fill(bm, edges=bm.edges[:], sides=0)
+            for _ in range(2):      # (and pieces broken off the break's rim, so it is not one clean cut)
+                ph = rnd.uniform(0.0, 2.0 * math.pi)
+                n2 = Vector((math.cos(ph) * 0.8, math.sin(ph) * 0.8, rnd.uniform(0.35, 0.8))).normalized()
+                p2 = Vector((c.x + math.cos(ph) * r * rnd.uniform(0.35, 0.6), c.y + math.sin(ph) * r * rnd.uniform(0.35, 0.6), yb - rnd.uniform(0.04, 0.12)))
+                bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=p2, plane_no=n2, clear_outer=True)
+                bmesh.ops.holes_fill(bm, edges=bm.edges[:], sides=0)
+        else:
+            if rnd.random() < 0.55: chip_edge(bm, c, Rf(b), b, up=True)
+        if k > 0 and rnd.random() < 0.45: chip_edge(bm, c, Rf(a), a, up=False)
+        m.append(finish(bm, 'drum', fine=0.5))
+        if last: break
+    if not broken:
+        m += ionic_capital(x, y1, z, Rf(y1), float(opt.get('cap', rnd.uniform(0.0, 180.0))))
+    return m
+
+
+def architrave(x, y, z, L, D, H, yaw, opt=None):
+    """an Ionic architrave block: three fasciae, each a little out over the one below, under a crowning moulding; its
+    foot's middle at (x, y, z), its length along yaw (as the stones'); opt: 'break' 'start'/'end'/'both' (an end
+    broken off aslant), 'roll' and 'pitch' (degrees: about its length, along it), as it settled or fell"""
+    opt = opt or {}
+    bm = bmesh.new()
+    for (a, b, p) in ((0.0, 0.27, 0.0), (0.27, 0.55, 0.014), (0.55, 0.8, 0.028), (0.8, 0.9, 0.045), (0.9, 1.0, 0.06)):
+        box(bm, (-L / 2.0, a * H, -D / 2.0 - p), (L / 2.0, b * H, D / 2.0 + p))
+    br = opt.get('break')
+    for s in ((-1.0,) if br == 'start' else (1.0,) if br == 'end' else (-1.0, 1.0) if br == 'both' else ()):
+        for _ in range(2):      # (broken off: two cuts aslant into its end)
+            nrm = Vector((s, rnd.uniform(-0.5, 0.5), rnd.uniform(-0.6, 0.6))).normalized()
+            bmesh.ops.bisect_plane(bm, geom=bm.verts[:] + bm.edges[:] + bm.faces[:], plane_co=Vector((s * (L / 2.0 - rnd.uniform(0.04, 0.16)), 0.0, H * 0.5)), plane_no=nrm, clear_outer=True)
+            bmesh.ops.holes_fill(bm, edges=bm.edges[:], sides=0)
+    chisel(bm, 3, depth=(0.01, 0.035), tilt=(-0.4, 0.6))
+    Rm = (Matrix.Translation(G(x, y, z)) @ Matrix.Rotation(math.radians(yaw), 4, 'Z') @ Matrix.Rotation(math.radians(float(opt.get('pitch', 0.0))), 4, 'Y')
+          @ Matrix.Rotation(math.radians(float(opt.get('roll', 0.0))), 4, 'X'))
+    bmesh.ops.transform(bm, matrix=Rm, verts=bm.verts[:])
+    return finish(bm, 'architrave', fine=0.5)
+
+
 def arch(cx, y, cz, W=1.9, Hh=2.6, r=0.52, D=0.5, along_x=True):
     """a free-standing gate: a block with a round-headed opening, an impost moulding and a cornice; facing the eye's
     left (along_x) or its right"""
@@ -1180,9 +1355,10 @@ else:
         obs_c = column(cw[0], p[1], cw[1], h)
         if len(col_) > 2: turn_column(obs_c, cw[0], p[1], cw[1], col_[2])
         marble += obs_c
-    for sc_ in PLAN.get('sea_columns', []):      # (columns standing in the water, a ruin half sunk: off the way, scenery; a seventh value [turn, lean, lean's way] turns and leans it as a column's third does)
+    for sc_ in PLAN.get('sea_columns', []):      # (columns standing in the water, a ruin half sunk: off the way, scenery; a seventh value [turn, lean, lean's way] turns and leans it as a column's third does; an eighth {'style': 'ionic', 'cap': the volutes' way, 'drum': a drum's length} makes it in detail)
         cx_, cy_, cz_, ch_, cr_, cb_ = sc_[:6]
-        obs_s = column(cx_, cy_, cz_, ch_, cr_, cb_)
+        if len(sc_) > 7 and isinstance(sc_[7], dict) and sc_[7].get('style') == 'ionic': obs_s = column_fine(cx_, cy_, cz_, ch_, cr_, cb_, sc_[7])
+        else: obs_s = column(cx_, cy_, cz_, ch_, cr_, cb_)
         if len(sc_) > 6: turn_column(obs_s, cx_, cy_, cz_, sc_[6])
         marble += obs_s
     for dr_ in PLAN.get('drums', []):      # (a column's drum fallen on its side, [x, y, z, length, radius, yaw]: a ruin's rubble (the fifth level's far island, the owner, 22/11: "more detail on the island"))
@@ -1203,6 +1379,8 @@ else:
         Rm = Matrix.Translation(G(x_, y_ - 0.01, z_)) @ Matrix.Rotation(math.radians(yw_), 4, 'Z')
         bmesh.ops.transform(bm, matrix=Rm, verts=bm.verts[:])
         marble.append(finish(bm, 'stone', fine=0.5))
+    for ar_ in PLAN.get('architraves', []):      # (an Ionic architrave over columns, or fallen: [x, y, z, length, depth, height, yaw, {'break', 'roll', 'pitch'}])
+        marble.append(architrave(*ar_[:7], ar_[7] if len(ar_) > 7 else None))
     for pd_ in PLAN.get('pedestals', []):      # (a square marble pedestal standing out of the still water, a statue on it; a fifth value turns it about the up as the game turns its statue: rotation.y)
         px, pz, top, hs = pd_[:4]; ty = float(pd_[4]) if len(pd_) > 4 else 0.0
         cs, sn = math.cos(ty), math.sin(ty)

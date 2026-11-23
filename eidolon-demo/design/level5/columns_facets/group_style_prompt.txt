@@ -1,0 +1,7 @@
+The first image is a crop of a frame of a game: ancient marble ruins standing in a calm, misty lilac and pink sea: three Ionic columns standing upright with their architrave lying across their capitals, a broken piece of the architrave fallen into the water beside them, and two lone broken columns, the left one with a fallen drum lying beside it; with their reflections in the water.
+
+The second image shows a fallen marble Ionic column painted exactly in the style we want.
+
+Repaint ONLY the columns, the architrave, the fallen pieces and their reflections of the first image in exactly the style of the column in the second image: the same crisp, finely faceted low-poly marble, every facet one flat tone, the edges between facets crisp; the same colours: bright warm white on the lit facets, cool lilac and blue-grey in the shade; the same strong light and shade, as solid and as vivid as it, clearly three-dimensional, not washed out by the haze. Keep them recognisable in every detail: the flutes, the drums, the Ionic capitals with their volutes, the broken tops, the bands of the architrave.
+
+They must keep exactly the same shapes, outlines, sizes, positions and perspective: standing upright where they stand now. Do not change anything else in the first image: the sky, the haze, the sea, the dark rock at the lower right corner and the white stone at the lower left corner stay exactly as they are.

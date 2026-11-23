@@ -1,0 +1,77 @@
+{
+ "scene": "wake",
+ "sea_y": -0.3,
+ "heights": {
+  "H0": 0.6
+ },
+ "horizon": 0.33,
+ "sun": [
+  0.72,
+  0.2
+ ],
+ "smooth_normals": [
+  "rock",
+  "marble"
+ ],
+ "rock_clamp": [
+  0.04,
+  0.35,
+  0.06,
+  1.15,
+  0.3,
+  0.45
+ ],
+ "eye": {
+  "pitch": 35.0,
+  "centre": [
+   -4.403,
+   0.5,
+   -5.153
+  ],
+  "width": 10.95
+ },
+ "floors": {},
+ "flights": [],
+ "nodes": {},
+ "edges": [],
+ "ring": null,
+ "stone": null,
+ "holes": [],
+ "faces": [],
+ "arches": [],
+ "waters": [],
+ "statues": [],
+ "pedestals": [],
+ "shore_statues": [],
+ "rocks": [],
+ "rocks_after": [],
+ "columns": [],
+ "sea_columns": [
+  [
+   0.0,
+   -0.8999999999999999,
+   0.0,
+   2.9,
+   0.2,
+   false,
+   [
+    0,
+    0,
+    0
+   ],
+   {
+    "style": "ionic",
+    "cap": 45,
+    "drum": 0.62
+   }
+  ]
+ ],
+ "volute": null,
+ "head": null,
+ "relief": null,
+ "cypress": null,
+ "shore": false,
+ "scenery": [],
+ "stones": [],
+ "drums": []
+}

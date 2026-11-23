@@ -13,6 +13,9 @@ painted on, so it sits in the water and is not laid on it.
   ellipse where its water is (its ripples and its image), in the painting's pixels; soft at its rim
   --drop  a box cleared (the level's own rocks the take kept), the thing and its water alike
   --dropw a box where no water is taken (over the level's rocks and slabs, whose edges the painting draws a pixel off)
+  --dropt a box where nothing is taken as the thing, its water kept (where the green take left the water unturned)
+  --pix   keep of the thing only what differs from the frame by more than this (0-255), pixel by pixel
+  --min   keep every part of the thing at least this many pixels large (else: an eighth of the largest)
   --floor how far the painting's water may stray from the frame's with nothing of the thing in it (0.05)
   --new   keep only the parts of the take that the painting added: those whose mean difference from the frame (0-255)
           is over this (25: the level's rocks, slabs and figures the take kept are left out)
@@ -52,15 +55,17 @@ def main(v):
     # take left half green, and that is left to the water below. Its colours are the painting's own, never the take's.
     lead = g[..., 1] - np.maximum(g[..., 0], g[..., 2])
     gm = lead > 0.78
+    if gm.sum() < 1000: gm = lead > max(0.45, float(np.percentile(lead, 95)) - 0.05)      # (a take whose green is darker than pure: its own green)
     bg = g[gm].mean(0) if gm.sum() > 50 else np.array([0.0, 1.0, 0.0], np.float32)
     lead_bg = bg[1] - max(bg[0], bg[2])
     ao = np.clip((lead_bg - lead) / (lead_bg - 0.15), 0.0, 1.0)
-    for bx in boxes(rest, '--drop'):
+    for bx in boxes(rest, '--drop') + boxes(rest, '--dropt'):
         ao[max(bx[1] - y0, 0):max(bx[3] - y0, 0), max(bx[0] - x0, 0):max(bx[2] - x0, 0)] = 0.0
     lab, n = label(ao > 0.92)
     if n:
         sizes = np.bincount(lab.ravel()); sizes[0] = 0
         keep = sizes >= (max(sizes.max() * 0.08, 30) if new_t <= 0 else 12)
+        if '--min' in rest: keep = sizes >= float(rest[rest.index('--min') + 1])      # (every part this large or larger: small fallen pieces too)
         if new_t > 0:      # (only what the painting added: the level's own rocks, slabs and figures the take kept are in the frame already)
             dif = np.abs(e - b).max(-1) * 255.0
             mean = np.bincount(lab.ravel(), dif.ravel()) / np.maximum(sizes, 1)
@@ -68,6 +73,9 @@ def main(v):
         keep[0] = False
         core = np.isin(lab, np.nonzero(keep)[0])
     else: core = np.zeros_like(ao, bool)
+    if '--pix' in rest:      # (only what the painting changed, pixel by pixel: the level's own rocks the thing touches in the take stay out)
+        from scipy.ndimage import binary_fill_holes
+        core &= binary_fill_holes(binary_dilation(np.abs(e - b).max(-1) * 255.0 > float(rest[rest.index('--pix') + 1]), iterations=3))
     ao = np.where(binary_dilation(core, iterations=2), ao, 0.0)
     ao = np.where(binary_erosion(core, iterations=1), 1.0, ao)
     # its water: the least cover that turns the frame's water into the painting's (its ripples lighter, its image and
