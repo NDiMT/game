@@ -10,7 +10,7 @@ owner, 20/11: "the cube looks rectangular rather than square, not the same heigh
   - Parted in two, block and meander, so the game can colour the meander (and light it); made SIDE metres on a side,
     its foot at its origin.
 
-usage: python3.11 -I tools/go/block_cube.py -- <out.glb> [side metres] [seed] [one|four|rosette|sun|spiral|eye|zigzag|mirror]
+usage: python3.11 -I tools/go/block_cube.py -- <out.glb> [side metres] [seed] [one|four|rosette|sun|spiral|eye|zigzag|mirror|...] [depth]
   one (the game's): the single great key of each face; four: on each face four small square keys, two by two, cut thin
   and fine (tried 21/11, the owner: "can we make the designs on the cube like this?", showing the fifth level's concept;
   the same day: "put back the previous cube you push").
@@ -26,7 +26,8 @@ usage: python3.11 -I tools/go/block_cube.py -- <out.glb> [side metres] [seed] [o
   And eight more (23/11, the owner: "try other designs too"): frame (a running meander round the face's edge, a plain
   middle; the owner liked it, "with softer lines": frame_thin, its lines finer and less deep, frame_calm, two larger keys
   a side, fine; then "more subdued, and perhaps a little thicker frame": frame_wide, a wider band, its lines a little
-  bolder, two keys a side, the outer line unbroken round the edge), wreath (a laurel wreath), palmette (an anthemion: a fan of leaves over two little volutes), eggdart (rows of
+  bolder, two keys a side, the outer line unbroken round the edge; and the way's own marks, "lines and circles in the
+  middle, like the path's": path4, path2, path3, pathsq, cut shallow), wreath (a laurel wreath), palmette (an anthemion: a fan of leaves over two little volutes), eggdart (rows of
   eggs and darts, the Ionic moulding), basket (a weave of three bars each way, cell by cell), flutes (a column's flutes),
   scroll (two bands of the running wave, the Vitruvian scroll), herringbone (rows of slanted strokes, turned each row).
 """
@@ -40,7 +41,9 @@ rnd = random.Random(SEED)
 bpy.ops.wm.read_factory_settings(use_empty=True)
 
 L = 0.726; HF = L / 2.0      # (the source block's width, and half of it)
-DEPTH = {'one': 0.033, 'four': 0.02, 'frame_thin': 0.02, 'frame_calm': 0.02, 'frame_wide': 0.026}.get(PATTERN, 0.028)      # (the four small keys, and the fine frames, cut thin and less deep; the motifs between)
+DEPTH = {'one': 0.033, 'four': 0.02, 'frame_thin': 0.02, 'frame_calm': 0.02, 'frame_wide': 0.026, 'path4': 0.006, 'path2': 0.006, 'path3': 0.006, 'pathsq': 0.006}.get(PATTERN, 0.028)      # (the four small keys, and the fine frames, cut thin and less deep; the motifs between)
+if len(a) > 4: DEPTH = float(a[4])      # (another depth, in the source block's units (0.726 a side): the owner, 23/11, of the wide frame at 0.026, "it's too much relief, does it need so much?")
+CRISP = PATTERN.startswith(('frame', 'path'))      # (the frames cut true: straight lines, every stroke meeting the next, the faces nearly flat, the corners only chipped (the owner, 23/11, of the first frame: "it looks crooked, as if not all the meander's surfaces touch"))
 # the key, in a face's own square (s across, t up, -0.5..0.5): a band from the lower left along the bottom, up the right,
 # back along the top, down the left, along the inner bottom and up into the middle, as the first block's
 BARS = [(-0.40, 0.40, -0.40, -0.305), (0.305, 0.40, -0.40, 0.40), (-0.28, 0.40, 0.305, 0.40), (-0.28, -0.185, -0.12, 0.40),
@@ -74,12 +77,11 @@ def key_rects(k):
 def rot(pts, a): ca, sa_ = math.cos(a), math.sin(a); return [(x * ca - y * sa_, x * sa_ + y * ca) for (x, y) in pts]
 def disc(r, n=28, cx=0.0, cy=0.0): return [(cx + r * math.cos(2 * math.pi * i / n), cy + r * math.sin(2 * math.pi * i / n)) for i in range(n)]
 def ring(r0, r1, n=36, a0=0.0, a1=2 * math.pi, cx=0.0, cy=0.0):      # (an annulus, or an arc of one, in short convex pieces)
-    out = []
-    for i in range(n):
-        u0, u1 = a0 + (a1 - a0) * i / n, a0 + (a1 - a0) * (i + 1) / n
-        out.append([(cx + r0 * math.cos(u0), cy + r0 * math.sin(u0)), (cx + r1 * math.cos(u0), cy + r1 * math.sin(u0)),
-                    (cx + r1 * math.cos(u1), cy + r1 * math.sin(u1)), (cx + r0 * math.cos(u1), cy + r0 * math.sin(u1))])
-    return out
+    full = abs((a1 - a0) - 2 * math.pi) < 1e-9
+    def at(i, r):      # (a whole ring closes on its first point exactly: computed again at 2 pi, its last piece missed its first by a hair, and the cut left a crack there)
+        u = a0 + (a1 - a0) * ((i % n) if full else i) / n
+        return (cx + r * math.cos(u), cy + r * math.sin(u))
+    return [[at(i, r0), at(i, r1), at(i + 1, r1), at(i + 1, r0)] for i in range(n)]
 def bar(A, B, hw, ext=0.0):      # (a straight stroke from A to B, hw either side, run on ext past its ends so strokes meet)
     dx, dy = B[0] - A[0], B[1] - A[1]; ln = math.hypot(dx, dy); ux, uy = dx / ln, dy / ln; px, py = -uy * hw, ux * hw
     A2 = (A[0] - ux * ext, A[1] - uy * ext); B2 = (B[0] + ux * ext, B[1] + uy * ext)
@@ -190,6 +192,28 @@ def motif():
     elif PATTERN == 'spirals':
         for (cx, cy, a0) in ((-0.21, 0.21, 0.0), (0.21, 0.21, math.pi / 2), (0.21, -0.21, math.pi), (-0.21, -0.21, -math.pi / 2)):
             P.append(disc(0.03, 12, cx, cy)); P += spiral_at(cx, cy, 0.03, 0.062, 2.4, 0.018, 26, a0)
+    elif PATTERN.startswith('path'):      # (the way's own marks: rings as its discs, lines as its line, each line stopping at a ring's rim as the way's does (the owner, 23/11: "what if the design on the cube had lines and circles in the middle, like the path's?"))
+        lw = 0.02      # (a line's half width)
+        def ring_at(cx, cy, r): return ring(r - 0.042, r, 28, 0, 2 * math.pi, cx, cy)
+        def line(A, B): return bar(A, B, lw, 0.0)
+        if PATTERN == 'path4':      # (a disc where four ways meet; the lines run on over the face's edges, so they meet the next face's and cut the edge clean)
+            R = 0.15; P += ring_at(0, 0, R)
+            for ang in range(4):
+                d = rot([(1.0, 0.0)], ang * math.pi / 2)[0]
+                P.append(line((d[0] * (R + 0.012), d[1] * (R + 0.012)), (d[0] * 0.54, d[1] * 0.54)))
+        elif PATTERN == 'path2':      # (a disc on a straight way)
+            R = 0.15; P += ring_at(0, 0, R)
+            P += [line((R + 0.012, 0), (0.54, 0)), line((-R - 0.012, 0), (-0.54, 0))]
+        elif PATTERN == 'path3':      # (three discs on a way)
+            R = 0.085
+            for x in (-0.29, 0.0, 0.29): P += ring_at(x, 0, R)
+            P += [line((-0.29 + R + 0.012, 0), (-R - 0.012, 0)), line((R + 0.012, 0), (0.29 - R - 0.012, 0)),
+                  line((-0.54, 0), (-0.29 - R - 0.012, 0)), line((0.29 + R + 0.012, 0), (0.54, 0))]
+        elif PATTERN == 'pathsq':      # (four discs in a square, the way round it)
+            R = 0.085; c = 0.22
+            for (x, y) in ((-c, -c), (c, -c), (c, c), (-c, c)): P += ring_at(x, y, R)
+            g = R + 0.012
+            P += [line((-c + g, -c), (c - g, -c)), line((c, -c + g), (c, c - g)), line((c - g, c), (-c + g, c)), line((-c, c - g), (-c, -c + g))]
     elif PATTERN == 'frame_wide':      # (a wider frame, its lines a little bolder, two keys a side spaced evenly, the outer line running round the face's edge unbroken, a hooked square in each corner (the owner, 23/11: "a little thicker frame"))
         hw = 0.019; yb, yt = -0.45 + hw, -0.22 - hw
         def bar2(A, B, ea, eb):      # (a stroke run on past its start by ea and past its end by eb)
@@ -325,11 +349,10 @@ mark = bm.faces.layers.int.new('mea')
 for f in bm.faces:
     c = f.calc_center_median(); k, n, sa, ta, depth, u, v, w = side_of(c)
     lim = 0.83 if PATTERN == 'one' else 0.95      # (the four small keys, and the motifs, reach nearer the face's edges)
-    f[mark] = 1 if (0.003 < depth < DEPTH + 0.008 and abs(u) < HF * lim and abs(v) < HF * lim) else 0
+    f[mark] = 1 if ((0.0015 if CRISP else 0.003) < depth < DEPTH + 0.008 and abs(u) < HF * lim and abs(v) < HF * lim) else 0      # (a shallow frame's floor lies only millimetres under the face)
 print('meander faces', sum(f[mark] for f in bm.faces))
 
 # the meander uneven, as cut by hand (as tools/go/block_meander.py)
-CRISP = PATTERN.startswith('frame')      # (the frames cut true: straight lines, every stroke meeting the next, the faces nearly flat, the corners only chipped (the owner, 23/11, of the first frame: "it looks crooked, as if not all the meander's surfaces touch"))
 WOB = (0.0, 0.0, 0.0) if CRISP else {'one': (0.02, 0.0125, 0.015), 'four': (0.006, 0.004, 0.006)}.get(PATTERN, (0.008, 0.005, 0.008))      # (thin grooves waver less, or they would close)
 SEG = 0.035
 def split_long(e):

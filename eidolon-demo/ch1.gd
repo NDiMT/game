@@ -5561,7 +5561,7 @@ func _ivv_push_in(nb: String, c: String) -> void:
 	ivv_filled[c] = true; iv_block = ""
 	var bc := iv_block_n.global_transform * _ivt_box_get().get_center()
 	print("IV the block rests in ", c, " at ", Vector3(snappedf(bc.x - qp.x, 0.001), snappedf(bc.y - qp.y, 0.001), snappedf(bc.z - qp.z, 0.001)), " from its middle")
-	_ivgl_meander(true)      # (its work done: the missing stone of the way, or, in the fifth level, out of his look's way; its lines light (the owner, 23/11))
+	if go_guard: _ivgl_meander(true)      # (the fifth level: out of his look's way, its lines light (the owner, 23/11); not in the second, the first with the cube, where it only becomes the missing stone of the way (the owner: "in the first the cube doesn't need to light up"))
 	if ivs_sea_mat != null:      # (and then the still water's own thin foam and small waves round it, as round every stone: its place is in the shore map's green, tools/go/shore_hole.py)
 		var tu := create_tween(); tu.tween_interval(1.2)
 		tu.tween_method(func(v: float) -> void: ivs_sea_mat.set_shader_parameter("riser_up", v), 0.0, 1.0, 2.4).set_trans(Tween.TRANS_SINE)
@@ -10789,7 +10789,7 @@ func _ivgl_shade_poof() -> void:      # (her shadow in the image swells a little
 
 var ivgl_mea_on := false
 const IVM_BLOCK_HOME := "NI"      # (the third level's niche under the highest rock, where the stone lets the light by)
-func _ivgl_meander(on: bool) -> void:      # (the block's meander lights white while it stands where its image is in the square, and its image's with it (the owner, 20/11: "when the cube reaches the square, the meander lights up white"); since 23/11 in every level when the cube is where it should be (the owner: "and they light up when the cube is activated correctly"): the second level's gap, the third's niche, the fifth's deep water)
+func _ivgl_meander(on: bool) -> void:      # (the block's meander lights white while it stands where its image is in the square, and its image's with it (the owner, 20/11: "when the cube reaches the square, the meander lights up white"); since 23/11 in every level when the cube is where it should be (the owner: "and they light up when the cube is activated correctly"): the third's niche, the fifth's deep water; not the second's gap (the owner: "in the first the cube doesn't need to light up"))
 	if on == ivgl_mea_on or iv_block_n == null: return
 	ivgl_mea_on = on
 	var ms: Array = []
