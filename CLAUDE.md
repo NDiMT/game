@@ -533,7 +533,12 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   half the screen", "lower and more horizontal", "more monochrome", "maybe like reeds?"): `goglass/fg_grass.png`, short
   reeds with a few cattail heads painted alone by the image model as a flat grey silhouette
   (`design/level4/fg_edit/reeds_a.png`, its prompt beside it), cut out by its lightness and laid in one tone of the
-  level's blue-lilac (`60627c`, 0.88), at `IVGL_FG_GRASS` (`IVGL_FG` "grass"; `IV_FG4=0` leaves it out). Things lifted
+  level's blue-lilac (`60627c`, 0.88), at `IVGL_FG_GRASS` (`IVGL_FG` "grass"; `IV_FG4=0` leaves it out). **Then two
+  pale lily buds with ordinary long leaves** in the same `goglass/fg_grass.png` (the owner: "I liked the lily", of a lotus
+  bud the model painted into the level's frame among lily pads; "without the pads", "more leaves and another lily",
+  "normal leaves", "lower"): painted alone by the image model on green after its own (`design/level4/fg_edit/
+  lilies3_b.png`, `lilies3_alone_prompt.txt`), keyed against its measured green with the green unmixed out of its soft
+  edges, 300 px high, low at the lower left. Things lifted
   out of the image model's edit of a level's frame (`tools/go/fg_from_edit.py`) carry ghosts of what it repainted near
   them (her, a second time, beside her): paint a thing alone, or cut it against a green the model makes of the water.
   **Kept for another map** (the owner, 23/11, of three painted into level 4's frame at the lower right, where he had not
