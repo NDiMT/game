@@ -4,23 +4,31 @@ statue_goddess.glb, which faces its own +x) seen from behind and a little to one
 lit from the upper right as the level's low sun; rendered alone on a transparent ground, then brought into the level's
 colours (its marble's light and shade kept, from `dark` to `light`) and blurred as a thing close to the eye is.
 
-  python3.11 -I tools/go/fg_head.py -- render <out raw.png> [turn degrees] [from above degrees]
+  python3.11 -I tools/go/fg_head.py -- render <out raw.png> [turn degrees] [from above degrees] [model] [focus] [scale] [behind 1|0]
+    (model: another of our statues, props/<name>.glb; focus: where the frame's middle is, down from its top as a share of
+    its height; scale: the share of its height the frame holds; behind 0: from its front, which is its own +x)
+
+The fifth level's, offered 23/11 (the owner: "put something else for the blurred one in 5"):
+  python3.11 -I tools/go/fg_head.py -- render <raw> -35 12 props/observer_veiled.glb 0.24 0.5 1      (a veiled woman from behind)
+  python3.11 -I tools/go/fg_head.py -- render <raw> 35 10 props/statue_unfinished.glb 0.3 0.62 0     (the statue half out of its block)
+  python3.11 -I tools/go/fg_head.py -- render <raw> 20 16 props/amphora.glb 0.3 0.62 0               (an amphora)
+  then soften each with the fifth level's plum: ... 1100 9 463a4f a8949f
   python3 -I tools/go/fg_head.py soften <raw.png> <out.png> <height px> <blur px> [dark hex] [light hex]
 """
 import sys, math
 
 
-def render(out, turn=28.0, above=14.0):
+def render(out, turn=28.0, above=14.0, model='props/statue_goddess.glb', focus=0.085, scale=0.3, behind=1.0):
     import bpy
     from mathutils import Vector, Euler
     bpy.ops.wm.read_factory_settings(use_empty=True)
-    bpy.ops.import_scene.gltf(filepath='props/statue_goddess.glb')
+    bpy.ops.import_scene.gltf(filepath=model)
     obs = [o for o in bpy.context.scene.objects if o.type == 'MESH']
     pts = [o.matrix_world @ Vector(c) for o in obs for c in o.bound_box]
     lo = Vector((min(p.x for p in pts), min(p.y for p in pts), min(p.z for p in pts)))
     hi = Vector((max(p.x for p in pts), max(p.y for p in pts), max(p.z for p in pts)))
     H = hi.z - lo.z
-    head = Vector(((lo.x + hi.x) * 0.5, (lo.y + hi.y) * 0.5, hi.z - H * 0.085))      # (about the middle of her head)
+    head = Vector(((lo.x + hi.x) * 0.5, (lo.y + hi.y) * 0.5, hi.z - H * focus))      # (about the middle of her head, or what the frame holds)
     sc = bpy.context.scene
     mat = bpy.data.materials.new('marble'); mat.use_nodes = True
     bs = mat.node_tree.nodes.get('Principled BSDF'); bs.inputs['Base Color'].default_value = (0.82, 0.8, 0.84, 1); bs.inputs['Roughness'].default_value = 0.6
@@ -31,9 +39,9 @@ def render(out, turn=28.0, above=14.0):
     sc.render.film_transparent = True; sc.render.resolution_percentage = 100
     w = bpy.data.worlds.new('w'); sc.world = w; w.use_nodes = True
     w.node_tree.nodes['Background'].inputs['Color'].default_value = (0.55, 0.56, 0.66, 1); w.node_tree.nodes['Background'].inputs['Strength'].default_value = 0.32
-    cam = bpy.data.cameras.new('cam'); cam.type = 'ORTHO'; cam.ortho_scale = H * 0.3
+    cam = bpy.data.cameras.new('cam'); cam.type = 'ORTHO'; cam.ortho_scale = H * scale
     co = bpy.data.objects.new('cam', cam); sc.collection.objects.link(co); sc.camera = co
-    a = math.radians(180.0 + turn); e = math.radians(above)      # (behind her: she faces +x, so from -x, turned a little and from a little above)
+    a = math.radians((180.0 if behind else 0.0) + turn); e = math.radians(above)      # (behind her: she faces +x, so from -x, turned a little and from a little above)
     d = Vector((math.cos(a) * math.cos(e), math.sin(a) * math.cos(e), math.sin(e)))
     co.location = head + d * (H * 2.0)
     co.rotation_euler = (head - co.location).to_track_quat('-Z', 'Y').to_euler()
@@ -74,7 +82,10 @@ def soften(raw, out, height, blur, dark='4d4a66', light='b9b6cf'):
 if __name__ == '__main__':
     if '--' in sys.argv:
         v = sys.argv[sys.argv.index('--') + 1:]
-        if v and v[0] == 'render': render(v[1], *(float(x) for x in v[2:4])); sys.exit(0)
+        if v and v[0] == 'render':
+            r = [float(x) for x in v[2:4]]
+            if len(v) > 4: r += [v[4]] + [float(x) for x in v[5:8]]
+            render(v[1], *r); sys.exit(0)
     v = sys.argv[1:]
     if len(v) >= 5 and v[0] == 'soften': soften(v[1], v[2], int(v[3]), float(v[4]), *v[5:7]); sys.exit(0)
     print(__doc__)

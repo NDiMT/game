@@ -526,8 +526,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   eye. **The back of a statue's head before the eye at the lower right, blurred** (the owner, 23/11: "at the lower right
   in 4 put the back of a statue's head, blurred"): `goglass/fg_head.png` by `tools/go/fg_head.py` (our goddess's model
   rendered from behind in Blender, turned 28 degrees and seen 14 from above, lit from the upper right, then brought into
-  the level's blue-lilac, `4f4a64` to `aeabc6`, and blurred); laid on at `IVGL_FG_HEAD` (left 430, top 400 over the
-  picture's foot, 380 wide, at 720 wide), its shoulder running on below the edge; `IV_FG4=0` leaves it out.
+  the level's blue-lilac, `4f4a64` to `aeabc6`, and blurred); laid on at `IVGL_FG_HEAD` (left 430, top 215 over the
+  picture's foot, 380 wide, at 720 wide): only the head shows, its neck and shoulder below the edge (the owner, 23/11:
+  "less of the statue, only the head"; its top was 400, its shoulder in the picture); `IV_FG4=0` leaves it out.
   **More atmospheric** (the owner, 19/11): soft banks of mist standing on the water before the glass and two sheets
   lying on the open sea at the picture's lower corners (`IVGL_MISTS`, `IVGL_MIST_SH`: drifting billows, thinning to
   nothing at the water; a mist painted on the glass itself ended on a hard line at its foot), the glass's light in wide
@@ -669,7 +670,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   720 wide; `IV_FG5=youth|hand|both|cols` tries others); offered as three, the owner to choose. Then more discreet
   (23/11: "and in 5 something more discreet"): `IVGD_FG_K` scales them about their outer foot, `IVGD_FG_A` fades them
   (`IV_FG5_K`, `IV_FG5_A` try others); offered: both at 0.75 and 0.75, the hand alone or the youth alone at 0.8 and
-  0.85, the owner to choose. **The island in the air
+  0.85, the owner to choose; then "put something else for the blurred one in 5", and "it needn't be 3D, it can be
+  something from Gemini": one thing alone at a corner, our own statues rendered by `tools/go/fg_head.py` (a veiled
+  woman from behind, the statue half out of its block, an amphora; `IVGD_FG_MORE`, `IV_FG5=veiled|unfinished|amphora`).
+  **The island in the air
   painted by Gemini, a trial** (the owner, 22/11: "try making the floating island in Gemini"): the 3D island cut from a
   still of the level (with it, without it) and laid into the clean plain backdrop where it lies in the game (the screen
   to the painting: uv = screen + `bg_off`, the painting 1.5 times the 720 screen; the follow at that moment from
@@ -741,10 +745,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   ("in the first level no extra path should come out on the square, it should just activate"; "no path line should
   come out at all in 2"): the hole's node has no disc and no line of the way runs to it (their lines once rose out of the
   water as it filled). **The stone hewn** ("can we make the cube more crooked, cut and hewn? it's too straight";
-  `HEWN` for the way's designs): its faces out of true 1.45 times the first cube's, five corners broken (1.8 to 4 cm),
-  three small chips (0.9 to 1.8 cm) running out along its edges; its marks cut true. Seven corners of 4.4 to 10 cm and
-  five chips of 2 to 3.8 cm were too much (the owner, 23/11: "I said the cube in general should look hewn",
-  "make the cuts less intense").
+  `HEWN` for the way's designs): its faces out of true 1.45 times the first cube's, seven corners broken (4.4 to 10 cm
+  along the cut's normal, more along an edge), five chips (2 to 3.8 cm) running out along its edges; its marks cut
+  true. Softer cuts (five corners of 1.5 to 3.3 cm, three small chips) were made when the owner said "make the cuts
+  less intense", and seen beside these he kept these (23/11: "I liked this cut more after all").
   The veiled bust is out again (`observer` None). Before it (the owner, 21/11: "make something else for the
   background, whatever you like, but matching the perspective and the colours"; then of it: "I don't like the new
   background"): the ruins of a drowned sanctuary far

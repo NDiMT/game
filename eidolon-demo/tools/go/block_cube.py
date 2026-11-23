@@ -389,7 +389,7 @@ for v in bm.verts:
 bmesh.ops.triangulate(bm, faces=bm.faces[:], quad_method='BEAUTY', ngon_method='BEAUTY')
 print('uneven: verts moved', moved, 'faces', len(bm.faces))
 
-HEWN = PATTERN.startswith("path")      # (the way's designs on a stone hewn: its faces well out of true, a few corners broken, small chips along its edges; its marks cut true (the owner, 23/11: "can we make the cube more crooked, cut and hewn? it's too straight"; then "make the cuts less intense"))
+HEWN = PATTERN.startswith("path")      # (the way's designs on a stone hewn rough: its faces well out of true, many corners broken, chips along its edges; its marks cut true (the owner, 23/11: "can we make the cube more crooked, cut and hewn? it's too straight"))
 LK = 1.45 if HEWN else (0.25 if CRISP else 1.0)
 LEAN = [(rnd.uniform(-0.022, 0.022) * LK, rnd.uniform(-0.022, 0.022) * LK) for _ in range(6)]      # (each face out of true its own way; the frames' nearly flat)
 def bend(co):
@@ -411,19 +411,19 @@ def cutp(b, co, no):
         for f in made.get('faces', []): f[mark] = 0
 corners = [(sx, sy, sz) for sx in (-1, 1) for sy in (-1, 1) for sz in (-1, 1)]
 rnd.shuffle(corners)
-for (sx, sy, sz) in corners[:(5 if HEWN else (3 if CRISP else 5))]:      # (corners broken off aslant, each its own size; the frames' only chipped, clear of their keys; the hewn's softer since 23/11, the owner: "make the cuts less intense": five, 1.8 to 4 cm, were seven, 4.4 to 10)
+for (sx, sy, sz) in corners[:(7 if HEWN else (3 if CRISP else 5))]:      # (corners broken off aslant, each its own size; the frames' only chipped, clear of their keys; the hewn's seven, 4.4 to 10 cm: softer ones were tried (23/11) and the owner kept these, "I liked this cut more after all")
     c = Vector((sx * HF, sy * HF, sz * HF))
     n = Vector((sx * rnd.uniform(0.6, 1.0), sy * rnd.uniform(0.6, 1.0), sz * rnd.uniform(0.6, 1.0))).normalized()
-    cutp(bm, bend(c) - n * (rnd.uniform(0.014, 0.032) if HEWN else (rnd.uniform(0.012, 0.02) if CRISP else rnd.uniform(0.03, 0.065))), n)
+    cutp(bm, bend(c) - n * (rnd.uniform(0.035, 0.08) if HEWN else (rnd.uniform(0.012, 0.02) if CRISP else rnd.uniform(0.03, 0.065))), n)
 if HEWN:      # (chips along the edges, near their ends: a plane leaning off the edge's two faces and along it, so the chip runs out along the edge)
     axes = [Vector((1, 0, 0)), Vector((0, 1, 0)), Vector((0, 0, 1))]
-    for _ in range(3):      # (three chips, shallower: were five)
+    for _ in range(5):
         i, j = rnd.sample(range(3), 2); m_ = 3 - i - j
         si, sj, sm = rnd.choice((-1, 1)), rnd.choice((-1, 1)), rnd.choice((-1, 1))
         e = axes[i] * si + axes[j] * sj      # (the edge between face i and face j, running along axis m)
         p0 = axes[i] * (si * HF) + axes[j] * (sj * HF) + axes[m_] * (sm * HF * rnd.uniform(0.35, 0.7))
         n = (e.normalized() + axes[m_] * (sm * rnd.uniform(0.35, 0.7))).normalized()
-        cutp(bm, bend(p0) - n * rnd.uniform(0.007, 0.014), n)
+        cutp(bm, bend(p0) - n * rnd.uniform(0.016, 0.03), n)
 
 holes = [e for e in bm.edges if e.is_boundary]
 if holes: bmesh.ops.holes_fill(bm, edges=holes, sides=0)

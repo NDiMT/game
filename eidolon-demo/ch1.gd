@@ -6659,6 +6659,11 @@ func _ivr_build() -> void:
 				var hs := Vector2(IVGD_FG_HAND.z, IVGD_FG_HAND.z * 1100.0 / 793.0) * fk
 				var hx := IVGD_FG_HAND.x + IVGD_FG_HAND.z - hs.x      # (held at its right edge)
 				var ho := _iv_overlay(cl, "res://goguard/fg_hand.png", Vector2(hx * k, vh - (hs.y - (IVGD_FG_HAND.z * 1100.0 / 793.0 - IVGD_FG_HAND.y)) * k), hs * k); ho.modulate.a = fa
+			if IVGD_FG_MORE.has(fgm) and ResourceLoader.exists(String((IVGD_FG_MORE[fgm] as Array)[0])):      # (others offered, one thing alone at one corner (the owner, 23/11: "put something else for the blurred one in 5"): our own statues rendered from the eye's side and blurred, tools/go/fg_head.py)
+				var fe: Array = IVGD_FG_MORE[fgm]
+				var ft := load(String(fe[0])) as Texture2D
+				var fsz := Vector2(float(fe[3]), float(fe[3]) * float(ft.get_height()) / float(ft.get_width())) * fk
+				var fo := _iv_overlay(cl, String(fe[0]), Vector2((float(fe[1]) + (float(fe[3]) * (1.0 - fk) if float(fe[1]) > 360.0 else 0.0)) * k, vh - float(fe[2]) * fk * k), fsz * k); fo.modulate.a = fa
 			if fgm == "cols" and ResourceLoader.exists("res://goguard/col_l.png"):      # (before: two broken columns, their feet below the picture's edge (22/11: "blurred columns at the front of the screen"), tools/go/fg_columns.py)
 				_iv_overlay(cl, "res://goguard/col_l.png", Vector2(-106 * k, vh - 490 * k), Vector2(232, 656) * k)
 				_iv_overlay(cl, "res://goguard/col_r.png", Vector2(627 * k, vh - 390 * k), Vector2(217, 525) * k)
@@ -11083,12 +11088,13 @@ func _ivgd_dir(ph: int) -> String: return IVGD_ORDER[(ivgd_d0 + ph) % 4]
 ## the haze, its image in the water (the owner, 21/11: "something else in the background, and let it be 3D"; of the ways
 ## offered, "a 3D island with ruins"); IV_FAR=0 leaves it out, IV_FAR_K tries another haze
 const IVGD_FAR_K := 0.3
-const IVGL_FG_HEAD := Vector3(430.0, 400.0, 380.0)      # (the fourth level's head before the eye: its left, its top over the picture's foot, its width, at 720 wide; its shoulder runs on below the picture's edge)
+const IVGL_FG_HEAD := Vector3(430.0, 215.0, 380.0)      # (the fourth level's head before the eye: its left, its top over the picture's foot, its width, at 720 wide; only the head shows, its neck and shoulder below the picture's edge (the owner, 23/11: "less of the statue, only the head"; its top was 400 over the foot, its shoulder in the picture))
 const IVGL_FG_HEAD_AR := 1100.0 / 1015.0      # (goglass/fg_head.png's height over its width)
 const IVGD_FG := "both"      # (what stands before the eye at its lower corners: see _ivr_build's corners)
 const IVGD_FG_K := 1.0      # (their size; IV_FG5_K tries another (the owner, 23/11: "in 5 put something more discreet"))
 const IVGD_FG_A := 1.0      # (how much they show; IV_FG5_A tries another)
 const IVGD_FG_YOUTH := Vector3(-130.0, 330.0, 340.0)      # (its left, its top over the picture's foot, its width; at 720 wide: at the lower left, in the open water under the gate's rocks, facing in, his mirror toward the middle)
+const IVGD_FG_MORE := {"veiled": ["res://goguard/fg_veiled.png", -40.0, 330.0, 300.0], "unfinished": ["res://goguard/fg_unfinished.png", 470.0, 330.0, 280.0], "amphora": ["res://goguard/fg_amphora.png", -60.0, 300.0, 300.0]}      # (others before the eye, each alone: its picture, its left, its top over the picture's foot, its width, at 720 wide)
 const IVGD_FG_HAND := Vector3(430.0, 340.0, 340.0)      # (at the lower right, under the walk's right arm, clear of it)
 const IVGD_FAR_ON := false      # (the island in the air painted into the backdrop since 22/11 (the owner, of the image model's repaint of the 3D one: "the new floating island!! but a little more to the right"; design/level5/isle_painted/lay_in.py); before, 3D on the plain sky (22/11, of it: "I liked this background"), and before that painted (21/11: "can't you make the island as a picture?"); IV_FAR=1 brings the 3D one back, with IV_BG_FILE=design/level5/backdrop_plain_clean.jpg for its plain sky)
 const IVGD_FAR_FILE := "far.glb"
