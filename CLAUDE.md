@@ -760,7 +760,15 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   turns the painted island over about a line a little under its point, faint, rippled, given half to the sky's colour,
   and lays it into `goguard/backdrop.jpg` (from `backdrop_noreflect.jpg`, the backdrop without it); the sea lets the
   backdrop through where it lies open, so it shows between the island's point and the walk, and the level hides the
-  rest. **The Guardian casts his
+  rest. **Since 23/11 no island: the island's colonnade stands in the sea in its place** (the owner: "instead of the
+  island, can we put the triptych of the island's columns in the water, and another 2 random columns?"; "3D with
+  facets"; of the faceted repaint taken as it is beside its light laid on the painting: "make them again and not so
+  subdued", "the second one I liked"): `goguard/backdrop.jpg` is the plain sky with the three columns and their
+  architrave standing in the water at the left, where the island was, and two lone broken columns, one leaning, each
+  with its image in the water; painted by the image model after the island's own colonnade, then repainted by it as
+  finely faceted low-poly marble and laid in as it is (`design/level5/columns_painted/`, `lay_in.py`), the two lone
+  ones moved clear of the gate and the rock before them; the backdrop with the island kept as
+  `design/level5/backdrop_island.jpg`. **The Guardian casts his
   shadow** on his pedestal and the way (22/11: "the guardian looks as if he stands in the air": his glass cast none).
   **Frosted, his shade is a soft lilac grey** (`frost_fill` in `IVGD_GLASS_SH`, as the slabs' shade): lit by the sun
   alone, the side away from it and his own shadow on him stayed near black as he whitened (the owner, 22/11: "when he

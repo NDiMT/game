@@ -1,0 +1,5 @@
+This is a crop of a painted game backdrop: a ruined colonnade of three white marble columns with their architrave lying across their tops, and two lone broken marble columns, standing far off in a calm, misty lilac and pink sea, with their reflections in the water.
+
+Repaint ONLY the columns, the architrave and their reflections so that they read clearly as solid, three-dimensional carved objects with a low-poly look: their forms built of many small flat facets, like finely faceted low-poly marble, each facet one flat tone that catches the light a little differently, the edges between the facets crisp. Keep them slightly polygonal, never crude: the facets small enough that the flutes, the broken tops and the architrave stay exactly as they are and are clearly recognisable. More contrast between their lit sides and their shaded sides than now, so their round forms read.
+
+The columns must keep exactly the same shapes, outlines, sizes, positions, details and colours, and the same light. Do not change anything else in the picture: the sky, the haze, the sea and the composition stay exactly as they are.
