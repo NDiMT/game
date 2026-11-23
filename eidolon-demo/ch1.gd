@@ -11061,9 +11061,9 @@ func _ivgd_dir(ph: int) -> String: return IVGD_ORDER[(ivgd_d0 + ph) % 4]
 ## the haze, its image in the water (the owner, 21/11: "something else in the background, and let it be 3D"; of the ways
 ## offered, "a 3D island with ruins"); IV_FAR=0 leaves it out, IV_FAR_K tries another haze
 const IVGD_FAR_K := 0.3
-const IVGD_FG := "youth"      # (what stands before the eye at its lower corners: see _ivr_build's corners)
-const IVGD_FG_YOUTH := Vector3(470.0, 400.0, 340.0)      # (its left, its top over the picture's foot, its width; at 720 wide: under the walk's right arm, clear of it)
-const IVGD_FG_HAND := Vector3(-140.0, 380.0, 360.0)      # (under the walk's left arm and the gate, clear of them)
+const IVGD_FG := "both"      # (what stands before the eye at its lower corners: see _ivr_build's corners)
+const IVGD_FG_YOUTH := Vector3(-130.0, 330.0, 340.0)      # (its left, its top over the picture's foot, its width; at 720 wide: at the lower left, in the open water under the gate's rocks, facing in, his mirror toward the middle)
+const IVGD_FG_HAND := Vector3(430.0, 340.0, 340.0)      # (at the lower right, under the walk's right arm, clear of it)
 const IVGD_FAR_ON := true      # (the island in the air, 3D, on the plain sky (the owner, 22/11, of it: "I liked this background"); before, painted into the backdrop (21/11: "can't you make the island as a picture?"); IV_FAR=0 leaves it out)
 const IVGD_FAR_FILE := "far.glb"
 const IVGD_FAR_C := Vector3(-11.2, 0.0, -6.9)      # (its own middle, as built: it is made smaller about it)
