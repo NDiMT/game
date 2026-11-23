@@ -27,3 +27,11 @@ faceted pads with closed lotus buds on curved stems, at the left, at the island'
 the statue nor over the sunken stones (lilies2_prompt.txt -> lilies2_gemini.jpg; its green take lilies2_green.jpg),
 lifted as before (--min 150), only the three groups kept (frame boxes 0,770-265,915; 605,695-720,805; 545,1065-705,1195),
 kept to the clean frame's open water: gowake/wd_lily_ring.png.
+
+Then (the owner: "the lily (the bud on its stem) is a bit pointless, I don't want it"; "remove these too", the group at the
+island's right): the buds taken away by the model (lilies3_prompt.txt -> lilies3_gemini.jpg); its green take put back open
+lotus flowers on the pads and small buds (lilies3_green.jpg), and that is the one he chose ("this I liked, only one lily is
+cut abruptly"): so the lilies are cut out of that green take itself (their cover from its green, their colours unmixed
+from it, the green spill out), whole pads only, none within 60 px of the frame's edge, the left group and the lower right
+only; the painting's water about them (lilies3 lifted against frame.png with lilies2_green.jpg for the pads, under 0.8 of
+cover) kept within 24 px of them, soft 6; scaled to 1080x1920: gowake/wd_lily_ring.png.
