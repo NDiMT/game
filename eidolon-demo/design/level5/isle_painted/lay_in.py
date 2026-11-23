@@ -9,8 +9,10 @@ sky, near it; only that (grown 10 px, feathered 10) is taken, moved `dx` pixels 
 out) as a difference from the sky it was painted on, so its soft edge leaves no seam where the sky changes along x.
 
   python3 -I design/level5/isle_painted/lay_in.py <dx px> <out.jpg>
-  the game's (22/11): python3 -I design/level5/isle_painted/lay_in.py 76 goguard/backdrop.jpg
-  (0: as it was offered, design/level5/isle_painted/backdrop.jpg)
+  the game's (22/11): python3 -I design/level5/isle_painted/lay_in.py 40 goguard/backdrop.jpg
+  (0: as it was offered, design/level5/isle_painted/backdrop.jpg). 40 px (27 on a 720 screen) is as far as it goes clear
+  of the far columns (goguard/far_cols.glb, drawn over the painting): at 48 the leftmost broken one stands before its
+  rock's edge, at 76 (0.07 of the width, tried first) the island's edge passes behind it.
 """
 import os
 import sys

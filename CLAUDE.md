@@ -668,8 +668,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   plain backdrop: `design/level5/isle_painted/` (backdrop.jpg, its prompt, what Gemini was given and gave); offered
   beside the 3D one (`IV_FAR=0 IV_BG_FILE=design/level5/isle_painted/backdrop.jpg` shows it). **He chose the painted
   one, a little to the right** (22/11: "the new floating island!! but a little more to the right"): `goguard/backdrop.jpg`
-  is the plain sky with it laid in 76 px (0.07 of the width) to the right, as a difference from the sky it was painted
-  on, so its soft edge leaves no seam (`python3 -I design/level5/isle_painted/lay_in.py 76 goguard/backdrop.jpg`; the
+  is the plain sky with it laid in 40 px (27 on a 720 screen) to the right, as a difference from the sky it was painted
+  on, so its soft edge leaves no seam (`python3 -I design/level5/isle_painted/lay_in.py 40 goguard/backdrop.jpg`): as far
+  as it goes clear of the far columns, which are drawn over the painting (at 76, 0.07 of the width, the leftmost broken
+  one stood before the island's rock; further right, move the columns with it; the
   plain sky kept as `design/level5/backdrop_plain_clean.jpg`, the 3D island's place as `island3d_mask.png`); the 3D island
   is off (`IVGD_FAR_ON` false) and `goguard/far.glb` out of the builds (`IV_FAR=1
   IV_BG_FILE=design/level5/backdrop_plain_clean.jpg` shows it on a desktop). **The Guardian casts his
