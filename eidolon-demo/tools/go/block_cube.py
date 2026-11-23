@@ -25,7 +25,8 @@ usage: python3.11 -I tools/go/block_cube.py -- <out.glb> [side metres] [seed] [o
   spirals, two by two, as the Minoan and Mycenaean).
   And eight more (23/11, the owner: "try other designs too"): frame (a running meander round the face's edge, a plain
   middle; the owner liked it, "with softer lines": frame_thin, its lines finer and less deep, frame_calm, two larger keys
-  a side, fine), wreath (a laurel wreath), palmette (an anthemion: a fan of leaves over two little volutes), eggdart (rows of
+  a side, fine; then "more subdued, and perhaps a little thicker frame": frame_wide, a wider band, its lines a little
+  bolder, two keys a side, the outer line unbroken round the edge), wreath (a laurel wreath), palmette (an anthemion: a fan of leaves over two little volutes), eggdart (rows of
   eggs and darts, the Ionic moulding), basket (a weave of three bars each way, cell by cell), flutes (a column's flutes),
   scroll (two bands of the running wave, the Vitruvian scroll), herringbone (rows of slanted strokes, turned each row).
 """
@@ -39,7 +40,7 @@ rnd = random.Random(SEED)
 bpy.ops.wm.read_factory_settings(use_empty=True)
 
 L = 0.726; HF = L / 2.0      # (the source block's width, and half of it)
-DEPTH = {'one': 0.033, 'four': 0.02, 'frame_thin': 0.02, 'frame_calm': 0.02}.get(PATTERN, 0.028)      # (the four small keys, and the fine frames, cut thin and less deep; the motifs between)
+DEPTH = {'one': 0.033, 'four': 0.02, 'frame_thin': 0.02, 'frame_calm': 0.02, 'frame_wide': 0.026}.get(PATTERN, 0.028)      # (the four small keys, and the fine frames, cut thin and less deep; the motifs between)
 # the key, in a face's own square (s across, t up, -0.5..0.5): a band from the lower left along the bottom, up the right,
 # back along the top, down the left, along the inner bottom and up into the middle, as the first block's
 BARS = [(-0.40, 0.40, -0.40, -0.305), (0.305, 0.40, -0.40, 0.40), (-0.28, 0.40, 0.305, 0.40), (-0.28, -0.185, -0.12, 0.40),
@@ -189,6 +190,18 @@ def motif():
     elif PATTERN == 'spirals':
         for (cx, cy, a0) in ((-0.21, 0.21, 0.0), (0.21, 0.21, math.pi / 2), (0.21, -0.21, math.pi), (-0.21, -0.21, -math.pi / 2)):
             P.append(disc(0.03, 12, cx, cy)); P += spiral_at(cx, cy, 0.03, 0.062, 2.4, 0.018, 26, a0)
+    elif PATTERN == 'frame_wide':      # (a wider frame, its lines a little bolder, two keys a side spaced evenly, the outer line running round the face's edge unbroken, a hooked square in each corner (the owner, 23/11: "a little thicker frame"))
+        hw = 0.019; yb, yt = -0.45 + hw, -0.22 - hw
+        def bar2(A, B, ea, eb):      # (a stroke run on past its start by ea and past its end by eb)
+            dx, dy = B[0] - A[0], B[1] - A[1]; ln = math.hypot(dx, dy); ux, uy = dx / ln, dy / ln
+            return bar((A[0] - ux * ea, A[1] - uy * ea), (B[0] + ux * eb, B[1] + uy * eb), hw, 0.0)
+        side = [bar2((-0.45 + hw, yb), (0.45 - hw, yb), hw, hw)]      # (the outer line, the face's edge, corner to corner)
+        for x0 in (-0.22, 0.0):
+            pts = [(x0 + 0.035, yb), (x0 + 0.035, yt), (x0 + 0.185, yt), (x0 + 0.185, yb + 0.07), (x0 + 0.11, yb + 0.07), (x0 + 0.11, yb + 0.135)]
+            for m in range(len(pts) - 1): side.append(bar2(pts[m], pts[m + 1], hw, 0.0 if m == len(pts) - 2 else hw))
+        corner = [bar2((0.26, -0.37), (0.37, -0.37), hw, hw), bar2((0.37, -0.37), (0.37, -0.26), hw, hw), bar2((0.37, -0.26), (0.26, -0.26), hw, hw), bar2((0.26, -0.26), (0.26, -0.33), hw, 0.0)]
+        for q in range(4):
+            P += [rot(pg, q * math.pi / 2) for pg in side + corner]
     elif PATTERN in ('frame', 'frame_thin', 'frame_calm'):      # (a running key on each side, square keys at the corners, the middle plain; thin: finer lines; calm: two larger keys a side, fine)
         w = {'frame': 0.017, 'frame_thin': 0.011, 'frame_calm': 0.012}[PATTERN]; nk = 2 if PATTERN == 'frame_calm' else 3
         yb, yt = -0.44 + w, -0.27 - w      # (the band's baseline at the face's edge and its top)
