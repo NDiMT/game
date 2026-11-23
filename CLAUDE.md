@@ -649,7 +649,20 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   (`goguard/col_l.png`, `col_r.png` by `tools/go/fg_columns.py`: rendered from the game's eye, lit from behind, darkened
   toward the rocks' plum and blurred, lit from the right so their flutes read; laid on in `ch1.gd` for `go_guard`); no
   rocks before the eye in this level (the owner: "you've left blurred rocks in front too"), so each shaft runs on below
-  the picture's edge (`below` in the tool: a drum of its own dice, the rest as it was). **The Guardian casts his
+  the picture's edge (`below` in the tool: a drum of its own dice, the rest as it was). **Then figures of the story in
+  their place** (the owner, 22/11: "in the fifth I don't like the blurred columns below, put something else"): painted
+  alone by Gemini, then on flat green (`design/level5/fg/`, their prompts beside them), cut out, brought into the plum of
+  the things before the eye and blurred by `tools/go/fg_figure.py` → `goguard/fg_youth.png` (a marble youth seen from
+  behind, gazing into a hand mirror, at the lower left, facing in) and `goguard/fg_hand.png` (a marble hand holding a
+  mirror up, at the lower right); `IVGD_FG` "both" (`IVGD_FG_YOUTH`, `IVGD_FG_HAND`: left, top over the foot, width at
+  720 wide; `IV_FG5=youth|hand|both|cols` tries others); offered as three, the owner to choose. **The island in the air
+  painted by Gemini, a trial** (the owner, 22/11: "try making the floating island in Gemini"): the 3D island cut from a
+  still of the level (with it, without it) and laid into the clean plain backdrop where it lies in the game (the screen
+  to the painting: uv = screen + `bg_off`, the painting 1.5 times the 720 screen; the follow at that moment from
+  `IVR_FOLLOW_LOG`), then Gemini asked to repaint only it in the painting's style (it made the back row a colonnade with
+  its architrave, and drew its rock down into a longer point); only the island's region of its picture set into the
+  plain backdrop. Kept in the scratch work so far, offered beside the 3D one (`IV_FAR=0 IV_BG_FILE=<it>` shows it);
+  the 3D one stays until the owner chooses. **The Guardian casts his
   shadow** on his pedestal and the way (22/11: "the guardian looks as if he stands in the air": his glass cast none).
   **Frosted, his shade is a soft lilac grey** (`frost_fill` in `IVGD_GLASS_SH`, as the slabs' shade): lit by the sun
   alone, the side away from it and his own shadow on him stayed near black as he whitened (the owner, 22/11: "when he
