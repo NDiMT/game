@@ -11097,13 +11097,16 @@ const IVGD_FG_YOUTH := Vector3(-130.0, 330.0, 340.0)      # (its left, its top o
 const IVGD_FG_MORE := {"veiled": ["res://goguard/fg_veiled.png", 470.0, 330.0, 280.0], "amphora": ["res://goguard/fg_amphora.png", -60.0, 300.0, 300.0], "mask": ["res://goguard/fg_mask.png", -50.0, 280.0, 280.0]}      # (others before the eye, each alone, painted by the image model (design/level5/fg/, their prompts beside them) and cut out by tools/go/fg_figure.py: a veiled woman from behind at the lower right, her head turned in; an amphora, or a broken marble face looking in, at the lower left; its picture, its left, its top over the picture's foot, its width, at 720 wide)
 const IVGD_FG_HAND := Vector3(430.0, 340.0, 340.0)      # (at the lower right, under the walk's right arm, clear of it)
 const IVGD_FAR_ON := false      # (the island in the air painted into the backdrop since 22/11 (the owner, of the image model's repaint of the 3D one: "the new floating island!! but a little more to the right"; design/level5/isle_painted/lay_in.py); before, 3D on the plain sky (22/11, of it: "I liked this background"), and before that painted (21/11: "can't you make the island as a picture?"); IV_FAR=1 brings the 3D one back, with IV_BG_FILE=design/level5/backdrop_plain_clean.jpg for its plain sky)
+const IVGD_FAR_IMG := false      # (the painted island's image in the water (the owner, 23/11: "on the floating island in 5, shouldn't a reflection show below too?"): the 3D island it was painted from, drawn only as its image under it; IV_FAR_IMG=0 leaves it out)
+const IVGD_FAR_IMG_AT := Vector3(0.0, 0.0, 0.0)      # (from the 3D island's place, so its image lies under the painted one; IV_FAR_IMG_AT="dx,dy,dz" tries another)
 const IVGD_FAR_FILE := "far.glb"
 const IVGD_FAR_C := Vector3(-11.2, 0.0, -6.9)      # (its own middle, as built: it is made smaller about it)
 const IVGD_FAR_LIFT := 2.0      # (off the water: an island in the air)
 const IVGD_FAR_AT := Vector3(3.98, 0.0, 2.9)      # (a little to the right and lower on the screen than the owner first chose it (22/11: "the island a little more to the right and lower"; 2.6, 0, 2.6 before): about 0.07 of the screen's width right and 0.035 of its height down; then lower and further right again, 5.72, 0, 3.56, and the owner: "the floating island, leave it where it was"; 1.2, 1.2 on the water before all that)
 func _ivgd_far() -> void:
 	var fp := OS.get_environment("IV_FAR_FILE") if OS.get_environment("IV_FAR_FILE") != "" else go_dir + IVGD_FAR_FILE      # (IV_FAR_FILE tries another build of it)
-	if not (IVGD_FAR_ON or OS.get_environment("IV_FAR") == "1") or OS.get_environment("IV_FAR") == "0" or not FileAccess.file_exists(fp): return
+	var img_only := not (IVGD_FAR_ON or OS.get_environment("IV_FAR") == "1") and IVGD_FAR_IMG and OS.get_environment("IV_FAR_IMG") != "0"      # (the painted island's image in the water: the 3D island it was painted from, drawn only as its image)
+	if not (IVGD_FAR_ON or OS.get_environment("IV_FAR") == "1" or img_only) or OS.get_environment("IV_FAR") == "0" or not FileAccess.file_exists(fp): return
 	var st := GLTFState.new(); var doc := GLTFDocument.new()
 	doc.append_from_buffer(FileAccess.get_file_as_bytes(fp), "", st)
 	var fv := doc.generate_scene(st) as Node3D
@@ -11115,6 +11118,10 @@ func _ivgd_far() -> void:
 		if f3.size() > 2: fv.scale = Vector3.ONE * f3[2]; fo += IVGD_FAR_C * (1.0 - f3[2])      # (smaller about its own middle, not the level's)
 	fo.y += float(OS.get_environment("IV_FAR_LIFT")) if OS.get_environment("IV_FAR_LIFT") != "" else IVGD_FAR_LIFT      # (an island in the air is lifted off the water)
 	fv.position += fo
+	if img_only:      # (set under the painted island, which lies a little right of where the 3D one was)
+		var ia := IVGD_FAR_IMG_AT
+		if OS.get_environment("IV_FAR_IMG_AT") != "": var f3 := OS.get_environment("IV_FAR_IMG_AT").split_floats(","); ia = Vector3(f3[0], f3[1], f3[2])
+		fv.position += ia
 	var fk := float(OS.get_environment("IV_FAR_K")) if OS.get_environment("IV_FAR_K") != "" else IVGD_FAR_K
 	for m in fv.find_children("*", "MeshInstance3D", true, false):
 		var mi := m as MeshInstance3D
@@ -11126,6 +11133,7 @@ func _ivgd_far() -> void:
 			var nm := String(mi.name).to_lower() + "|" + String(mi.get_parent().name).to_lower()
 			var kd := "rock2" if nm.contains("rock") else "marble2"
 			return [kd, fk, {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.15, "veins": 0.6 if kd == "marble2" else 0.0, "haze": 1.0}])
+	if img_only: fv.visible = false      # (the island itself is the painting's; only its image in the water is drawn)
 
 ## columns standing out of the water far behind the level, a drowned colonnade in the haze under the sun, built as the
 ## level is (tools/go/guard_far_plan.py cols), their image in the water (the owner, 22/11: "in the background, in the
