@@ -1,4 +1,5 @@
-Level 6, offered 24/11 (the owner: "I want you to think of something very clever for the 6th puzzle"). Not built yet.
+Kept for later (the owner, 24/11: "not something with reflection, keep it for later, I would like something completely
+different"). Offered 24/11 as level 6 (the owner: "I want you to think of something very clever for the 6th puzzle").
 
 The story's next truth (eidolon-world/dev/EIDOLON_SCRIPT.md, 9): the mirror gave no soul, only an image, and the image
 went into the half-carved statue: you. Her true soul stayed in the real temple, a ruin, without a face. The world's law:
