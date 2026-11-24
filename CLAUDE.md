@@ -946,6 +946,14 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   2008-2026, puzzle-design theory and classic puzzles, Greek myths and ancient machines) and ten ideas from it, each
   painted in the game's style and shown as a page (https://claude.ai/artifact/Mnp2XUPGTunAEDFvhK6Sny):
   `design/level6/ideas/` (README with rules, catches, sources and what was kept for later; the paintings and prompts).
+  **The owner asked how 2 would be made ("To 2 πως θα το καναμε;")**: The Faithful, a veiled statue that takes two
+  steps toward her for each of hers, sideways (the board's x) first, never a step away (water between them holds it);
+  reaching her is level 5's red puff and the start again; the cracked slab holds her (a soul), not it: stepping onto it,
+  it sinks and becomes stone (the script's Mourner "that she never go to the sea"; "when one is quieted it becomes
+  stone"). A plate held by the statue before the gate was tried first: almost no puzzles on islet boards. Solver
+  `tools/go/faithful_trial.py` (`LEVEL6`: 13 swipes, one way, 6 dead states that all end caught, no limbo; found by a
+  search scored by the real decisions along the way), its film `design/level6/faithful/board_anim.py board.json <dir>`
+  (a try caught at the second swipe, then the way, Greek captions); sent to the owner as a video, the build not begun.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
