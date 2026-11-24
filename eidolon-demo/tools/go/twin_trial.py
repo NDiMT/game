@@ -57,6 +57,18 @@ def show(A, B, sa, sb, ga, gb, W, H, ripple=frozenset()):
     for y in range(1,H+1):
         rows.append(' '.join(('G' if (x,y)==ga else 'Y' if (x,y)==sa else 'r' if (x,y) in ripple else 'o') if (x,y) in A else '.' for x in range(W)))
     return '\n'.join(rows)
+def level6():
+    """The board offered: a 4 by 3 slab terrace each side of the still water. One column stands in your glass temple
+    (it stops only you); one slab has fallen from her real ruin (it stops only her); the island's edges and the water's
+    stop each of you in turn. She starts as your image. Your ring before the gate at the right end of the far row, her
+    pool at the right end by the water. 15 swipes, one way only, no dead end in 106 states, the column and the gap both
+    needed (tools/go/twin_trial.py level6 prints it)."""
+    W, H = 4, 3
+    full = [(x, y) for x in range(W) for y in range(1, H + 1)]
+    A = frozenset(set(full) - {(0, 2)}); B = frozenset(set(full) - {(1, 1)})
+    return A, B, (0, 1), (0, 1), (3, 3), (3, 1), W, H
+
+
 if __name__ == '__main__' and sys.argv[1:2] == ['level6']:
     A, B, sa, sb, ga, gb, W, H = level6()
     print(analyse(A, B, sa, sb, ga, gb)); print(show(A, B, sa, sb, ga, gb, W, H))
@@ -84,14 +96,3 @@ elif __name__ == '__main__':
         print('L',L,'missing',miss,'states',n); print(show(A,B,sa,sb,ga,gb,W,H)); p=solve(A,B,sa,sb,ga,gb)
         print(' '.join({(1,0):'R',(-1,0):'L',(0,1):'B',(0,-1):'F'}[d] for d,s in p)); print()
 
-
-def level6():
-    """The board offered: a 4 by 3 slab terrace each side of the still water. One column stands in your glass temple
-    (it stops only you); one slab has fallen from her real ruin (it stops only her); the island's edges and the water's
-    stop each of you in turn. She starts as your image. Your ring before the gate at the right end of the far row, her
-    pool at the right end by the water. 15 swipes, one way only, no dead end in 106 states, the column and the gap both
-    needed (tools/go/twin_trial.py level6 prints it)."""
-    W, H = 4, 3
-    full = [(x, y) for x in range(W) for y in range(1, H + 1)]
-    A = frozenset(set(full) - {(0, 2)}); B = frozenset(set(full) - {(1, 1)})
-    return A, B, (0, 1), (0, 1), (3, 3), (3, 1), W, H
