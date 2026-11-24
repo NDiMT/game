@@ -937,7 +937,12 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   that sails by itself, a flooding temple, the seabed, the surface of an amphora, a sea turtle, a raft on a current
   ("something out of the box?"); then walking on the still sea between the rings of the Mourners' tears, the
   sculptor's maquette that moves the real things, what looks joined is joined, her image passing from statue to statue,
-  carved words that rewrite the level's rules.
+  carved words that rewrite the level's rules ("give me 10 completely out of the box and clever"); then ten: the island
+  that tilts under her weight, the great block she rolls by stepping off its edges (its smooth face up at the gate), the
+  veil showing the temple then and now, the masks (stone, wind, sea: the water a floor, the islands walls), the mosaic of
+  her face in sliding islands, leaps over statues that crumble (peg solitaire), her trail hardening into marble to carve
+  the gate's pattern in one stroke, turning to stone at will, the sea that wraps round, ropes between columns that may
+  not cross.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
