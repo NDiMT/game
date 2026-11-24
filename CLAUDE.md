@@ -933,7 +933,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   want something else"; its code kept in `scene_code.gd.txt`, out of the game). Ideas offered after it: the boat gliding
   on still water, the lamp at night, a turning disc ("the boat was a good direction"); a tide, shallow and deep water, a
   harbour of moored boats ("other, more open minded"); her echoes, a reclining colossus, the living Mourners, walking on
-  shadows ("other?").
+  shadows ("other?"); eight more, islands in the sky on pulleys, her boat on a sea of clouds with a weather vane, a ship
+  that sails by itself, a flooding temple, the seabed, the surface of an amphora, a sea turtle, a raft on a current
+  ("something out of the box?"); then walking on the still sea between the rings of the Mourners' tears, the
+  sculptor's maquette that moves the real things, what looks joined is joined, her image passing from statue to statue,
+  carved words that rewrite the level's rules.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
