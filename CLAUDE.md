@@ -954,6 +954,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   `tools/go/faithful_trial.py` (`LEVEL6`: 13 swipes, one way, 6 dead states that all end caught, no limbo; found by a
   search scored by the real decisions along the way), its film `design/level6/faithful/board_anim.py board.json <dir>`
   (a try caught at the second swipe, then the way, Greek captions); sent to the owner as a video, the build not begun.
+  He: "it doesn't look very hard" (a player looking two moves ahead for danger, else heading for the ring or the crack,
+  solved it 93 in 100: `tools/go/faithful_hard.py`). Now `LEVEL6` is a hard board found by a search scored by how rarely
+  that player solves it (0 in 200 looking 2 to 4 ahead), 5x6, 22 swipes, one way: send it away to shut it in at the
+  pier's end first, then on the crack a step up and back down brings it above her, and stepping off it she makes it
+  step onto the crack; the first board is `LEVEL6_FIRST` (`board_first.json`).
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are

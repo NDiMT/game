@@ -127,17 +127,27 @@ def show(b, h=None, m=None):
     return '\n'.join(out)
 
 
-# the board offered to the owner (24/11): found by a search over 5x5 to 6x6 boards scored by the real decisions along
-# its way (steps where another move she can make dooms her); 13 swipes, one way only, no limbo. She draws the statue
-# down to the left, then along behind her into the corner of water at (2,3), where it is held (water to its right and
-# below); she goes round and up the right side; as she rises past it, it comes out, and its first step sideways is the
-# cracked slab: it sinks. Running for the gate first gets her caught at the second swipe.
-LEVEL6 = (["~F~~~G",
-           "oooooo",
-           "~ooCo~",
-           "oSo~oo",
-           "oo~~oo",
-           "oooooo"], [])
+# the first board offered (24/11): 13 swipes, one way; the owner: "it doesn't look very hard" (a player who looks two
+# moves ahead for danger and otherwise heads for the ring or the crack solves it 93 times in 100)
+LEVEL6_FIRST = (["~F~~~G",
+                 "oooooo",
+                 "~ooCo~",
+                 "oSo~oo",
+                 "oo~~oo",
+                 "oooooo"], [])
+
+# the hard board (24/11): found by a search scored by how rarely such a player solves it (0 in 200, looking 2, 3 or 4
+# moves ahead), its two stubs that changed nothing taken out. 22 swipes, one way, no limbo. Two ideas: first she sends
+# it away, down the bottom arm to the right, where it is shut in at the pier's end (water below it and to its left) and
+# stays while she goes back; then on the crack, a step up and back down onto it brings it round to stand just above
+# her, and as she steps off downward it steps where she stood and sinks. Going straight up over the crack gets her
+# caught at the fourth swipe: it comes over the top first.
+LEVEL6 = (["~~~~G",
+           "ooooo",
+           "C~oFo",
+           "o~~~o",
+           "S~~~~",
+           "ooooo"], [])
 
 
 if __name__ == '__main__':
