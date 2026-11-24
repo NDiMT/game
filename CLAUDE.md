@@ -963,7 +963,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   every file carries the version in its name, and `index.html` checks `version.txt` past all caches and moves an old
   page or an open tab onto the current version; it also resumes the page's sound at every touch and plays it as media
   on iPhone (not muted by the silent switch); it also gives the game `window.eidolonSound()` ("on" once the browser has
-  let sound go). Deploy = the folder's files in place of the old ones (~120 MB). On the web a
+  let sound go). Deploy = the folder's files in place of the old ones (~120 MB). The site's Pages workflow (`.github/workflows/pages.yml` on the site's branch)
+  builds and deploys in two jobs since 24/11 (the owner's OK): in one job `deploy-pages` looked for the artifact right
+  after its upload and did not find it ("Found 0 artifact(s)", five runs in a row). On the web a
   film starts by itself (the owner). Its sound is a player of its own (`intro/intro_audio.ogg`) held to the picture
   (`_ivw_film_sync_tick`): in a browser it is put where the picture is once, when sound is let go. Never seek a
   sample over and over: a browser reports a sample's place a second late, and each start copies the whole sound (the
