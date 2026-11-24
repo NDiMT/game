@@ -51,3 +51,12 @@ p5 blue-grey, soft slate      IV_CUBE_PAL=block:b9c1d0,a5acbd,8a92a2,686f7d;mean
 p6 sage, soft green-grey      IV_CUBE_PAL=block:a9b5a2,97a293,7e887e,5f6861;meander:838f80,758074,626c64,4a524d
 p7 warm grey, soft taupe      IV_CUBE_PAL=block:c9c1b8,b3aca7,969290,716f6e;meander:9b9188,8a817c,746d6a,575352
 p8 dark plum, light lilac      IV_CUBE_PAL=block:6e6075,62566a,52485b,3e3746;meander:a597ad,93879d,7b7287,5d5768
+
+# six more on the path design, offered on 24/11 (the owner: "can we put a more fitting colour on the cube?"); shown in
+# level 5 at her start; IV_CUBE_PAL as above
+n1 ivory marble, terracotta lines (her dress)      IV_CUBE_PAL=block:e9dccf,d6c7ba,b8a79d,8f8079;meander:b0715b,9c6450,82533f,623e30
+n2 rose quartz, plum lines      IV_CUBE_PAL=block:dcbfc4,c8aab2,a98e98,857079;meander:8e6878,7d5b6b,674b58,4d3743
+n3 warm taupe stone, cream lines      IV_CUBE_PAL=block:a8959a,958389,7a6b72,5c5057;meander:eee4da,dcd0c5,bfb2a8,948880
+n4 pearl white, warm brown lines      IV_CUBE_PAL=block:f1ebe6,ddd5d3,bdb4b8,928a93;meander:a58d84,937c74,7a6660,5c4c48
+n5 lavender, gold lines (the mirror's, the winch's)      IV_CUBE_PAL=block:b9aacb,a697b9,887b9c,685d7a;meander:d6b46c,c09f5d,a0834b,786237
+n6 honey stone, bronze lines      IV_CUBE_PAL=block:dcc4a0,c8b08d,a99376,82705c;meander:8f6d47,7d5f3d,664d31,4c3924
