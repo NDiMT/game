@@ -958,7 +958,12 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   solved it 93 in 100: `tools/go/faithful_hard.py`). Now `LEVEL6` is a hard board found by a search scored by how rarely
   that player solves it (0 in 200 looking 2 to 4 ahead), 5x6, 22 swipes, one way: send it away to shut it in at the
   pier's end first, then on the crack a step up and back down brings it above her, and stepping off it she makes it
-  step onto the crack; the first board is `LEVEL6_FIRST` (`board_first.json`).
+  step onto the crack; the first board is `LEVEL6_FIRST` (`board_first.json`). Then "is there no way to make it harder
+  with one Faithful?": three harder boards, one statue, found by `tools/go/faithful_anneal.py` (simulated annealing,
+  pruned of slabs that changed nothing; `LADDER` in the solver: 33, 37 and 44 swipes, one way each, no limbo), and all
+  five made playable on a page for his phone (`design/level6/faithful/play.html`, published as
+  https://claude.ai/artifact/QooUd2rD6gT39Sjr9nUfcW: swipes or arrows, the statue's rules checked against the solver on
+  2,000 random move strings, the solution played on request): a solution watched looks easier than it is.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are

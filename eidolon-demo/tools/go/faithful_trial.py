@@ -150,6 +150,18 @@ LEVEL6 = (["~~~~G",
            "ooooo"], [])
 
 
+# harder still with one statue (24/11; the owner: "is there no way to make it harder with one Faithful?"): found by
+# tools/go/faithful_anneal.py, each pruned of slabs that changed nothing; the look-ahead player of faithful_hard.py
+# solves none of them looking 3 or 5 moves ahead. With LEVEL6_FIRST and LEVEL6 they are the five boards of the
+# playable page (design/level6/faithful/play.html, https://claude.ai/artifact/QooUd2rD6gT39Sjr9nUfcW).
+LADDER = [
+    ('Πολύ δύσκολος', ["~~~~G~", "~oSoo~", "~C~ooo", "oo~~~F", "o~ooo~", "ooo~oo"], []),      # (33 swipes)
+    ('Δαίδαλος', ["ooo~~G", "C~oooo", "oo~~oF", "~o~~~~", "~oo~~~", "~~oooS"], [((4, 2), (5, 2))]),      # (37)
+    ('Λαβύρινθος', ["ooooo~G", "oo~So~F", "~o~~o~o", "~o~oooo", "~ooo~~~", "~~~Co~~"],
+     [((3, 0), (3, 1)), ((1, 0), (1, 1))]),      # (44)
+]
+
+
 if __name__ == '__main__':
     b = Board(*LEVEL6)
     r = analyse(b)
@@ -158,3 +170,7 @@ if __name__ == '__main__':
     print(show(b)); print()
     print('way %d swipes (%s), the statue sunk at swipe %d; %d states, %d dead (each ends caught), %d limbo' % (
         r['L'], ''.join(D4[d] for d in r['path']), r['chase'], r['states'], r['dead'], r['limbo']))
+    for name, rows, cuts in LADDER:
+        b = Board(rows, cuts); r = analyse(b)
+        assert r and r['ways'] == 1 and r['limbo'] == 0 and analyse(b, 2, False) is None, name
+        print('%s: %d swipes, one way, %d states, %d dead, no limbo' % (name, r['L'], r['states'], r['dead']))
