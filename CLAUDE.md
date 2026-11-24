@@ -901,7 +901,9 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   its own part, `disc` (`DISCS` in the builder), the block's stone with its own material, lit with the lines. A face is
   the disc only if every corner of it lies within the ring: at first the builder took a face's middle by its corners,
   which lay within the ring for the four fields round it too (their many corners run along its arc), so they were the
-  disc, and lit, the whole cube went white (the owner, 23/11: "why did you make it all white"). Check the parts' areas
+  disc, and lit, the whole cube went white (the owner, 23/11: "why did you make it all white"). **Since 24/11 a rose quartz, its lines a
+  plum** (`dcbfc4`, `8e6878`; the owner, of six more colours on the path design, n1-n6 in `design/cube/options.txt`:
+  "of the cubes I want the one that says pink"), `block`, `meander` in `IV_WAKE_PAL`, every level. Check the parts' areas
   after a build (the discs about 0.19 m2 in all). **Level 2: it lights in its gap, and no mark of the way over it or
   to it**
   ("in the first level no extra path should come out on the square, it should just activate"; "no path line should
