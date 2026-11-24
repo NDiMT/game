@@ -15,3 +15,11 @@ trap; the winch sets it right). 27 places walked (about ten swipes, the long way
 end in 201 states, every column needed.
 
 Its line, to settle with the owner: "Her soul stayed in the ruin, / without a face." (the script's ninth truth).
+
+Built as a scene on 24/11 (the owner: "can you make it into a scene?"): islets of slabs, the five columns (a stump, two
+broken, the tall one whole with its capital, tools/go/ruin_plan.py; the columns built alone by tools/ivory_level.py with
+a turned base of their own, `'base': 'round'`), the winch, the gate; the columns fell, knocked each other on and lay as
+bridges, the winch raised them, the whole way played through in 27 moves. The board was changed so a column falls only
+over open water (the gate's islet is the ring and the place before it): still one way, no dead end, every column needed.
+Seen as a scene, the owner: "no, I don't like it, I want something else". Taken out of the game; its code is in
+scene_code.gd.txt, its plan and puzzle in scene/.

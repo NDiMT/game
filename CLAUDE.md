@@ -927,6 +927,13 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   Colossus of Rhodes (painted from below, not as the island is seen); tried and not used: islets with a ruined temple
   (`backdrop_isles_prompt.txt`: they read as part of the level). Level 4's gate leads on into it; the end screen
   after it.
+- **Level 6, being chosen (24/11)**: the twin across the water (`tools/go/twin_trial.py level6`, `design/level6/twin/`)
+  kept for later ("not something with reflection, keep it for later"); the ruin's columns toppled into bridges
+  (`tools/go/topple_trial.py level6`, `design/level6/columns/`) built as a scene and turned down ("no, I don't like it, I
+  want something else"; its code kept in `scene_code.gd.txt`, out of the game). Ideas offered after it: the boat gliding
+  on still water, the lamp at night, a turning disc ("the boat was a good direction"); a tide, shallow and deep water, a
+  harbour of moored boats ("other, more open minded"); her echoes, a reclining colossus, the living Mourners, walking on
+  shadows ("other?").
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are

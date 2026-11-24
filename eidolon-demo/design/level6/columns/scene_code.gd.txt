@@ -1,0 +1,339 @@
+## The toppling columns built as a scene (24/11), then turned down by the owner ("no, I don't like it, I want something
+## else"). Kept here for the record, out of the game. To bring it back: this block at the end of ch1.gd, and these hooks:
+##   var go_ruin := OS.get_environment("FLIP") == "goruin" or OS.has_feature("goruin") or String(Engine.get_meta("ivw_next", "")) == "goruin"
+##   go_veil: "... or go_guard or go_ruin";  go_dir: "res://goruin/" if go_ruin else ...;  the palette: (go_glass or go_guard or go_ruin)
+##   _ivw_next_level: return "" if go_ruin; "goruin" if go_guard;  the picker: 6 levels, ["goveil", ..., "goguard", "goruin"]
+##   after _ivgd_setup(): if go_ruin and ivg_on: _ivru_setup();  per frame: if go_ruin and ivru_on: _ivru_tick()
+##   _ivw_open: if go_ruin and ivru_on: return _ivru_open(a, b);  _ivg_plain: a standing column is no plain step
+##   _ivg_turn, before the mirrors: if go_ruin and ivru_on: the winch (_ivru_winch) or a push (_ivru_push)
+##   go_demo: FLIP == "goruin";  the export filters: goruin/*.json, goruin/*.glb
+## Its files: tools/go/ruin_plan.py (goruin/plan.json, puzzle.json; col<h> builds a column alone), the level built by
+## tools/ivory_level.py -- goruin/level.glb goruin/level.json 606 24 goruin/plan.json, the columns with seeds 61-63;
+## the backdrop was design/level5/backdrop_plain_clean.jpg.
+
+# ---------------------------------------------------------------- the sixth level: the ruin's columns (goruin/)
+## Islets of slabs in a still sea and on them the columns of a drowned ruin, each a different height: a stump, a broken
+## shaft, a whole column with its capital (goruin/col<h>.glb, each built alone about its own foot by
+## tools/go/ruin_plan.py). Swipe into a standing column from beside it and it falls away from her over as many places
+## as it is tall, into the shallow water, and lies there as a bridge, its top level with the slabs: walked only along its
+## length, onto it from its foot or from beyond its top. A column whose top comes down beside another standing one knocks
+## it on the same way (dominoes). The winch on the start islet raises every column back onto its base. The rules are
+## tools/go/topple_trial.py's, which proves the board (LEVEL6: one way, no dead end, every column needed).
+var ivru_on := false
+var ivru_cols: Array = []      # [{node, cell, h, len, fall (Vector2i.ZERO while it stands), n, img, home, way}]
+var ivru_cell := {}      # node -> its place on the board (Vector2i)
+var ivru_slab := {}      # node -> true: a slab, a column's base, the winch's
+var ivru_size := Vector2i(8, 6)
+var ivru_edge := 0.37      # (a base's slab reaches that far (in places) from its column's middle)
+var ivru_r := 0.36      # (a column's foot)
+var ivru_falling := 0
+const IVRU_STEP := 1.5
+const IVRU_BASE := 1.29      # (its turned base's radius, in its foot's: it tips over that edge)
+const IVRU_TOP := 0.33      # (lying, its axis that far under the slabs' top: its own top level with them)
+const IVRU_MIRROR := Transform3D(Basis(Vector3(1, 0, 0), Vector3(0, -1, 0), Vector3(0, 0, 1)), Vector3.ZERO)
+
+func _ivru_setup() -> void:
+	var ru: Dictionary = ivg.get("ruin", {})
+	if ru.is_empty(): return
+	ivru_size = Vector2i(int(ru.size[0]), int(ru.size[1])); ivru_edge = float(ru.edge); ivru_r = float(ru.r)
+	for k in (ru.cells as Dictionary):
+		var c: Array = ru.cells[k]; ivru_cell[String(k)] = Vector2i(int(c[0]), int(c[1]))
+	for k in (ru.slabs as Array): ivru_slab[String(k)] = true
+	for cc in (ru.cols as Array):
+		var col := {"node": String(cc.node), "cell": Vector2i(int(cc.cell[0]), int(cc.cell[1])), "h": int(cc.h), "len": float(cc.len), "fall": Vector2i.ZERO, "way": null}
+		var mn := _ivru_model(int(cc.h))
+		if mn == null: return
+		iv_root.add_child(mn)
+		mn.global_position = ivp_nodes[col.node]
+		col.n = mn; col.home = mn.global_transform
+		if iv_at_sea:
+			col.img = _ivs_mirror(mn, func(_mi: MeshInstance3D) -> Array:
+				return ["marble2", 0.0, _ivr_ex("marble2", 1.0, true)])
+		ivru_cols.append(col)
+	ivru_on = true
+	_ivru_tick()
+	print("IV the ruin: %d columns" % ivru_cols.size())
+
+func _ivru_model(h: int) -> Node3D:      # (a column, read raw from its .glb, shaded as the level's marble; under the water it fades into the sea as the rising stones do)
+	var fp := go_dir + "col%d.glb" % h
+	if not FileAccess.file_exists(fp): push_warning("no " + fp); return null
+	var st := GLTFState.new(); var doc := GLTFDocument.new()
+	doc.append_from_buffer(FileAccess.get_file_as_bytes(fp), "", st)
+	var fv := doc.generate_scene(st) as Node3D
+	if fv == null: return null
+	var hold := Node3D.new(); hold.add_child(fv)
+	for m in fv.find_children("*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		var mm := _ivr_mat("marble2", 1.0, true).duplicate() as ShaderMaterial
+		mm.set_shader_parameter("clip_k", 0.0); mm.set_shader_parameter("under_k", 1.0); mm.set_shader_parameter("wet_k", 0.0)
+		mm.set_meta("wline", mm.get_shader_parameter("wline_k"))
+		mi.material_override = mm; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	return hold
+
+func _ivru_tick() -> void:      # (each column's image in the water follows it)
+	var sea_w := IV_O.y + ivr_sea_y
+	for c in ivru_cols:
+		if c.get("img") != null: (c.img as Node3D).global_transform = Transform3D(Basis.from_scale(Vector3(1, -1, 1)), Vector3(0, 2.0 * sea_w, 0)) * (c.n as Node3D).global_transform
+
+func _ivru_dirw(d: Vector2i) -> Vector3: return Vector3(float(d.y), 0.0, -float(d.x))      # (the board's east is the world's -z, its south the world's +x)
+func _ivru_standing(n: String) -> int:
+	for i in ivru_cols.size():
+		if ivru_cols[i].node == n and ivru_cols[i].fall == Vector2i.ZERO: return i
+	return -1
+func _ivru_cover() -> Dictionary:      # (the places the fallen columns lie over: place -> [column, its way, which of its places])
+	var out := {}
+	for i in ivru_cols.size():
+		var c: Dictionary = ivru_cols[i]
+		if c.fall == Vector2i.ZERO: continue
+		for k in range(1, int(c.h) + 1): out[(c.cell as Vector2i) + (c.fall as Vector2i) * k] = [i, c.fall, k]
+	return out
+func _ivru_at(p: Vector2i) -> String:
+	for k in ivru_cell:
+		if ivru_cell[k] == p: return String(k)
+	return ""
+func _ivru_slab_at(p: Vector2i) -> bool:
+	var k := _ivru_at(p)
+	return k != "" and ivru_slab.has(k)
+
+## may she go from a to b (the board's rules: a column is pushed from beside it; off a fallen one and onto it only along
+## it, onto it from its foot or from beyond its top; else only onto a slab or a bare base)
+func _ivru_open(a: String, b: String) -> bool:
+	if not ivru_cell.has(a) or not ivru_cell.has(b): return true      # (her way in)
+	if b == ivg_vol: return true      # (the winch, turned from beside it)
+	if _ivru_standing(b) >= 0: return true      # (a standing column: pushed)
+	var ca: Vector2i = ivru_cell[a]; var cb: Vector2i = ivru_cell[b]; var d := cb - ca
+	if absi(d.x) + absi(d.y) != 1: return false
+	var cov := _ivru_cover()
+	var here = cov.get(ca); var there = cov.get(cb)
+	if here != null and here[1] != d and here[1] != -d: return false      # (off a column only along it)
+	if there != null:
+		if there[1] != d and there[1] != -d: return false      # (onto it only along it)
+		if here == null:
+			var c: Dictionary = ivru_cols[int(there[0])]
+			if not ((there[1] == d and int(there[2]) == 1 and ca == c.cell) or (there[1] != d and int(there[2]) == int(c.h))): return false      # (from its foot, or from beyond its top)
+		elif int(here[0]) != int(there[0]): return false      # (never from one column straight onto another)
+	elif not ivru_slab.has(b): return false      # (the water)
+	return true
+
+## the columns that go over when she pushes the one at `first` her way d: it, and each one its top comes down beside
+## (dominoes); none if the first cannot fall (a slab, a base, the winch, the start, the ring, or a column, standing or
+## fallen, in its way: only over open water, or out past the board into the open sea)
+func _ivru_chain(d: Vector2i, first: int) -> Array:
+	var standing := {}
+	for i in ivru_cols.size():
+		if ivru_cols[i].fall == Vector2i.ZERO: standing[ivru_cols[i].cell] = i
+	var covered := _ivru_cover()
+	var out := []; var i := first
+	while true:
+		var c: Dictionary = ivru_cols[i]; var ok := true; var span := []
+		for k in range(1, int(c.h) + 1):
+			var r: Vector2i = (c.cell as Vector2i) + d * k
+			if (standing.has(r) and not out.has(standing[r])) or covered.has(r) or _ivru_slab_at(r): ok = false; break
+			span.append(r)
+		if not ok: break
+		out.append(i)
+		for r in span: covered[r] = [i, d, 0]
+		var t: Vector2i = (c.cell as Vector2i) + d * (int(c.h) + 1)
+		if not standing.has(t) or out.has(standing[t]): break
+		i = int(standing[t])
+	return out
+
+func _ivru_push(me: String, nb: String) -> void:
+	var d: Vector2i = ivru_cell[nb] - ivru_cell[me]
+	var chain := _ivru_chain(d, _ivru_standing(nb))
+	if chain.is_empty(): await _her_no(); return
+	iv_busy = true
+	iv_moves += 1
+	var cp: Vector3 = (ivp_nodes[nb] as Vector3) + Vector3(0, 1.05, 0)
+	face_to = cp
+	var n := 0
+	while face_to != null and n < 90: await get_tree().process_frame; n += 1
+	var to_her := Vector3(pos.x - cp.x, 0, pos.z - cp.z).normalized()
+	var fr := cp + to_her * (ivru_r + 0.04)
+	tgtL = fr + Vector3(0, 0.1, 0) + to_her.cross(Vector3.UP) * 0.17; tgtR = fr + Vector3(0, -0.02, 0) - to_her.cross(Vector3.UP) * 0.17
+	var up := tw(); up.set_parallel(); up.tween_property(self, "a_wL", 1.0, 0.3); up.tween_property(self, "a_wR", 1.0, 0.3); up.tween_property(self, "a_lean", 0.22, 0.3)
+	await up.finished
+	var names := []
+	for ci in chain: names.append(ivru_cols[ci].node)
+	print("IV push ", nb, " ", d, ": ", names)
+	var delay := 0.0
+	ivru_falling = chain.size()
+	for ci in chain:
+		ivru_cols[ci].fall = d
+		_ivru_fall(int(ci), d, delay)
+		delay += _ivru_fall_t(int(ci)) * 0.93      # (the next goes as this one's top comes down beside it)
+	await wait(0.35)
+	var dn := tw(); dn.set_parallel(); dn.tween_property(self, "a_wL", 0.0, 0.35); dn.tween_property(self, "a_wR", 0.0, 0.35); dn.tween_property(self, "a_lean", 0.0, 0.35)
+	var nf := 0
+	while ivru_falling > 0 and nf < 900: await get_tree().process_frame; nf += 1
+	iv_busy = false
+
+func _ivru_fall_t(i: int) -> float: return 0.62 * sqrt(float(ivru_cols[i].len))      # (a taller one takes longer over)
+
+## a column falls: over its base's far edge, slowly then fast, flat; off its base into the water, a splash along it; it
+## settles, its top level with the slabs, and the way is drawn along it
+func _ivru_fall(i: int, d: Vector2i, delay: float) -> void:
+	var c: Dictionary = ivru_cols[i]
+	if delay > 0.0: await wait(delay)
+	var n: Node3D = c.n
+	_ivru_wline(c, false)
+	var dw := _ivru_dirw(d)
+	var foot: Vector3 = ivp_nodes[c.node]
+	var piv := foot + dw * (ivru_r * IVRU_BASE)
+	var ax := Vector3.UP.cross(dw).normalized()
+	var b0: Basis = (c.home as Transform3D).basis
+	var T1 := _ivru_fall_t(i)
+	var t1 := create_tween()
+	t1.tween_method(func(th: float) -> void:
+		var R := Basis(ax, th)
+		n.global_transform = Transform3D(R * b0, piv + R * (foot - piv)), 0.0, PI * 0.5, T1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await t1.finished
+	var rest := _ivru_rest(c, d)
+	var t2 := create_tween()
+	t2.tween_property(n, "global_transform", rest, 0.34).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await get_tree().create_timer(0.24, false).timeout
+	_ivru_splash(c, d)
+	if t2.is_running(): await t2.finished
+	var bob := create_tween()      # (it sinks a little under its own weight and comes back)
+	bob.tween_property(n, "global_position", rest.origin + Vector3(0, -0.05, 0), 0.22).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	bob.tween_property(n, "global_position", rest.origin, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_ivru_way(i)
+	await bob.finished
+	_ivru_wline(c, true)
+	ivru_falling -= 1
+
+func _ivru_rest(c: Dictionary, d: Vector2i) -> Transform3D:      # (lying: its foot against its base's edge, its top level with the slabs)
+	var dw := _ivru_dirw(d)
+	var foot: Vector3 = ivp_nodes[c.node]
+	var R := Basis(Vector3.UP.cross(dw).normalized(), PI * 0.5)
+	return Transform3D(R * (c.home as Transform3D).basis, Vector3(foot.x, foot.y - IVRU_TOP, foot.z) + dw * (ivru_edge * IVRU_STEP + 0.015))
+
+func _ivru_splash(c: Dictionary, d: Vector2i) -> void:      # (the water thrown up along it, foam out round it, rings)
+	var dw := _ivru_dirw(d)
+	var foot: Vector3 = ivp_nodes[c.node]
+	var sea := IV_O.y + ivr_sea_y
+	var a := foot + dw * (ivru_edge * IVRU_STEP); var L := float(c.len)
+	var nsp := maxi(2, int(round(L / 1.1)))
+	for k in nsp:
+		var p := a + dw * (L * (float(k) + 0.5) / float(nsp)); p.y = sea
+		_ivv_splash(p, 0.42)
+		if k % 2 == 0: _ivw_ripple(p, 1.5)
+	var mid := a + dw * (L * 0.5); mid.y = sea
+	var fm := _ivv_churn_box(mid, 0.4)
+	var mm := fm.material_override as ShaderMaterial
+	var half := Vector2(absf(dw.x) * L * 0.5 + absf(dw.z) * 0.4, absf(dw.z) * L * 0.5 + absf(dw.x) * 0.4)
+	mm.set_shader_parameter("box_half", half); mm.set_shader_parameter("rad", maxf(half.x, half.y) * 1.42)
+	(fm.mesh as PlaneMesh).size = Vector2(half.x * 2.0 + 2.6, half.y * 2.0 + 2.6)
+	_ivw_churn_burst(fm)
+	var still := _ivv_churn_box(mid, 0.4)      # (and after it the still water's thin foam round it, as round every stone)
+	var sm := still.material_override as ShaderMaterial
+	sm.set_shader_parameter("box_half", half); sm.set_shader_parameter("rad", maxf(half.x, half.y) * 1.42); (still.mesh as PlaneMesh).size = (fm.mesh as PlaneMesh).size
+	sm.set_shader_parameter("boil", 0.0); sm.set_shader_parameter("spread", 0.1); sm.set_shader_parameter("churn", 0.0)
+	create_tween().tween_method(func(v: float) -> void: sm.set_shader_parameter("churn", v), 0.0, IVGD_FOAM_K, 2.0).set_delay(1.2)
+	c["foam"] = still
+
+func _ivru_wline(c: Dictionary, on: bool) -> void:      # (the fine line of light where it meets the still water: off while it moves)
+	for m in (c.n as Node3D).find_children("*", "MeshInstance3D", true, false):
+		var qm := (m as MeshInstance3D).material_override as ShaderMaterial
+		if qm == null or not qm.has_meta("wline"): continue
+		var w := float(qm.get_meta("wline")) if qm.get_meta("wline") != null else 0.0
+		if on: create_tween().tween_method(func(v: float) -> void: qm.set_shader_parameter("wline_k", v), 0.0, w, 0.8).set_trans(Tween.TRANS_SINE)
+		else: qm.set_shader_parameter("wline_k", 0.0)
+
+## the way along a fallen column: a disc on its top at each place it lies over, smaller than the slabs' (its top is
+## round), and the line from its base along it to the place beyond its top, where there is one to step onto
+func _ivru_way(i: int) -> void:
+	var c: Dictionary = ivru_cols[i]
+	var wn := Node3D.new(); iv_root.add_child(wn); c.way = wn
+	var cell: Vector2i = c.cell; var d: Vector2i = c.fall
+	var dw := _ivru_dirw(d)
+	var p0: Vector3 = ivp_nodes[c.node]
+	var pts := [p0]
+	for k in range(1, int(c.h) + 1):
+		var q := p0 + dw * (IVRU_STEP * float(k))
+		pts.append(q)
+		if ivru_cell.values().has(cell + d * k):
+			var rm := CylinderMesh.new(); rm.top_radius = 0.13; rm.bottom_radius = 0.13; rm.height = 0.02; rm.radial_segments = 20; rm.rings = 1
+			var ri := _iv_prim(rm, q - IV_O + Vector3(0, 0.012, 0), "groove", wn); ri.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			var dm := CylinderMesh.new(); dm.top_radius = 0.095; dm.bottom_radius = 0.1; dm.height = 0.03; dm.radial_segments = 20; dm.rings = 1
+			var di := MeshInstance3D.new(); di.mesh = dm; di.material_override = _ivr_mat("marble2", 0.0); di.position = q - IV_O + Vector3(0, 0.022, 0); di.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; wn.add_child(di)
+	var beyond := cell + d * (int(c.h) + 1)
+	if _ivru_slab_at(beyond): pts.append(p0 + dw * (IVRU_STEP * float(int(c.h) + 1)))
+	for k in range(pts.size() - 1):
+		var a: Vector3 = pts[k]; var b: Vector3 = pts[k + 1]
+		if k == pts.size() - 2 and _ivru_slab_at(beyond): b -= dw * _ivr_way_gap(_ivru_at(beyond))
+		_iv_line(wn, a - IV_O, b - IV_O)
+	wn.scale = Vector3(1, 0.01, 1)      # (it comes up onto the stone as the water settles)
+	create_tween().tween_property(wn, "scale", Vector3.ONE, 0.6).set_trans(Tween.TRANS_SINE)
+
+## the winch turned: every fallen column rises out of the water and back up onto its base
+func _ivru_winch() -> void:
+	iv_busy = true
+	iv_moves += 1
+	var wp: Vector3 = iv_wheel.global_position
+	face_to = wp
+	var n := 0
+	while face_to != null and n < 90: await get_tree().process_frame; n += 1
+	var to_her := Vector3(pos.x - wp.x, 0, pos.z - wp.z).normalized()
+	var fr := wp + to_her * 0.36
+	tgtL = fr + Vector3(0, 0.2, 0) + to_her.cross(Vector3.UP) * 0.12; tgtR = fr + Vector3(0, -0.05, 0) - to_her.cross(Vector3.UP) * 0.12
+	var up := tw(); up.set_parallel(); up.tween_property(self, "a_wL", 1.0, 0.3); up.tween_property(self, "a_wR", 1.0, 0.3); up.tween_property(self, "a_lean", 0.18, 0.3)
+	await up.finished
+	print("IV the winch turns: every column up")
+	var sp := create_tween(); sp.tween_property(iv_wheel, "rotation:z", iv_wheel.rotation.z - TAU, 1.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	_ivw_sfx("winch_turn", IVW_WINCH_DB)
+	var k := 0
+	ivru_falling = 0
+	for i in ivru_cols.size():
+		if ivru_cols[i].fall == Vector2i.ZERO: continue
+		ivru_falling += 1
+		_ivru_rise(i, 0.25 + 0.22 * float(k)); k += 1
+	var nf := 0
+	while ivru_falling > 0 and nf < 900: await get_tree().process_frame; nf += 1
+	if sp.is_running(): await sp.finished
+	var dn := tw(); dn.set_parallel(); dn.tween_property(self, "a_wL", 0.0, 0.35); dn.tween_property(self, "a_wR", 0.0, 0.35); dn.tween_property(self, "a_lean", 0.0, 0.35)
+	await dn.finished
+	iv_busy = false
+
+func _ivru_rise(i: int, delay: float) -> void:      # (out of the water, then up over its base's edge, slowing as it comes upright, and still)
+	var c: Dictionary = ivru_cols[i]
+	var d: Vector2i = c.fall
+	if c.way != null:
+		var wn: Node3D = c.way; c.way = null
+		var tt := create_tween(); tt.tween_property(wn, "scale", Vector3(1, 0.01, 1), 0.3); tt.tween_callback(wn.queue_free)
+	if c.get("foam") != null and is_instance_valid(c.foam):
+		var fm: MeshInstance3D = c.foam; c.foam = null
+		var fmm := fm.material_override as ShaderMaterial
+		var tf := create_tween(); tf.tween_method(func(v: float) -> void: fmm.set_shader_parameter("churn", v), IVGD_FOAM_K, 0.0, 0.6); tf.tween_callback(fm.queue_free)
+	await wait(delay)
+	_ivru_wline(c, false)
+	var n: Node3D = c.n
+	var dw := _ivru_dirw(d)
+	var foot: Vector3 = ivp_nodes[c.node]
+	var piv := foot + dw * (ivru_r * IVRU_BASE)
+	var ax := Vector3.UP.cross(dw).normalized()
+	var b0: Basis = (c.home as Transform3D).basis
+	var R90 := Basis(ax, PI * 0.5)
+	var flat := Transform3D(R90 * b0, piv + R90 * (foot - piv))
+	_ivru_splash_up(c, d)
+	var t1 := create_tween()
+	t1.tween_property(n, "global_transform", flat, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	await t1.finished
+	var t2 := create_tween()
+	t2.tween_method(func(th: float) -> void:
+		var R := Basis(ax, th)
+		n.global_transform = Transform3D(R * b0, piv + R * (foot - piv)), PI * 0.5, 0.0, 1.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	await t2.finished
+	n.global_transform = c.home
+	c.fall = Vector2i.ZERO
+	_ivru_wline(c, true)
+	ivru_falling -= 1
+
+func _ivru_splash_up(c: Dictionary, d: Vector2i) -> void:      # (as it comes up out of the water: the water runs off it, rings)
+	var dw := _ivru_dirw(d)
+	var foot: Vector3 = ivp_nodes[c.node]
+	var sea := IV_O.y + ivr_sea_y
+	var a := foot + dw * (ivru_edge * IVRU_STEP); var L := float(c.len)
+	for k in maxi(2, int(round(L / 1.4))):
+		var p := a + dw * (L * (float(k) + 0.5) / maxf(2.0, round(L / 1.4))); p.y = sea
+		_ivw_splash(p, 0.3); _ivw_ripple(p, 1.2)

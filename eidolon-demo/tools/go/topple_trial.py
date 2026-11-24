@@ -39,7 +39,7 @@ def moves(b, st):
                 h=b.cols[c]; ok=True; span=[]
                 for k in range(1,h+1):
                     r=(c[0]+d[0]*k,c[1]+d[1]*k)
-                    if (not b.inb(r) and not SEA_BEYOND) or (r in standing and r not in [n for n,_ in new]) or r in covered or r==b.S or r==b.G or r==b.Wr: ok=False; break
+                    if (not b.inb(r) and not SEA_BEYOND) or (r in standing and r not in [n for n,_ in new]) or r in covered or r in b.slab or r==b.S or r==b.G or r==b.Wr: ok=False; break      # (only over open water: never over a slab, a base, the start, the ring, the winch)
                     span.append(r)
                 if not ok: break
                 new.append((c,d))
@@ -112,7 +112,7 @@ def show(b, fallen=frozenset(), p=None):
 
 
 LEVEL6 = (["~~~~~~oG",
-           "~~~~~~oo",
+           "~~~~~~~~",
            "~~~~~~~~",
            "W~~~~~~~",
            "oC~~C~C~",
@@ -120,10 +120,9 @@ LEVEL6 = (["~~~~~~oG",
           {(1, 4): 2, (4, 4): 1, (6, 4): 3, (1, 5): 2, (4, 5): 2})
 """The board offered (x to the right, y down; S her start, W the winch that raises every column, G the ring before the
 gate, C a column, its height in places beside it): pushed east from the start, the lower 2 knocks the 2 beyond it
-(a bridge of two to x 6); from its end the 3 is pushed north, a bridge to the gate's islet; back, and the upper 2
+(a bridge of two to x 6); from its end the 3 is pushed north, a bridge to the gate's islet (its top lying at the islet's edge: a column falls only over open water, so the islet is the ring and the place before it); back, and the upper 2
 knocks the 1 on, which stops at the 3's empty foot: the way to it. Pushed first, the upper 2 knocks the 1 and the 3
-east into the sea: the winch is the way back. 27 places walked, one way only, no dead end in 201 states (176 of them
-need the winch), every column needed: `python3 -I tools/go/topple_trial.py level6`."""
+east into the sea: the winch is the way back. 27 places walked, one way only, no dead end in 200 states, every column needed: `python3 -I tools/go/topple_trial.py level6`."""
 
 if __name__ == '__main__' and sys.argv[1:2] == ['level6']:
     b = Board(*LEVEL6); r = analyse(b); print('length, ways, states, dead:', r[:4]); print(show(b))

@@ -1037,12 +1037,19 @@ def column_fine(x, y, z, h, r=0.2, broken=False, opt=None):
     lod = bool(opt.get('lod'))      # (far off: fewer flutes and rings, no spirals)
     m = []
     bm = bmesh.new()
-    box(bm, (x - r * 1.45, y, z - r * 1.45), (x + r * 1.45, y + 0.2, z + r * 1.45))      # its plinth
-    box(bm, (x - r * 1.2, y + 0.2, z - r * 1.2), (x + r * 1.2, y + 0.3, z + r * 1.2))
+    if opt.get('base') == 'round':      # (a turned base of its own, two tori about a hollow, and no square plinth: the floor it stands on is its plinth (the sixth level's columns, which fall and lie in the water as bridges))
+        lathe(bm, [(r * 1.18, y), (r * 1.28, y + 0.025), (r * 1.29, y + 0.06), (r * 1.25, y + 0.095), (r * 1.12, y + 0.11), (r * 1.08, y + 0.135),
+                   (r * 1.13, y + 0.155), (r * 1.17, y + 0.18), (r * 1.13, y + 0.205), (r * 1.03, y + 0.215), (r * 1.01, y + 0.22)], x, z, n=40)
+        yb0 = y + 0.22
+    else:
+        box(bm, (x - r * 1.45, y, z - r * 1.45), (x + r * 1.45, y + 0.2, z + r * 1.45))      # its plinth
+        box(bm, (x - r * 1.2, y + 0.2, z - r * 1.2), (x + r * 1.2, y + 0.3, z + r * 1.2))
+        yb0 = y + 0.3
     m.append(finish(bm, 'plinth'))
     R1 = r * 0.84; capH = 0.0 if broken else R1 * 1.18
-    y0, y1 = y + 0.3, y + h - capH
-    Rf = lambda yy: r - (r - R1) * ((yy - y0) / max(y1 - y0, 1e-3)) ** 1.25 + r * 0.018 * math.sin(math.pi * min(max((yy - y0) / max(y1 - y0, 1e-3), 0.0), 1.0))      # (tapering, and swelling a little: entasis)
+    y0, y1 = yb0, y + h - capH
+    span = float(opt.get('taper_h', 0.0)) or (y1 - y0)      # (a broken shaft tapers as the whole column it was would: taper_h, that column's shaft)
+    Rf = lambda yy: r - (r - R1) * (min(max(yy - y0, 0.0), span) / max(span, 1e-3)) ** 1.25 + r * 0.018 * math.sin(math.pi * min(max((yy - y0) / max(span, 1e-3), 0.0), 1.0))      # (tapering, and swelling a little: entasis)
     nd = max(2, int(round((y1 - y0) / float(opt.get('drum', 0.62)))))
     cuts = [y0 + (y1 - y0) * k / nd for k in range(nd + 1)]
     for k in range(1, nd): cuts[k] += rnd.uniform(-0.06, 0.06)
