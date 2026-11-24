@@ -17,11 +17,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  # Δύο jobs, όπως το πρότυπο του GitHub: σε ένα job το deploy-pages έψαχνε το artifact
+  # αμέσως μετά το ανέβασμά του και δεν το έβρισκε ακόμα ("Found 0 artifact(s)").
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - uses: actions/checkout@v5
       # Το `enablement: true` δοκιμάστηκε και ΔΕΝ δουλεύει εδώ: η δημιουργία
@@ -36,5 +35,12 @@ jobs:
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
       - id: deploy
         uses: actions/deploy-pages@v4
