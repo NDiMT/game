@@ -351,8 +351,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   things painted at the lower right in their place (a fallen veiled head, a fallen column, an empty boat) he liked but
   kept for another map ("make others too; I liked these, but keep them for elsewhere"): `design/fg_spare/level1_water/`.
   A take that names the place by the start slab may move the slab and her: name all that must stay ("nothing moves").
-  **The lilies of levels 3 and 4 out too** (24/11: "bro why do I still see water lilies?"); their pictures and entries in
-  `design/fg_spare/water/`. Level 2's petals stay for now (asked).
+  **The lilies of level 4 out too** (24/11: "bro why do I still see water lilies?", then "in 2 and in 3 leave them, from
+  4 take them out"): level 2's petals and level 3's lilies stay; level 4's picture and entry in `design/fg_spare/water/`.
   The rules he has given for painted things are in the skill (`go-level`, "Things painted into a level").
 - **The ring before every gate stands clear of its door** (the owner, 22/11: "the bright circles should never be right at
   the door"; and of the first level: "no second-to-last dot: the stair's path takes you straight to the last bright
