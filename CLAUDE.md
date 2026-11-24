@@ -964,6 +964,11 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   five made playable on a page for his phone (`design/level6/faithful/play.html`, published as
   https://claude.ai/artifact/QooUd2rD6gT39Sjr9nUfcW: swipes or arrows, the statue's rules checked against the solver on
   2,000 random move strings, the solution played on request): a solution watched looks easier than it is.
+  Then "find another ten, completely original, research well, with multi-mechanism steps and cleverness": four research
+  passes (chained mechanisms in games, ancient machines and automata, multi-step mechanical puzzles, myths that hide a
+  mechanism) and ten ideas, each chaining three to five mechanisms, painted and shown as a page
+  (https://claude.ai/artifact/2yP7BimHGKAoAJtbtgcx2Z): `design/level6/ideas2/` (README with the chains, the catches and
+  the sources; the paintings, the prompts, the page).
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are

@@ -1,0 +1,298 @@
+<title>Γρίφοι με αλυσίδες μηχανισμών</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=GFS+Didot&family=Commissioner:wght@400;500;600&family=Cormorant+Garamond:wght@500&display=swap">
+<style>
+/* Layout: one idea per screen on a phone (its painting, its chain of machines, the steps, the catch), two columns from tablet up; the game's own colours, as the first page of ideas: lilac haze, marble, plum ink, her terracotta. */
+:root {
+  --bg: #eee8f0;
+  --surface: #fbf8f5;
+  --ink: #2e2432;
+  --muted: #6c5f70;
+  --line: #dcd2dc;
+  --accent: #a9532f;
+  --accent-soft: #f3e2d8;
+  --link: #8d6f98;
+  --display: "GFS Didot", "Times New Roman", serif;
+  --body: "Commissioner", "Segoe UI", system-ui, sans-serif;
+  --latin: "Cormorant Garamond", "Times New Roman", serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1c161f; --surface: #271f2a; --ink: #f2ebe6; --muted: #b6a8b3; --line: #3b303e;
+    --accent: #e09370; --accent-soft: #3a2a2b; --link: #b9a3c4; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1c161f; --surface: #271f2a; --ink: #f2ebe6; --muted: #b6a8b3; --line: #3b303e;
+  --accent: #e09370; --accent-soft: #3a2a2b; --link: #b9a3c4; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 56px;
+}
+.wrap { max-width: 1060px; margin: 0 auto; display: grid; gap: 40px; }
+header { display: grid; gap: 14px; max-width: 46rem; }
+.eyebrow { font-family: var(--latin); letter-spacing: 0.32em; font-size: 15px; color: var(--muted); }
+h1 { font-family: var(--display); font-weight: 400; font-size: clamp(32px, 7vw, 52px); line-height: 1.08; margin: 0; text-wrap: balance; }
+.lede { margin: 0; max-width: 42rem; }
+.picks { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 4px 0 0; color: var(--muted); font-size: 15px; }
+.picks b { color: var(--ink); font-weight: 600; }
+.chip { background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 3px 12px; font-weight: 600; font-size: 14px; }
+.lesson { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px 20px; display: grid; gap: 10px; max-width: 46rem; }
+.lesson h3, .sources h3 { font-family: var(--display); font-weight: 400; font-size: 22px; margin: 0; }
+.lesson ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.ideas { display: grid; gap: 52px; }
+.idea { display: grid; gap: 18px; align-items: start; }
+.idea figure { margin: 0; }
+.idea img { display: block; width: 100%; max-width: 100%; aspect-ratio: 9 / 16; object-fit: cover; border-radius: 6px; background: var(--line); }
+.text { display: grid; gap: 14px; min-width: 0; }
+.head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+.num { font-family: var(--display); font-size: 52px; line-height: 0.9; color: var(--accent); min-width: 1.3ch; }
+h2 { font-family: var(--display); font-weight: 400; font-size: 30px; line-height: 1.15; margin: 0; text-wrap: balance; }
+.rec { font-size: 13px; }
+.label { font-size: 12px; letter-spacing: 0.12em; color: var(--muted); font-weight: 600; margin: 0 0 6px; }
+.chain { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 4px; margin: 0; padding: 0; list-style: none; font-size: 14px; }
+.chain li { display: flex; align-items: center; gap: 4px; }
+.chain li span { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 3px 9px; }
+.chain li + li::before { content: "→"; color: var(--accent); font-weight: 600; padding: 0 2px; }
+ol.steps { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
+ol.steps li::marker { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+.catch { border-left: 3px solid var(--accent); padding-left: 12px; margin: 0; }
+.story { margin: 0; color: var(--muted); }
+.story b { color: var(--ink); font-weight: 600; }
+.meta { font-size: 14px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.meta b { color: var(--ink); font-weight: 600; }
+.sources { display: grid; gap: 10px; max-width: 46rem; font-size: 14px; color: var(--muted); }
+.sources ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.sources a { color: var(--link); text-decoration-color: var(--line); text-underline-offset: 3px; word-break: break-word; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (min-width: 760px) {
+  .idea { grid-template-columns: minmax(0, 330px) minmax(0, 1fr); gap: 30px; }
+  .ideas { gap: 60px; }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">EIDOLON</div>
+    <h1>Δέκα γρίφοι με αλυσίδες μηχανισμών</h1>
+    <p class="lede">Τέσσερις έρευνες: παιχνίδια όπου οι μηχανισμοί δένουν μεταξύ τους, οι αρχαίες μηχανές του Ήρωνα, του Φίλωνα και του αλ-Τζαζαρί, οι μηχανικοί γρίφοι πολλών βημάτων, και μύθοι που κρύβουν μέσα τους έναν μηχανισμό. Σε κάθε ιδέα δουλεύουν τρεις ως πέντε μηχανισμοί μαζί, κι ό,τι βγάζει ο ένας κινεί τον επόμενο. Καμία δεν επαναλαμβάνει όσα σου έχω ήδη προτείνει.</p>
+    <p class="picks"><b>Θα διάλεγα:</b> <span class="chip">1</span><span class="chip">2</span><span class="chip">6</span> Πες μου νούμερο.</p>
+  </header>
+
+  <section class="lesson" aria-labelledby="lesson-h">
+    <h3 id="lesson-h">Τι κάνει μια αλυσίδα έξυπνη</h3>
+    <ul>
+      <li>Η κατάσταση μιας μηχανής (μια στάθμη νερού, ένα σώμα σε μια πλάκα, ένας ήχος) γίνεται η είσοδος της επόμενης. Το aha είναι να δεις αυτή τη σύνδεση.</li>
+      <li>Ένα πράγμα κάνει πολλές δουλειές μαζί: δόλωμα, όχημα και κλειδί.</li>
+      <li>Ο κίνδυνος γίνεται εργαλείο: οι εχθροί είναι έμβολα που τα οδηγείς εσύ.</li>
+      <li>Στην αρχή ο γρίφος μοιάζει με αντίφαση. Λύνεται όταν δεις ένα γνώριμο κομμάτι με άλλο μάτι.</li>
+      <li>Τίποτα περιττό: αν ένα κομμάτι φεύγει και ο γρίφος στέκει ακόμα, βγαίνει.</li>
+    </ul>
+  </section>
+
+  <div class="ideas">
+
+    <article class="idea" id="i1">
+      <figure><img src="img/01.jpg" alt="Ένα φωτεινό αντίγραφο της ηρωίδας στη γέφυρα· ο γυάλινος Φύλακας το κοιτάζει με κόκκινη ματιά και το άγαλμα με το πέπλο πηγαίνει προς αυτό, ενώ η ίδια κρύβεται πίσω από μια κολόνα" loading="eager" width="720" height="1280"></figure>
+      <div class="text">
+        <div class="head"><span class="num">1</span><h2>Το είδωλο</h2><span class="chip rec">προτείνω</span></div>
+        <div><p class="label">ΟΙ ΜΗΧΑΝΙΣΜΟΙ</p><ul class="chain"><li><span>Το είδωλό της</span></li><li><span>Το βλέμμα του Φύλακα</span></li><li><span>Ο Πιστός</span></li><li><span>Η ραγισμένη πλάκα</span></li></ul></div>
+        <div><p class="label">ΕΝΑ ΠΑΡΑΔΕΙΓΜΑ</p><ol class="steps">
+          <li>Αφήνει το είδωλό της, ένα φωτεινό αντίγραφο του εαυτού της, στη στενή γέφυρα. Ένα μόνο ανά πίστα.</li>
+          <li>Ο Φύλακας στρίβει, το βλέπει και κοιτάζει μόνο αυτό. Εκείνη περνά πίσω από την πλάτη του.</li>
+          <li>Ο Πιστός πηγαίνει στο είδωλο, γιατί του είναι πιο κοντά απ' ό,τι εκείνη. Στον δρόμο του είναι η ραγισμένη πλάκα: την πατά και βουλιάζει.</li>
+          <li>Ως την πύλη δεν πρέπει να τη δει ο Φύλακας ούτε μία φορά. Αν τη δει, το είδωλο φεύγει στον ουρανό και η ματιά του φτάνει ως εκείνη.</li>
+        </ol></div>
+        <p class="catch"><b>Το έξυπνο:</b> ένα δόλωμα για δύο εχθρούς με άλλους κανόνες, σε μια θέση που ξεγελά και τους δύο. Και χάνεται τη στιγμή που φανερώνεται η ίδια, άρα όλος ο γρίφος είναι η σειρά των βημάτων.</p>
+        <p class="story"><b>Στην ιστορία:</b> το όνομα του παιχνιδιού. Οι θεοί έστειλαν στην Τροία ένα είδωλο της Ελένης κι όλοι πολέμησαν γι' αυτό. Είδωλο είναι κι εκείνη, η Ιόνη όπως την ήθελε ο Θήρων.</p>
+        <div class="meta"><span><b>Από</b> Στησίχορο και Ευριπίδη («Ελένη») · το δόλωμα του Hitman GO</span><span><b>Κόπος</b> μικρός: ο Φύλακας και ο Πιστός υπάρχουν ήδη</span></div>
+      </div>
+    </article>
+
+    <article class="idea" id="i2">
+      <figure><img src="img/02.jpg" alt="Χάλκινη κουκουβάγια σε κολόνα, δίπλα δοχείο με σιφώνι και κουβάς σε αλυσίδα, ένα χάλκινο δέντρο με πουλιά, ένας κύβος ανάμεσά τους και πέτρες που έχουν ανέβει από το νερό" loading="lazy" width="720" height="1280"></figure>
+      <div class="text">
+        <div class="head"><span class="num">2</span><h2>Η κουκουβάγια και τα πουλιά</h2><span class="chip rec">προτείνω</span></div>
+        <div><p class="label">ΟΙ ΜΗΧΑΝΙΣΜΟΙ</p><ul class="chain"><li><span>Νερό γεμίζει το δοχείο</span></li><li><span>Σιφώνι</span></li><li><span>Η κουκουβάγια γυρίζει</span></li><li><span>Τα πουλιά σωπαίνουν</span></li><li><span>Οι πέτρες βουλιάζουν</span></li></ul></div>
+        <div><p class="label">ΕΝΑ ΠΑΡΑΔΕΙΓΜΑ</p><ol class="steps">
+          <li>Ένα σφραγισμένο δοχείο γεμίζει νερό σε τέσσερις κινήσεις. Όσο γεμίζει, τα χάλκινα πουλιά τραγουδούν και το τραγούδι τους κρατά τις πέτρες του περάσματος πάνω από το νερό. Η κουκουβάγια όμως κοιτάζει το πέρασμα, κι αν δει την ηρωίδα, την ξαναστέλνει στην αρχή.</li>
+          <li>Όταν γεμίσει, ένα σιφώνι το αδειάζει σε έναν κουβά. Ο κουβάς γυρίζει την κουκουβάγια προς τα πουλιά, εκείνα σωπαίνουν και οι πέτρες βουλιάζουν. Μόλις αδειάσει ο κουβάς, η κουκουβάγια γυρίζει πίσω.</li>
+          <li>Το προφανές, να περάσει όσο η κουκουβάγια κοιτάζει αλλού, αποτυγχάνει: τότε δεν υπάρχουν πέτρες.</li>
+          <li>Σπρώχνει τον κύβο ανάμεσα στην κουκουβάγια και στο δέντρο με τα πουλιά.</li>
+          <li>Στο επόμενο άδειασμα η κουκουβάγια γυρίζει αλλά βλέπει τον κύβο. Τα πουλιά συνεχίζουν το τραγούδι, οι πέτρες μένουν πάνω, και η κουκουβάγια έχει την πλάτη στο πέρασμα. Τρεις κινήσεις για να περάσει.</li>
+        </ol></div>
+        <p class="catch"><b>Το έξυπνο:</b> ο φύλακας και η γέφυρα είναι ο ίδιος κύκλος, και μοιάζει αδύνατο να έχεις και τα δύο. Η λύση: δεν κρύβεσαι εσύ από τη ματιά, κρύβεις τα πουλιά.</p>
+        <p class="story"><b>Στην ιστορία:</b> ο Θήρων έκρυβε από την Ιόνη τους καθρέφτες. Εδώ κρύβει εκείνη κάτι από ένα βλέμμα για να περάσει.</p>
+        <div class="meta"><span><b>Από</b> Ήρωνα, «Πνευματικά» 15 · τη λύρα του Αμφίονα που έχτισε τη Θήβα</span><span><b>Κόπος</b> μεσαίος</span></div>
+      </div>
+    </article>
+
+    <article class="idea" id="i3">
+      <figure><img src="img/03.jpg" alt="Ένας χάλκινος γίγαντας σε κυκλικό δρόμο γύρω από το νησί, μια στρογγυλή πλάκα σε διακλάδωση, ένας κοφτερός βράχος και αυλάκια με λιωμένο χαλκό ως ένα καλούπι δίπλα σε κενό" loading="lazy" width="720" height="1280"></figure>
+      <div class="text">
+        <div class="head"><span class="num">3</span><h2>Ο Τάλως</h2></div>
+        <div><p class="label">ΟΙ ΜΗΧΑΝΙΣΜΟΙ</p><ul class="chain"><li><span>Ο Τάλως σε κύκλο</span></li><li><span>Η πλάκα της διακλάδωσης</span></li><li><span>Ο κοφτερός βράχος</span></li><li><span>Λιωμένος χαλκός</span></li><li><span>Καλούπι που γίνεται γέφυρα</span></li></ul></div>
+        <div><p class="label">ΕΝΑ ΠΑΡΑΔΕΙΓΜΑ</p><ol class="steps">
+          <li>Ο χάλκινος γίγαντας κάνει τον γύρο του νησιού, ένα βήμα για κάθε δικό της. Αν την αγγίξει, ξεκινά από την αρχή.</li>
+          <li>Μια στρογγυλή πλάκα στη διακλάδωση γυρίζει κάθε φορά που κάποιος την περνά, εκείνη ή εκείνος, και στέλνει τον επόμενο στον άλλο δρόμο.</li>
+          <li>Στον εξωτερικό δρόμο υπάρχει ένας κοφτερός βράχος. Αν ο Τάλως περάσει από εκεί, του βγαίνει το καρφί που κλείνει τη μοναδική του φλέβα και πέφτει.</li>
+          <li>Από τη φλέβα τρέχει λιωμένος χαλκός στα αυλάκια. Εκείνη ανοίγει το σωστό, ώστε ο χαλκός να γεμίσει το καλούπι δίπλα στο κενό κι όχι να χυθεί στη θάλασσα. Σε τρεις κινήσεις κρυώνει και γίνεται γέφυρα.</li>
+          <li>Το σώμα του γίνεται ογκόλιθος, που τον σπρώχνει στο δεύτερο κενό.</li>
+        </ol></div>
+        <p class="catch"><b>Το έξυπνο:</b> η πλάκα γυρίζει και κάτω από τα δικά της πόδια, οπότε μετρά πόσες φορές την περνά, μονό ή ζυγό. Κι ο φύλακας που δεν σταματά είναι το υλικό για δύο γέφυρες.</p>
+        <p class="story"><b>Στην ιστορία:</b> ένα ακόμα άγαλμα με πνοή, ο χάλκινος φύλακας της ακτής.</p>
+        <div class="meta"><span><b>Από</b> Απολλώνιο τον Ρόδιο, «Αργοναυτικά» 4 · τις διασταυρώσεις του Railbound που αλλάζουν σε κάθε πέρασμα</span><span><b>Κόπος</b> μεγάλος</span></div>
+      </div>
+    </article>
+
+    <article class="idea" id="i4">
+      <figure><img src="img/04.jpg" alt="Χάλκινοι λέβητες σε τρίποδες που αντηχούν ο ένας μετά τον άλλον, πέτρες που ανεβαίνουν δίπλα τους και ένας γίγαντας με πολλά κλειστά μάτια που κοιμάται δίπλα σε έναν λέβητα γεμάτο νερό" loading="lazy" width="720" height="1280"></figure>
+      <div class="text">
+        <div class="head"><span class="num">4</span><h2>Οι λέβητες της Δωδώνης</h2></div>
+        <div><p class="label">ΟΙ ΜΗΧΑΝΙΣΜΟΙ</p><ul class="chain"><li><span>Χτύπημα</span></li><li><span>Ο ήχος περνά από λέβητα σε λέβητα</span></li><li><span>Οι πέτρες ανεβαίνουν</span></li><li><span>Το νερό σωπαίνει</span></li><li><span>Ο Άργος κοιμάται</span></li></ul></div>
+        <div><p class="label">ΕΝΑ ΠΑΡΑΔΕΙΓΜΑ</p><ol class="steps">
+          <li>Χτυπά τον πρώτο χάλκινο λέβητα. Ο ήχος περνά σε όποιον λέβητα ακουμπά, έναν σε κάθε κίνηση, και δίπλα σε κάθε λέβητα που ηχεί ανεβαίνει μια πέτρα και μένει πάνω δύο κινήσεις.</li>
+          <li>Ο τελευταίος λέβητας είναι δίπλα στον Άργο, τον γίγαντα με τα εκατό μάτια. Αν ο ήχος φτάσει εκεί, ξυπνά και τη βλέπει.</li>
+          <li>Γεμίζει τον τελευταίο λέβητα με νερό από την πηγή. Ένας γεμάτος λέβητας δεν ηχεί, κι ο ήχος σταματά εκεί.</li>
+          <li>Δύο πέτρες πρέπει να είναι πάνω την ίδια στιγμή, οπότε σπρώχνει έναν λέβητα ώστε ο ήχος να χωριστεί στα δύο.</li>
+          <li>Χτυπά και περπατά μαζί με το κύμα, πατώντας κάθε πέτρα τη στιγμή που ανεβαίνει.</li>
+        </ol></div>
+        <p class="catch"><b>Το έξυπνο:</b> χτίζεις δρόμο για ένα σήμα, με διακλάδωση και φρένο, και μετά ταξιδεύεις πάνω του.</p>
+        <p class="story"><b>Στην ιστορία:</b> ο ύπνος του φύλακα κρέμεται από μια σιωπή.</p>
+        <div class="meta"><span><b>Από</b> το «Δωδωναίον χαλκείον» (Στράβων) · τον Άργο και τον Ερμή · τις λογικές πύλες με ντόμινο</span><span><b>Κόπος</b> μεσαίος</span></div>
+      </div>
+    </article>
+
+    <article class="idea" id="i5">
+      <figure><img src="img/05.jpg" alt="Το πέτρινο κεφάλι ενός γέρου θεού στη θάλασσα με ανοιχτό στόμα που καταπίνει έναν κύβο, δίπλα ένα γκονγκ, και σε άλλο νησί μια πηγή απ' όπου ανεβαίνει τύμπανο κολόνας και ρίχνει ένα άγαλμα στο νερό" loading="lazy" width="720" height="1280"></figure>
+      <div class="text">
+        <div class="head"><span class="num">5</span><h2>Η θάλασσα δίνει πίσω</h2></div>
+        <div><p class="label">ΟΙ ΜΗΧΑΝΙΣΜΟΙ</p><ul class="chain"><li><span>Στόμα που καταπίνει</span></li><li><span>Ό,τι μπει τελευταίο βγαίνει πρώτο</span></li><li><span>Πηγή σε άλλο νησί</span></li><li><span>Σπρώξιμο</span></li></ul></div>
+        <div><p class="label">ΕΝΑ ΠΑΡΑΔΕΙΓΜΑ</p><ol class="steps">
+          <li>Στη θάλασσα στέκει το πέτρινο κεφάλι ενός γέρου θεού με ανοιχτό στόμα. Ό,τι σπρώξει μέσα, το καταπίνει.</li>
+          <li>Όταν χτυπά το γκονγκ, το στόμα δίνει πίσω ένα πράγμα, το τελευταίο που κατάπιε. Δεν βγαίνει εκεί: αναβλύζει από μια πηγή σε άλλο νησί και σπρώχνει μια πλάκα πιο πέρα ό,τι στέκεται πάνω στην πηγή.</li>
+          <li>Πάνω στην πηγή, μπροστά στην πύλη, στέκει ένα άγαλμα που κλείνει τον δρόμο.</li>
+          <li>Ρίχνει πρώτα το τύμπανο μιας κολόνας στο στόμα, μετά τον κύβο.</li>
+          <li>Πρώτο χτύπημα: ο κύβος αναβλύζει και ρίχνει το άγαλμα στη θάλασσα. Δεύτερο χτύπημα: αναβλύζει το τύμπανο και σπρώχνει τον κύβο μέσα στο κενό.</li>
+        </ol></div>
+        <p class="catch"><b>Το έξυπνο:</b> ταΐζεις τη θάλασσα ανάποδα από τη σειρά που θα χρειαστείς τα πράγματα, και το δεύτερο δώρο της βάζει το πρώτο στη θέση του.</p>
+        <p class="story"><b>Στην ιστορία:</b> «Η θάλασσα την πήρε». Εδώ η θάλασσα δίνει πίσω, αλλά με τη δική της σειρά.</p>
+        <div class="meta"><span><b>Από</b> Ησίοδο, «Θεογονία» 495–497: ο Κρόνος έβγαλε πρώτη την πέτρα που κατάπιε τελευταία · τη φιάλη που ρίχτηκε στον Αλφειό και βγήκε στην Αρέθουσα</span><span><b>Κόπος</b> μεσαίος</span></div>
+      </div>
+    </article>
+
+    <article class="idea" id="i6">
+      <figure><img src="img/06.jpg" alt="Ένας χάλκινος σκύλος κυνηγά μια χάλκινη αλεπού πάνω σε στενή προβλήτα που τελειώνει πάνω από ένα κενό· η αλεπού αρχίζει να πετρώνει, η ηρωίδα κοιτάζει από κοντά" loading="lazy" width="720" height="1280"></figure>
+      <div class="text">
+        <div class="head"><span class="num">6</span><h2>Ο σκύλος και η αλεπού</h2><span class="chip rec">προτείνω</span></div>
+        <div><p class="label">ΟΙ ΜΗΧΑΝΙΣΜΟΙ</p><ul class="chain"><li><span>Ο σκύλος κυνηγά τον πιο κοντινό</span></li><li><span>Η αλεπού φεύγει</span></li><li><span>Το αδιέξοδο</span></li><li><span>Πετρώνουν</span></li><li><span>Οι πέτρες που λείπουν</span></li></ul></div>
+        <div><p class="label">ΕΝΑ ΠΑΡΑΔΕΙΓΜΑ</p><ol class="steps">
+          <li>Ένας χάλκινος σκύλος, που πιάνει πάντα ό,τι κυνηγά, κάνει δύο βήματα για κάθε δικό της προς ό,τι του είναι πιο κοντά: εκείνη ή την αλεπού.</li>
+          <li>Η χάλκινη αλεπού, που δεν πιάνεται ποτέ, κάνει κάθε φορά ένα βήμα μακριά από τον σκύλο.</li>
+          <li>Οδηγεί τον σκύλο κοντά στην αλεπού, ώσπου η αλεπού να του είναι πιο κοντά από εκείνη. Ο σκύλος αλλάζει στόχο.</li>
+          <li>Με το σώμα της κλείνει δρόμους, ώστε η αλεπού να φύγει πάνω στη στενή προβλήτα που τελειώνει πάνω από το κενό.</li>
+          <li>Στην άκρη ο σκύλος φτάνει την αλεπού, κι αυτό δεν μπορεί να γίνει. Πετρώνουν και οι δύο, πέφτουν στο κενό και γίνονται οι πέτρες που λείπουν.</li>
+        </ol></div>
+        <p class="catch"><b>Το έξυπνο:</b> δύο απειλές με αντίθετους κανόνες ακυρώνουν η μία την άλλη. Εκείνη γίνεται βοσκός: δεν πολεμά κανέναν, οδηγεί το κυνήγι στο σωστό αδιέξοδο.</p>
+        <p class="story"><b>Στην ιστορία:</b> όταν μια επιθυμία του Θήρωνα ησυχάζει, γίνεται πέτρα. Εδώ ησυχάζουν μαζί δύο επιθυμίες που συγκρούονται.</p>
+        <div class="meta"><span><b>Από</b> τη Λαίλαπα και την Τευμησσία αλεπού (Απολλόδωρος 2.4.7, Οβίδιος, «Μεταμορφώσεις» 7)</span><span><b>Κόπος</b> μεσαίος</span></div>
+      </div>
+    </article>
+
+    <article class="idea" id="i7">
+      <figure><img src="img/07.jpg" alt="Δύο χάλκινες σφαίρες δίπλα σε δύο λίμνες: η σκιά της ηρωίδας πέφτει στη μία κι η λίμνη της έχει αδειάσει δείχνοντας πέτρες στον πάτο, η άλλη στον ήλιο έχει γεμάτη λίμνη με σχεδία" loading="lazy" width="720" height="1280"></figure>
+      <div class="text">
+        <div class="head"><span class="num">7</span><h2>Φως και σκιά</h2></div>
+        <div><p class="label">ΟΙ ΜΗΧΑΝΙΣΜΟΙ</p><ul class="chain"><li><span>Ο ήλιος</span></li><li><span>Η χάλκινη σφαίρα</span></li><li><span>Η στάθμη της λίμνης</span></li><li><span>Οι σκιές του κύβου, του Πιστού, της ίδιας</span></li></ul></div>
+        <div><p class="label">ΕΝΑ ΠΑΡΑΔΕΙΓΜΑ</p><ol class="steps">
+          <li>Ο ήλιος στέκει ακίνητος κι όλα ρίχνουν σκιά προς την ίδια μεριά.</li>
+          <li>Όταν μια χάλκινη σφαίρα είναι στον ήλιο, ο αέρας της ζεσταίνεται και σπρώχνει νερό στη λίμνη της: η λίμνη γεμίζει και μια σχεδία ανεβαίνει ως την αποβάθρα. Στη σκιά ρουφά το νερό πίσω: η λίμνη αδειάζει και φαίνονται πέτρες στον πάτο.</li>
+          <li>Χρειάζεται τη λίμνη Α άδεια, για να περάσει από τον πάτο, και τη λίμνη Β γεμάτη, για τη σχεδία.</li>
+          <li>Η σκιά της αδειάζει την Α, αλλά δεν μπορεί να μείνει εκεί. Σπρώχνει τον κύβο στη θέση της, κι η σκιά του κρατά τη λίμνη άδεια.</li>
+          <li>Τη σφαίρα της Β τη σκιάζει ο Πιστός που την ακολουθεί. Τον τραβά μακριά, η Β βγαίνει στον ήλιο, γεμίζει, κι η σχεδία ανεβαίνει.</li>
+        </ol></div>
+        <p class="catch"><b>Το έξυπνο:</b> η σκιά είναι διακόπτης, και κάθε σώμα ρίχνει μία, ακόμα κι αυτός που σε κυνηγά.</p>
+        <p class="story"><b>Στην ιστορία:</b> ο Θήρων έκρυβε τους καθρέφτες, όχι τις σκιές.</p>
+        <div class="meta"><span><b>Από</b> Ήρωνα, «Πνευματικά» 47: η σφαίρα που στον ήλιο ρίχνει νερό και στη σκιά το ρουφά πίσω</span><span><b>Κόπος</b> μεσαίος</span></div>
+      </div>
+    </article>
+
+    <article class="idea" id="i8">
+      <figure><img src="img/08.jpg" alt="Ένα χάλκινο αμαξάκι με έναν κύβο πάνω σε πέτρινη ράγα, ένας μαρμάρινος κύλινδρος με βαρίδι και κορδόνι τυλιγμένο στον άξονα, η ηρωίδα κουρδίζει" loading="lazy" width="720" height="1280"></figure>
+      <div class="text">
+        <div class="head"><span class="num">8</span><h2>Το κουρδιστό αμαξάκι</h2></div>
+        <div><p class="label">ΟΙ ΜΗΧΑΝΙΣΜΟΙ</p><ul class="chain"><li><span>Κορδόνι στον άξονα</span></li><li><span>Πρόγραμμα: μπρος, στάση, πίσω</span></li><li><span>Βαρίδι πάνω σε άμμο</span></li><li><span>Το αμαξάκι κουβαλά τον κύβο</span></li><li><span>Η πλάκα της πύλης</span></li></ul></div>
+        <div><p class="label">ΕΝΑ ΠΑΡΑΔΕΙΓΜΑ</p><ol class="steps">
+          <li>Η πύλη ανοίγει μόνο όσο κάτι βαρύ πατά την πλάκα στην απέναντι άκρη της ράγας. Η ίδια δεν μπορεί να είναι και στην πλάκα και στην πύλη.</li>
+          <li>Φορτώνει τον κύβο στο χάλκινο αμαξάκι και τυλίγει το κορδόνι στον άξονα πάνω στα καρφάκια: μπρος, μπρος, στάση, στάση. Ο τρόπος που τυλίγεται το κορδόνι είναι το πρόγραμμα.</li>
+          <li>Αφήνει το βαρίδι. Η άμμος από κάτω του αδειάζει, το βαρίδι κατεβαίνει, και το αμαξάκι περνά το στενό, πατά την πλάκα και περιμένει δύο κινήσεις. Η πύλη ανοίγει για δύο κινήσεις.</li>
+          <li>Πρέπει να είναι στο δαχτυλίδι ακριβώς τότε. Μετρά τα δικά της βήματα και βάζει μια στάση στην αρχή του προγράμματος.</li>
+        </ol></div>
+        <p class="catch"><b>Το έξυπνο:</b> γράφεις ένα μικρό πρόγραμμα με ένα σχοινί. Το κόλπο είναι η στάση: συγχρονίζεις έναν βοηθό με τον δικό σου δρόμο.</p>
+        <p class="story"><b>Στην ιστορία:</b> τα αγάλματα του Θήρωνα κάνουν ό,τι τους έχει κουρδίσει να κάνουν.</p>
+        <div class="meta"><span><b>Από</b> Ήρωνα, «Αυτοματοποιητική»: το κινητό αυτόματο με το κορδόνι στον άξονα, που λέγεται το πρώτο προγραμματιζόμενο ρομπότ</span><span><b>Κόπος</b> μεσαίος ως μεγάλος</span></div>
+      </div>
+    </article>
+
+    <article class="idea" id="i9">
+      <figure><img src="img/09.jpg" alt="Τρεις πέτρινες γριές με κουκούλα σε τρίγωνο, η μία κρατά ένα φωτεινό μάτι στην παλάμη· μπροστά της διάφανες πλάκες πάνω στο νερό είναι στέρεες όπου πέφτει η ματιά της" loading="lazy" width="720" height="1280"></figure>
+      <div class="text">
+        <div class="head"><span class="num">9</span><h2>Το μάτι των Γραιών</h2></div>
+        <div><p class="label">ΟΙ ΜΗΧΑΝΙΣΜΟΙ</p><ul class="chain"><li><span>Ένα μάτι για τρεις</span></li><li><span>Περνά από χέρι σε χέρι</span></li><li><span>Ό,τι βλέπει γίνεται στέρεο</span></li><li><span>Όποιον βλέπει τον στέλνει πίσω</span></li></ul></div>
+        <div><p class="label">ΕΝΑ ΠΑΡΑΔΕΙΓΜΑ</p><ol class="steps">
+          <li>Τρεις πέτρινες γριές έχουν ένα μάτι. Σε κάθε κίνηση το περνούν στην επόμενη, κι όποια το κρατά βλέπει μπροστά της.</li>
+          <li>Πάνω από το νερό υπάρχουν διάφανες πλάκες που γίνονται στέρεες μόνο όσο τις βλέπει κάποιος. Αν όμως αυτή που κρατά το μάτι δει την ηρωίδα, την ξαναστέλνει στην αρχή.</li>
+          <li>Αρπάζει το μάτι στο πέρασμα, όταν δεν το κρατά καμία, όπως ο Περσέας.</li>
+          <li>Τώρα βλέπει εκείνη, κι οι διάφανες πλάκες μπροστά της γίνονται στέρεες. Περπατά ίσια, γιατί αν στρίψει, χάνονται όσες άφησε πίσω.</li>
+          <li>Στο τέλος δίνει το μάτι στη γριά που κοιτάζει τα σκαλιά της πύλης. Τα σκαλιά στερεώνουν, κι εκείνη ανεβαίνει από την πλευρά που η γριά δεν βλέπει.</li>
+        </ol></div>
+        <p class="catch"><b>Το έξυπνο:</b> η ματιά φτιάχνει το πάτωμα κι η ίδια ματιά σε στέλνει πίσω. Το κόλπο είναι να ορίσεις εσύ ποιος βλέπει και πού.</p>
+        <p class="story"><b>Στην ιστορία:</b> ό,τι δεν το βλέπει κανείς δεν υπάρχει, όπως το πρόσωπο κάτω από το πέπλο.</p>
+        <div class="meta"><span><b>Από</b> Απολλόδωρο 2.4.2: ο Περσέας αρπάζει το μάτι των Γραιών την ώρα που το περνούν</span><span><b>Κόπος</b> μεσαίος</span></div>
+      </div>
+    </article>
+
+    <article class="idea" id="i10">
+      <figure><img src="img/10.jpg" alt="Βραχονησίδες με πέτρινες φρυκτωρίες, δύο αναμμένες· ένα πλοίο χωρίς κυβερνήτη πλέει προς μια φωτιά σε ύφαλο, ξύλα ναυαγίου σχηματίζουν σκαλοπάτια, ένα άγαλμα στον βράχο κοιτάζει τη θάλασσα" loading="lazy" width="720" height="1280"></figure>
+      <div class="text">
+        <div class="head"><span class="num">10</span><h2>Οι ψεύτικες φωτιές</h2></div>
+        <div><p class="label">ΟΙ ΜΗΧΑΝΙΣΜΟΙ</p><ul class="chain"><li><span>Φωτιά ανάβει φωτιά</span></li><li><span>Το πλοίο πάει στην πιο κοντινή</span></li><li><span>Ναυάγιο στον ύφαλο</span></li><li><span>Τα ξύλα γίνονται δρόμος</span></li></ul></div>
+        <div><p class="label">ΕΝΑ ΠΑΡΑΔΕΙΓΜΑ</p><ol class="steps">
+          <li>Όταν ανάβει μια φρυκτωρία, ανάβουν μία-μία όσες βλέπει, μία σε κάθε κίνηση. Εκείνη γυρίζει πέτρινα διαφράγματα για να κόψει ή να ανοίξει τη γραμμή.</li>
+          <li>Ένα πλοίο χωρίς κυβερνήτη πλέει πάντα προς την πιο κοντινή αναμμένη φωτιά.</li>
+          <li>Το προφανές είναι να φέρει το πλοίο στο λιμάνι και να μπει. Όμως ένα άγαλμα στον βράχο το βλέπει να φτάνει, και το πλοίο γίνεται πέτρα στην είσοδο.</li>
+          <li>Κόβει τη γραμμή κι ανάβει μόνο την ψεύτικη φωτιά στον ύφαλο, ώστε αυτή να είναι η πιο κοντινή.</li>
+          <li>Το πλοίο τσακίζεται στον ύφαλο, και τα ξύλα του απλώνονται ως την πύλη σαν σκαλοπάτια.</li>
+        </ol></div>
+        <p class="catch"><b>Το έξυπνο:</b> δεν ανάβεις φωτιά εκεί που θέλεις να πας, αλλά εκεί που θέλεις να χαθεί το πλοίο.</p>
+        <p class="story"><b>Στην ιστορία:</b> ο Ναύπλιος άναψε ψεύτικες φωτιές και τσάκισε τον στόλο. Το πλοίο των Φαιάκων έγινε πέτρα μπροστά στα μάτια της πόλης.</p>
+        <div class="meta"><span><b>Από</b> Αισχύλο, «Αγαμέμνων» 281–316 · Απολλόδωρο, Επιτομή 6 · «Οδύσσεια» 13.159–169</span><span><b>Κόπος</b> μεγάλος</span></div>
+      </div>
+    </article>
+
+  </div>
+
+  <section class="sources" aria-labelledby="src-h">
+    <h3 id="src-h">Πηγές της έρευνας</h3>
+    <ul>
+      <li>Ήρων, «Πνευματικά» (μετάφραση Woodcroft): <a href="https://www.gutenberg.org/ebooks/77400">gutenberg.org/ebooks/77400</a></li>
+      <li>Το κινητό αυτόματο του Ήρωνα: <a href="https://kotsanas.com/exhibits/top20/the-mobile-automaton-of-heron-of-alexandria/">kotsanas.com</a></li>
+      <li>Ο Τάλως: <a href="https://www.theoi.com/Gigante/GiganteTalos.html">theoi.com/Gigante/GiganteTalos</a></li>
+      <li>Οι Γραίες: <a href="https://www.theoi.com/Pontios/Graiai.html">theoi.com/Pontios/Graiai</a></li>
+      <li>Η Τευμησσία αλεπού: <a href="https://www.theoi.com/Ther/AlopexTeumesios.html">theoi.com/Ther/AlopexTeumesios</a></li>
+      <li>Ησίοδος, «Θεογονία»: <a href="https://www.theoi.com/Text/HesiodTheogony.html">theoi.com/Text/HesiodTheogony</a></li>
+      <li>Η Αρέθουσα: <a href="https://www.theoi.com/Nymphe/NympheArethousa.html">theoi.com/Nymphe/NympheArethousa</a></li>
+      <li>Το είδωλο της Ελένης: <a href="https://classical-inquiries.chs.harvard.edu/introduction-to-helen-and-her-eidolon/">classical-inquiries.chs.harvard.edu</a></li>
+      <li>Οι φρυκτωρίες: <a href="https://en.wikipedia.org/wiki/Phryctoria">en.wikipedia.org/wiki/Phryctoria</a> · ο Ναύπλιος: <a href="https://en.wikipedia.org/wiki/Nauplius_(mythology)">en.wikipedia.org/wiki/Nauplius_(mythology)</a></li>
+      <li>Ο σχεδιασμός του Cocoon: <a href="https://www.gamedeveloper.com/design/mental-staircases-and-paradoxical-suitcases-crafting-the-world-hopping-puzzles-of-cocoon">gamedeveloper.com</a> · <a href="https://remapradio.com/articles/a-house-of-cards-built-on-trust-puzzle-design-in-cocoon-2/">remapradio.com</a></li>
+      <li>Το Blue Prince και η αντλία του: <a href="https://blueprince.wiki.gg/wiki/Pump_Room">blueprince.wiki.gg</a> · το Railbound: <a href="https://www.tech-gaming.com/railbound/">tech-gaming.com</a></li>
+      <li>Οι λογικές πύλες με ντόμινο: <a href="https://en.wikipedia.org/wiki/Domino_computer">en.wikipedia.org/wiki/Domino_computer</a> · το Turing Tumble: <a href="https://en.wikipedia.org/wiki/Turing_Tumble">en.wikipedia.org/wiki/Turing_Tumble</a></li>
+      <li>Οι γρίφοι σε σειρά (sequential discovery): <a href="https://puzzleworld.org/DesignCompetition/2021/results.htm">puzzleworld.org</a> · το διάγραμμα εξαρτήσεων: <a href="https://grumpygamer.com/puzzle_dependency_charts/">grumpygamer.com</a></li>
+    </ul>
+  </section>
+</div>
