@@ -942,7 +942,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   veil showing the temple then and now, the masks (stone, wind, sea: the water a floor, the islands walls), the mosaic of
   her face in sliding islands, leaps over statues that crumble (peg solitaire), her trail hardening into marble to carve
   the gate's pattern in one stroke, turning to stone at will, the sea that wraps round, ropes between columns that may
-  not cross.
+  not cross ("no, come on, you can do better, do a big research"). **Then a large research** (puzzle-game mechanics
+  2008-2026, puzzle-design theory and classic puzzles, Greek myths and ancient machines) and ten ideas from it, each
+  painted in the game's style and shown as a page (https://claude.ai/artifact/Mnp2XUPGTunAEDFvhK6Sny):
+  `design/level6/ideas/` (README with rules, catches, sources and what was kept for later; the paintings and prompts).
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
