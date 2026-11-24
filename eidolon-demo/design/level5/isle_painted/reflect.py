@@ -5,7 +5,7 @@ island (where the backdrop differs from the plain sky) turned over about a line 
 rippled and softened, given to the sky's colour there. The sea lets the backdrop through where it lies open, so it shows
 in the water between the island's point and the walk, and the level hides the rest, as it would.
 
-  python3 -I design/level5/isle_painted/reflect.py <backdrop without it> <out.jpg> [gap px] [strength] [fade px] [sky] [dark] [water line]
+  python3 -I design/level5/isle_painted/reflect.py <backdrop without it> <out.jpg> [gap px] [strength] [fade px] [sky] [dark] [water line] [blur up] [blur across]
   (water line: the row of the water it is turned over about; else a little under its point. Raised, the island keeps the
   water where it was, so its image goes as far down as it went up)
   the game's (23/11; the owner of a darker one: "the reflection is too dark"):
@@ -25,7 +25,9 @@ k = float(sys.argv[4]) if len(sys.argv) > 4 else 0.55
 fade = float(sys.argv[5]) if len(sys.argv) > 5 else 260.0
 sky = float(sys.argv[6]) if len(sys.argv) > 6 else 0.28      # (how much of the sky's colour it is given)
 dark = float(sys.argv[7]) if len(sys.argv) > 7 else 0.9      # (how much darker than the island)
-wl = float(sys.argv[8]) if len(sys.argv) > 8 else None
+wl = float(sys.argv[8]) if len(sys.argv) > 8 and sys.argv[8] != '-' else None
+by = float(sys.argv[9]) if len(sys.argv) > 9 else 2.6      # (how soft: along the up, and across; the owner, 24/11: "a blurred reflection that fades")
+bx = float(sys.argv[10]) if len(sys.argv) > 10 else 1.0
 B = np.asarray(Image.open(src).convert('RGB')).astype(np.float32)
 P = np.asarray(Image.open(os.path.join(D, '..', 'backdrop_plain_clean.jpg')).convert('RGB').resize((B.shape[1], B.shape[0]), Image.LANCZOS)).astype(np.float32)
 H, W = B.shape[:2]
@@ -53,8 +55,8 @@ for y in range(int(np.ceil(yw)), H):
     sx = np.clip(xx - rip[y], 0, W - 1); i0 = np.floor(sx).astype(int); i1 = np.minimum(i0 + 1, W - 1); u = sx - i0
     R[y] = row[i0] * (1 - u[:, None]) + row[i1] * u[:, None]
     A[y] = (mrow[i0] * (1 - u) + mrow[i1] * u) * k * np.exp(-(y - yw) / fade)
-R = np.stack([ndimage.gaussian_filter(R[..., c] * A, (2.6, 1.0)) for c in range(3)], -1) / np.maximum(ndimage.gaussian_filter(A, (2.6, 1.0)), 1e-3)[..., None]
-A = ndimage.gaussian_filter(A, (2.6, 1.0))
+R = np.stack([ndimage.gaussian_filter(R[..., c] * A, (by, bx)) for c in range(3)], -1) / np.maximum(ndimage.gaussian_filter(A, (by, bx)), 1e-3)[..., None]
+A = ndimage.gaussian_filter(A, (by, bx))
 R = R * (1.0 - sky) + P * sky      # (given a little to the sky's colour there, and darker than the island: an image in water)
 R = R * dark
 O = B * (1 - A[..., None]) + R * A[..., None]

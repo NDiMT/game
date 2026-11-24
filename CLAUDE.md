@@ -830,7 +830,13 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   went up, behind the walk); `IV_WATER_DETAILS` holds only `wd_far`; the colonnade in the water at the upper left (it
   lay over the island) and the fallen column and its drum at the lower right are kept in `design/fg_spare/level5/`
   with their entries. He asked whether the story's lines should come at the foot, where there is more room, and then:
-  "leave the text at the top". **Their image in the water is made
+  "leave the text at the top". **Then (24/11) the old far columns and the island's image at a distance** ("can we have a blurred
+  reflection under the island, at a distance, fading? and I want the old background", of two put to him: the old far
+  columns): `goguard/far_cols.glb` is again the crooked seven of 22/11 (from 22644707; `IVGD_COLS_ON` true, packed
+  again), the painted far columns (`wd_far`) kept in `design/fg_spare/level5/`; the island's image turned over about a
+  water line 50 px under its point (so it starts 100 px under it), soft (9 up, 3.5 across) and fading over 320 px:
+  `reflect.py <noreflect, the island 150 px higher> goguard/backdrop.jpg 24 0.75 320 0.5 1.0 1115 9 3.5`; it shows in the
+  open water between the island and the walk. **Their image in the water is made
   from the card itself** (the owner: "the reflection in the water is tragic": the model's painted one was faint,
   broken and cut short): `tools/go/card_reflect.py` takes the painted water away and turns each thing over about where
   it meets the water, as the game's own images are (a column about its foot; the row and its architrave about the line
