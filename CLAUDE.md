@@ -975,7 +975,15 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   passes (chained mechanisms in games, ancient machines and automata, multi-step mechanical puzzles, myths that hide a
   mechanism) and ten ideas, each chaining three to five mechanisms, painted and shown as a page
   (https://claude.ai/artifact/2yP7BimHGKAoAJtbtgcx2Z): `design/level6/ideas2/` (README with the chains, the catches and
-  the sources; the paintings, the prompts, the page).
+  the sources; the paintings, the prompts, the page). The owner: "what the hell are these, I want something very
+  clever". His "πολυμήχανα" was Odysseus' word, cunning, not many machines; the ten read as contraptions. In their place
+  one idea of cunning, playable: **the gaze that turns to stone** (`tools/go/stone_gaze_trial.py`): the Faithful and the
+  Guardian, both already known, and one new rule: his gaze turns to stone the first statue it falls on, and the stone
+  stops his gaze and her. She lures the Faithful to where, as he turns, it turns to stone at the foot of the corridor
+  to the gate and shields her climb; sunk in the crack (level 6's trick), it shields no one. `LEVEL` (27 swipes) and
+  `LEVEL_B` (24, a column), each one way, no limbo, the stone needed; found by `tools/go/stone_gaze_anneal.py`; both
+  playable at https://claude.ai/artifact/JPUtgawNumdfmgEtrPJvDH (`design/level6/stone_gaze/play.html`, its rules
+  checked against the solver on 3,000 move strings).
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
