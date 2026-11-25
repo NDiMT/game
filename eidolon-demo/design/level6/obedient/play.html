@@ -1,0 +1,374 @@
+<title>Οι υπάκουες</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* One column, the board first: the game's plum and cream round a board drawn in the levels' colours (as the Faithful's
+   page), the veiled statues stepping with her and sinking into stones. */
+:root {
+  --bg: #2a2030;
+  --panel: #362a3d;
+  --line: #4b3d52;
+  --fg: #f3e9e1;
+  --muted: #b9a9b9;
+  --accent: #d48a68;
+  --new: #c9c2e6;
+  --display: "Cormorant Garamond", "Cormorant", Georgia, serif;
+  --ui: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--ui); font-size: 15px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+.wrap { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+header { display: grid; gap: 6px; }
+h1 { font-family: var(--display); font-weight: 600; font-size: 38px; line-height: 1.02; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); font-size: 14px; margin: 0; }
+.boards { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.boards::-webkit-scrollbar { display: none; }
+.chip {
+  flex: 0 0 auto; border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 999px;
+  padding: 7px 13px; font: 500 13px var(--ui); cursor: pointer; display: flex; gap: 7px; align-items: center;
+}
+.chip .n { font-variant-numeric: tabular-nums; color: var(--muted); }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: #4a3040; }
+.chip .done { color: var(--accent); }
+.chip:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.stage { position: relative; touch-action: none; user-select: none; -webkit-user-select: none; }
+canvas { display: block; width: 100%; height: auto; border-radius: 14px; }
+.msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; pointer-events: none; }
+.msg[hidden] { display: none; }
+.msg .card { background: rgba(42, 32, 48, 0.9); border: 1px solid var(--line); border-radius: 14px; padding: 16px 20px; pointer-events: auto; max-width: 92%; }
+.msg h2 { font-family: var(--display); font-weight: 600; font-size: 30px; margin: 0 0 4px; }
+.msg p { margin: 0 0 12px; color: var(--muted); }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.stats { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 14px; }
+.stats b { color: var(--fg); font-weight: 600; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; }
+button { border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 10px; padding: 9px 14px; font: 500 14px var(--ui); cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #2a1a1a; }
+button:disabled { opacity: 0.45; cursor: default; }
+.rules { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 7px; font-size: 14px; }
+.rules p { margin: 0; }
+.rules .k { color: var(--accent); font-weight: 600; }
+.rules .new { color: var(--new); font-weight: 600; }
+.hint { color: var(--muted); font-size: 13px; margin: 0; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Οι υπάκουες</h1>
+    <p class="sub">Πρωτότυπο γρίφου για το επίπεδο 6. Ένας νέος κανόνας: τα αγάλματα με το πέπλο κάνουν ό,τι κάνεις.</p>
+  </header>
+  <div class="boards" id="boards" role="group" aria-label="Πίνακες"></div>
+  <div class="stage" id="stage">
+    <canvas id="cv" width="560" height="560" aria-label="Ο πίνακας: σύρε προς μια κατεύθυνση για να κινηθεί"></canvas>
+    <div class="msg" id="msg" hidden></div>
+  </div>
+  <div class="row">
+    <div class="stats" id="stats"></div>
+    <div class="btns">
+      <button id="restart" type="button">Από την αρχή</button>
+      <button id="solve" type="button">Δείξε τη λύση</button>
+    </div>
+  </div>
+  <div class="rules">
+    <p><span class="k">Κίνηση:</span> σύρε το δάχτυλο (ή πάτα τα βελάκια). Ένα σύρσιμο, ένα βήμα.</p>
+    <p><span class="new">Οι υπάκουες:</span> σε κάθε σύρσιμο, όλα τα αγάλματα με το πέπλο κάνουν κι αυτά ένα βήμα προς την ίδια μεριά, μαζί σου, ακόμα κι όταν εσύ δεν μπορείς να κουνηθείς. Ό,τι βρεθεί μπροστά τους (βράχος, άλλο άγαλμα, εσύ) τα κρατά στη θέση τους.</p>
+    <p><span class="k">Η θάλασσα:</span> εσύ δεν μπαίνεις. Εκείνα μπαίνουν: βουλιάζουν και γίνονται πέτρα, ίσια με το νερό, και πατιέται. Όποιο βγει έξω από τον πίνακα, το παίρνει η ανοιχτή θάλασσα.</p>
+    <p><span class="k">Σκοπός:</span> ο λευκός κύκλος μπροστά στην πύλη.</p>
+  </div>
+  <p class="hint">Ο κάθε πίνακας έχει μία μόνο συντομότερη λύση. Αν ένα άγαλμα βουλιάξει σε λάθος σημείο, από την αρχή.</p>
+</div>
+
+<script>
+(() => {
+  // the boards (rows: o a slab, ~ sea, # rock, S her start, M an obedient statue, G the ring before the gate), each
+  // proven by the solver (obedient.py)
+  const BOARDS = [
+    { name: 'Το πρώτο βήμα', rows: ['So~oG', 'Mo~o~'], way: 'RRDRRUR' },
+  ];
+  const DIRS = { R: [1, 0], L: [-1, 0], D: [0, 1], U: [0, -1] };
+  const KEYS = { ArrowRight: 'R', ArrowLeft: 'L', ArrowDown: 'D', ArrowUp: 'U', d: 'R', a: 'L', s: 'D', w: 'U' };
+  const key = p => p[0] + ',' + p[1];
+  const eq = (a, c) => !!a && !!c && a[0] === c[0] && a[1] === c[1];
+
+  // ---- the rules, as the solver has them ----
+  function parse(bd) {
+    const b = { W: bd.rows[0].length, H: bd.rows.length, slab: new Set(), rock: new Set(), M: [] };
+    bd.rows.forEach((r, y) => [...r].forEach((ch, x) => {
+      const k = key([x, y]);
+      if ('oSMG'.includes(ch)) b.slab.add(k);
+      if (ch === '#') b.rock.add(k);
+      if (ch === 'S') b.S = [x, y];
+      if (ch === 'M') b.M.push([x, y]);
+      if (ch === 'G') b.G = [x, y];
+    }));
+    return b;
+  }
+  const inside = (b, q) => q[0] >= 0 && q[0] < b.W && q[1] >= 0 && q[1] < b.H;
+  function step(b, st, d) {      // one swipe: { kind: win | move | none, h, ms, filled, moves: [{who, from, to, fate}] }
+    const v = DIRS[d];
+    const movers = [{ who: 'h', p: st.h }, ...st.ms.map((m, i) => ({ who: 'm' + i, p: m }))];
+    movers.sort((a, c) => (c.p[0] * v[0] + c.p[1] * v[1]) - (a.p[0] * v[0] + a.p[1] * v[1]));      // front first
+    const taken = new Set(movers.map(m => key(m.p))), filled = new Set(st.filled);
+    let h = st.h; const ms = []; const moves = [];
+    for (const m of movers) {
+      const q = [m.p[0] + v[0], m.p[1] + v[1]], kq = key(q);
+      if (!inside(b, q) && m.who !== 'h') { taken.delete(key(m.p)); moves.push({ who: m.who, from: m.p, to: q, fate: 'lost' }); continue; }
+      if (!inside(b, q) || b.rock.has(kq) || taken.has(kq)) { if (m.who !== 'h') ms.push(m.p); continue; }
+      if (b.slab.has(kq) || filled.has(kq)) {
+        taken.delete(key(m.p)); taken.add(kq); moves.push({ who: m.who, from: m.p, to: q, fate: 'step' });
+        if (m.who === 'h') h = q; else ms.push(q);
+      } else if (m.who !== 'h') { taken.delete(key(m.p)); filled.add(kq); moves.push({ who: m.who, from: m.p, to: q, fate: 'sink' }); }
+    }
+    if (eq(h, b.G)) return { kind: 'win', h, ms, filled, moves };
+    return { kind: moves.length ? 'move' : 'none', h, ms, filled, moves };
+  }
+  const stateKey = st => [key(st.h), st.ms.map(key).sort().join('|') || '-', [...st.filled].sort().join('|')].join(' ');
+  window.__obedient = {
+    boards: BOARDS,
+    simulate(i, moves) {      // (the final state after the moves, or 'win' at the move that wins)
+      const b = parse(BOARDS[i]); let st = { h: b.S, ms: b.M, filled: new Set() };
+      for (let n = 0; n < moves.length; n++) {
+        const r = step(b, st, moves[n]);
+        if (r.kind === 'win') return 'win ' + n;
+        if (r.kind === 'move') st = { h: r.h, ms: r.ms, filled: r.filled };
+      }
+      return stateKey(st);
+    }
+  };
+
+  // ---- drawing ----
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  const COL = { water: '#b9bed9', shim: '#c9cde3', slab: '#faf6f4', slabEdge: '#d9cfd5', rock: '#6f5f71', rockL: '#85748a',
+    way: '#c79a84', ring: '#fdfbf6', ringIn: '#9a7a6c', stone: '#d8d2de', stoneD: '#9a90a5', stoneE: '#695d76', head: '#e4dfe9',
+    sunk: '#ece8f2', sunkE: '#b9b0c8' };
+  let b, st, cell, ox, oy, dpr = 1;
+  const view = { her: null, stats: [], ghosts: [], bump: [0, 0], flash: 0, rip: [] };
+  function layout() {
+    const w = Math.min(560, cv.parentElement.clientWidth || 360), pad = 22;
+    cell = Math.floor(Math.min((w - 2 * pad) / b.W, 96));
+    const h = b.H * cell + 2 * pad + Math.round(cell * 0.55);
+    dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); cv.style.aspectRatio = w + ' / ' + h;
+    ox = (w - b.W * cell) / 2; oy = pad + Math.round(cell * 0.5);
+  }
+  const cx = p => ox + (p[0] + 0.5) * cell, cy = p => oy + (p[1] + 0.5) * cell;
+  const P = p => [cx(p), cy(p)];
+  function rr(x, y, w, h, r) { ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, y, w, h, r) : ctx.rect(x, y, w, h); }
+  const ground = (q, filled) => b.slab.has(key(q)) || filled.has(key(q));
+  function draw() {
+    const W = cv.width / dpr, H = cv.height / dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = COL.water; rr(0, 0, W, H, 14); ctx.fill();
+    ctx.strokeStyle = COL.shim; ctx.lineWidth = 1.5;
+    for (let i = 0; i < H / 16; i++) {
+      const y = 10 + i * 16, len = W * (0.2 + 0.45 * ((i * 37) % 11) / 11), x = 12 + ((i * 53) % 7) / 7 * (W - len - 24);
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + len, y); ctx.stroke();
+    }
+    const r = cell / 2 - Math.max(3, cell * 0.06), rad = cell * 0.1;
+    for (let y = 0; y < b.H; y++) for (let x = 0; x < b.W; x++) {
+      const p = [x, y], k = key(p), X = cx(p), Y = cy(p);
+      if (b.slab.has(k)) {
+        ctx.fillStyle = COL.rock; rr(X - r + 2, Y - r + cell * 0.08, 2 * r, 2 * r, rad); ctx.fill();
+        ctx.fillStyle = COL.slab; ctx.strokeStyle = COL.slabEdge; ctx.lineWidth = 2; rr(X - r, Y - r, 2 * r, 2 * r, rad); ctx.fill(); ctx.stroke();
+      } else if (b.rock.has(k)) {
+        ctx.fillStyle = COL.rock; ctx.beginPath();
+        const pts = [[-0.36, 0.2], [-0.3, -0.18], [-0.05, -0.34], [0.26, -0.24], [0.38, 0.08], [0.2, 0.32], [-0.14, 0.34]];
+        pts.forEach(([a, c], i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, X + a * cell, Y + c * cell)); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = COL.rockL; ctx.beginPath();
+        [[-0.26, -0.12], [-0.04, -0.27], [0.2, -0.18], [0.04, -0.04]].forEach(([a, c], i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, X + a * cell, Y + c * cell)); ctx.closePath(); ctx.fill();
+      } else if (st.filled.has(k) && !view.sinking?.has(k)) {      // a statue sunk to a stone, flush with the sea
+        ctx.fillStyle = COL.sunk; ctx.strokeStyle = COL.sunkE; ctx.lineWidth = 2; rr(X - r, Y - r, 2 * r, 2 * r, rad); ctx.fill(); ctx.stroke();
+        ctx.strokeStyle = 'rgba(150,140,170,0.55)'; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.ellipse(X, Y - cell * 0.04, cell * 0.12, cell * 0.13, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(X - cell * 0.22, Y + cell * 0.24); ctx.quadraticCurveTo(X, Y + cell * 0.02, X + cell * 0.22, Y + cell * 0.24); ctx.stroke();
+      }
+    }
+    // the way's lines and discs between the places she can walk
+    ctx.strokeStyle = COL.way; ctx.lineWidth = Math.max(2.5, cell * 0.045); ctx.lineCap = 'round';
+    for (let y = 0; y < b.H; y++) for (let x = 0; x < b.W; x++) {
+      const p = [x, y]; if (!ground(p, st.filled) || view.sinking?.has(key(p))) continue;
+      for (const q of [[x + 1, y], [x, y + 1]]) if (inside(b, q) && ground(q, st.filled) && !view.sinking?.has(key(q))) {
+        ctx.beginPath(); ctx.moveTo(cx(p), cy(p)); ctx.lineTo(cx(q), cy(q)); ctx.stroke();
+      }
+    }
+    ctx.fillStyle = COL.way;
+    for (let y = 0; y < b.H; y++) for (let x = 0; x < b.W; x++) {
+      const p = [x, y]; if (!ground(p, st.filled) || eq(p, b.G) || view.sinking?.has(key(p))) continue;
+      ctx.beginPath(); ctx.arc(cx(p), cy(p), Math.max(3.5, cell * 0.075), 0, Math.PI * 2); ctx.fill();
+    }
+    drawGate();
+    for (const rp of view.rip) for (let i = 0; i < 3; i++) {
+      const u = rp.t - i * 0.18; if (u <= 0 || u >= 1) continue;
+      ctx.strokeStyle = `rgba(255,255,255,${(1 - u) * 0.9})`; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.ellipse(rp.x, rp.y, cell * (0.3 + 0.6 * u), cell * (0.24 + 0.48 * u), 0, 0, Math.PI * 2); ctx.stroke();
+    }
+    const figs = [...view.stats.map(s => ({ y: s.p[1], f: () => drawStatue(s) })), { y: view.her[1], f: () => drawHer(view.her) }];
+    figs.sort((a, c) => a.y - c.y).forEach(o => o.f());
+    if (view.flash > 0) { ctx.fillStyle = `rgba(255,252,244,${view.flash})`; ctx.fillRect(0, 0, W, H); }
+  }
+  function drawGate() {
+    const g = b.G, gx = cx(g), gy = cy(g);
+    const inn = Object.values(DIRS).find(d => ground([g[0] + d[0], g[1] + d[1]], st.filled) || st.filled.has(key([g[0] + d[0], g[1] + d[1]]))) || [0, 1];
+    const ex = gx - inn[0] * cell * 0.5, ey = gy - inn[1] * cell * 0.5, L = cell * 0.42, T = cell * 0.08;
+    ctx.fillStyle = COL.ringIn; ctx.beginPath(); ctx.arc(gx, gy, cell * 0.3, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,248,230,0.5)'; ctx.lineWidth = cell * 0.13; ctx.beginPath(); ctx.arc(gx, gy, cell * 0.22, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = COL.ring; ctx.lineWidth = cell * 0.065; ctx.beginPath(); ctx.arc(gx, gy, cell * 0.22, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#fffaf0'; ctx.strokeStyle = '#b4a2b0'; ctx.lineWidth = 1.5;
+    if (inn[0]) rr(ex - T, ey - L, 2 * T, 2 * L, 3); else rr(ex - L, ey - T, 2 * L, 2 * T, 3);
+    ctx.fill(); ctx.stroke();
+  }
+  function drawHer([x, y]) {
+    x += view.bump[0]; y += view.bump[1];
+    const r = cell * 0.22;
+    ctx.fillStyle = 'rgba(88,78,110,0.35)'; ctx.beginPath(); ctx.ellipse(x + 2, y + r * 0.8, r * 1.05, r * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fcfaf8'; ctx.strokeStyle = '#463a4a'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.save(); ctx.beginPath(); ctx.arc(x, y, r - 1.5, 0, Math.PI * 2); ctx.clip();
+    ctx.strokeStyle = '#bb6243'; ctx.lineWidth = Math.max(2.5, r * 0.2);
+    for (const o of [-0.45, 0.05, 0.55]) { ctx.beginPath(); ctx.moveTo(x - r, y + o * r - r * 0.18); ctx.lineTo(x + r, y + o * r + r * 0.18); ctx.stroke(); }
+    ctx.restore();
+  }
+  function drawStatue(s) {      // a veiled statue from above; it sinks (smaller, fading) into the sea
+    const [x, y] = s.p, sink = s.sink || 0, k = 1 - 0.55 * sink;
+    ctx.globalAlpha = Math.max(0, 1 - sink * 1.05);
+    ctx.fillStyle = 'rgba(80,70,104,0.35)'; ctx.beginPath(); ctx.ellipse(x + 3, y + cell * 0.2 * k, cell * 0.3 * k, cell * 0.12 * k, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = COL.stone; ctx.strokeStyle = COL.stoneE; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x, y - cell * 0.38 * k); ctx.lineTo(x + cell * 0.25 * k, y + cell * 0.24 * k); ctx.lineTo(x - cell * 0.25 * k, y + cell * 0.24 * k);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(105,93,118,0.55)'; ctx.lineWidth = 1.2;      // the veil's folds
+    for (const o of [-0.09, 0.09]) { ctx.beginPath(); ctx.moveTo(x + o * cell * 0.4 * k, y - cell * 0.12 * k); ctx.lineTo(x + o * cell * 1.6 * k, y + cell * 0.22 * k); ctx.stroke(); }
+    ctx.fillStyle = COL.head; ctx.strokeStyle = COL.stoneE; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(x, y - cell * 0.22 * k, cell * 0.12 * k, cell * 0.13 * k, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+
+  // ---- motion ----
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const ease = t => t * t * (3 - 2 * t);
+  function tween(ms, fn) {
+    if (reduce) ms = Math.min(ms, 60);
+    return new Promise(res => {
+      const t0 = performance.now();
+      const f = now => { const t = Math.min(1, (now - t0) / ms); fn(ease(t)); draw(); t < 1 ? requestAnimationFrame(f) : res(); };
+      requestAnimationFrame(f);
+    });
+  }
+  const sleep = ms => new Promise(r => setTimeout(r, reduce ? 0 : ms));
+  const lerp = (a, c, t) => [a[0] + (c[0] - a[0]) * t, a[1] + (c[1] - a[1]) * t];
+
+  // ---- the game ----
+  let idx = 0, busy = false, pending = null, playing = false;
+  const solved = new Set(), stats = { moves: 0 };
+  const boardsEl = document.getElementById('boards'), msg = document.getElementById('msg');
+  function chips() {
+    boardsEl.innerHTML = '';
+    BOARDS.forEach((bd, i) => {
+      const c = document.createElement('button'); c.type = 'button'; c.className = 'chip'; c.id = 'board-' + (i + 1);
+      c.setAttribute('aria-pressed', i === idx ? 'true' : 'false');
+      c.innerHTML = `<span>${i + 1} · ${bd.name}</span><span class="n">${bd.way.length}</span>` + (solved.has(i) ? '<span class="done">✓</span>' : '');
+      c.onclick = () => { if (playing) return; idx = i; load(); };
+      boardsEl.appendChild(c);
+    });
+  }
+  function showStats() {
+    document.getElementById('stats').innerHTML = `Κινήσεις <b>${stats.moves}</b> · Λύση σε <b>${BOARDS[idx].way.length}</b>`;
+  }
+  function settle() { view.her = P(st.h); view.stats = st.ms.map(m => ({ p: P(m) })); view.sinking = null; view.rip = []; }
+  function reset() {
+    st = { h: b.S, ms: b.M, filled: new Set() };
+    Object.assign(view, { bump: [0, 0], flash: 0 });
+    settle(); stats.moves = 0; msg.hidden = true; showStats(); draw();
+  }
+  function load() { b = parse(BOARDS[idx]); layout(); chips(); reset(); }
+  function say(title, text, buttons) {
+    msg.innerHTML = `<div class="card"><h2>${title}</h2><p>${text}</p><div class="btns" style="justify-content:center"></div></div>`;
+    const row = msg.querySelector('.btns');
+    for (const [label, fn, primary] of buttons || []) {
+      const bt = document.createElement('button'); bt.type = 'button'; bt.textContent = label; if (primary) bt.className = 'primary';
+      bt.onclick = fn; row.appendChild(bt);
+    }
+    msg.hidden = false;
+  }
+  async function move(d) {
+    if (busy) { pending = d; return; }
+    busy = true;
+    const r = step(b, st, d);
+    if (r.kind === 'none') {
+      const v = DIRS[d];
+      await tween(90, t => { view.bump = [v[0] * cell * 0.1 * t, v[1] * cell * 0.1 * t]; });
+      await tween(90, t => { view.bump = [v[0] * cell * 0.1 * (1 - t), v[1] * cell * 0.1 * (1 - t)]; });
+      busy = false; return next();
+    }
+    stats.moves++; showStats();
+    // everyone steps at once: her and the statues (a statue's slot is its index in st.ms)
+    const herFrom = P(st.h), herMove = r.moves.find(m => m.who === 'h');
+    const tracks = st.ms.map((m, i) => { const mv = r.moves.find(x => x.who === 'm' + i); return { from: P(m), to: mv ? P(mv.to) : P(m), fate: mv ? mv.fate : 'stay' }; });
+    view.sinking = new Set(r.moves.filter(m => m.fate === 'sink').map(m => key(m.to)));
+    const stBefore = st;
+    st = { h: r.h, ms: stBefore.ms, filled: r.filled };      // (the stones show once their statue has gone under)
+    await tween(200, t => {
+      view.her = herMove ? lerp(herFrom, P(r.h), t) : herFrom;
+      view.stats = tracks.map(tr => ({ p: lerp(tr.from, tr.to, t) }));
+    });
+    const sinkers = tracks.filter(tr => tr.fate === 'sink' || tr.fate === 'lost');
+    if (sinkers.length) {
+      view.rip = sinkers.map(tr => ({ x: tr.to[0], y: tr.to[1], t: 0 }));
+      await tween(620, t => {
+        view.stats = tracks.map(tr => ({ p: tr.to, sink: (tr.fate === 'sink' || tr.fate === 'lost') ? t : 0 }));
+        view.rip.forEach(rp => { rp.t = t; });
+      });
+      view.sinking = null;
+      await tween(260, t => { view.rip.forEach(rp => { rp.t = 1; }); });
+    }
+    st = { h: r.h, ms: r.ms, filled: r.filled };
+    if (r.kind === 'win') {
+      settle(); draw();
+      await tween(650, t => { view.flash = 0.85 * t; });
+      solved.add(idx); chips();
+      const nextIdx = idx + 1 < BOARDS.length ? idx + 1 : null;
+      say('Πέρασε στο φως', `Σε ${stats.moves} κινήσεις (η συντομότερη: ${BOARDS[idx].way.length}).`,
+        [['Ξανά', () => reset()], ...(nextIdx !== null ? [['Επόμενος πίνακας', () => { idx = nextIdx; load(); }, true]] : [])]);
+      busy = false; pending = null; return;
+    }
+    settle(); draw(); busy = false; next();
+  }
+  function next() { if (pending) { const d = pending; pending = null; move(d); } }
+  async function playSolution() {
+    if (playing) return;
+    playing = true; pending = null;
+    while (busy) await sleep(50);
+    reset();
+    document.getElementById('solve').disabled = true; document.getElementById('restart').disabled = true;
+    for (const d of BOARDS[idx].way) { await move(d); while (busy) await sleep(30); await sleep(170); }
+    playing = false;
+    document.getElementById('solve').disabled = false; document.getElementById('restart').disabled = false;
+  }
+
+  const stage = document.getElementById('stage'); let t0 = null;
+  stage.addEventListener('pointerdown', e => { t0 = [e.clientX, e.clientY]; });
+  stage.addEventListener('pointerup', e => {
+    if (!t0 || playing || !msg.hidden) { t0 = null; return; }
+    const dx = e.clientX - t0[0], dy = e.clientY - t0[1]; t0 = null;
+    if (Math.hypot(dx, dy) >= 22) move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : (dy > 0 ? 'D' : 'U'));
+  });
+  addEventListener('keydown', e => { const d = KEYS[e.key]; if (!d || playing || !msg.hidden) return; e.preventDefault(); move(d); });
+  document.getElementById('restart').onclick = () => { if (!playing && !busy) reset(); };
+  document.getElementById('solve').onclick = playSolution;
+  addEventListener('resize', () => { layout(); settle(); draw(); });
+
+  function start(data) {
+    if (data && Number.isInteger(data.idx) && data.idx < BOARDS.length) idx = data.idx;
+    (data && data.solved || []).forEach(i => solved.add(i));
+    load();
+  }
+  window.claude?.hot?.snapshot?.(() => ({ idx, solved: [...solved] }));
+  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>

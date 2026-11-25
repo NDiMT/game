@@ -998,6 +998,20 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   (`design/level6/balance/play.html`, its rules checked against the solver on 4,500 move strings; `boards.png`).
   Annealing (`ann2.py`-style, in the scratchpad's way) only found variants of the hand-made boards; good lever boards
   were designed by hand and proven.
+  The owner, of the balance: "let's go with 2, show me", then "actually I didn't like it, something else". In its place
+  the obedient ones (`tools/go/obedient_trial.py`: veiled statues take every step she takes, at once and front first,
+  even when she cannot move; into the sea they sink and become stones flush with the way, so the second walks out over
+  the first; off the board the open sea takes them; boards by an annealer in a frame, the gate's islet on top, a strait,
+  the shore; `design/level6/obedient/play.html`, its first board only), laid aside for later when he came back: "the
+  balance wasn't bad, a little smarter if we made it". **Then the scale** (`tools/go/scale_trial.py`): the same beam,
+  one rule changed: when both sides weigh the same (weight times distance) it lies level, and level every place on it
+  is at the pier's height and meets the piers beside it (empty, it lies level; the old rule kept it as it was). So the
+  stone, twice her weight, holds her end level only at half the distance; it is loaded from a pier only while the beam
+  lies level; and at the far end it raises her past a ring standing at the pier's height. Three boards, each one way,
+  the stone and the level needed: the balance (7), high (16, no dead end), at half the distance (19). Playable at
+  https://claude.ai/artifact/2LJpgX1E2ki1r9mWFPVpTJ (`design/level6/scale/play.html`, its rules checked against the
+  solver on 4,500 move strings; `boards.png`). Found by annealing about the hand-made first board (rewarding the three
+  heights used and the level at an end with the stone on the beam), then pruned of cells that changed nothing.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
