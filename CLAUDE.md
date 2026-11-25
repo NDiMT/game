@@ -1012,6 +1012,17 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   https://claude.ai/artifact/2LJpgX1E2ki1r9mWFPVpTJ (`design/level6/scale/play.html`, its rules checked against the
   solver on 4,500 move strings; `boards.png`). Found by annealing about the hand-made first board (rewarding the three
   heights used and the level at an end with the stone on the beam), then pruned of cells that changed nothing.
+  The owner: "something better with a scale"; a two-pan scale was begun (`pans.py` in the scratchpad's way: the heavier
+  pan sinks, she rises by throwing ballast out of hers) and stopped: "damn it, think of something clever in general",
+  "not something different: completely, clever, out of the box". **Then the eye** (`tools/go/eye_trial.py`): inside the
+  glass only what is seen is real, so the game's own eye is a rule: sea hidden behind something tall is not there and she
+  walks over it. The eye looks down the board's diagonal from the front (the game's camera is near isometric); a pier or
+  the stone one place high hides the place right behind it (in a true isometric eye its top covers that place exactly),
+  a tall pier two. She pushes the stone (onto slabs only) to hide the gap she needs, then walks behind it. Four boards,
+  each one way, no dead end: behind the pier (4), the stone hides (13), two stones (17), the piers (20); playable at
+  https://claude.ai/artifact/NBZMKpSm3dck7Uw1eAz4KU (`design/level6/eye/play.html`, drawn isometric so the stone truly
+  hides the sea, "look behind" shows what it hides; its rules checked against the solver on 6,000 move strings;
+  `boards.png`). In the game it would want an orthographic camera at the isometric angle for this level.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are

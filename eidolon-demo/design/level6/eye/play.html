@@ -1,0 +1,407 @@
+<title>Ό,τι δεν βλέπει το μάτι</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* One column, the board first: the game's plum and cream round a board drawn as the game's eye sees it (isometric,
+   from the front), so that what stands before the sea hides it. */
+:root {
+  --bg: #2a2030;
+  --panel: #362a3d;
+  --line: #4b3d52;
+  --fg: #f3e9e1;
+  --muted: #b9a9b9;
+  --accent: #d48a68;
+  --new: #c9c2e6;
+  --display: "Cormorant Garamond", "Cormorant", Georgia, serif;
+  --ui: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--ui); font-size: 15px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+.wrap { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+header { display: grid; gap: 6px; }
+h1 { font-family: var(--display); font-weight: 600; font-size: 36px; line-height: 1.04; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); font-size: 14px; margin: 0; }
+.boards { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.boards::-webkit-scrollbar { display: none; }
+.chip {
+  flex: 0 0 auto; border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 999px;
+  padding: 7px 13px; font: 500 13px var(--ui); cursor: pointer; display: flex; gap: 7px; align-items: center;
+}
+.chip .n { font-variant-numeric: tabular-nums; color: var(--muted); }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: #4a3040; }
+.chip .done { color: var(--accent); }
+.chip:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.stage { position: relative; touch-action: none; user-select: none; -webkit-user-select: none; }
+canvas { display: block; width: 100%; height: auto; border-radius: 14px; }
+.msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; pointer-events: none; }
+.msg[hidden] { display: none; }
+.msg .card { background: rgba(42, 32, 48, 0.9); border: 1px solid var(--line); border-radius: 14px; padding: 16px 20px; pointer-events: auto; max-width: 92%; }
+.msg h2 { font-family: var(--display); font-weight: 600; font-size: 30px; margin: 0 0 4px; }
+.msg p { margin: 0 0 12px; color: var(--muted); }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.stats { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 14px; }
+.stats b { color: var(--fg); font-weight: 600; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; }
+button { border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 10px; padding: 9px 14px; font: 500 14px var(--ui); cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #2a1a1a; }
+button[aria-pressed="true"] { border-color: var(--new); color: var(--new); }
+button:disabled { opacity: 0.45; cursor: default; }
+.rules { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 7px; font-size: 14px; }
+.rules p { margin: 0; }
+.rules .k { color: var(--accent); font-weight: 600; }
+.rules .new { color: var(--new); font-weight: 600; }
+.hint { color: var(--muted); font-size: 13px; margin: 0; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Ό,τι δεν βλέπει το μάτι</h1>
+    <p class="sub">Πρωτότυπο γρίφου για το επίπεδο 6. Μέσα στον καθρέφτη υπάρχει μόνο ό,τι φαίνεται.</p>
+  </header>
+  <div class="boards" id="boards" role="group" aria-label="Πίνακες"></div>
+  <div class="stage" id="stage">
+    <canvas id="cv" width="560" height="560" aria-label="Ο πίνακας: σύρε διαγώνια για να κινηθεί"></canvas>
+    <div class="msg" id="msg" hidden></div>
+  </div>
+  <div class="row">
+    <div class="stats" id="stats"></div>
+    <div class="btns">
+      <button id="peek" type="button" aria-pressed="false">Κοίτα πίσω</button>
+      <button id="restart" type="button">Από την αρχή</button>
+      <button id="solve" type="button">Λύση</button>
+    </div>
+  </div>
+  <div class="rules">
+    <p><span class="k">Κίνηση:</span> σύρε διαγώνια, όπως τρέχουν οι δρόμοι (ή πάτα τα βελάκια: πάνω ↗, δεξιά ↘, κάτω ↙, αριστερά ↖). Ένα σύρσιμο, ένα βήμα.</p>
+    <p><span class="new">Το μάτι:</span> θάλασσα που κρύβεται πίσω από κάτι ψηλό δεν υπάρχει. Περπατάς από πάνω της σαν να ήταν πλάκα. Η κολόνα και η πέτρα κρύβουν τη θέση ακριβώς πίσω τους, η ψηλή κολόνα δύο θέσεις.</p>
+    <p><span class="k">Η πέτρα:</span> τη σπρώχνεις, μόνο πάνω σε πλάκες, και παίρνει μαζί της ό,τι κρύβει.</p>
+    <p><span class="k">Σκοπός:</span> ο λευκός κύκλος μπροστά στην πύλη. «Κοίτα πίσω» δείχνει τι κρύβουν.</p>
+  </div>
+  <p class="hint">Ο κάθε πίνακας έχει μία μόνο συντομότερη λύση.</p>
+</div>
+
+<script>
+(() => {
+  // the boards (rows: o a slab, ~ sea, # a column, I a tall column, M a veiled statue on a slab, S her start, G the ring),
+  // each proven by the solver (eye.py); the eye looks down the board's diagonal from the front
+  const BOARDS = [
+    { name: 'Πίσω από την κολόνα', rows: ['So~oG', '~~~#~'], way: 'RRRR' },
+    { name: 'Η πέτρα κρύβει', rows: ['oS~~~', 'o~~~~', '~o~~~', '~M~oo', 'ooooG'], way: 'LDDRDLDRRURRD' },
+    { name: 'Δύο πέτρες', rows: ['G~~~~', 'oooo~', '~~~o~', '~oo~S', '~ooMo', '~M~~~'], way: 'DLLULLDRRRUUULLLU' },
+    { name: 'Οι κολόνες', rows: ['~~~~~G', '~o~~~o', '~Mo#~I', '~oMoSo', '~o~~~~'], way: 'LLUULLDRURDLDRRRUURU' },
+  ];
+  const DIRS = { R: [1, 0], L: [-1, 0], D: [0, 1], U: [0, -1] };
+  const KEYS = { ArrowRight: 'R', ArrowLeft: 'L', ArrowDown: 'D', ArrowUp: 'U', d: 'R', a: 'L', s: 'D', w: 'U' };
+  const key = p => p[0] + ',' + p[1];
+  const eq = (a, c) => !!a && !!c && a[0] === c[0] && a[1] === c[1];
+
+  // ---- the rules, as the solver has them ----
+  function parse(bd) {
+    const b = { W: bd.rows[0].length, H: bd.rows.length, slab: new Set(), col: new Map(), M: [] };
+    bd.rows.forEach((r, y) => [...r].forEach((ch, x) => {
+      const k = key([x, y]);
+      if ('oSMG'.includes(ch)) b.slab.add(k);
+      if (ch === '#') b.col.set(k, 1);
+      if (ch === 'I') b.col.set(k, 2);
+      if (ch === 'S') b.S = [x, y];
+      if (ch === 'M') b.M.push([x, y]);
+      if (ch === 'G') b.G = [x, y];
+    }));
+    return b;
+  }
+  const inside = (b, q) => q[0] >= 0 && q[0] < b.W && q[1] >= 0 && q[1] < b.H;
+  function hidden(b, ms) {
+    const out = new Set();
+    for (const [k, h] of b.col) { const [x, y] = k.split(',').map(Number); for (let i = 1; i <= h; i++) out.add(key([x - i, y - i])); }
+    for (const m of ms) out.add(key([m[0] - 1, m[1] - 1]));
+    return out;
+  }
+  const hasM = (ms, q) => ms.some(m => eq(m, q));
+  function floorAt(b, q, ms, hid) {
+    if (!inside(b, q) || b.col.has(key(q)) || hasM(ms, q)) return false;
+    return b.slab.has(key(q)) || hid.has(key(q));
+  }
+  function step(b, st, d) {      // one swipe: { kind: blocked | win | move, h, ms, push }
+    const v = DIRS[d], q = [st.h[0] + v[0], st.h[1] + v[1]];
+    if (hasM(st.ms, q)) {
+      const r = [q[0] + v[0], q[1] + v[1]];
+      if (!inside(b, r) || !b.slab.has(key(r)) || hasM(st.ms, r) || b.col.has(key(r)) || eq(r, b.G)) return { kind: 'blocked' };
+      const ms = st.ms.map(m => eq(m, q) ? r : m);
+      if (!b.slab.has(key(st.h)) && !hidden(b, ms).has(key(st.h))) return { kind: 'blocked' };
+      return { kind: 'move', h: q, ms, push: { from: q, to: r } };
+    }
+    if (!floorAt(b, q, st.ms, hidden(b, st.ms))) return { kind: 'blocked' };
+    if (eq(q, b.G)) return { kind: 'win', h: q, ms: st.ms };
+    return { kind: 'move', h: q, ms: st.ms };
+  }
+  const stateKey = st => key(st.h) + ' ' + st.ms.map(key).sort().join('|');
+  window.__eye = {
+    boards: BOARDS,
+    simulate(i, moves) {
+      const b = parse(BOARDS[i]); let st = { h: b.S, ms: b.M };
+      for (let n = 0; n < moves.length; n++) {
+        const r = step(b, st, moves[n]);
+        if (r.kind === 'win') return 'win ' + n;
+        if (r.kind === 'move') st = { h: r.h, ms: r.ms };
+      }
+      return stateKey(st);
+    }
+  };
+
+  // ---- drawing: the game's eye, isometric from the front; a thing one place high covers the place behind it ----
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  const COL = { sea: '#b4bad8', seaE: 'rgba(150,158,196,0.55)', shim: '#c9cde3', top: '#faf6f4', topE: '#d9cfd5', left: '#8a7a8c',
+    right: '#6f5f71', way: '#c79a84', ring: '#fdfbf6', ringIn: '#9a7a6c', stone: '#e1dbe6', stoneD: '#b6abc0', stoneE: '#6d6080',
+    col: '#f4efed', colD: '#d8cfd3', colE: '#a99aa6' };
+  let b, st, TW, TH, ZH, ox, oy, dpr = 1, peek = false;
+  const SLAB = 0.22;      // (a slab's top, over the sea, in places' heights)
+  const view = { her: null, herZ: SLAB, ms: [], bump: [0, 0], flash: 0 };
+  function layout() {
+    const w = Math.min(560, cv.parentElement.clientWidth || 360), pad = 16;
+    TW = Math.floor(Math.min((w - 2 * pad) / ((b.W + b.H) / 2), 128)); TH = TW / 2; ZH = TH;
+    const h = (b.W + b.H) / 2 * TH + 2.6 * ZH + 2 * pad;
+    dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); cv.style.aspectRatio = w + ' / ' + h;
+    ox = w / 2 + (b.H - b.W) / 2 * TW / 2; oy = pad + 2.4 * ZH;
+  }
+  // a point (x, y on the board, z up) on the screen; x, y at a place's middle when + 0.5
+  const scr = (x, y, z) => [ox + (x - y) * TW / 2, oy + (x + y) * TH / 2 - z * ZH];
+  const mid = (p, z) => scr(p[0] + 0.5, p[1] + 0.5, z);
+  function poly(pts) { ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, x, y)); ctx.closePath(); }
+  function tile(x, y, z, fill, stroke) {
+    poly([scr(x, y, z), scr(x + 1, y, z), scr(x + 1, y + 1, z), scr(x, y + 1, z)]);
+    ctx.fillStyle = fill; ctx.fill(); if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = 1.2; ctx.stroke(); }
+  }
+  function slab(x, y) {
+    const i = 0.04;
+    poly([scr(x + i, y + 1 - i, SLAB), scr(x + 1 - i, y + 1 - i, SLAB), scr(x + 1 - i, y + 1 - i, 0), scr(x + i, y + 1 - i, 0)]);
+    ctx.fillStyle = COL.left; ctx.fill();
+    poly([scr(x + 1 - i, y + i, SLAB), scr(x + 1 - i, y + 1 - i, SLAB), scr(x + 1 - i, y + 1 - i, 0), scr(x + 1 - i, y + i, 0)]);
+    ctx.fillStyle = COL.right; ctx.fill();
+    poly([scr(x + i, y + i, SLAB), scr(x + 1 - i, y + i, SLAB), scr(x + 1 - i, y + 1 - i, SLAB), scr(x + i, y + 1 - i, SLAB)]);
+    ctx.fillStyle = COL.top; ctx.fill(); ctx.strokeStyle = COL.topE; ctx.lineWidth = 1.2; ctx.stroke();
+  }
+  function box(x, y, z0, z1, top, left, right, edge) {      // a block on the place (x, y) from z0 up to z1
+    const i = 0.03;
+    poly([scr(x + i, y + 1 - i, z1), scr(x + 1 - i, y + 1 - i, z1), scr(x + 1 - i, y + 1 - i, z0), scr(x + i, y + 1 - i, z0)]);
+    ctx.fillStyle = left; ctx.fill(); ctx.strokeStyle = edge; ctx.lineWidth = 1; ctx.stroke();
+    poly([scr(x + 1 - i, y + i, z1), scr(x + 1 - i, y + 1 - i, z1), scr(x + 1 - i, y + 1 - i, z0), scr(x + 1 - i, y + i, z0)]);
+    ctx.fillStyle = right; ctx.fill(); ctx.stroke();
+    poly([scr(x + i, y + i, z1), scr(x + 1 - i, y + i, z1), scr(x + 1 - i, y + 1 - i, z1), scr(x + i, y + 1 - i, z1)]);
+    ctx.fillStyle = top; ctx.fill(); ctx.stroke();
+  }
+  function column(p, h) {      // a square marble pier, h places high, from the sea
+    ctx.globalAlpha = peek ? 0.25 : 1;
+    box(p[0], p[1], 0, h + 0.12, '#f7f2f0', '#ddd2d6', '#c3b5bd', '#a99aa6');
+    ctx.strokeStyle = 'rgba(150,135,150,0.45)'; ctx.lineWidth = 1;      // its flutes, on the two faces the eye sees
+    for (const f of [0.25, 0.5, 0.75]) {
+      let a = scr(p[0] + f, p[1] + 0.97, 0.05), c = scr(p[0] + f, p[1] + 0.97, h + 0.05);
+      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(c[0], c[1]); ctx.stroke();
+      a = scr(p[0] + 0.97, p[1] + f, 0.05); c = scr(p[0] + 0.97, p[1] + f, h + 0.05);
+      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(c[0], c[1]); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+  function statue(pt, z) {      // the stone she pushes: the rose cube, one place high, its carving on top
+    ctx.globalAlpha = peek ? 0.3 : 1;
+    const x = pt[0], y = pt[1], z1 = SLAB + 1;
+    box(x, y, SLAB, z1, '#e6cdd1', '#cdb0b7', '#b8979f', '#8e6878');
+    const c = scr(x + 0.5, y + 0.5, z1);
+    ctx.strokeStyle = '#8e6878'; ctx.lineWidth = Math.max(1.5, TW * 0.02);
+    ctx.beginPath(); ctx.ellipse(c[0], c[1], TW * 0.12, TH * 0.12, 0, 0, Math.PI * 2); ctx.stroke();
+    for (const [a1, b1, a2, b2] of [[0.5, 0.06, 0.5, 0.38], [0.5, 0.62, 0.5, 0.94], [0.06, 0.5, 0.38, 0.5], [0.62, 0.5, 0.94, 0.5]]) {
+      const u = scr(x + a1, y + b1, z1), v = scr(x + a2, y + b2, z1);
+      ctx.beginPath(); ctx.moveTo(u[0], u[1]); ctx.lineTo(v[0], v[1]); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+  function her(p, z) {
+    let [cx, cy] = [p[0] + view.bump[0], p[1] - z * ZH + view.bump[1]];
+    const r = TW * 0.14;
+    ctx.fillStyle = 'rgba(70,60,90,0.3)'; ctx.beginPath(); ctx.ellipse(cx + 2, cy + 1, r * 1.2, r * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fcfaf8'; ctx.strokeStyle = '#463a4a'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx - r, cy); ctx.lineTo(cx - r * 0.7, cy - r * 2.2); ctx.lineTo(cx + r * 0.7, cy - r * 2.2); ctx.lineTo(cx + r, cy); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.save(); ctx.clip(); ctx.strokeStyle = '#bb6243'; ctx.lineWidth = Math.max(2, r * 0.28);
+    for (const o of [0.4, 1.0, 1.6]) { ctx.beginPath(); ctx.moveTo(cx - r, cy - o * r + r * 0.25); ctx.lineTo(cx + r, cy - o * r - r * 0.25); ctx.stroke(); }
+    ctx.restore();
+    ctx.fillStyle = '#fcfaf8'; ctx.beginPath(); ctx.arc(cx, cy - r * 2.65, r * 0.62, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  }
+  function ringAndGate() {
+    const g = b.G, [gx, gy] = mid(g, SLAB);
+    ctx.fillStyle = COL.ringIn; ctx.beginPath(); ctx.ellipse(gx, gy, TW * 0.3, TH * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,248,230,0.55)'; ctx.lineWidth = TH * 0.12; ctx.beginPath(); ctx.ellipse(gx, gy, TW * 0.22, TH * 0.22, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = COL.ring; ctx.lineWidth = TH * 0.06; ctx.beginPath(); ctx.ellipse(gx, gy, TW * 0.22, TH * 0.22, 0, 0, Math.PI * 2); ctx.stroke();
+  }
+  function gateArch() {      // on the ring's far edge (up the screen)
+    const g = b.G, a = scr(g[0] + 0.15, g[1] + 0.02, SLAB), c = scr(g[0] + 0.98, g[1] + 0.02, SLAB);
+    const lft = scr(g[0] + 0.02, g[1] + 0.15, SLAB), rgt = scr(g[0] + 0.02, g[1] + 0.98, SLAB);
+    const posts = [scr(g[0] + 0.08, g[1] + 0.08, SLAB), scr(g[0] + 0.92, g[1] + 0.08, SLAB), scr(g[0] + 0.08, g[1] + 0.92, SLAB)];
+    const hgt = ZH * 1.25;
+    ctx.fillStyle = 'rgba(255,250,232,0.85)';
+    poly([posts[1], [posts[1][0], posts[1][1] - hgt], [posts[0][0], posts[0][1] - hgt], posts[0]]); ctx.fill();
+    poly([posts[2], [posts[2][0], posts[2][1] - hgt], [posts[0][0], posts[0][1] - hgt], posts[0]]); ctx.fill();
+    ctx.strokeStyle = '#a8949f'; ctx.lineWidth = TW * 0.06; ctx.lineCap = 'round';
+    for (const p of posts) { ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(p[0], p[1] - hgt); ctx.stroke(); }
+    ctx.beginPath(); ctx.moveTo(posts[1][0], posts[1][1] - hgt); ctx.lineTo(posts[0][0], posts[0][1] - hgt); ctx.lineTo(posts[2][0], posts[2][1] - hgt); ctx.stroke();
+  }
+  function draw() {
+    const Wd = cv.width / dpr, Hd = cv.height / dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = COL.sea; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(0, 0, Wd, Hd, 14) : ctx.rect(0, 0, Wd, Hd); ctx.fill();
+    ctx.strokeStyle = COL.shim; ctx.lineWidth = 1.5;
+    for (let i = 0; i < Hd / 14; i++) {
+      const y = 8 + i * 14, len = Wd * (0.15 + 0.4 * ((i * 37) % 11) / 11), x = 10 + ((i * 53) % 7) / 7 * (Wd - len - 20);
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + len, y); ctx.stroke();
+    }
+    const hid = hidden(b, st.ms);
+    // the sea's places of the board, faintly, and the hidden ones (seen with "look behind")
+    for (let y = 0; y < b.H; y++) for (let x = 0; x < b.W; x++) {
+      const k = key([x, y]);
+      if (!b.slab.has(k) && !b.col.has(k)) tile(x, y, 0, 'rgba(255,255,255,0.05)', COL.seaE);
+      if (peek && hid.has(k) && !b.slab.has(k)) tile(x, y, 0, 'rgba(201,194,230,0.45)', 'rgba(150,140,200,0.9)');
+    }
+    // back to front: places by x + y, and on each the things standing there
+    const things = [];
+    for (let y = 0; y < b.H; y++) for (let x = 0; x < b.W; x++) {
+      const k = key([x, y]), d = x + y;
+      if (b.slab.has(k)) things.push({ d, o: 0, f: () => slab(x, y) });
+      if (b.col.has(k)) things.push({ d, o: 3, f: () => column([x, y], b.col.get(k)) });
+    }
+    things.push({ d: b.G[0] + b.G[1], o: 1, f: () => { ringAndGate(); } });
+    things.push({ d: b.G[0] + b.G[1] - 0.6, o: 3, f: gateArch });
+    const hid2 = hidden(b, st.ms), can = q => inside(b, q) && (floorAt(b, q, [], hid2) || hasM(st.ms, q));
+    for (let y = 0; y < b.H; y++) for (let x = 0; x < b.W; x++) if (can([x, y])) things.push({ d: x + y + 0.3, o: 1, f: () => wayAt([x, y], can) });
+    view.ms.forEach(m => things.push({ d: m.d, o: 3, f: () => statue(m.p, SLAB) }));      // (m.p: board coordinates)
+    things.push({ d: view.herD, o: 2, f: () => her(view.her, view.herZ) });
+    things.sort((a, c) => a.d - c.d || a.o - c.o).forEach(t => t.f());
+    if (view.flash > 0) { ctx.fillStyle = `rgba(255,252,244,${view.flash})`; ctx.fillRect(0, 0, Wd, Hd); }
+  }
+  function wayAt(p, can) {      // the way on one place's top: half of each line to the places she can go, and its disc
+    const a = mid(p, SLAB);
+    ctx.strokeStyle = COL.way; ctx.lineWidth = Math.max(2.5, TW * 0.035); ctx.lineCap = 'round';
+    for (const d of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const q = [p[0] + d[0], p[1] + d[1]]; if (!can(q)) continue;
+      const c = scr(p[0] + 0.5 + d[0] * 0.5, p[1] + 0.5 + d[1] * 0.5, SLAB);
+      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(c[0], c[1]); ctx.stroke();
+    }
+    if (!eq(p, b.G)) { ctx.fillStyle = COL.way; ctx.beginPath(); ctx.ellipse(a[0], a[1], Math.max(3, TW * 0.05), Math.max(1.6, TH * 0.05), 0, 0, Math.PI * 2); ctx.fill(); }
+  }
+
+  // ---- motion ----
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const ease = t => t * t * (3 - 2 * t);
+  function tween(ms, fn) {
+    if (reduce) ms = Math.min(ms, 60);
+    return new Promise(res => {
+      const t0 = performance.now();
+      const f = now => { const t = Math.min(1, (now - t0) / ms); fn(ease(t)); draw(); t < 1 ? requestAnimationFrame(f) : res(); };
+      requestAnimationFrame(f);
+    });
+  }
+  const sleep = ms => new Promise(r => setTimeout(r, reduce ? 0 : ms));
+  const lerp = (a, c, t) => [a[0] + (c[0] - a[0]) * t, a[1] + (c[1] - a[1]) * t];
+
+  // ---- the game ----
+  let idx = 0, busy = false, pending = null, playing = false;
+  const solved = new Set(), stats = { moves: 0 };
+  const boardsEl = document.getElementById('boards'), msg = document.getElementById('msg');
+  function chips() {
+    boardsEl.innerHTML = '';
+    BOARDS.forEach((bd, i) => {
+      const c = document.createElement('button'); c.type = 'button'; c.className = 'chip'; c.id = 'board-' + (i + 1);
+      c.setAttribute('aria-pressed', i === idx ? 'true' : 'false');
+      c.innerHTML = `<span>${i + 1} · ${bd.name}</span><span class="n">${bd.way.length}</span>` + (solved.has(i) ? '<span class="done">✓</span>' : '');
+      c.onclick = () => { if (playing) return; idx = i; load(); };
+      boardsEl.appendChild(c);
+    });
+  }
+  function showStats() { document.getElementById('stats').innerHTML = `Κινήσεις <b>${stats.moves}</b> · Λύση σε <b>${BOARDS[idx].way.length}</b>`; }
+  function settle() {
+    view.her = mid(st.h, 0); view.herZ = SLAB; view.herD = st.h[0] + st.h[1] + 0.5;
+    view.ms = st.ms.map(m => ({ p: [m[0], m[1]], d: m[0] + m[1] + 0.6 }));
+  }
+  function reset() { st = { h: b.S, ms: b.M }; view.bump = [0, 0]; view.flash = 0; settle(); stats.moves = 0; msg.hidden = true; showStats(); draw(); }
+  function load() { b = parse(BOARDS[idx]); layout(); chips(); reset(); }
+  function say(title, text, buttons) {
+    msg.innerHTML = `<div class="card"><h2>${title}</h2><p>${text}</p><div class="btns" style="justify-content:center"></div></div>`;
+    const row = msg.querySelector('.btns');
+    for (const [label, fn, primary] of buttons || []) {
+      const bt = document.createElement('button'); bt.type = 'button'; bt.textContent = label; if (primary) bt.className = 'primary';
+      bt.onclick = fn; row.appendChild(bt);
+    }
+    msg.hidden = false;
+  }
+  async function move(d) {
+    if (busy) { pending = d; return; }
+    busy = true;
+    const r = step(b, st, d);
+    if (r.kind === 'blocked') {
+      const v = DIRS[d], dx = (v[0] - v[1]) * TW * 0.05, dy = (v[0] + v[1]) * TH * 0.05;
+      await tween(90, t => { view.bump = [dx * t, dy * t]; });
+      await tween(90, t => { view.bump = [dx * (1 - t), dy * (1 - t)]; });
+      busy = false; return next();
+    }
+    stats.moves++; showStats();
+    const a = mid(st.h, 0), c = mid(r.h, 0), da = st.h[0] + st.h[1] + 0.5, dc = r.h[0] + r.h[1] + 0.5;
+    const pi = r.push ? st.ms.findIndex(m => eq(m, r.push.from)) : -1;
+    const pa = pi >= 0 ? r.push.from : null, pc = pi >= 0 ? r.push.to : null;
+    const pda = pi >= 0 ? r.push.from[0] + r.push.from[1] + 0.5 : 0, pdc = pi >= 0 ? r.push.to[0] + r.push.to[1] + 0.5 : 0;
+    await tween(pi >= 0 ? 260 : 200, t => {
+      view.her = lerp(a, c, t); view.herD = Math.max(da, dc) + (t < 0.5 ? 0 : 0);
+      if (pi >= 0) view.ms[pi] = { p: lerp(pa, pc, t), d: Math.max(pda, pdc) + 0.1 };
+    });
+    st = { h: r.h, ms: r.ms };
+    if (r.kind === 'win') {
+      settle(); draw();
+      await tween(650, t => { view.flash = 0.85 * t; });
+      solved.add(idx); chips();
+      const nextIdx = idx + 1 < BOARDS.length ? idx + 1 : null;
+      say('Πέρασε στο φως', `Σε ${stats.moves} κινήσεις (η συντομότερη: ${BOARDS[idx].way.length}).`,
+        [['Ξανά', () => reset()], ...(nextIdx !== null ? [['Επόμενος πίνακας', () => { idx = nextIdx; load(); }, true]] : [])]);
+      busy = false; pending = null; return;
+    }
+    settle(); draw(); busy = false; next();
+  }
+  function next() { if (pending) { const d = pending; pending = null; move(d); } }
+  async function playSolution() {
+    if (playing) return;
+    playing = true; pending = null;
+    while (busy) await sleep(50);
+    reset();
+    document.getElementById('solve').disabled = true; document.getElementById('restart').disabled = true;
+    for (const d of BOARDS[idx].way) { await move(d); while (busy) await sleep(30); await sleep(220); }
+    playing = false;
+    document.getElementById('solve').disabled = false; document.getElementById('restart').disabled = false;
+  }
+
+  const stage = document.getElementById('stage'); let t0 = null;
+  stage.addEventListener('pointerdown', e => { t0 = [e.clientX, e.clientY]; });
+  stage.addEventListener('pointerup', e => {
+    if (!t0 || playing || !msg.hidden) { t0 = null; return; }
+    const dx = e.clientX - t0[0], dy = e.clientY - t0[1]; t0 = null;
+    if (Math.hypot(dx, dy) < 22) return;
+    move(dx >= 0 ? (dy >= 0 ? 'R' : 'U') : (dy >= 0 ? 'D' : 'L'));      // (the four screen diagonals)
+  });
+  addEventListener('keydown', e => { const d = KEYS[e.key]; if (!d || playing || !msg.hidden) return; e.preventDefault(); move(d); });
+  document.getElementById('restart').onclick = () => { if (!playing && !busy) reset(); };
+  document.getElementById('solve').onclick = playSolution;
+  const peekBtn = document.getElementById('peek');
+  peekBtn.onclick = () => { peek = !peek; peekBtn.setAttribute('aria-pressed', peek ? 'true' : 'false'); draw(); };
+  addEventListener('resize', () => { layout(); settle(); draw(); });
+
+  function start(data) {
+    if (data && Number.isInteger(data.idx) && data.idx < BOARDS.length) idx = data.idx;
+    (data && data.solved || []).forEach(i => solved.add(i));
+    load();
+  }
+  window.claude?.hot?.snapshot?.(() => ({ idx, solved: [...solved] }));
+  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
