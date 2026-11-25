@@ -2213,6 +2213,40 @@ void fragment(){      // (Kuwahara: each point takes the mean of the calmest of 
 	COLOR = vec4(best, 1.0);
 }
 """
+
+## a cheap bloom (the owner, 25/11: "can we give the other maps a cheap bloom effect?"): one pass over the picture after
+## the 3D, under the corners and the story: the picture's copy and its mip levels (made with the copy) read at a few
+## places about each point, at two widths, and what of them lies over a soft threshold of brightness added back, a
+## little warm. Twelve reads a point and no extra copies or passes: the gate's light, the rings, the sun and the bright
+## water glow softly, the lit marble a breath (IV_BLOOM=0 shows the levels without it; IV_BLOOM=<k> another strength,
+## IV_BLOOM_TH another threshold)
+const IV_BLOOM_ON := true
+const IV_BLOOM_K := 0.28
+const IV_BLOOM_TH := 0.905
+const IV_BLOOM_SH := """shader_type canvas_item;
+render_mode unshaded, blend_add;
+uniform sampler2D scr : hint_screen_texture, filter_linear_mipmap, repeat_disable;
+uniform float k = 0.32;
+uniform float th = 0.86;
+uniform float knee = 0.05;
+uniform vec3 tint = vec3(1.0, 0.96, 0.92);
+vec3 over(vec3 c){      // (the part of the light over the threshold, softly: by its lightness, so a warm sky stays as it is and only near-white light glows)
+	float l = dot(c, vec3(0.299, 0.587, 0.114));
+	return c * smoothstep(th - knee, th + knee, l);
+}
+void fragment(){
+	vec2 uv = SCREEN_UV; vec2 px = SCREEN_PIXEL_SIZE;
+	vec3 acc = vec3(0.0);
+	for (int i = 0; i < 6; i++){
+		float a = float(i) * 1.0472 + 0.3;
+		vec2 d = vec2(cos(a), sin(a));
+		acc += over(textureLod(scr, uv + d * px * 7.0, 2.0).rgb) * 0.09;
+		acc += over(textureLod(scr, uv + d * px * 18.0, 3.5).rgb) * 0.07;
+	}
+	acc += over(textureLod(scr, uv, 4.5).rgb) * 0.12;
+	COLOR = vec4(acc * tint * k, 1.0);
+}
+"""
 const IV_MILOS_PAL := {      # the third level in the colours of its concept, chosen by the owner (18/11; sampled from it): a hazy morning of pale blue and lilac, white slabs on slate grey-blue rock cut sharp, a few round white rocks like salt in the water
 	"rock2": ["a7b1c8", "8b95ad", "6f7a96", "566383"],      # (the concept's rock: #919ab3 #778299 #626f8c #566383, its tops a little lighter)
 	"salt": ["f6f5f9", "e9e8ee", "cfcedb", "a8acbf"],      # (its round white rocks: #e9e8ee #e4e3e9 #cbcad6 #a8acbf)
@@ -6632,6 +6666,14 @@ func _ivr_build() -> void:
 		var pfr := ColorRect.new(); pfr.set_anchors_preset(Control.PRESET_FULL_RECT); pfr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var pfs := Shader.new(); pfs.code = IV_PAINT_FX_SH; var pfm := ShaderMaterial.new(); pfm.shader = pfs
 		pfm.set_shader_parameter("rad", int(OS.get_environment("IV_PAINT_FX"))); pfr.material = pfm; pfl.add_child(pfr)
+	var bk := IV_BLOOM_K if OS.get_environment("IV_BLOOM") == "" else float(OS.get_environment("IV_BLOOM"))
+	if IV_BLOOM_ON and bk > 0.0:      # (the cheap bloom: over the 3D, under the corners and the story)
+		var bl := CanvasLayer.new(); bl.layer = -1; add_child(bl)
+		var br := ColorRect.new(); br.set_anchors_preset(Control.PRESET_FULL_RECT); br.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var bmat := ShaderMaterial.new(); bmat.shader = _ivw_shader(IV_BLOOM_SH)
+		bmat.set_shader_parameter("k", bk)
+		bmat.set_shader_parameter("th", IV_BLOOM_TH if OS.get_environment("IV_BLOOM_TH") == "" else float(OS.get_environment("IV_BLOOM_TH")))
+		br.material = bmat; bl.add_child(br)
 	var cl := CanvasLayer.new(); cl.layer = 1; add_child(cl)
 	var mg := Gradient.new(); mg.offsets = PackedFloat32Array([0.0, 0.58, 0.84, 1.0])
 	var mc := Color("ddbf9d")
