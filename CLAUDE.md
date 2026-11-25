@@ -385,13 +385,15 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   steps break in strokes) and has its own tone, the darker a little cooler. The rock's hollows shaded (`ao_k` 0.5).
   `IV_BRUSH=0` shows the levels as before; `IV_BRUSH=<k>` another strength. Turned down on the way: soft gradients alone
   ("not like that"), small noisy strokes (they read as a grainy texture), strokes per face (cut at every facet).
+- **No bloom** (the owner, 25/11, a few hours after it went up: "I didn't like the bloom after all"): `IV_BLOOM_ON`
+  false; `IV_BLOOM=<k>` shows it again on a desktop. As it was made, kept for the record:
 - **A cheap bloom over the levels** (the owner, 25/11: "can we give the other maps a cheap bloom effect?"): one canvas
   pass over the 3D, under the corners and the story (`IV_BLOOM_SH`, a CanvasLayer at -1 made in `_ivr_build`, so in
   all five levels): the picture's copy and its mip levels read at twelve places about each point at two widths, and the
   part over a soft threshold of lightness (`IV_BLOOM_TH` 0.905, by luminance, so a warm sky stays as it is) added back a
   little warm (`IV_BLOOM_K` 0.28); no extra copies or passes. The sun, the gate's light, the rings, the light beam and
-  the brightest marble glow softly. A threshold on the brightest channel at 0.86 washed the whole sky out. `IV_BLOOM=0`
-  shows the levels without it; `IV_BLOOM=<k>` and `IV_BLOOM_TH=<t>` try others.
+  the brightest marble glow softly. A threshold on the brightest channel at 0.86 washed the whole sky out.
+  `IV_BLOOM=<k>` and `IV_BLOOM_TH=<t>` try it.
 - **No stain where two slabs meet** (the owner, 22/11, of the fourth level's terrace by her start: "here there's a stain
   from the brown slab behind, try not to let it happen"; then of pieces of marble laid in the joint at runtime: "don't
   add nonsense, I just want it not to show"): where two floors of one height meet edge to edge, their eased edges (9 to

@@ -2218,9 +2218,9 @@ void fragment(){      // (Kuwahara: each point takes the mean of the calmest of 
 ## the 3D, under the corners and the story: the picture's copy and its mip levels (made with the copy) read at a few
 ## places about each point, at two widths, and what of them lies over a soft threshold of brightness added back, a
 ## little warm. Twelve reads a point and no extra copies or passes: the gate's light, the rings, the sun and the bright
-## water glow softly, the lit marble a breath (IV_BLOOM=0 shows the levels without it; IV_BLOOM=<k> another strength,
-## IV_BLOOM_TH another threshold)
-const IV_BLOOM_ON := true
+## water glow softly, the lit marble a breath. Off since the same day (the owner: "I didn't like the bloom after all");
+## IV_BLOOM=<k> shows it again at that strength, IV_BLOOM_TH another threshold
+const IV_BLOOM_ON := false
 const IV_BLOOM_K := 0.28
 const IV_BLOOM_TH := 0.905
 const IV_BLOOM_SH := """shader_type canvas_item;
@@ -6667,7 +6667,7 @@ func _ivr_build() -> void:
 		var pfs := Shader.new(); pfs.code = IV_PAINT_FX_SH; var pfm := ShaderMaterial.new(); pfm.shader = pfs
 		pfm.set_shader_parameter("rad", int(OS.get_environment("IV_PAINT_FX"))); pfr.material = pfm; pfl.add_child(pfr)
 	var bk := IV_BLOOM_K if OS.get_environment("IV_BLOOM") == "" else float(OS.get_environment("IV_BLOOM"))
-	if IV_BLOOM_ON and bk > 0.0:      # (the cheap bloom: over the 3D, under the corners and the story)
+	if (IV_BLOOM_ON or OS.get_environment("IV_BLOOM") != "") and bk > 0.0:      # (the cheap bloom: over the 3D, under the corners and the story)
 		var bl := CanvasLayer.new(); bl.layer = -1; add_child(bl)
 		var br := ColorRect.new(); br.set_anchors_preset(Control.PRESET_FULL_RECT); br.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var bmat := ShaderMaterial.new(); bmat.shader = _ivw_shader(IV_BLOOM_SH)
