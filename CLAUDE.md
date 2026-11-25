@@ -986,6 +986,18 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   `LEVEL_B` (24, a column), each one way, no limbo, the stone needed; found by `tools/go/stone_gaze_anneal.py`; both
   playable at https://claude.ai/artifact/JPUtgawNumdfmgEtrPJvDH (`design/level6/stone_gaze/play.html`, its rules
   checked against the solver on 3,000 move strings).
+  The owner: "nice but a bit complicated, we keep it for future levels, can you think of something else?" **Then the
+  balance** (`tools/go/lever_trial.py`): one new rule, a long marble beam on a rock in the water that tips toward the
+  heavier side (weight times distance from the pivot; she weighs 1, the stone 2, so with a 5-place beam the stone's side
+  always goes down; nothing on the pivot counts; empty, it stays as it was). Its ends meet the low quay (down) or the
+  high terrace (up), the pivot the pier's height; stairs join heights; the stone never goes up a stair. Three boards,
+  each one way, the stone needed: the counterweight (7), down to go up (18, no dead end: tip the beam with your own
+  weight, push the stone onto the raised end so it rides down, come back onto the pivot by the stair and walk out to the
+  end it holds up), around the stone (13, it can stick: push it past the pivot, slip out by the pier, come round onto
+  the far end and push it back). Playable at https://claude.ai/artifact/N11635EHuhBfvD4A3g5Xki
+  (`design/level6/balance/play.html`, its rules checked against the solver on 4,500 move strings; `boards.png`).
+  Annealing (`ann2.py`-style, in the scratchpad's way) only found variants of the hand-made boards; good lever boards
+  were designed by hand and proven.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
