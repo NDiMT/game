@@ -1111,7 +1111,20 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   statues standing in the shallow sea far off in the haze, turned toward the eye, the sun low at the upper right
   (`design/level6/back/backdrop_b_raw.jpg`, its prompt `backdrop_prompt_b.txt`; `a` had the second level's statues over
   again, the raised arm, the one lying), its sky's streaks taken out (`backdrop_destreak.py ... 0.4 0.46 <sun mask>`);
-  `horizon` 0.54, `sun` [0.758, 0.348]. Level 5's gate leads
+  `horizon` 0.54, `sun` [0.758, 0.348]. **Then (26/11) its crowd seen as the level is** (the owner: "it does not match
+  the perspective at all"): `goback/backdrop.jpg` is the same dusk sky without statues (the image model's edit, its
+  streaks out down to 0.56), and the crowd is a water-details card (`goback/wd_statues.png`): ten statues stood in 3D in
+  the level's sea for a render (`IV_STATUES_ADD`), repainted by the image model in the old crowd's haze, lifted; the two
+  that stood where the great rocks now are left out; the card at its farthest statues' depth so the rocks stand before
+  it (`design/level6/back/far/README.txt`). **Great rocks at the island's back** (the owner, 26/11: "and big rocks at the
+  upper part of the platform, in the others we have richer rocks"): eight in `rocks_after` (`BACK_ROCKS` in
+  `back_plan.py`: the greatest at the top corner, in the water between the gate's islet and the first bridge's end, the
+  highest behind it, others behind the gate and down along the long walk's back, lower toward her start); clear of the
+  bridges and of every floor (the corner's water is theirs now). After a rebuild run `godot --import` (the shore map is an
+  imported texture: the game read the old one with the new rect). **The foot of the screen** (the owner: "I also want
+  something to adorn the bottom part of the screen"): three offered, painted into its frame and lifted
+  (`design/level6/back/bottom/`): a toppled veiled statue lying half sunk, the colossal veiled head fallen (the first
+  level's spare, liked there), an empty boat; the owner to choose. Level 5's gate leads
   on into it; the end screen after it; the start screen's numbers 1 to 6. `IV_SOL="c16 c15 c16"` is taken,
   `IV_SOL="c36 c35 c34 c33 c23"` sinks with a bridge.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
