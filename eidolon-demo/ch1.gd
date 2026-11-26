@@ -4342,6 +4342,12 @@ func _ivw_scene(j: Dictionary) -> void:
 		j["observer"] = [float(o[0]), float(o[1]), float(o[2]), float(o[3]), float(o[4])]; j["observer_model"] = o[5]
 		if o.size() > 6: j["observer_haze"] = float(o[6])
 	if j.get("observer") != null: _ivw_observer(j)
+	if OS.get_environment("IV_STATUES_ADD") != "":      # (statues to try in the sea, for a picture to repaint: "model,x,foot,z,height,turn;...", from the level's origin)
+		var sl: Array = (j.get("statues") as Array).duplicate() if j.get("statues") is Array else []
+		for e in OS.get_environment("IV_STATUES_ADD").split(";", false):
+			var f := e.split(",")
+			if f.size() >= 6: sl.append([f[0], [float(f[1]), float(f[2]), float(f[3])], float(f[4]), float(f[5])])
+		j["statues"] = sl
 	if j.get("statues") != null: _ivv_statues(j)
 	_ivw_scene2(j)
 
