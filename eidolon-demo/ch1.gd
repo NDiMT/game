@@ -6755,7 +6755,7 @@ func _ivr_build() -> void:
 		if not (IV_FG_ON or OS.get_environment("IV_FG") == "1"):      # (nothing before the eye in any of the waking's levels since 23/11 (the owner: "take the blurred things in front out of all the levels, but I'd like details in the water, as those you made at some point, in all the levels"): leaves, rocks, figures, column, grasses; IV_FG=1 shows them again)
 			for ci in range(fg_from, cl.get_child_count()): (cl.get_child(ci) as CanvasItem).visible = false
 		vg.colors = PackedColorArray([Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0), Color(0.26, 0.16, 0.3, 0.05), Color(0.26, 0.16, 0.3, 0.2)])      # (a soft darkening at the edges: the eye drawn in)
-		if go_glass: vr.visible = false      # (the fourth level: none; its concept is clear to the corners, and the plum darkening turned its sky pink there (the owner, 20/11: "fix the colours well and very carefully, look at the Gemini sample"))
+		if go_glass or go_back: vr.visible = false      # (the sixth too, in its concept's silver mist, clear to the corners (the owner chose c5, 26/11); the fourth level: none; its concept is clear to the corners, and the plum darkening turned its sky pink there (the owner, 20/11: "fix the colours well and very carefully, look at the Gemini sample"))
 		_ivw_hand_make(cl)
 		_ivw_life()
 		if go_veil: _ivv_begin()
@@ -11703,8 +11703,29 @@ const IVB_TAKEN_POOF := Color(0.8, 0.77, 0.85)
 const IVB_SUNK_COL := Color(0.45, 0.55, 0.66)      # (gone down with a bridge: a shadow of the water's colour)
 const IVB_SUNK_POOF := Color(0.86, 0.92, 0.97)
 
+## the sixth level's banks of mist on the still water, as its concept has them (the owner chose c5, 26/11: a silver dusk
+## in mist): the fourth level's mist (IVGL_MIST_SH), here [x, z on the sea from the level's origin (placed by IV_WD_PICK from
+## the concept's own frame), width, height (or depth), alpha, seed, kind (0 a bank standing, 1 a sheet lying, 2 a band
+## standing, soft all round)]; IV_MISTS=0 leaves them out
+const IVB_MISTS := [[-6.2, 2.6, 7.0, 2.6, 0.82, 1.3, 0], [3.4, 11.6, 9.5, 3.2, 0.85, 4.7, 0], [5.8, -2.7, 4.6, 2.1, 0.72, 7.9, 0], [-9.0, -2.4, 16.0, 1.9, 0.5, 2.2, 2], [11.6, 4.2, 8.0, 5.0, 0.6, 6.4, 1]]
+func _ivb_mists() -> void:
+	if OS.get_environment("IV_MISTS") == "0": return
+	var al := Vector3(1, 0, -1).normalized(); var n := Vector3(1, 0, 1).normalized()
+	var sh := _ivw_shader(IVGL_MIST_SH)
+	for b in IVB_MISTS:
+		var lie := int(b[6]) == 1; var band := int(b[6]) == 2
+		var q := QuadMesh.new(); q.size = Vector2(float(b[2]), float(b[3]))
+		var m := ShaderMaterial.new(); m.shader = sh; m.set_shader_parameter("a", float(b[4])); m.set_shader_parameter("seed", float(b[5])); m.set_shader_parameter("lie", 1.0 if (lie or band) else 0.0); m.set_shader_parameter("asp", float(b[2]) / maxf(float(b[3]), 0.01))
+		m.render_priority = 8      # (after the sea and the far statues' card: the band lies among them)
+		var mi := MeshInstance3D.new(); mi.mesh = q; mi.material_override = m; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		iv_root.add_child(mi)
+		var at := IV_O + Vector3(float(b[0]), ivr_sea_y, float(b[1]))
+		if lie: mi.global_transform = Transform3D(Basis(al, -n, Vector3.UP), at + Vector3(0, 0.04, 0))
+		else: mi.global_transform = Transform3D(Basis(al, Vector3.UP, n), at + Vector3(0, float(b[3]) * 0.5 + 0.02, 0))
+
 func _ivb_setup() -> void:
 	ivb = ivg.get("back", {}) as Dictionary
+	_ivb_mists()
 	ivb_cell.clear(); ivb_node.clear()
 	for k in (ivb.cells as Dictionary):
 		var c: Array = ivb.cells[k]; var q := Vector2i(int(c[0]), int(c[1]))
