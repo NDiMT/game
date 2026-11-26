@@ -1031,6 +1031,29 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   on a disc, which the first boards needed to cycle the views); playable at
   https://claude.ai/artifact/BrGTV9f9fF4oZmXtHnDK5b (`design/level6/turn/play.html`, drawn isometric and turning, its
   rules checked against the solver on 6,000 move strings; `boards.png`).
+  **How the owner wants new levels chosen (26/11)**: "make them as previews I can play, the way you make them", "I meant
+  the way you made it that I can play", "and then we move it into the game with proper graphics". So each idea for a
+  level is first a small playable page (a solver in `tools/go/<idea>_trial.py`, boards proven one way, the page's rules
+  checked against the solver on thousands of random move strings, an undo where she can be lost), sent with a sheet of
+  its boards; only the one he chooses is built in the game. Three more on 26/11, none with a stone pushed:
+  **the obedient ones** with four boards (`obedient_trial.py`; the fourth, the pier, 16; playable at
+  https://claude.ai/artifact/54wXm7T3cJQUPZd39uEF51, `design/level6/obedient/play.html`); **the still water**
+  (`tools/go/boats_trial.py`): boats glide on glass water until they strike a slab, a rock or a boat; a boat struck
+  passes the knock through the row touching it to the last, which glides on, as in Newton's cradle (and may strike
+  another); off the board the open sea takes a boat, and her with it; she steps onto boats, from boat to boat and off,
+  and nothing is pushed from land. Six boards, each one way: the boat (4), the knock (4), the cradle (6), the round
+  (13), the row (18), the passage (18); the last three annealed (rewarding knocks, cascades, boats reused after a knock,
+  every boat needed; the way's length capped and its repeats punished: uncapped, it found ways of 115 swipes going round
+  and round) and pruned; playable at https://claude.ai/artifact/Ei1EWQ82GmwsNZ3C69N3q2 (`design/level6/boats/`);
+  **don't look back**, Orpheus (`tools/go/orpheus_trial.py`): her soul follows one step behind, stepping where she
+  stood, unless that place would not bear it (a bridge whose plate it would leave): then it waits, holding its plate,
+  and follows again once she passes beside it; if after her step the soul stands on the line she faces (over slabs and
+  water, as far as a rock), she has looked back and it is lost; a plate holds its bridges up while someone stands on it,
+  and a bridge that sinks under her takes her; the gate lets her through only with the soul right behind. The soul always
+  one step behind made a maze (her place and the soul's one and the same choice); the waiting soul is what gives the
+  board a memory. Four boards, each one way: the bridge (4), the turn (7: to turn back, let it wait on the plate and
+  walk round the bridges it holds), the wait (15), the great round (20); playable at
+  https://claude.ai/artifact/3GwtpacpYW76JPH45WN7NB (`design/level6/orpheus/`, her look drawn as a band ahead of her).
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
