@@ -1054,6 +1054,10 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   board a memory. Four boards, each one way: the bridge (4), the turn (7: to turn back, let it wait on the plate and
   walk round the bridges it holds), the wait (15), the great round (20); playable at
   https://claude.ai/artifact/3GwtpacpYW76JPH45WN7NB (`design/level6/orpheus/`, her look drawn as a band ahead of her).
+  The owner, of these three: "wtf no". And: "also I'd like you to make the samples in isometric, as you did before at
+  some point": **every playable sample is drawn isometric**, as the eye's and the turning island's pages are
+  (`design/level6/eye/play.html`, `turn/play.html`), never flat from above as these three were. His "the way you made
+  it that I can play it" had pointed at the turning island's page.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
