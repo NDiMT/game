@@ -1,0 +1,371 @@
+<title>Το νησί που γυρίζει</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* One column, the board first: the game's plum and cream round the island drawn as the game's eye sees it (isometric,
+   from one corner); the island turns a quarter on the sea and the eye sees it from the next corner. */
+:root {
+  --bg: #2a2030;
+  --panel: #362a3d;
+  --line: #4b3d52;
+  --fg: #f3e9e1;
+  --muted: #b9a9b9;
+  --accent: #d48a68;
+  --new: #c9c2e6;
+  --display: "Cormorant Garamond", "Cormorant", Georgia, serif;
+  --ui: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--ui); font-size: 15px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 14px 28px;
+}
+.wrap { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+header { display: grid; gap: 6px; }
+h1 { font-family: var(--display); font-weight: 600; font-size: 36px; line-height: 1.04; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); font-size: 14px; margin: 0; }
+.boards { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.boards::-webkit-scrollbar { display: none; }
+.chip {
+  flex: 0 0 auto; border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 999px;
+  padding: 7px 13px; font: 500 13px var(--ui); cursor: pointer; display: flex; gap: 7px; align-items: center;
+}
+.chip .n { font-variant-numeric: tabular-nums; color: var(--muted); }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: #4a3040; }
+.chip .done { color: var(--accent); }
+.chip:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.stage { position: relative; touch-action: none; user-select: none; -webkit-user-select: none; }
+canvas { display: block; width: 100%; height: auto; border-radius: 14px; }
+.msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 20px; pointer-events: none; }
+.msg[hidden] { display: none; }
+.msg .card { background: rgba(42, 32, 48, 0.9); border: 1px solid var(--line); border-radius: 14px; padding: 16px 20px; pointer-events: auto; max-width: 92%; }
+.msg h2 { font-family: var(--display); font-weight: 600; font-size: 30px; margin: 0 0 4px; }
+.msg p { margin: 0 0 12px; color: var(--muted); }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.stats { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 14px; }
+.stats b { color: var(--fg); font-weight: 600; }
+.btns { display: flex; gap: 8px; flex-wrap: wrap; }
+button { border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 10px; padding: 9px 14px; font: 500 14px var(--ui); cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #2a1a1a; }
+button[aria-pressed="true"] { border-color: var(--new); color: var(--new); }
+button:disabled { opacity: 0.45; cursor: default; }
+.rules { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 7px; font-size: 14px; }
+.rules p { margin: 0; }
+.rules .k { color: var(--accent); font-weight: 600; }
+.rules .new { color: var(--new); font-weight: 600; }
+.hint { color: var(--muted); font-size: 13px; margin: 0; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Το νησί που γυρίζει</h1>
+    <p class="sub">Πρωτότυπο γρίφου για το επίπεδο 6. Μέσα στον καθρέφτη υπάρχει μόνο ό,τι φαίνεται, και το νησί γυρίζει.</p>
+  </header>
+  <div class="boards" id="boards" role="group" aria-label="Πίνακες"></div>
+  <div class="stage" id="stage">
+    <canvas id="cv" width="560" height="560" aria-label="Το νησί: σύρε διαγώνια για να κινηθεί"></canvas>
+    <div class="msg" id="msg" hidden></div>
+  </div>
+  <div class="row">
+    <div class="stats" id="stats"></div>
+    <div class="btns">
+      <button id="peek" type="button" aria-pressed="false">Κοίτα πίσω</button>
+      <button id="restart" type="button">Από την αρχή</button>
+      <button id="solve" type="button">Λύση</button>
+    </div>
+  </div>
+  <div class="rules">
+    <p><span class="k">Κίνηση:</span> σύρε διαγώνια, όπως τρέχουν οι δρόμοι (ή πάτα τα βελάκια: πάνω ↗, δεξιά ↘, κάτω ↙, αριστερά ↖). Ένα σύρσιμο, ένα βήμα.</p>
+    <p><span class="new">Το μάτι:</span> θάλασσα που κρύβεται πίσω από μια κολόνα δεν υπάρχει. Περπατάς από πάνω της σαν να ήταν πλάκα. Η κολόνα κρύβει τη θέση ακριβώς πίσω της, η ψηλή δύο θέσεις.</p>
+    <p><span class="new">Ο δίσκος:</span> όποτε πατάς τον στρογγυλό δίσκο, όλο το νησί γυρίζει ένα τέταρτο, και το μάτι το βλέπει από την επόμενη γωνία. Άλλη γωνία, άλλα κρυμμένα κενά, άλλοι δρόμοι.</p>
+    <p><span class="k">Σκοπός:</span> ο λευκός κύκλος μπροστά στην πύλη. «Κοίτα πίσω» δείχνει τι κρύβουν οι κολόνες.</p>
+  </div>
+  <p class="hint">Ο κάθε πίνακας έχει μία μόνο συντομότερη λύση.</p>
+</div>
+
+<script>
+(() => {
+  // the boards (rows: o a slab, ~ sea, # a pier, I a tall pier, T the turning disc, S her start, G the ring), each
+  // proven by the solver (turn.py); the eye starts at the front corner (view 0)
+  const BOARDS = [
+    { name: 'Ο δίσκος', rows: ['~~~#', 'ST~G'], way: 'RRR' },
+    { name: 'Γύρω γύρω', rows: ['~~oG~', '~o~~S', 'T#~~o', 'oT~TI', '~o~o~'], way: 'DLDDULLLUURRUR' },
+    { name: 'Τέσσερις γωνίες', rows: ['~~~So~', 'o~G~o~', 'T~I~~~', '#T~~o#', '~~ooo~', '~~~TT~'], way: 'RDDDDDLULLUULURR' },
+    { name: 'Το μεγάλο γύρισμα', rows: ['~T~~~', 'o#oS~', 'o~~#T', 'o~o#o', 'G~TT~'], way: 'LDDDRRUUULLULLDDDD' },
+  ];
+  const DIRS = { R: [1, 0], L: [-1, 0], D: [0, 1], U: [0, -1] };
+  const DK = [[1, 1], [1, -1], [-1, -1], [-1, 1]];      // (the eye's corner in each view)
+  const key = p => p[0] + ',' + p[1];
+  const eq = (a, c) => !!a && !!c && a[0] === c[0] && a[1] === c[1];
+
+  // ---- the rules, as the solver has them ----
+  function parse(bd) {
+    const b = { W: bd.rows[0].length, H: bd.rows.length, slab: new Set(), col: new Map(), turn: new Set() };
+    bd.rows.forEach((r, y) => [...r].forEach((ch, x) => {
+      const k = key([x, y]);
+      if ('oSGT'.includes(ch)) b.slab.add(k);
+      if (ch === 'T') b.turn.add(k);
+      if (ch === '#') b.col.set(k, 1);
+      if (ch === 'I') b.col.set(k, 2);
+      if (ch === 'S') b.S = [x, y];
+      if (ch === 'G') b.G = [x, y];
+    }));
+    return b;
+  }
+  const inside = (b, q) => q[0] >= 0 && q[0] < b.W && q[1] >= 0 && q[1] < b.H;
+  function hidden(b, v) {
+    const d = DK[v], out = new Set();
+    for (const [k, h] of b.col) { const [x, y] = k.split(',').map(Number); for (let i = 1; i <= h; i++) out.add(key([x - i * d[0], y - i * d[1]])); }
+    return out;
+  }
+  const floorAt = (b, q, v) => inside(b, q) && !b.col.has(key(q)) && (b.slab.has(key(q)) || hidden(b, v).has(key(q)));
+  function step(b, st, d) {
+    const q = [st.h[0] + DIRS[d][0], st.h[1] + DIRS[d][1]];
+    if (!floorAt(b, q, st.v)) return { kind: 'blocked' };
+    if (eq(q, b.G)) return { kind: 'win', h: q, v: st.v };
+    return { kind: 'move', h: q, v: b.turn.has(key(q)) ? (st.v + 1) % 4 : st.v };
+  }
+  window.__turn = {
+    boards: BOARDS,
+    simulate(i, moves) {
+      const b = parse(BOARDS[i]); let st = { h: b.S, v: 0 };
+      for (let n = 0; n < moves.length; n++) {
+        const r = step(b, st, moves[n]);
+        if (r.kind === 'win') return 'win ' + n;
+        if (r.kind === 'move') st = { h: r.h, v: r.v };
+      }
+      return key(st.h) + ' ' + st.v;
+    }
+  };
+
+  // ---- drawing: the eye isometric from a corner; the island turned by th about its middle ----
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  const COL = { sea: '#b4bad8', seaE: 'rgba(150,158,196,0.5)', shim: '#c9cde3', top: '#faf6f4', topE: '#d9cfd5', side1: '#8a7a8c',
+    side2: '#6f5f71', way: '#c79a84', ring: '#fdfbf6', ringIn: '#9a7a6c', pier: '#f7f2f0', pierE: '#a99aa6' };
+  let b, st, TW, TH, ZH, ox, oy, dpr = 1, peek = false, th = 0;
+  const SLAB = 0.22;
+  const view = { her: [0, 0], bump: [0, 0], flash: 0 };
+  function layout() {
+    const w = Math.min(560, cv.parentElement.clientWidth || 360), pad = 16, n = Math.max((b.W + b.H) / 2, Math.hypot(b.W, b.H) / Math.SQRT2) + 0.4;
+    TW = Math.floor(Math.min((w - 2 * pad) / n, 120)); TH = TW / 2; ZH = TH;
+    const h = n * TH + 2.6 * ZH + 2 * pad;
+    dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); cv.style.aspectRatio = w + ' / ' + h;
+    ox = w / 2; oy = pad + 2.4 * ZH + n * TH / 2;
+  }
+  // a point of the board (x, y, z up) turned by th about the board's middle, on the screen
+  function rot(x, y) { const cx = b.W / 2, cy = b.H / 2, c = Math.cos(th), s = Math.sin(th); return [(x - cx) * c - (y - cy) * s, (x - cx) * s + (y - cy) * c]; }
+  function scr(x, y, z) { const [u, w] = rot(x, y); return [ox + (u - w) * TW / 2, oy + (u + w) * TH / 2 - z * ZH]; }
+  const depth = p => { const [u, w] = rot(p[0] + 0.5, p[1] + 0.5); return u + w; };
+  function poly(pts) { ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, x, y)); ctx.closePath(); }
+  function box(x, y, z0, z1, top, s1, s2, edge, inset) {      // a block on a place, its faces toward the eye drawn
+    const i = inset ?? 0.03, P = [[x + i, y + i], [x + 1 - i, y + i], [x + 1 - i, y + 1 - i], [x + i, y + 1 - i]];
+    for (let e = 0; e < 4; e++) {
+      const a = P[e], c = P[(e + 1) % 4], [au, aw] = rot(a[0], a[1]), [cu, cw] = rot(c[0], c[1]);
+      const nu = cw - aw, nw = -(cu - au);      // (the face's outward normal in the turned plan)
+      if (nu + nw <= 0.001) continue;
+      poly([scr(a[0], a[1], z1), scr(c[0], c[1], z1), scr(c[0], c[1], z0), scr(a[0], a[1], z0)]);
+      ctx.fillStyle = nu > nw ? s1 : s2; ctx.fill(); ctx.strokeStyle = edge; ctx.lineWidth = 1; ctx.stroke();
+    }
+    poly(P.map(p => scr(p[0], p[1], z1))); ctx.fillStyle = top; ctx.fill(); ctx.strokeStyle = edge; ctx.lineWidth = 1; ctx.stroke();
+  }
+  function disc(p) {      // the turning disc: a round marble plate on the slab, a turning line cut in it
+    const c = scr(p[0] + 0.5, p[1] + 0.5, SLAB + 0.02);
+    ctx.fillStyle = '#efe6ea'; ctx.strokeStyle = '#8e6878'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.ellipse(c[0], c[1], TW * 0.36, TH * 0.36, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.lineWidth = Math.max(1.6, TW * 0.025); ctx.beginPath(); ctx.ellipse(c[0], c[1], TW * 0.22, TH * 0.22, 0, 0.4, Math.PI * 1.75); ctx.stroke();
+    const a = Math.PI * 1.75, hx = c[0] + Math.cos(a) * TW * 0.22, hy = c[1] + Math.sin(a) * TH * 0.22;
+    ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx - TW * 0.07, hy - TH * 0.02); ctx.moveTo(hx, hy); ctx.lineTo(hx - TW * 0.02, hy + TH * 0.12); ctx.stroke();
+  }
+  function pier(p, h) {
+    ctx.globalAlpha = peek ? 0.25 : 1;
+    box(p[0], p[1], 0, h + 0.12, COL.pier, '#ddd2d6', '#c3b5bd', COL.pierE);
+    ctx.globalAlpha = 1;
+  }
+  function her(z) {
+    let [cx, cy] = [view.her[0] + view.bump[0], view.her[1] - z * ZH + view.bump[1]];
+    const r = TW * 0.13;
+    ctx.fillStyle = 'rgba(70,60,90,0.3)'; ctx.beginPath(); ctx.ellipse(cx + 2, cy + 1, r * 1.2, r * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fcfaf8'; ctx.strokeStyle = '#463a4a'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx - r, cy); ctx.lineTo(cx - r * 0.7, cy - r * 2.2); ctx.lineTo(cx + r * 0.7, cy - r * 2.2); ctx.lineTo(cx + r, cy); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.save(); ctx.clip(); ctx.strokeStyle = '#bb6243'; ctx.lineWidth = Math.max(2, r * 0.28);
+    for (const o of [0.4, 1.0, 1.6]) { ctx.beginPath(); ctx.moveTo(cx - r, cy - o * r + r * 0.25); ctx.lineTo(cx + r, cy - o * r - r * 0.25); ctx.stroke(); }
+    ctx.restore();
+    ctx.fillStyle = '#fcfaf8'; ctx.beginPath(); ctx.arc(cx, cy - r * 2.65, r * 0.62, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  }
+  function ring() {
+    const c = scr(b.G[0] + 0.5, b.G[1] + 0.5, SLAB);
+    ctx.fillStyle = COL.ringIn; ctx.beginPath(); ctx.ellipse(c[0], c[1], TW * 0.3, TH * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,248,230,0.55)'; ctx.lineWidth = TH * 0.12; ctx.beginPath(); ctx.ellipse(c[0], c[1], TW * 0.22, TH * 0.22, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = COL.ring; ctx.lineWidth = TH * 0.06; ctx.beginPath(); ctx.ellipse(c[0], c[1], TW * 0.22, TH * 0.22, 0, 0, Math.PI * 2); ctx.stroke();
+  }
+  function gate() {      // a light standing over the ring: the gate's opening, seen from any side
+    const c = scr(b.G[0] + 0.5, b.G[1] + 0.5, SLAB), hgt = ZH * 1.3, w = TW * 0.2;
+    const g = ctx.createLinearGradient(0, c[1] - hgt, 0, c[1]);
+    g.addColorStop(0, 'rgba(255,250,232,0)'); g.addColorStop(0.3, 'rgba(255,250,232,0.55)'); g.addColorStop(1, 'rgba(255,250,232,0.85)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(c[0] - w, c[1]); ctx.lineTo(c[0] - w * 0.8, c[1] - hgt); ctx.lineTo(c[0] + w * 0.8, c[1] - hgt); ctx.lineTo(c[0] + w, c[1]); ctx.closePath(); ctx.fill();
+  }
+  function wayAt(p, can) {
+    const a = scr(p[0] + 0.5, p[1] + 0.5, SLAB);
+    ctx.strokeStyle = COL.way; ctx.lineWidth = Math.max(2.5, TW * 0.035); ctx.lineCap = 'round';
+    for (const d of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const q = [p[0] + d[0], p[1] + d[1]]; if (!can(q)) continue;
+      const c = scr(p[0] + 0.5 + d[0] * 0.5, p[1] + 0.5 + d[1] * 0.5, SLAB);
+      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(c[0], c[1]); ctx.stroke();
+    }
+    if (!eq(p, b.G) && !b.turn.has(key(p))) { ctx.fillStyle = COL.way; ctx.beginPath(); ctx.ellipse(a[0], a[1], Math.max(3, TW * 0.05), Math.max(1.6, TH * 0.05), 0, 0, Math.PI * 2); ctx.fill(); }
+  }
+  function draw(settled = true) {
+    const Wd = cv.width / dpr, Hd = cv.height / dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = COL.sea; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(0, 0, Wd, Hd, 14) : ctx.rect(0, 0, Wd, Hd); ctx.fill();
+    ctx.strokeStyle = COL.shim; ctx.lineWidth = 1.5;
+    for (let i = 0; i < Hd / 14; i++) {
+      const y = 8 + i * 14, len = Wd * (0.15 + 0.4 * ((i * 37) % 11) / 11), x = 10 + ((i * 53) % 7) / 7 * (Wd - len - 20);
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + len, y); ctx.stroke();
+    }
+    const hid = hidden(b, st.v), can = q => floorAt(b, q, st.v);
+    for (let y = 0; y < b.H; y++) for (let x = 0; x < b.W; x++) {      // the sea's places, faintly; the hidden ones on "look behind"
+      const k = key([x, y]); if (b.slab.has(k) || b.col.has(k)) continue;
+      poly([scr(x, y, 0), scr(x + 1, y, 0), scr(x + 1, y + 1, 0), scr(x, y + 1, 0)]);
+      ctx.fillStyle = peek && settled && hid.has(k) ? 'rgba(201,194,230,0.5)' : 'rgba(255,255,255,0.05)'; ctx.fill();
+      ctx.strokeStyle = peek && settled && hid.has(k) ? 'rgba(150,140,200,0.9)' : COL.seaE; ctx.lineWidth = 1.1; ctx.stroke();
+    }
+    const things = [];
+    for (let y = 0; y < b.H; y++) for (let x = 0; x < b.W; x++) {
+      const p = [x, y], k = key(p), d = depth(p);
+      if (b.slab.has(k)) things.push({ d, o: 0, f: () => { box(x, y, 0, SLAB, COL.top, COL.side1, COL.side2, COL.topE, 0.04); if (b.turn.has(k)) disc(p); } });
+      if (b.col.has(k)) things.push({ d, o: 3, f: () => pier(p, b.col.get(k)) });
+      if (settled && can(p)) things.push({ d: d + 0.05, o: 1, f: () => wayAt(p, can) });
+    }
+    things.push({ d: depth(b.G) + 0.06, o: 1, f: ring });
+    things.push({ d: depth(b.G) + 0.07, o: 2, f: gate });
+    things.push({ d: view.herD, o: 2, f: () => her(SLAB) });
+    things.sort((a, c) => a.d - c.d || a.o - c.o).forEach(t => t.f());
+    if (view.flash > 0) { ctx.fillStyle = `rgba(255,252,244,${view.flash})`; ctx.fillRect(0, 0, Wd, Hd); }
+  }
+
+  // ---- motion ----
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const ease = t => t * t * (3 - 2 * t);
+  function tween(ms, fn, settled = true) {
+    if (reduce) ms = Math.min(ms, 60);
+    return new Promise(res => {
+      const t0 = performance.now();
+      const f = now => { const t = Math.min(1, (now - t0) / ms); fn(ease(t)); draw(settled); t < 1 ? requestAnimationFrame(f) : res(); };
+      requestAnimationFrame(f);
+    });
+  }
+  const sleep = ms => new Promise(r => setTimeout(r, reduce ? 0 : ms));
+
+  // ---- the game ----
+  let idx = 0, busy = false, pending = null, playing = false;
+  const solved = new Set(), stats = { moves: 0 };
+  const boardsEl = document.getElementById('boards'), msg = document.getElementById('msg');
+  function chips() {
+    boardsEl.innerHTML = '';
+    BOARDS.forEach((bd, i) => {
+      const c = document.createElement('button'); c.type = 'button'; c.className = 'chip'; c.id = 'board-' + (i + 1);
+      c.setAttribute('aria-pressed', i === idx ? 'true' : 'false');
+      c.innerHTML = `<span>${i + 1} · ${bd.name}</span><span class="n">${bd.way.length}</span>` + (solved.has(i) ? '<span class="done">✓</span>' : '');
+      c.onclick = () => { if (playing) return; idx = i; load(); };
+      boardsEl.appendChild(c);
+    });
+  }
+  function showStats() { document.getElementById('stats').innerHTML = `Κινήσεις <b>${stats.moves}</b> · Λύση σε <b>${BOARDS[idx].way.length}</b>`; }
+  function place(p) { view.her = scr(p[0] + 0.5, p[1] + 0.5, 0); view.herD = depth(p) + 0.08; }
+  function reset() { st = { h: b.S, v: 0 }; th = 0; view.bump = [0, 0]; view.flash = 0; place(st.h); stats.moves = 0; msg.hidden = true; showStats(); draw(); }
+  function load() { b = parse(BOARDS[idx]); layout(); chips(); reset(); }
+  function say(title, text, buttons) {
+    msg.innerHTML = `<div class="card"><h2>${title}</h2><p>${text}</p><div class="btns" style="justify-content:center"></div></div>`;
+    const row = msg.querySelector('.btns');
+    for (const [label, fn, primary] of buttons || []) {
+      const bt = document.createElement('button'); bt.type = 'button'; bt.textContent = label; if (primary) bt.className = 'primary';
+      bt.onclick = fn; row.appendChild(bt);
+    }
+    msg.hidden = false;
+  }
+  async function move(d) {
+    if (busy) { pending = d; return; }
+    busy = true;
+    const r = step(b, st, d);
+    if (r.kind === 'blocked') {
+      const a = scr(st.h[0] + 0.5, st.h[1] + 0.5, 0), c = scr(st.h[0] + 0.5 + DIRS[d][0], st.h[1] + 0.5 + DIRS[d][1], 0);
+      const dx = (c[0] - a[0]) * 0.1, dy = (c[1] - a[1]) * 0.1;
+      await tween(90, t => { view.bump = [dx * t, dy * t]; });
+      await tween(90, t => { view.bump = [dx * (1 - t), dy * (1 - t)]; });
+      busy = false; return next();
+    }
+    stats.moves++; showStats();
+    const from = st.h, to = r.h;
+    await tween(200, t => {
+      const x = from[0] + (to[0] - from[0]) * t + 0.5, y = from[1] + (to[1] - from[1]) * t + 0.5;
+      view.her = scr(x, y, 0); view.herD = Math.max(depth(from), depth(to)) + 0.08;
+    });
+    st = { h: r.h, v: st.v };
+    if (r.kind === 'win') {
+      place(st.h); draw();
+      await tween(650, t => { view.flash = 0.85 * t; });
+      solved.add(idx); chips();
+      const nextIdx = idx + 1 < BOARDS.length ? idx + 1 : null;
+      say('Πέρασε στο φως', `Σε ${stats.moves} κινήσεις (η συντομότερη: ${BOARDS[idx].way.length}).`,
+        [['Ξανά', () => reset()], ...(nextIdx !== null ? [['Επόμενος πίνακας', () => { idx = nextIdx; load(); }, true]] : [])]);
+      busy = false; pending = null; return;
+    }
+    if (r.v !== st.v) {      // the island turns a quarter on the sea, she with it
+      const t0 = st.v * Math.PI / 2;
+      await tween(700, t => { th = t0 + Math.PI / 2 * t; place(st.h); }, false);
+      st.v = r.v; th = st.v * Math.PI / 2;
+    }
+    place(st.h); draw(); busy = false; next();
+  }
+  function next() { if (pending) { const d = pending; pending = null; move(d); } }
+  async function playSolution() {
+    if (playing) return;
+    playing = true; pending = null;
+    while (busy) await sleep(50);
+    reset();
+    document.getElementById('solve').disabled = true; document.getElementById('restart').disabled = true;
+    for (const d of BOARDS[idx].way) { await move(d); while (busy) await sleep(30); await sleep(220); }
+    playing = false;
+    document.getElementById('solve').disabled = false; document.getElementById('restart').disabled = false;
+  }
+  // a swipe along a screen diagonal: the board's way that runs that way on the screen as the island lies now
+  function fromScreen(sx, sy) {
+    let best = null, bd = -2;
+    for (const [k, v] of Object.entries(DIRS)) {
+      const a = scr(st.h[0] + 0.5, st.h[1] + 0.5, 0), c = scr(st.h[0] + 0.5 + v[0], st.h[1] + 0.5 + v[1], 0);
+      const ex = c[0] - a[0], ey = c[1] - a[1], n = Math.hypot(ex, ey) * Math.hypot(sx, sy) || 1, dot = (ex * sx + ey * sy) / n;
+      if (dot > bd) { bd = dot; best = k; }
+    }
+    return best;
+  }
+  const stage = document.getElementById('stage'); let t0 = null;
+  stage.addEventListener('pointerdown', e => { t0 = [e.clientX, e.clientY]; });
+  stage.addEventListener('pointerup', e => {
+    if (!t0 || playing || !msg.hidden) { t0 = null; return; }
+    const dx = e.clientX - t0[0], dy = e.clientY - t0[1]; t0 = null;
+    if (Math.hypot(dx, dy) < 22) return;
+    move(fromScreen(dx, dy));
+  });
+  const SCREEN = { ArrowRight: [1, 0.5], ArrowDown: [-1, 0.5], ArrowLeft: [-1, -0.5], ArrowUp: [1, -0.5], d: [1, 0.5], s: [-1, 0.5], a: [-1, -0.5], w: [1, -0.5] };
+  addEventListener('keydown', e => { const v = SCREEN[e.key]; if (!v || playing || !msg.hidden) return; e.preventDefault(); move(fromScreen(v[0], v[1])); });
+  document.getElementById('restart').onclick = () => { if (!playing && !busy) reset(); };
+  document.getElementById('solve').onclick = playSolution;
+  const peekBtn = document.getElementById('peek');
+  peekBtn.onclick = () => { peek = !peek; peekBtn.setAttribute('aria-pressed', peek ? 'true' : 'false'); draw(); };
+  addEventListener('resize', () => { layout(); place(st.h); draw(); });
+
+  function start(data) {
+    if (data && Number.isInteger(data.idx) && data.idx < BOARDS.length) idx = data.idx;
+    (data && data.solved || []).forEach(i => solved.add(i));
+    load();
+  }
+  window.claude?.hot?.snapshot?.(() => ({ idx, solved: [...solved] }));
+  window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>

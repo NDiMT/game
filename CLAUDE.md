@@ -1023,6 +1023,14 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   https://claude.ai/artifact/NBZMKpSm3dck7Uw1eAz4KU (`design/level6/eye/play.html`, drawn isometric so the stone truly
   hides the sea, "look behind" shows what it hides; its rules checked against the solver on 6,000 move strings;
   `boards.png`). In the game it would want an orthographic camera at the isometric angle for this level.
+  The owner: "not again with stones you push". **Then the island that turns** (`tools/go/turn_trial.py`): the eye's
+  rule with no stones: piers hide the sea behind them as the eye sees it, and stepping onto a round disc turns the whole
+  island a quarter on the sea (clockwise), so the eye sees it from the next corner and other gaps are hidden. Four
+  boards, each one way: the disc (3), round and round (14, no dead end), four corners (16), the great turn (18); found
+  by annealing (rewarding the views used, the turns and the crossings over hidden sea; punishing a step back and forth
+  on a disc, which the first boards needed to cycle the views); playable at
+  https://claude.ai/artifact/BrGTV9f9fF4oZmXtHnDK5b (`design/level6/turn/play.html`, drawn isometric and turning, its
+  rules checked against the solver on 6,000 move strings; `boards.png`).
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
