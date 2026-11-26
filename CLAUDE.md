@@ -81,6 +81,15 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   turned down: it ate the far statues' bases ("the base of the statues is missing"). In the game the water's glints and
   small waves come in slowly over 0.22 of the screen below the haze (`far_w` in `IV_SEA_SH`), so no line marks where the
   sea begins.
+- **What stands in a backdrop is seen as the level is** (the owner, 26/11, of the sixth level's crowd of veiled statues
+  painted at eye level: "I want care with the background, it does not match the perspective at all"): statues, islands,
+  ruins in a backdrop are seen from the game's own eye, from above at its pitch (35°) and yaw, as the level's own things
+  are: never frontal, at eye level or from below. Build them in 3D and have the image model repaint the render (the
+  skill's "Where perspective and fit matter, 3D first"), or paint them into the game's own frame, where the model sees
+  the level's perspective and its statues; check them beside the level in a whole still before showing.
+- **Something adorns the foot of the screen** (the owner, 26/11, of the sixth level: "I also want something to adorn the
+  bottom part of the screen"): no level leaves the bottom of the picture as empty water; things in the water there, part
+  of the scene (not before the eye: "Nothing before the eye; details in the water instead").
 - **Start screen**: plum dark, cream EIDOLON and PLAY, a subdued veiled statue behind (`ui/start_statue.jpg`); the
   film opens and closes in the same plum. **For the tests** (the owner, 19/11: "while we test it, a choice at the start
   of which level I begin from"): under PLAY, "level" and the numbers 1 2 3 in the story's letter; 1 is PLAY, 2 and 3 go

@@ -365,6 +365,10 @@ What he wants, learned over the fifth level's ruins and the first level's lilies
   it, and have the model repaint only it in the style: it keeps place, size and perspective, so it fits ("out of place"
   when the model placed things itself). The model will not change a thing's proportions in an edit ("make them taller"
   changed nothing): change them in the 3D.
+- **A backdrop's things in the level's own perspective** (26/11, the sixth level's far crowd of statues painted at eye
+  level: "it does not match the perspective at all"): whatever stands in a backdrop is seen from above at the game's
+  pitch and yaw, as the level is; 3D first, then the repaint. And the foot of the screen is never left empty water
+  (26/11): something in the water adorns it.
 - **Small changes straight on the painting** ("why not Gemini directly?"): remove this, add two there, more random.
   Check what else it took away (it removed a column unasked; set it back from the painting before).
 - **Shapes**: nothing squat ("why so stubby?"), nothing "straight like cucumbers": ruins of offset, chipped drums,
