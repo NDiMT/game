@@ -23,6 +23,19 @@ SEA = -0.3
 STEP = 1.5
 ARCH = 1.15      # (the gate's arch this far beyond the ring, along her last stretch)
 WORLD = {'U': [0, 0, -1], 'D': [0, 0, 1], 'L': [-1, 0, 0], 'R': [1, 0, 0]}
+# great rocks at the island's back, the top of the picture, as the other levels have (the owner, 26/11: "and big rocks
+# at the upper part of the platform, in the others we have richer rocks"): [x, z, r, height over the walk], in the world,
+# made after the rest (rocks_after) so nothing else of the level comes out otherwise; clear of the floors' edges
+BACK_ROCKS = {'the bridge that sinks': [
+    [-2.85, -4.95, 1.25, 1.6],      # (the great one at the top corner, in the water between the gate's islet and the bridge's end)
+    [-3.9, -5.9, 1.3, 2.1],        # (behind it, the highest)
+    [-4.15, -3.95, 1.05, 1.0],     # (the corner's left shoulder)
+    [-2.45, -7.75, 1.1, 1.85],      # (behind the gate's left post)
+    [-0.5, -8.3, 1.2, 1.4],        # (behind the gate)
+    [1.25, -8.05, 1.0, 0.8],       # (and lower to its right)
+    [-4.1, -1.9, 0.95, 0.6],       # (going down along the long walk's back, lower toward her start)
+    [-4.05, 0.1, 0.85, 0.25],
+]}
 
 
 def plan(name='the bridge that sinks'):
@@ -110,7 +123,7 @@ def plan(name='the bridge that sinks'):
         'rock_clamp': [0.04, 0.35, 0.06, 1.15, 0.3, 0.45],
         'statues': [], 'pedestals': [], 'shore_statues': [],
         'rocks': rocks,
-        'rocks_after': [],
+        'rocks_after': [[[x, SEA, z], r, round(H0 + h, 3)] for x, z, r, h in BACK_ROCKS.get(name, [])],
         'columns': [], 'volute': None, 'head': None, 'relief': None, 'cypress': None, 'observer': None,
         'eye': eye_fit(pts, top_room=0.3, bottom_room=0.16, margin=0.9),
         'shore': True,
