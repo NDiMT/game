@@ -1124,7 +1124,16 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   imported texture: the game read the old one with the new rect). **The foot of the screen** (the owner: "I also want
   something to adorn the bottom part of the screen"): three offered, painted into its frame and lifted
   (`design/level6/back/bottom/`): a toppled veiled statue lying half sunk, the colossal veiled head fallen (the first
-  level's spare, liked there), an empty boat; the owner to choose. Level 5's gate leads
+  level's spare, liked there), an empty boat. **Then "redesign the level in Gemini first"**: five concepts painted from
+  the game's frame (`design/level6/back/concept/`, README); **he chose 5, a silver dusk in mist**, and the level is
+  brought to it: `goback/backdrop.jpg` its sky and sea painted alone from it (shifted by the eye's follow at her start,
+  0.06 of the height down; its streaks out; the haze band softened so no line shows; `horizon` 0.56, `sun` [0.782,
+  0.244]); no darkening at the edges (`vr` hidden, as the fourth level's); no birds; a line of foam all round its stone
+  (`IVB_LIP`: the sea shader's `lip_k`, `lip_all`, `lip_w`); soft banks of mist on the water where the concept has them
+  (`IVB_MISTS`, the fourth level's mist shader, placed by `IV_WD_PICK`; `IV_MISTS=0`); the far crowd restaged at the
+  concept's places and sizes, upper left, six statues seen from above, in its mist (`goback/wd_statues.png`,
+  `design/level6/back/far2/README.txt`); at the foot, the colossal veiled head half sunk at the lower right, as the
+  concept has it (`goback/wd_head.png`, `design/level6/back/head/`). Level 5's gate leads
   on into it; the end screen after it; the start screen's numbers 1 to 6. `IV_SOL="c16 c15 c16"` is taken,
   `IV_SOL="c36 c35 c34 c33 c23"` sinks with a bridge.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
