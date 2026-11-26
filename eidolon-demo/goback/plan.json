@@ -366,10 +366,10 @@
  "stone": null,
  "holes": [],
  "faces": [],
- "horizon": 0.47,
+ "horizon": 0.54,
  "sun": [
-  0.765,
-  0.3
+  0.758,
+  0.348
  ],
  "arches": [
   [

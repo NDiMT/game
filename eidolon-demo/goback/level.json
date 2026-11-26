@@ -392,10 +392,10 @@
  "observer": null,
  "observer_haze": null,
  "observer_model": null,
- "horizon": 0.47,
+ "horizon": 0.54,
  "sun": [
-  0.765,
-  0.3
+  0.758,
+  0.348
  ],
  "statues": [],
  "holes": [],

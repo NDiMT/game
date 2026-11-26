@@ -103,7 +103,7 @@ def plan(name='the bridge that sinks'):
     pl = {
         'scene': 'wake', 'sea_y': SEA, 'heights': {'H0': H0}, 'floors': floors, 'flights': [], 'risers': risers,
         'nodes': N, 'edges': edges, 'ring': ring, 'stone': None, 'holes': [], 'faces': [],
-        'horizon': 0.47, 'sun': [0.765, 0.3],      # (its backdrop's haze band and its setting sun: goback/backdrop.jpg, painted for it at dusk)
+        'horizon': 0.54, 'sun': [0.758, 0.348],      # (its backdrop's haze band and its setting sun: goback/backdrop.jpg, painted for it at dusk)
         'arches': [[arch, 'x']],      # (the gate, square to the way's last stretch (up the board, the world's -z), just behind the ring)
         'waters': waters,
         'smooth_normals': ['rock', 'marble'],

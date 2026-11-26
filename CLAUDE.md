@@ -1093,13 +1093,16 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   The plates are squares of light as level 4's (`_ivgl_pad`), unlit in the third level's unlit grey-lilac, white while
   held; the way's lines stop at their frames, no disc in them. The statues (`statue_welcome` by the gate,
   `statue_standing`; 1.95 m, their images in the water following them) glide a moment after she sets off, turning their
-  way and leaning a little into it, dust at their feet; the ones she looks at are lit, a warm light in their marble and
-  at their edges and a pale light about them (`IVB_SEEN_*`). Her look as a band of light on the ground ahead of her, as
+  way and leaning a little into it, dust at their feet; the ones she looks at are lit, white marble with a warm light in
+  it and at its edges and a pale light about them; behind her back they are a grey-lilac stone in their own shade
+  (`_ivb_statue_lit`, `IVB_SEEN_*`, `IVB_STONE_PAL`; white either way, the one she looked at hardly told apart). Her look as a band of light on the ground ahead of her, as
   the sample draws it, was tried with the Guardian's `iv_gaze` (`iv_gaze2.z` 1 its warm white): in 3D it lay on the
   water 0.9 m under the walk, apart from her, and read as a light of its own; off (`IV_LOOK_A` tries it). Backdrop: dusk,
-  painted by the image model with the first and fifth levels' backdrops as style references, far veiled statues in the
-  haze, the sun low at the upper right (`design/level6/back/backdrop_*`, the prompts beside them), its sky's streaks
-  taken out (`backdrop_destreak.py ... 0.38 0.44 <sun mask>`); `horizon` 0.47, `sun` [0.765, 0.3]. Level 5's gate leads
+  painted by the image model with the first and fifth levels' backdrops as style references: a crowd of tall veiled
+  statues standing in the shallow sea far off in the haze, turned toward the eye, the sun low at the upper right
+  (`design/level6/back/backdrop_b_raw.jpg`, its prompt `backdrop_prompt_b.txt`; `a` had the second level's statues over
+  again, the raised arm, the one lying), its sky's streaks taken out (`backdrop_destreak.py ... 0.4 0.46 <sun mask>`);
+  `horizon` 0.54, `sun` [0.758, 0.348]. Level 5's gate leads
   on into it; the end screen after it; the start screen's numbers 1 to 6. `IV_SOL="c16 c15 c16"` is taken,
   `IV_SOL="c36 c35 c34 c33 c23"` sinks with a bridge.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
