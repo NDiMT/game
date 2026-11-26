@@ -102,8 +102,9 @@ def trace(b, path):
 FIRST = ['So~oG', 'Mo~o~']                                  # 7: RRDRRUR
 STRAIT = ['ooooG', '~~~~~', '~~~~~', 'ooMMS', '#oo~o']      # 14: LLDRUUULUUURRR (a rock and her body hold one)
 STRAIT_B = ['~Gooo', '~~~~~', '~~~~~', 'ooooo', 'MMS#o']    # 14: URRDURUULUUULL
+PIER = ['~~ooG', '~~~~~', '~~~~~', '~ooMo', 'M#ooo', 'oSooo']  # 16: DRUURUULDRRRUUUU (the pier: two statues, a rock between)
 
 if __name__ == '__main__':
-    for rows in (FIRST, STRAIT, STRAIT_B):
+    for rows in (FIRST, STRAIT, STRAIT_B, PIER):
         b = Board(rows); r = analyse(b)
         print(rows, r['L'], ''.join(D4[d] for d in r['path']), 'one way:', r['ways'] == 1, 'dead %d/%d' % (r['dead'], r['states']))

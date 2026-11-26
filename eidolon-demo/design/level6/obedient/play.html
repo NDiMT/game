@@ -91,6 +91,9 @@ button:disabled { opacity: 0.45; cursor: default; }
   // proven by the solver (obedient.py)
   const BOARDS = [
     { name: 'Το πρώτο βήμα', rows: ['So~oG', 'Mo~o~'], way: 'RRDRRUR' },
+    { name: 'Το στενό', rows: ['ooooG', '~~~~~', '~~~~~', 'ooMMS', '#oo~o'], way: 'LLDRUUULUUURRR' },
+    { name: 'Ο βράχος', rows: ['~Gooo', '~~~~~', '~~~~~', 'ooooo', 'MMS#o'], way: 'URRDURUULUUULL' },
+    { name: 'Η αποβάθρα', rows: ['~~ooG', '~~~~~', '~~~~~', '~ooMo', 'M#ooo', 'oSooo'], way: 'DRUURUULDRRRUUUU' },
   ];
   const DIRS = { R: [1, 0], L: [-1, 0], D: [0, 1], U: [0, -1] };
   const KEYS = { ArrowRight: 'R', ArrowLeft: 'L', ArrowDown: 'D', ArrowUp: 'U', d: 'R', a: 'L', s: 'D', w: 'U' };
