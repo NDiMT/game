@@ -1066,6 +1066,15 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   used twice, a near statue hiding a far one; every statue, plate and bridge needed) and pruned. Playable, isometric, at
   https://claude.ai/artifact/X9ntEnGJRqipxXn6GNwm92 (`design/level6/swap/`, a dotted light toward each statue she sees;
   its islands fitted to the page, not the whole sea; rules checked against the solver on 10,000 move strings).
+  **Behind your back** (`tools/go/back_trial.py`): she looks the way she last stepped; after each of her steps every
+  statue not in front of her (in the half of the world she faces) takes one step toward her, along the way it is
+  farther first; one that reaches her takes her; on a plate a statue holds its bridge, and a bridge that sinks takes
+  whoever stands on it. Four boards, each one way: behind you (3), two plates (20), the lure (15), the bridge that
+  sinks (18: a random player wins none of 400); annealed with a step back and forth punished (the first finds lured the
+  statues by dancing on one spot) and pruned. Playable, isometric, at https://claude.ai/artifact/JeViP75fc6SZWn2Crknzac
+  (`design/level6/back/`, her look a band of light, the statues she sees lit about; checked on 8,000 move strings).
+  Tried first and dropped the same day: a sun turning the shadows of columns into ways over the sea (`shade.py` in the
+  scratchpad's way): a maze, 22 to 46 states.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
