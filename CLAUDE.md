@@ -1057,7 +1057,15 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   The owner, of these three: "wtf no". And: "also I'd like you to make the samples in isometric, as you did before at
   some point": **every playable sample is drawn isometric**, as the eye's and the turning island's pages are
   (`design/level6/eye/play.html`, `turn/play.html`), never flat from above as these three were. His "the way you made
-  it that I can play it" had pointed at the turning island's page.
+  it that I can play it" had pointed at the turning island's page. Asked what next, he chose "new ideas, isometric".
+  **From statue to statue** (`tools/go/swap_trial.py`): where she cannot step she looks that way, over the sea and flat
+  stone as far as a column, and her soul passes into the first statue she sees: they change places, so she crosses the
+  sea and the statue stays where she stood (on a plate it holds that plate's bridge up). Five boards, each one way: the
+  look (3), the plate (4), three islands (14), beside the gate (18), four islands (16; a player swiping at random wins
+  6% of tries in 150 swipes, the others 12-31%); found by annealing (rewarding swaps, statues set on plates, a statue
+  used twice, a near statue hiding a far one; every statue, plate and bridge needed) and pruned. Playable, isometric, at
+  https://claude.ai/artifact/X9ntEnGJRqipxXn6GNwm92 (`design/level6/swap/`, a dotted light toward each statue she sees;
+  its islands fitted to the page, not the whole sea; rules checked against the solver on 10,000 move strings).
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
