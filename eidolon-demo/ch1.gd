@@ -5109,7 +5109,7 @@ func _ivw_life() -> void:
 	# birds: a few small dark V shapes high over the sea, behind the island, drifting across
 	var b := _ivp_basis(); var bx := b.x; var by := b.y; var fwd := -b.z
 	var ref := IV_O + Vector3(float(ce[0]), float(ce[1]), float(ce[2])); var W := float(ivr_eye.width)
-	for i in (0 if (go_milos or go_glass) else 3):      # (none over the third level: the owner, 19/11, "take those stupid birds out of the third level"; nor over the fourth, where they stood by the story's line as specks)
+	for i in (0 if (go_milos or go_glass or go_back) else 3):      # (none over the third level: the owner, 19/11, "take those stupid birds out of the third level"; nor over the fourth, where they stood by the story's line as specks; nor the sixth, its concept's mist has none, and they stood by the story's lines as dashes)
 		var am := ArrayMesh.new(); var arr := []; arr.resize(Mesh.ARRAY_MAX)
 		var sp := 0.22 + 0.06 * float(i % 2)
 		arr[Mesh.ARRAY_VERTEX] = PackedVector3Array([Vector3(0, 0, -0.03), Vector3(-sp, 0, 0.05), Vector3(0, 0, 0.04), Vector3(0, 0, -0.03), Vector3(0, 0, 0.04), Vector3(sp, 0, 0.05)])
@@ -5778,6 +5778,7 @@ uniform float bg_tex_k = 0.0; uniform vec2 bg_scale = vec2(1.0); uniform float u
 uniform float world_uv = 0.0; uniform vec3 eye_c; uniform vec3 eye_bx; uniform vec3 eye_by; uniform float eye_w = 11.0;      // (where the painting lies under the level's own eye)
 uniform sampler2D shore_tex : filter_linear, repeat_disable;      // (how far each spot of the water lies from the stone in it: red what stands for good, green the stones that rise)
 uniform vec4 shore_rect = vec4(0.0, 0.0, 1.0, 1.0); uniform float shore_k = 0.0; uniform float shore_d = 1.6; uniform float riser_up = 0.0;
+uniform float lip_k = 0.32; uniform float lip_all = 0.0; uniform float lip_w = 0.08;      // (the foam's thin brightness hugging the stone: how bright, how much of it is whole (1: a line all round, as the sixth level's concept paints it), how far out)
 uniform vec3 foam_c : source_color = vec3(1.0, 0.98, 0.96);
 uniform float hz_v = -1.0;      // (where the sea melts into the sky, on the screen: nothing is drawn on the water near it)
 uniform float shore_mir = 0.0; uniform vec3 mir_o; uniform float mir_k = 9.8;      // (the fourth level: the shore map read again at the point turned over about the glass, x + z + k = 0 about mir_o, so the image's stones have their foam too)
@@ -5854,7 +5855,7 @@ void fragment(){
 		float dd = d + nz * 0.03;
 		float patch = sin(wp.x * 1.7 + TIME * 0.13) * sin(wp.z * 1.3 - TIME * 0.11) + 0.5 * sin((wp.x + wp.z) * 2.9 + TIME * 0.2);
 		float gate = smoothstep(0.2, 0.9, patch);      // (here and there, drifting slowly: scattered, never a ring round everything; the user: "more discreet and scattered")
-		float lip = (1.0 - smoothstep(0.02, 0.08, dd)) * (0.3 + 0.7 * gate);
+		float lip = (1.0 - smoothstep(0.02, lip_w, dd)) * mix(0.3 + 0.7 * gate, 1.0, lip_all);
 		float wv = 0.0;
 		for (int i = 0; i < 2; i++) {
 			float p = fract(TIME * 0.1 + float(i) * 0.5);
@@ -5862,7 +5863,7 @@ void fragment(){
 			wv += (1.0 - smoothstep(0.0, 0.03 + p * 0.03, abs(dd - r))) * (1.0 - p) * smoothstep(0.0, 0.1, p);
 		}
 		float brk = smoothstep(-0.2, 0.8, sin(wp.x * 2.1 - wp.z * 3.3 + TIME * 0.25) + nz * 0.7);
-		fo = clamp(lip * 0.32 + wv * 0.3 * brk * gate, 0.0, 1.0) * shore_k;
+		fo = clamp(lip * lip_k + wv * 0.3 * brk * gate, 0.0, 1.0) * shore_k;
 	}
 	ALBEDO = mix(c, foam_c, fo);
 	float ga = 0.0;
@@ -5905,6 +5906,7 @@ func _ivs_sea(sea_y: float) -> void:
 		if go_glass and ivg_on and ivg.get("mirror") != null:      # (the image's stones have their foam too)
 			m.set_shader_parameter("shore_mir", 1.0); m.set_shader_parameter("mir_o", IV_O); m.set_shader_parameter("mir_k", ivgl_k)
 		m.set_shader_parameter("riser_up", 1.0 if ivw_up > 0.5 else 0.0)
+		if go_back: m.set_shader_parameter("lip_k", IVB_LIP.x); m.set_shader_parameter("lip_all", IVB_LIP.y); m.set_shader_parameter("lip_w", IVB_LIP.z)      # (the sixth level: a line of foam all round its stone, as its concept (c5) has it)
 	ivs_sea_mat = m; ivs_sea_mats = [m, mf]
 	if go_glass and OS.get_environment("IV_SEA_GRADE") != "0":
 		for sm in [m, mf]: (sm as ShaderMaterial).set_shader_parameter("grade_k", 0.88)
@@ -11707,7 +11709,8 @@ const IVB_SUNK_POOF := Color(0.86, 0.92, 0.97)
 ## in mist): the fourth level's mist (IVGL_MIST_SH), here [x, z on the sea from the level's origin (placed by IV_WD_PICK from
 ## the concept's own frame), width, height (or depth), alpha, seed, kind (0 a bank standing, 1 a sheet lying, 2 a band
 ## standing, soft all round)]; IV_MISTS=0 leaves them out
-const IVB_MISTS := [[-6.2, 2.6, 7.0, 2.6, 0.82, 1.3, 0], [3.4, 11.6, 9.5, 3.2, 0.85, 4.7, 0], [5.8, -2.7, 4.6, 2.1, 0.72, 7.9, 0], [-9.0, -2.4, 16.0, 1.9, 0.5, 2.2, 2], [11.6, 4.2, 8.0, 5.0, 0.6, 6.4, 1]]
+const IVB_LIP := Vector3(0.62, 0.8, 0.13)      # (its foam's line at the stone: bright, nearly whole, a little wider than the other levels' (0.32, 0, 0.08))
+const IVB_MISTS := [[-6.2, 2.6, 8.0, 2.4, 0.72, 1.3, 2], [3.4, 11.6, 10.5, 3.0, 0.78, 4.7, 2], [5.8, -2.7, 5.2, 2.0, 0.62, 7.9, 2], [-12.0, -4.6, 14.0, 1.6, 0.42, 2.2, 2], [11.6, 4.2, 8.0, 5.0, 0.55, 6.4, 1]]
 func _ivb_mists() -> void:
 	if OS.get_environment("IV_MISTS") == "0": return
 	var al := Vector3(1, 0, -1).normalized(); var n := Vector3(1, 0, 1).normalized()
