@@ -1075,6 +1075,33 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   (`design/level6/back/`, her look a band of light, the statues she sees lit about; checked on 8,000 move strings).
   Tried first and dropped the same day: a sun turning the shadows of columns into ways over the sea (`shade.py` in the
   scratchpad's way): a maze, 22 to 46 states.
+- **Level 6, behind her back (`goback/`, `FLIP=goback`, in the game since 26/11)**: the owner chose the sample "Behind
+  your back" ("το δυο πλακες, 2 μου αρεσει, φτιαχτο σε πιστα"; then "βασικα το 4 φτιαξε πρωτα": its fourth board, "the
+  bridge that sinks", first; "two plates" after). The script's seventh truth: the goddess woke every statue he carved
+  from outside, and he could not bear to look at them; its line "The goddess woke his statues. / He could not bear / to
+  look at them." (to be settled with the owner). The rules are `tools/go/back_trial.py`'s `move`, ported as they are
+  (`_ivb_move` in `ch1.gd`; the autoplay's `IV back step` lines give the solver's own trace, 18 swipes): she faces the
+  way she last stepped; after each of her steps every veiled statue not in front of her (the half she faces) glides one
+  place toward her, the way it is farther first, the other if that is shut; one that reaches her takes her (a shadow of
+  its stone, a puff, the start again: `_ivb_out` through `_ivgd_seen_out`, which takes its colours); a plate holds the
+  bridges of its letter up while she or a statue stands on it; a bridge sinks when no plate of its letter is held,
+  taking whoever stands on it (a statue goes down into the water and is gone; she to the water and her knees in it,
+  then a puff in the water's colour). One node a swipe (no long walks). Plan `tools/go/back_plan.py <plan.json> [board]`
+  (its puzzle's `back`: cells, statues, plates, bridges, riser_of, bridge_edges, size, step, origin, face0), build
+  `ivory_level.py -- goback/level.glb goback/level.json 606 24 goback/plan.json`; the bridges are its risers (`B0`,
+  `B1`), sunk 0.32 under the water as pale shapes (`_ivb_risers_apply`, their foam and rings as the waking's stones).
+  The plates are squares of light as level 4's (`_ivgl_pad`), unlit in the third level's unlit grey-lilac, white while
+  held; the way's lines stop at their frames, no disc in them. The statues (`statue_welcome` by the gate,
+  `statue_standing`; 1.95 m, their images in the water following them) glide a moment after she sets off, turning their
+  way and leaning a little into it, dust at their feet; the ones she looks at are lit, a warm light in their marble and
+  at their edges and a pale light about them (`IVB_SEEN_*`). Her look as a band of light on the ground ahead of her, as
+  the sample draws it, was tried with the Guardian's `iv_gaze` (`iv_gaze2.z` 1 its warm white): in 3D it lay on the
+  water 0.9 m under the walk, apart from her, and read as a light of its own; off (`IV_LOOK_A` tries it). Backdrop: dusk,
+  painted by the image model with the first and fifth levels' backdrops as style references, far veiled statues in the
+  haze, the sun low at the upper right (`design/level6/back/backdrop_*`, the prompts beside them), its sky's streaks
+  taken out (`backdrop_destreak.py ... 0.38 0.44 <sun mask>`); `horizon` 0.47, `sun` [0.765, 0.3]. Level 5's gate leads
+  on into it; the end screen after it; the start screen's numbers 1 to 6. `IV_SOL="c16 c15 c16"` is taken,
+  `IV_SOL="c36 c35 c34 c33 c23"` sinks with a bridge.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are

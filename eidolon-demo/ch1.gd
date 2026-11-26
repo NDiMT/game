@@ -259,7 +259,7 @@ void fragment(){
 	}
 }"""
 var flip_test := OS.get_environment("FLIP") == "1"      # every water turns the picture
-var go_demo := OS.has_feature("godemo") or OS.get_environment("FLIP") == "go" or OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or OS.get_environment("FLIP") == "gosea" or OS.has_feature("gosea") or OS.get_environment("FLIP") == "gomoon" or OS.has_feature("gomoon") or OS.get_environment("FLIP") == "goquarry" or OS.has_feature("goquarry") or OS.get_environment("FLIP") == "gowake" or OS.has_feature("gowake") or OS.get_environment("FLIP") == "goveil" or OS.has_feature("goveil") or OS.get_environment("FLIP") == "gomilos" or OS.has_feature("gomilos") or OS.get_environment("FLIP") == "goglass" or OS.has_feature("goglass") or OS.get_environment("FLIP") == "goguard" or OS.has_feature("goguard")      # the trial played a step at a time (Eidolon GO)
+var go_demo := OS.has_feature("godemo") or OS.get_environment("FLIP") == "go" or OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or OS.get_environment("FLIP") == "gosea" or OS.has_feature("gosea") or OS.get_environment("FLIP") == "gomoon" or OS.has_feature("gomoon") or OS.get_environment("FLIP") == "goquarry" or OS.has_feature("goquarry") or OS.get_environment("FLIP") == "gowake" or OS.has_feature("gowake") or OS.get_environment("FLIP") == "goveil" or OS.has_feature("goveil") or OS.get_environment("FLIP") == "gomilos" or OS.has_feature("gomilos") or OS.get_environment("FLIP") == "goglass" or OS.has_feature("goglass") or OS.get_environment("FLIP") == "goguard" or OS.has_feature("goguard") or OS.get_environment("FLIP") == "goback" or OS.has_feature("goback")      # the trial played a step at a time (Eidolon GO)
 var geo_demo := OS.has_feature("geodemo") or OS.get_environment("FLIP") == "geo"      # the trial of the hall of images: ways that join where their pictures join
 var figure_demo := OS.has_feature("figuredemo") or OS.get_environment("FLIP") == "figure"      # the trial of the face in the water: three courts where a picture is made whole in the water
 var match_demo := OS.has_feature("matchdemo") or OS.get_environment("FLIP") == "match"      # the trial of the still water: one new court, where the world and what its water shows are to be made to agree
@@ -2092,13 +2092,14 @@ var go_moon := OS.get_environment("FLIP") == "gomoon" or OS.has_feature("gomoon"
 var go_quarry := OS.get_environment("FLIP") == "goquarry" or OS.has_feature("goquarry")      # the fourth level: the quarry (goquarry/), where the faces were cut
 var go_glass := OS.get_environment("FLIP") == "goglass" or OS.has_feature("goglass") or String(Engine.get_meta("ivw_next", "")) == "goglass"      # the fourth level (or the third's gate has led into it): the glass (goglass/), a wall of glass across the level and the level's image beyond it; a block that slides till something stops it, brought to rest where its image stands in a square of light (it rides the second: its sea, its light, its block)
 var go_guard := OS.get_environment("FLIP") == "goguard" or OS.has_feature("goguard") or String(Engine.get_meta("ivw_next", "")) == "goguard"      # the fifth level (or the fourth's gate has led into it): the Guardian (goguard/), a hooded man of glass on his pedestal in a pool, turning a quarter at each of her moves; seen, she goes back to the start; the goddess's mirror turned to face him keeps him (it rides the second: its sea, its light, its block)
+var go_back := OS.get_environment("FLIP") == "goback" or OS.has_feature("goback") or String(Engine.get_meta("ivw_next", "")) == "goback"      # the sixth level (or the fifth's gate has led into it): behind her back (goback/), veiled statues that glide toward her only while she does not look at them; plates that hold bridges up while she or a statue stands on them (it rides the second: its sea, its light, its gate)
 var go_milos := OS.get_environment("FLIP") == "gomilos" or OS.has_feature("gomilos") or String(Engine.get_meta("ivw_next", "")) == "gomilos"      # the third level (or the second's gate has led into it): the goddess's sanctuary on Milos (gomilos/), the statue's light, the mirror, the stone, the ring that lights and opens the gate (it rides the second: its start, its block, its statues)
-var go_veil := OS.get_environment("FLIP") == "goveil" or OS.has_feature("goveil") or String(Engine.get_meta("ivw_next", "")) == "goveil" or go_milos or go_glass or go_guard      # the second level (or the first's gate has led into it: _ivw_to_veil): the veiled (goveil/), a golden morning on the same still sea: a block pushed into the causeway's gap
+var go_veil := OS.get_environment("FLIP") == "goveil" or OS.has_feature("goveil") or String(Engine.get_meta("ivw_next", "")) == "goveil" or go_milos or go_glass or go_guard or go_back      # the second level (or the first's gate has led into it: _ivw_to_veil): the veiled (goveil/), a golden morning on the same still sea: a block pushed into the causeway's gap
 var go_wake := OS.get_environment("FLIP") == "gowake" or OS.has_feature("gowake") or go_veil      # the first level: the waking (gowake/), dawn over a still sea (the second rides its sea, its light, its sounds and its gate; what is the waking's own asks not go_veil)
 var iv_at_sea := go_drown or go_wake      # (a level standing in still water: the sea, the level's image in it)
 var iv_no_old := go_wake and OS.get_environment("IV_OLD_WORLD") == ""      # (the waking's levels: the old chapter's world is not built (IV_OLD_WORLD=1 builds it as before))
 var go_iv := OS.get_environment("FLIP") == "goiv" or OS.has_feature("goiv") or go_drown or go_moon or go_quarry or go_wake
-var go_dir := "res://goguard/" if go_guard else "res://goglass/" if go_glass else "res://gomilos/" if go_milos else "res://goveil/" if go_veil else "res://gowake/" if go_wake else ("res://gosea/" if go_drown else ("res://gomoon/" if go_moon else ("res://goquarry/" if go_quarry else "res://goiv/")))      # the level's own folder: its level.glb, level.json, puzzle.json
+var go_dir := "res://goback/" if go_back else "res://goguard/" if go_guard else "res://goglass/" if go_glass else "res://gomilos/" if go_milos else "res://goveil/" if go_veil else "res://gowake/" if go_wake else ("res://gosea/" if go_drown else ("res://gomoon/" if go_moon else ("res://goquarry/" if go_quarry else "res://goiv/")))      # the level's own folder: its level.glb, level.json, puzzle.json
 const IV_O := Vector3(460.0, 0.0, 0.0)      # (far from the world, and from the courts of the other trial)
 const IV_T := 2.0      # from one node of the way to the next
 const IV_PITCH := 37.0
@@ -2604,7 +2605,7 @@ void fragment(){
 	if (under_k > 0.5) fk = max(fk, smoothstep(-0.02, 1.7, clip_y - wp.y) * 0.8);
 	if (mirror_k > 0.5 && mirror_fade > 0.0) fk = max(fk, smoothstep(0.0, mirror_fade, mirror_y - wp.y));
 	if (wline_k > 0.0) { float hw = wp.y - clip_y; c = mix(c, vec3(1.0, 0.97, 0.93), wline_k * (1.0 - smoothstep(0.0, 0.05, hw)) * step(-0.002, hw)); }
-	if (mirror_k < 0.5) c = mix(c, vec3(1.0, 0.3, 0.26), gaze_light(wp, wn));
+	if (mirror_k < 0.5) c = mix(c, mix(vec3(1.0, 0.3, 0.26), vec3(1.0, 0.97, 0.88), iv_gaze2.z), gaze_light(wp, wn));      // (iv_gaze2.z 1: the sixth level's look, a warm white light, not the Guardian's red)
 	ALBEDO = c * (1.0 - fk);
 	vec3 mist = bgc(sy);
 	if (bg_tex_k > 0.5) {
@@ -3312,6 +3313,7 @@ func _iv_post(dt: float) -> void:
 	(iv_glow.material_override as StandardMaterial3D).albedo_color.a = ((0.16 + 0.14 * pl) if ivp_on else (0.5 + 0.35 * pl)) * (ivm_ring_k if (go_milos or go_glass) else 1.0)
 	if go_milos and not ivm_beam.is_empty(): _ivm_draw()
 	if go_guard and ivgd_n != null: _ivgd_draw()
+	if go_back and not ivb_st.is_empty(): _ivb_tick(dt)
 	if go_glass and not ivgl_pairs.is_empty(): _ivgl_tick()
 	if (go_milos or go_glass or go_guard) and ivm_ring_gold != null and ivm_ring_k > 0.0 and ivm_ring_k < 1.001 and not ivm_ring_done: _ivm_ring_tick()
 	if not iv_won: iv_glow.scale = Vector3.ONE * (0.92 + 0.12 * pl)
@@ -4038,6 +4040,7 @@ func _play_ivp() -> void:
 				if same: j = i + ivg_last_run.size() - 1
 				else: print("IV the long walk left the solution's way: ", ivg_last_run, " at step ", i + 1)
 			print("IV step %d %s: she is at %s, stone %s, volute %d, statue %s" % [j + 1, String(sol[j]), iv_me, iv_block, ivg_v, _ivg_w_node()])
+			if go_back: print("IV back step %d: she is at %s facing %s, statues %s, bridges up %s" % [j + 1, iv_me, ivb_face, ivb_ms, ivb_up.keys()])
 			if not iv_won: await snap.call("s%02d_%s" % [j + 1, String(sol[j])])
 			i = j + 1
 		var n3 := 0
@@ -4188,6 +4191,7 @@ func _ivr_way_gap(n: String) -> float:
 	if ivg_on and ivg_holes.has(n): return _ivv_bside() * 0.5      # (a hole: the line stops at the edge of the cube that fills it, where the cube's own line goes on)
 	if n == (String(ivg_exit) if ivg_on else "r"): return (IV_RING_OUT + IV_RING_OUT_TUBE if (ivr_on and IV_RING_OUT > 0.0) else 0.46) + 0.012
 	if ivg_on and n != "" and n == String(ivg.get("reset", "")): return IVGL_PAD_OUT + IVGL_PAD_OUT_TUBE + 0.012
+	if go_back and ivg_on and ((ivg.get("back", {}) as Dictionary).get("plates", {}) as Dictionary).has(n): return IVGL_PAD_OUT + IVGL_PAD_OUT_TUBE + 0.012      # (the sixth level's plates, squares as that one)
 	return 0.0
 
 ## the way drawn on the stone: a pale line, and at each node a pale disc in a darker ring
@@ -4241,7 +4245,8 @@ func _ivr_way() -> void:
 			_iv_line(_ivv_way_parent(String(e[0]), String(e[1])), la - IV_O, lb - IV_O)
 	for k in ivp_nodes:
 		if k == "r" or k == "s" or (ivg_on and (k == ivg_exit or k == ivg_vol)) or (ivg_on and (ivg.get("unwalked", []) as Array).has(k)): continue
-		if ivg_on and k == String(ivg.get("reset", "")): continue      # (the square at her start has its brown stone within, as the ring: no disc of the way in it)
+		if ivg_on and k == String(ivg.get("reset", "")): continue
+		if go_back and ivg_on and ((ivg.get("back", {}) as Dictionary).get("plates", {}) as Dictionary).has(k): continue      # (a plate: its square is its mark)      # (the square at her start has its brown stone within, as the ring: no disc of the way in it)
 		if ivg_on and ivg_holes.has(k): continue      # (a hole: the cube that fills it carries the way's own ring and lines on its top, so no disc of the way over it (the owner, 23/11: "no extra path should come out on the square"))
 		var p: Vector3 = (ivp_nodes[k] as Vector3) - IV_O
 		var rm := CylinderMesh.new(); rm.top_radius = 0.215; rm.bottom_radius = 0.215; rm.height = 0.02; rm.radial_segments = 24; rm.rings = 1
@@ -4465,8 +4470,8 @@ func _ivw_exit() -> void:
 
 func _ivw_chain_ok() -> bool: return _ivw_next_level() != ""
 func _ivw_next_level() -> String:      # (the level a gate leads on into: none with IV_ONE=1, a level alone)
-	if OS.get_environment("IV_ONE") != "" or go_guard: return ""
-	var nx := "goguard" if go_glass else ("goglass" if go_milos else ("gomilos" if go_veil else "goveil"))
+	if OS.get_environment("IV_ONE") != "" or go_back: return ""
+	var nx := "goback" if go_guard else "goguard" if go_glass else ("goglass" if go_milos else ("gomilos" if go_veil else "goveil"))
 	return nx if FileAccess.file_exists("res://%s/puzzle.json" % nx) else ""
 func _ivw_to_next(nx: String) -> void:      # (the gate's light fills the picture, the warm white the next level begins in, and the next is set up behind it)
 	var cl := CanvasLayer.new(); cl.layer = 7; add_child(cl)
@@ -4674,6 +4679,7 @@ func _ivw_rise() -> void:      # (on one knee; a moment still; then she rises sl
 
 ## a way over a sunken stone is no way until the stones are up
 func _ivw_open(a: String, b: String) -> bool:
+	if go_back and ivg_on and not ivb.is_empty(): return _ivb_open(b)      # (the sixth level: no way onto a sunk bridge)
 	if not go_wake or not ivg_on or ivg.get("volute") == null: return true
 	var br: Array = ((ivg.volute as Dictionary).get("toggles", {}) as Dictionary).get("bridge", []) as Array
 	for e in br:
@@ -4724,6 +4730,7 @@ func _ivw_risers_find(lv: Node3D, mn: Node3D) -> void:
 		ivw_risers.append([mi, mi.position, img, img.position if img != null else Vector3.ZERO])
 	# the way's discs on the stones and its lines over the water: they sink and rise with them
 	var br: Array = ((ivg.volute as Dictionary).get("toggles", {}) as Dictionary).get("bridge", []) as Array if (ivg_on and ivg.get("volute") != null) else []
+	if go_back and ivg_on: br = (ivg.get("back", {}) as Dictionary).get("bridge_edges", []) as Array      # (the sixth level: the way's lines and discs on its bridges and onto them)
 	var rz := []      # (the stones' outlines, on the water)
 	for r in ivw_risers:
 		var rm := r[0] as MeshInstance3D
@@ -4742,7 +4749,9 @@ func _ivw_risers_find(lv: Node3D, mn: Node3D) -> void:
 				var on_stone := false
 				for bx in rz:
 					if (bx as AABB).grow(0.05).has_point(Vector3(cc.x, (bx as AABB).get_center().y, cc.z)): on_stone = true
-				if not at_node or on_stone: on = true
+				if not at_node or on_stone:
+					on = true
+					if go_back: ivb_rof[mi2.get_instance_id()] = _ivb_edge_riser(String(e[0]), String(e[1]), cc)
 		if on: ivw_risers.append([mi2, mi2.position, null, Vector3.ZERO])
 	if ivw_risers.is_empty(): return      # (a level with no stones that rise: the second)
 	var zs := []
@@ -4755,6 +4764,7 @@ func _ivw_risers_find(lv: Node3D, mn: Node3D) -> void:
 		r.append(nm.get_slice("_", 1) if nm.begins_with("riser_") else "")      # [5] which stone
 		r.append(false)      # [6] has it broken the water
 		r.append(null)      # [7] the foam boiling on the water over it, then thrown out round it
+	if go_back and not ivb.is_empty(): _ivb_risers_apply(); return      # (the sixth level: each bridge as its plate holds it)
 	_ivw_risers_set(0.0)
 
 const IVW_STAGGER := 0.42      # (how much of the rise each stone waits for the one before it)
@@ -5212,13 +5222,13 @@ func _ivw_menu_make() -> void:
 		if f != null: cap.add_theme_font_override("font", f)
 		cap.add_theme_font_size_override("font_size", int(vp.x * 0.042)); cap.add_theme_color_override("font_color", Color(cream, 0.7))
 		cap.size = Vector2(vp.x, vp.x * 0.07); cap.position = Vector2(0.0, vp.y * 0.335); cap.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_menu.add_child(cap)
-		var nl := 5 if FileAccess.file_exists("res://goguard/puzzle.json") else (4 if FileAccess.file_exists("res://goglass/puzzle.json") else 3)      # (the fourth and fifth when they are in the build)
+		var nl := 6 if FileAccess.file_exists("res://goback/puzzle.json") else (5 if FileAccess.file_exists("res://goguard/puzzle.json") else (4 if FileAccess.file_exists("res://goglass/puzzle.json") else 3))      # (the fourth, fifth and sixth when they are in the build)
 		for i in nl:
 			var lb := Label.new(); lb.text = str(i + 1)
 			lb.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER; lb.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			if f != null: lb.add_theme_font_override("font", f)
 			lb.add_theme_font_size_override("font_size", int(vp.x * 0.075)); lb.add_theme_color_override("font_color", cream)
-			lb.size = Vector2(bw, bw); lb.position = Vector2(vp.x * 0.5 + (float(i) - float(nl - 1) * 0.5) * vp.x * (0.2 if nl <= 3 else (0.17 if nl == 4 else 0.15)) - bw * 0.5, vp.y * 0.405 - bw * 0.5)
+			lb.size = Vector2(bw, bw); lb.position = Vector2(vp.x * 0.5 + (float(i) - float(nl - 1) * 0.5) * vp.x * (0.2 if nl <= 3 else (0.17 if nl == 4 else (0.15 if nl == 5 else 0.13))) - bw * 0.5, vp.y * 0.405 - bw * 0.5)
 			lb.mouse_filter = Control.MOUSE_FILTER_IGNORE; ivw_menu.add_child(lb)
 			ivw_pick.append(Rect2(lb.position, lb.size).grow(vp.x * 0.02))
 	title_box.hide()
@@ -5854,7 +5864,7 @@ void fragment(){
 		vec2 pa = iv_gaze.xy; vec2 ab = iv_gaze.zw - pa; float L2 = max(dot(ab, ab), 1e-4); float L = sqrt(L2);
 		float t = clamp(dot(wp.xz - pa, ab) / L2, 0.0, 1.0); float dd = length(wp.xz - (pa + ab * t)); float e = min(0.45 / L, 0.5);
 		ga = exp(-dd * dd / (iv_gaze2.x * iv_gaze2.x)) * smoothstep(0.0, e, t) * (1.0 - smoothstep(1.0 - e, 1.0, t)) * iv_gaze2.y;
-		ALBEDO = mix(ALBEDO, vec3(1.0, 0.3, 0.26), ga);
+		ALBEDO = mix(ALBEDO, mix(vec3(1.0, 0.3, 0.26), vec3(1.0, 0.97, 0.88), iv_gaze2.z), ga);
 	}
 	if (sea_a < 0.999) ALPHA = max(mix(sea_a, 1.0, fo), ga);
 }
@@ -6607,6 +6617,7 @@ func _ivr_build() -> void:
 		_ivg_gaze_all()
 	if go_milos and ivg_on and ivg.get("light") != null: _ivm_setup()
 	if go_guard and ivg_on: _ivgd_setup()
+	if go_back and ivg_on: _ivb_setup()
 	if j.get("relief") != null:
 		var rs := _ivr_block(); rs.global_position = V.call(j.relief); rs.scale = Vector3.ONE * 0.42; rs.rotation = Vector3(0.12, 0.6, -0.08)
 	# the fallen face: one of the thousand, on its cheek in the rock, looking up at the eye
@@ -6954,6 +6965,7 @@ func _ivg_w_aim(t := 0.4) -> void:
 ## one turn: she acts along the way to nb; then the statue takes its step
 func _ivg_turn(nb: String) -> void:
 	if iv_busy or iv_won: return
+	if go_back and not ivb.is_empty(): await _ivb_turn(nb); return      # (the sixth level: behind her back)
 	ivg_last_run = []
 	var me := iv_me
 	var wn := _ivg_w_node()
@@ -7306,8 +7318,9 @@ func _ivg_fail(why: String, at: String, fi := -1) -> void:
 		var p0 := hn.position
 		var lk: Vector3 = ivp_nodes[_ivg_watched(ivg_faces[fi])] - (ivp_nodes[ivg_faces[fi].node] as Vector3)
 		var lu := create_tween(); lu.tween_property(hn, "position", p0 + Vector3(lk.x, 0, lk.z).normalized() * 0.25, 0.15); lu.tween_property(hn, "position", p0, 0.3)
-	var gd_ := go_guard and ivgd_n != null
-	if gd_: await _ivgd_seen_out()      # (the fifth level: a red shadow, then a puff)
+	var gd_ := (go_guard and ivgd_n != null) or go_back
+	if go_back: await _ivb_out(why)      # (the sixth level: a shadow of the statue's stone, or of the water, then a puff)
+	elif gd_: await _ivgd_seen_out()      # (the fifth level: a red shadow, then a puff)
 	var f := create_tween(); f.tween_property(iv_fade, "color:a", 1.0, 0.5 if gd_ else 0.8).set_delay(0.0 if gd_ else 0.3).set_trans(Tween.TRANS_SINE); await f.finished
 	_ivg_reset()
 	await wait(0.25 if gd_ else 0.4)
@@ -7335,6 +7348,9 @@ func _ivg_reset() -> void:
 		ivg_w.global_position = ivp_nodes[ivg_route[0]]; _ivg_w_aim(0.0)
 	iv_moves = 0
 	if go_guard: _ivgd_reset()
+	if go_back and not ivb.is_empty():
+		_ivb_reset()
+		var f0: Array = ivb.get("face0", [0, -1]); yaw = atan2(float(f0[0]), float(f0[1]))      # (facing up the board again, as she began)
 
 # ---------------------------------------------------------------- the face in the water (a trial)
 ## Three courts by themselves in the sea, one after another. In each a medallion of square stones stands on two posts
@@ -9281,7 +9297,7 @@ func tap(sp: Vector2) -> void:
 	if go_demo and not started and go_wake and ivw_menu != null:
 		if ivw_menu_on:
 			for i in ivw_pick.size():
-				if i > 0 and (ivw_pick[i] as Rect2).has_point(sp): _ivw_jump(["goveil", "gomilos", "goglass", "goguard"][i - 1]); return      # (a later level, for the tests)
+				if i > 0 and (ivw_pick[i] as Rect2).has_point(sp): _ivw_jump(["goveil", "gomilos", "goglass", "goguard", "goback"][i - 1]); return      # (a later level, for the tests)
 			_ivw_play()
 		return
 	if go_demo and not started:      # (the trial played a step at a time: the eye draws back to hold the board)
@@ -11506,11 +11522,11 @@ func _ivgd_shade_set(k: float, col: Color, grow := 0.0) -> void:
 	for i in 3:
 		var m := ivgd_shade[i] as ShaderMaterial
 		m.set_shader_parameter("k", float(IVGD_SEEN_K[i]) * k); m.set_shader_parameter("grow", float(IVGD_SEEN_GROW[i]) + grow); m.set_shader_parameter("col", col)
-func _ivgd_seen_out() -> void:
+func _ivgd_seen_out(col := IVGD_SEEN_RED, pcol := IVGD_POOF_COL) -> void:      # (the sixth level: in the stone's colour, or the water's)
 	var hm: Dictionary = H.get("main", {})
 	if hm.is_empty() or hm.get("holder") == null: return
-	print("IV seen: she goes into a red shadow and is gone in a puff")
-	_ivgd_shade_set(0.0, IVGD_SEEN_RED)
+	print("IV seen: she goes into a shadow and is gone in a puff")
+	_ivgd_shade_set(0.0, col)
 	ivgd_her_save = []
 	for m in (hm.holder as Node).find_children("*", "MeshInstance3D", true, false):
 		var mi := m as MeshInstance3D
@@ -11524,7 +11540,7 @@ func _ivgd_seen_out() -> void:
 		mi.material_overlay = ivgd_shade[0]
 	var t1 := create_tween()      # (1: she goes red, a red shadow over her, her image in the water going)
 	t1.tween_method(func(u: float) -> void:
-		_ivgd_shade_set(u, IVGD_SEEN_RED)
+		_ivgd_shade_set(u, col)
 		for sv in ivgd_her_save:
 			for r in (sv[3] as Array): (r[0] as ShaderMaterial).set_shader_parameter("fade_a", float(r[1]) * (1.0 - u)), 0.0, 1.0, 0.5).set_trans(Tween.TRANS_SINE)
 	await t1.finished
@@ -11532,10 +11548,11 @@ func _ivgd_seen_out() -> void:
 		var mi: MeshInstance3D = sv[0]; mi.material_overlay = null; mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		for si in (sv[1] as Array).size(): mi.set_surface_override_material(si, ivgd_shade[0])
 	await wait(0.2)      # (2: a breath as a red shadow; no black since 22/11, the owner: "when it goes poof, a red shadow -> poof")
-	if ivgd_poof_m == null: ivgd_poof_m = _ivt_dust_material().duplicate() as StandardMaterial3D; ivgd_poof_m.albedo_color = IVGD_POOF_COL
+	if ivgd_poof_m == null: ivgd_poof_m = _ivt_dust_material().duplicate() as StandardMaterial3D
+	ivgd_poof_m.albedo_color = pcol
 	_iv_puff(pos + Vector3(0, 0.85, 0), ivgd_poof_m, 1.5)      # (3: poof, as the fourth level's shadow goes: it swells a little as it fades, and a cloud bursts out of it)
 	var t3 := create_tween()
-	t3.tween_method(func(u: float) -> void: _ivgd_shade_set(1.0 - u, IVGD_SEEN_RED, 0.14 * u), 0.0, 1.0, 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	t3.tween_method(func(u: float) -> void: _ivgd_shade_set(1.0 - u, col, 0.14 * u), 0.0, 1.0, 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	await t3.finished
 	(hm.holder as Node3D).visible = false; ivgd_her_gone = true      # (gone: his look runs on past where she stood)
 	await wait(0.35)
@@ -11638,3 +11655,345 @@ func _ivgd_end(t: Dictionary) -> Vector3:
 		_: end = ((ivp_nodes[String(t.at)] as Vector3) + d * 0.9) if not (t.nodes as Array).is_empty() else g + d * 1.3
 	end.y = ivgd_floor - 0.07
 	return end
+
+# ---------------------------------------------------------------- the sixth level: behind her back (goback/)
+## The script's seventh truth: the goddess gave breath to every statue he carved from outside; he could not bear to look
+## at them, and veiled them. Here they move only while no one looks at them (the owner's choice of the playable samples,
+## 26/11: design/level6/back/play.html, its fourth board, "the bridge that sinks"): she faces the way she last stepped,
+## and after each of her steps every veiled statue not in front of her (in the half of the world she faces) glides one
+## place toward her, along the way it is farther from her first, the other if that one is shut; never onto the sea,
+## another statue or a sunk bridge. One that reaches her takes her (start again). A plate holds its bridges up while she
+## or a statue stands on it; a bridge that sinks takes whoever stands on it. The rules are tools/go/back_trial.py's
+## `move`, ported as they are (the board is proven there); the puzzle's `back` holds the board (tools/go/back_plan.py).
+var ivb: Dictionary = {}
+var ivb_cell: Dictionary = {}      # (node -> its board cell)
+var ivb_node: Dictionary = {}      # (board cell -> node)
+var ivb_ms: Array = []      # (each statue's node now; "" once the sea has taken it)
+var ivb_face := Vector2i(0, -1)      # (the way she faces, on the board: the way she last stepped)
+var ivb_st: Array = []      # (each statue: {n: it, img: its image in the water, gm: the pale light about it, a: how lit})
+var ivb_up: Dictionary = {}      # (each plate's letter: are its bridges up)
+var ivb_pads: Dictionary = {}      # (each plate's node: {frame: its frame's material, gm: its glow's material, k: how lit, to: lit or not})
+var ivb_rk: Dictionary = {}      # (each riser, by its name in lower case: how far up, 0..1)
+var ivb_rof: Dictionary = {}      # (the way's lines and discs on the bridges: the riser each goes with, by instance id)
+var ivb_look := Vector2(0, -1)      # (her look on the ground, turning toward the way she faces)
+var ivb_look_k := 0.0
+const IVB_MODELS := ["statue_welcome", "statue_standing"]      # (the veiled ones, each its own: props/statue_<model>.glb, facing their own +x)
+const IVB_STATUE_H := 1.95
+const IVB_GLIDE_T := 0.95      # (a statue's glide from one place to the next)
+const IVB_GLIDE_AT := 0.25      # (it sets off this long after she does: behind her back)
+const IVB_LOOK_W := 0.34      # (her look on the ground: its breadth, its strength, its colour: a soft band of light ahead of her, to the board's edge, as the sample draws it)
+const IVB_LOOK_A := 0.0      # (none: on the ground in 3D it lay on the water under the walk, apart from her, and read as a light of its own; IV_LOOK_A tries it)
+const IVB_SEEN_A := 0.14      # (a statue she looks at, held still: a pale light about it, as the sample has it, and in its marble and at its edges)
+const IVB_SEEN_EMIT := 0.22
+const IVB_SEEN_RIMK := 0.45
+const IVB_SEEN_RIM := Color(1.0, 0.9, 0.74)
+const IVB_STONE_PAL := ["cfc6d6", "bab0c6", "9f94b0", "7c7192"]      # (a statue behind her back: a grey-lilac stone in its own shade, lit to shade)
+const IVB_RISE_T := 1.0
+const IVB_SINK_T := 0.95
+const IVB_UNDER := 0.32      # (a sunk bridge's top lies this far under the water: a pale shape there)
+const IVB_TAKEN_COL := Color(0.5, 0.47, 0.58)      # (taken by a statue: she goes into a shadow of its stone, and is gone in a puff of it)
+const IVB_TAKEN_POOF := Color(0.8, 0.77, 0.85)
+const IVB_SUNK_COL := Color(0.45, 0.55, 0.66)      # (gone down with a bridge: a shadow of the water's colour)
+const IVB_SUNK_POOF := Color(0.86, 0.92, 0.97)
+
+func _ivb_setup() -> void:
+	ivb = ivg.get("back", {}) as Dictionary
+	ivb_cell.clear(); ivb_node.clear()
+	for k in (ivb.cells as Dictionary):
+		var c: Array = ivb.cells[k]; var q := Vector2i(int(c[0]), int(c[1]))
+		ivb_cell[String(k)] = q; ivb_node[q] = String(k)
+	ivb_st.clear()
+	var sts: Array = ivb.statues
+	for i in sts.size():
+		var hp := Node3D.new(); iv_root.add_child(hp); hp.global_position = ivp_nodes[String(sts[i])]
+		var md := prop_model(String(IVB_MODELS[i % IVB_MODELS.size()]), hp, IVB_STATUE_H)
+		var sm := _iv_mat("statue", 0.0, _ivv_ex()).duplicate() as ShaderMaterial      # (its own, so it can be lit while she looks at it)
+		sm.set_shader_parameter("rim_col", IVB_SEEN_RIM)
+		for m in md.find_children("*", "MeshInstance3D", true, false):
+			(m as MeshInstance3D).material_override = sm; (m as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		var img := _ivs_mirror(hp, func(_mi: MeshInstance3D) -> Array:
+			var mx := {"fog_hi": ivr_sea_y + 0.04, "fog_lo": ivr_sea_y - 0.7, "haze": 1.0, "mirror_fade": 2.0, "mirror_wob": 0.05}; mx.merge(IVV_LOOK); return ["statue", 0.0, mx])
+		var gq := QuadMesh.new(); gq.size = Vector2(2.0, 2.4)      # (the pale light about it while she looks at it: after the image is made, so the image has none)
+		var gm := StandardMaterial3D.new(); gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED; gm.albedo_texture = load("res://goiv/glow.png")
+		gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA; gm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD; gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+		gm.albedo_color = Color(1.0, 0.95, 0.86, 0.0); gm.render_priority = 6; gm.no_depth_test = true      # (a soft light about it, over it too)
+		var gi := MeshInstance3D.new(); gi.mesh = gq; gi.material_override = gm; gi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF; hp.add_child(gi); gi.position = Vector3(0, 1.0, 0)
+		ivb_st.append({"n": hp, "img": img, "gm": gm, "a": 0.0, "mat": sm, "a_set": -1.0})
+	ivb_pads.clear()
+	for k in (ivb.plates as Dictionary):      # (a plate: a square of light as the one at the fourth level's start, unlit until she or a statue stands on it)
+		var fm := _ivgl_pad_light()
+		var r := _ivgl_pad(ivp_nodes[String(k)], fm, _iv_mat("rock2", 0.0, {"fog_hi": -9.0, "fog_lo": -14.0}), 0.0)
+		ivb_pads[String(k)] = {"frame": fm, "gm": r[1], "k": 0.0, "to": 0.0}
+	_ivb_state0()
+
+func _ivb_state0() -> void:      # (as the level begins: the statues where they stand, she facing up the board, the bridges as their plates hold them)
+	ivb_ms = []
+	for s in (ivb.statues as Array): ivb_ms.append(String(s))
+	var f0: Array = ivb.get("face0", [0, -1])
+	ivb_face = Vector2i(int(f0[0]), int(f0[1])); ivb_look = Vector2(ivb_face)
+	ivb_up = _ivb_ups([String(ivg.start)] + _ivb_live(ivb_ms))
+	for i in ivb_st.size():
+		var hp: Node3D = ivb_st[i].n
+		hp.visible = true; hp.global_position = ivp_nodes[String(ivb_ms[i])]; hp.rotation = Vector3.ZERO
+		var d := Vector2(ivb_cell[String(ivg.start)] - ivb_cell[String(ivb_ms[i])])      # (each turned to her)
+		hp.rotation.y = atan2(-d.y, d.x)
+		ivb_st[i].a = 0.0; _ivb_statue_lit(ivb_st[i])
+	for k in ivb_pads: ivb_pads[k].to = 1.0 if _ivb_held(String(k), String(ivg.start), ivb_ms) else 0.0; ivb_pads[k].k = ivb_pads[k].to; ivb_pads[k].erase("set")
+	_ivb_pads_tick(1.0)
+	for rn in _ivb_risers(): ivb_rk[rn] = 1.0 if _ivb_riser_up(rn) else 0.0
+	if not ivw_risers.is_empty(): _ivb_risers_apply()
+
+func _ivb_live(ms: Array) -> Array:
+	var out := []
+	for m in ms:
+		if String(m) != "": out.append(String(m))
+	return out
+func _ivb_ups(holders: Array) -> Dictionary:
+	var u := {}
+	for h in holders:
+		if (ivb.plates as Dictionary).has(String(h)): u[String(ivb.plates[String(h)])] = true
+	return u
+func _ivb_stand(n: String, ups: Dictionary) -> bool:
+	if n == "" or not ivb_cell.has(n): return false
+	return not (ivb.bridges as Dictionary).has(n) or ups.has(String(ivb.bridges[n]))
+func _ivb_held(p: String, me: String, ms: Array) -> bool: return p == me or ms.has(p)
+func _ivb_open(n: String) -> bool: return _ivb_stand(n, ivb_up) if ivb_cell.has(n) else true
+
+## one swipe, as the solver has it (back_trial.py `move`): {kind: blocked | win | move | caught | fell, to, face, moved:
+## [[statue, from, to]], by (the statue that takes her), sunk: [statues], ups}
+func _ivb_move(me: String, d: Vector2i) -> Dictionary:
+	var hq: Vector2i = ivb_cell[me]
+	var q := hq + d
+	var qn := String(ivb_node.get(q, ""))
+	var ups := _ivb_ups([me] + _ivb_live(ivb_ms))
+	if qn == "" or ivb_ms.has(qn) or not _ivb_stand(qn, ups): return {"kind": "blocked"}
+	if qn == ivg_exit: return {"kind": "win", "to": qn}
+	var nf := d
+	ups = _ivb_ups([qn] + _ivb_live(ivb_ms))      # (her new place, the statues where they were)
+	var cur := ivb_ms.duplicate()
+	var order := []
+	for i in cur.size():
+		if String(cur[i]) != "": order.append(i)
+	order.sort_custom(func(a: int, b: int) -> bool:
+		var pa: Vector2i = ivb_cell[String(cur[a])]; var pb: Vector2i = ivb_cell[String(cur[b])]
+		var da := absi(pa.x - q.x) + absi(pa.y - q.y); var db := absi(pb.x - q.x) + absi(pb.y - q.y)
+		if da != db: return da < db
+		if pa.x != pb.x: return pa.x < pb.x
+		return pa.y < pb.y)
+	var moved := []
+	for i in order:
+		var m: Vector2i = ivb_cell[String(cur[i])]
+		if (m.x - q.x) * nf.x + (m.y - q.y) * nf.y > 0: continue      # (in front of her: it keeps still)
+		var dx := q.x - m.x; var dy := q.y - m.y
+		var tries := [Vector2i(signi(dx), 0), Vector2i(0, signi(dy))] if absi(dx) >= absi(dy) else [Vector2i(0, signi(dy)), Vector2i(signi(dx), 0)]
+		for t in tries:
+			if t == Vector2i.ZERO: continue
+			var n: Vector2i = m + t
+			if n == q: return {"kind": "caught", "to": qn, "face": nf, "moved": moved, "by": i}
+			var nn := String(ivb_node.get(n, ""))
+			if nn == "" or cur.has(nn) or not _ivb_stand(nn, ups): continue
+			moved.append([i, String(cur[i]), nn]); cur[i] = nn; break
+	ups = _ivb_ups([qn] + _ivb_live(cur))
+	var sunk := []
+	for i in cur.size():
+		var c := String(cur[i])
+		if c != "" and (ivb.bridges as Dictionary).has(c) and not ups.has(String(ivb.bridges[c])): sunk.append(i)
+	var fell := (ivb.bridges as Dictionary).has(qn) and not ups.has(String(ivb.bridges[qn]))
+	return {"kind": "fell" if fell else "move", "to": qn, "face": nf, "moved": moved, "sunk": sunk, "ups": ups, "ms": cur}
+
+## her turn: she steps (or cannot); the statues behind her back glide as she goes; the plates light or go out under
+## whoever stands on them; the bridges rise or sink; what stands on a bridge that sinks goes down with it
+func _ivb_turn(nb: String) -> void:
+	if iv_busy or iv_won: return
+	var me := iv_me
+	if not ivb_cell.has(nb) or not ivb_cell.has(me): await _her_no(); return
+	var d: Vector2i = ivb_cell[nb] - ivb_cell[me]
+	var r := _ivb_move(me, d)
+	if OS.get_environment("IV_TRACE") != "": print("IV back ", me, " -> ", nb, ": ", r.kind, " ", r.get("moved", []), " sunk ", r.get("sunk", []))
+	if String(r.kind) == "blocked": await _her_no(); return
+	iv_moves += 1
+	if String(r.kind) == "win": await _ivp_walk([nb]); return
+	ivb_face = r.face
+	var mv: Array = r.moved.duplicate()
+	if String(r.kind) == "caught": mv.append([int(r.by), String(ivb_ms[int(r.by)]), nb, true])
+	var tws := []
+	for g in mv: tws.append(_ivb_glide(int(g[0]), String(g[1]), String(g[2]), g.size() > 3))
+	await _ivp_walk([nb])
+	for t in tws:      # (the statues come to rest)
+		if (t as Tween).is_valid() and (t as Tween).is_running(): await (t as Tween).finished
+	if String(r.kind) == "caught": await _ivg_fail("taken", nb); return
+	ivb_ms = r.ms
+	for k in ivb_pads: ivb_pads[k].to = 1.0 if _ivb_held(String(k), nb, ivb_ms) else 0.0
+	var was := ivb_up.duplicate()
+	ivb_up = r.ups
+	var rising := []; var sinking := []
+	for rn in _ivb_risers():
+		var up := _ivb_riser_up(rn)
+		if up and float(ivb_rk.get(rn, 0.0)) < 0.999: rising.append(rn)
+		elif not up and float(ivb_rk.get(rn, 0.0)) > 0.001: sinking.append(rn)
+	if rising.is_empty() and sinking.is_empty() and was == ivb_up: return
+	for i in (r.sunk as Array): print("IV a statue goes down with its bridge at ", ivb_ms[int(i)])
+	if String(r.kind) == "fell": print("IV the bridge sinks under her at ", nb)
+	await _ivb_bridges(rising, sinking, r.sunk, String(r.kind) == "fell")
+	for i in (r.sunk as Array): ivb_ms[int(i)] = ""
+	if String(r.kind) == "fell": await _ivg_fail("sunk", nb); return
+
+func _ivb_risers() -> Array:      # (the bridges' risers by name, lower case)
+	var out := []
+	for n in (ivb.get("riser_of", {}) as Dictionary):
+		var rn := String(ivb.riser_of[n]).to_lower()
+		if not out.has(rn): out.append(rn)
+	return out
+func _ivb_riser_up(rn: String) -> bool:      # (its bridges' plate held: a riser holds the bridges of one letter)
+	for n in (ivb.riser_of as Dictionary):
+		if String(ivb.riser_of[n]).to_lower() == rn: return ivb_up.has(String(ivb.bridges[n]))
+	return false
+
+## a statue glides one place: it sets off a moment after she does, turns its way, leans a little into it, slides, and
+## settles; dust where its foot scrapes. Taking her, it comes on toward her and stops against her.
+func _ivb_glide(i: int, a: String, b: String, takes := false) -> Tween:
+	var hp: Node3D = ivb_st[i].n
+	var pa: Vector3 = ivp_nodes[a]; var pb: Vector3 = ivp_nodes[b]
+	if takes: pb = pa.lerp(pb, 0.52)
+	var dv := Vector2(pb.x - pa.x, pb.z - pa.z).normalized()
+	var yaw := atan2(-dv.y, dv.x)
+	var y0 := hp.rotation.y
+	var ax := Vector3(dv.y, 0, -dv.x)      # (it leans a little into its way and settles back: a heavy thing that slides)
+	var t := create_tween(); t.tween_interval(IVB_GLIDE_AT)
+	t.tween_callback(func() -> void: _ivt_dust(pa, 0.32, 6, 0.5, 1.1))
+	t.tween_method(func(u: float) -> void:
+		var e := u * u * (3.0 - 2.0 * u)
+		hp.global_position = pa.lerp(pb, e)
+		hp.basis = Basis(ax, sin(u * PI) * 0.05) * Basis(Vector3.UP, lerp_angle(y0, yaw, clampf(u / 0.35, 0.0, 1.0))), 0.0, 1.0, IVB_GLIDE_T)
+	t.tween_callback(func() -> void: hp.basis = Basis(Vector3.UP, yaw); _ivt_dust(pb, 0.3, 5, 0.4, 1.0))
+	return t
+
+func _ivb_edge_riser(a: String, b: String, at: Vector3) -> String:      # (a line or disc of the way on a bridge, or onto one: the riser of the bridge it lies on or goes to)
+	var ro: Dictionary = ivb.get("riser_of", {})
+	var best := ""; var bd := 1e9
+	for n in [a, b]:
+		if ro.has(n):
+			var dd := Vector2(at.x - (ivp_nodes[n] as Vector3).x, at.z - (ivp_nodes[n] as Vector3).z).length()
+			if dd < bd: bd = dd; best = String(ro[n]).to_lower()
+	return best
+
+## the bridges rise or sink together; the statues and she on one that sinks go down with it
+func _ivb_bridges(rising: Array, sinking: Array, sunk: Array, fell: bool) -> void:
+	iv_busy = true
+	_ivw_wline(false)      # (no line of light where a stone meets the water while it moves through it: _ivw_wline)
+	var t := create_tween().set_parallel(true)
+	for rn in rising: t.tween_method(func(u: float) -> void: ivb_rk[rn] = u; _ivb_risers_apply(), float(ivb_rk.get(rn, 0.0)), 1.0, IVB_RISE_T)
+	for rn in sinking: t.tween_method(func(u: float) -> void: ivb_rk[rn] = u; _ivb_risers_apply(), float(ivb_rk.get(rn, 1.0)), 0.0, IVB_SINK_T).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	var drop := _ivb_drop()
+	for i in sunk:      # (a statue on it: down with it into the water, and gone)
+		var hp: Node3D = ivb_st[int(i)].n
+		t.tween_property(hp, "global_position:y", hp.global_position.y - drop, IVB_SINK_T).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		var sp := hp.global_position
+		get_tree().create_timer(IVB_SINK_T * 0.55, false).timeout.connect(func() -> void: _ivw_ripple(Vector3(sp.x, IV_O.y + ivr_sea_y, sp.z), 1.1); _ivv_splash(Vector3(sp.x, IV_O.y + ivr_sea_y, sp.z), 0.6))
+	if fell:      # (she goes down with it to the water, and into it to her knees: main.gd lowers her model by sink_main, flattened at her feet's height)
+		var y0 := pos.y; var y1 := IV_O.y + ivr_sea_y + 0.02
+		t.tween_method(func(u: float) -> void: pos.y = lerpf(y0, y1, u); sink_main = 0.45 * u, 0.0, 1.0, IVB_SINK_T).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		get_tree().create_timer(IVB_SINK_T * 0.6, false).timeout.connect(func() -> void: _ivw_ripple(Vector3(pos.x, IV_O.y + ivr_sea_y, pos.z), 1.0); _ivv_splash(Vector3(pos.x, IV_O.y + ivr_sea_y, pos.z), 0.5))
+	if rising.is_empty() and sinking.is_empty(): t.tween_interval(0.01)
+	await t.finished
+	for i in sunk: (ivb_st[int(i)].n as Node3D).visible = false
+	_ivw_wline(true)
+	iv_busy = false
+func _ivb_drop() -> float:      # (how far a bridge goes down: its top to IVB_UNDER under the water)
+	var top := -1e9
+	for r in ivw_risers:
+		var rm := r[0] as MeshInstance3D
+		if String(rm.name).to_lower().contains("marble"): top = maxf(top, ((rm.global_transform * rm.get_aabb()).end.y) - ((rm.position - (r[1] as Vector3)).y))
+	if top < -1e8: return 1.2
+	return top - (IV_O.y + ivr_sea_y) + IVB_UNDER
+
+## each riser where ivb_rk has it: its stone and rock, their images in the water, the way's lines and discs on it
+func _ivb_risers_apply() -> void:
+	var drop := _ivb_drop()
+	var sea := IV_O.y + ivr_sea_y
+	var up_all := 1.0
+	for r in ivw_risers:
+		var rm := r[0] as MeshInstance3D
+		var rn := String(r[5]) if r.size() > 5 and String(r[5]) != "" else String(ivb_rof.get(rm.get_instance_id(), ""))
+		if rn == "": continue
+		var u := float(ivb_rk.get(rn, 0.0))
+		up_all = minf(up_all, u)
+		var dd := Vector3(0, -drop * (1.0 - _ivw_back(u)), 0) if u < 1.0 else Vector3.ZERO
+		rm.position = (r[1] as Vector3) + dd
+		if r[2] != null: (r[2] as MeshInstance3D).position = (r[3] as Vector3) + dd
+		if r.size() > 6 and String(r[5]) != "" and String(rm.name).to_lower().contains("marble"):
+			var top := (rm.global_transform * rm.get_aabb()).end.y
+			if not bool(r[6]) and top > sea + 0.01 and u > 0.0 and u < 1.0: r[6] = true; _ivw_emerge(r)
+			elif bool(r[6]) and top < sea - 0.05: r[6] = false; _ivw_ripple(Vector3((rm.global_transform * rm.get_aabb()).get_center().x, sea, (rm.global_transform * rm.get_aabb()).get_center().z), 1.6)
+	if ivs_sea_mat != null: ivs_sea_mat.set_shader_parameter("riser_up", clampf(up_all, 0.0, 1.0))
+
+## each frame: the statues' images follow them; the pale light about each she looks at; her look on the ground; the
+## plates' light
+func _ivb_tick(dt: float) -> void:
+	var sea := IV_O.y + ivr_sea_y
+	var flip := Transform3D(Basis.from_scale(Vector3(1, -1, 1)), Vector3(0, 2.0 * sea, 0))
+	var me_n := iv_me if ivb_cell.has(iv_me) else String(ivg.start)
+	var mec: Vector2i = ivb_cell[me_n]
+	var hp0: Dictionary = H.get("main", {})
+	var her_seen := not ivgd_her_gone and not hp0.is_empty() and hp0.get("holder") != null and (hp0.holder as Node3D).visible and not iv_won
+	for i in ivb_st.size():
+		var s: Dictionary = ivb_st[i]
+		var hp: Node3D = s.n
+		if s.img != null: (s.img as Node3D).global_transform = flip * hp.global_transform; (s.img as Node3D).visible = hp.visible
+		var seen := false
+		if her_seen and i < ivb_ms.size() and String(ivb_ms[i]) != "":
+			var m: Vector2i = ivb_cell[String(ivb_ms[i])]
+			seen = (m.x - mec.x) * ivb_face.x + (m.y - mec.y) * ivb_face.y > 0
+		s.a = move_toward(float(s.a), 1.0 if seen else 0.0, dt * 2.5)
+		(s.gm as StandardMaterial3D).albedo_color.a = _ivgl_ef("IV_SEEN_A", IVB_SEEN_A) * float(s.a) * (0.9 + 0.1 * sin(iv_t * 2.0 + float(i)))
+		if not is_equal_approx(float(s.a), float(s.a_set)): _ivb_statue_lit(s)
+	_ivb_pads_tick(dt)
+	# her look: a soft band of light on the ground ahead of her, to the board's edge, turning as she turns
+	var fv := Vector2(ivb_face)
+	ivb_look = ivb_look.slerp(fv, clampf(dt * 7.0, 0.0, 1.0)) if ivb_look.dot(fv) > -0.99 else fv
+	ivb_look_k = move_toward(ivb_look_k, 1.0 if her_seen else 0.0, dt * 2.0)
+	var sz: Array = ivb.get("size", [6, 7]); var stp := float(ivb.get("step", 1.5))
+	var n := 0
+	var c := mec + ivb_face
+	while c.x >= 0 and c.y >= 0 and c.x < int(sz[0]) and c.y < int(sz[1]) and n < 32: n += 1; c += ivb_face
+	var a := Vector3(pos.x, 0, pos.z) + Vector3(ivb_look.x, 0, ivb_look.y) * 0.32
+	var pn: Vector3 = ivp_nodes[me_n]      # (to the board's edge from where she is going)
+	var e := Vector3(pn.x, 0, pn.z) + Vector3(ivb_look.x, 0, ivb_look.y) * stp * (float(n) + 0.4)
+	RenderingServer.global_shader_parameter_set("iv_gaze", Vector4(a.x, a.z, e.x, e.z))
+	RenderingServer.global_shader_parameter_set("iv_gaze2", Vector4(_ivgl_ef("IV_LOOK_W", IVB_LOOK_W), _ivgl_ef("IV_LOOK_A", IVB_LOOK_A) * ivb_look_k if n > 0 else 0.0, 1.0, 0.0))
+	if OS.get_environment("IV_TRACE") != "" and int(iv_t * 2.0) != int((iv_t - dt) * 2.0): print("IV look ", a, " -> ", e, " k ", snappedf(ivb_look_k, 0.01), " seen ", her_seen, " glow ", [snappedf(float(ivb_st[0].a), 0.01), snappedf(float(ivb_st[1].a), 0.01)] if ivb_st.size() > 1 else [])
+
+func _ivb_statue_lit(s: Dictionary) -> void:      # (lit while she looks at it: white marble, a warm light in it and at its edges; behind her back, in its own shade, a grey-lilac stone, as the sample draws them)
+	s.a_set = s.a
+	var u := float(s.a); var e := u * u * (3.0 - 2.0 * u)
+	var sm := s.mat as ShaderMaterial
+	var lit: Array = _iv_pal("statue")
+	for i in 4: sm.set_shader_parameter(["c_top", "c_lit", "c_mid", "c_dark"][i], Color(String(IVB_STONE_PAL[i])).lerp(Color(String(lit[i])), e))
+	sm.set_shader_parameter("emit", _ivgl_ef("IV_SEEN_EMIT", IVB_SEEN_EMIT) * e)
+	sm.set_shader_parameter("rim_k", float(IVV_LOOK.rim_k) + _ivgl_ef("IV_SEEN_RIMK", IVB_SEEN_RIMK) * e)
+
+func _ivb_pads_tick(dt: float) -> void:
+	var off := Color("d2cee0"); var on := Color(String((_iv_pal("ring") as Array)[0]))      # (unlit, the third level's unlit ring's light grey-lilac; held, the ring's white)
+	for k in ivb_pads:
+		var pd: Dictionary = ivb_pads[k]
+		var k0 := float(pd.k)
+		pd.k = move_toward(k0, float(pd.to), dt * 3.0)
+		if is_equal_approx(k0, float(pd.k)) and pd.has("set"): continue
+		pd["set"] = true
+		var u := float(pd.k)
+		var c := off.lerp(on, u)
+		var fm := pd.frame as ShaderMaterial
+		for nm in ["c_top", "c_lit", "c_mid", "c_dark"]: fm.set_shader_parameter(nm, c)
+		fm.set_shader_parameter("emit", 0.3 * u)
+		(pd.gm as StandardMaterial3D).albedo_color.a = 0.26 * u
+
+func _ivb_reset() -> void:
+	_ivgd_her_back()
+	sink_main = 0.0
+	_ivb_state0()
+
+## taken or sunk: she goes into a shadow and is gone in a puff (as the fifth level's seen: _ivgd_seen_out), in the stone's
+## colour when a statue takes her, in the water's when a bridge sinks under her
+func _ivb_out(why: String) -> void:
+	var taken := why == "taken"
+	await _ivgd_seen_out(IVB_TAKEN_COL if taken else IVB_SUNK_COL, IVB_TAKEN_POOF if taken else IVB_SUNK_POOF)

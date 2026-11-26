@@ -33,7 +33,7 @@ async function until(re, ms) { const end = Date.now() + ms; while (Date.now() < 
       await page.mouse.click(W / 2, H * 0.5); log('---', 'played');
       reached = (await until(/IV play/, 300000)) ? 'play' : 'false';
     } else {
-      const k = lv; const x = 360 + (k - 1 - (nlev - 1) * 0.5) * 720 * (nlev <= 3 ? 0.2 : (nlev == 4 ? 0.17 : 0.15)), y = 1280 * 0.405;
+      const k = lv; const x = 360 + (k - 1 - (nlev - 1) * 0.5) * 720 * (nlev <= 3 ? 0.2 : (nlev == 4 ? 0.17 : (nlev == 5 ? 0.15 : 0.13))), y = 1280 * 0.405;
       await page.mouse.click(x * W / 720, y * H / 1280); log('---', `picked ${k}`);
       reached = (await until(/IV start at the level/, 600000)) ? 'true' : 'false';
     }
