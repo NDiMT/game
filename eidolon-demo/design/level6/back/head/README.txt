@@ -12,3 +12,7 @@ Then carved in facets (the owner, 26/11: "can the head have facets?"): the paint
 fifth level's fallen column for the style (head_facets_prompt.txt, design/level5/columns_facets/style_ref.png ->
 head_facets.jpg, the second of two takes), its water made green (head_green_prompt.txt -> head_facets_green.jpg), lifted
 with the same box and ellipse: goback/wd_head.png, its place as before.
+Then the facets less marked (the owner, 27/11: "less visible facets"): the smooth painting edited again for a subtle,
+gentle faceting (head_facets_soft_prompt.txt, the second of three takes -> head_facets_soft.jpg), its water made green
+(head_facets_soft_green.jpg), lifted with the same box: goback/wd_head.png. A blend of the smooth and the faceted takes was
+tried first: their features lie a little apart, and they doubled.
