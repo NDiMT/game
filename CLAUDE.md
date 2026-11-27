@@ -1168,6 +1168,28 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   `concept_greek_noarch_prompt.txt`); B, the first painting edited twice, a colonnade on a crepidoma at its foot
   (`concept_greek_b.jpg`); `greek_compare.jpg` the three side by side. Name post and lintel and "not one arch"
   explicitly: the model paints a tower with Romanesque arches by default.
+  Asked "how can you put clever puzzles that combine?", ways were put to him (one rule a tool of the other, a rope or a
+  water level shared by floors, a statue carried up from floor to floor, coming back down, the move that looks wrong) and
+  six ideas when he asked for more; then **"instead of the hoists, can we think of something else?"**: five put to him
+  (the Tower of the Winds, the light down through the tower, the water of the cistern, plinths that raise stairs, floors
+  that turn), and of the first, recommended: "make the preview and show me".
+- **Level 7, a proposal (27/11): the Tower of the Winds** (in the hoists' place): the tower in tiers as the Tower of the
+  Winds in Athens, the winds carved in its frieze, a bronze Triton vane on its roof. One new rule beside the sixth
+  level's statues behind her back: stepping onto a wind's bronze disc sets the wind to blow the way of its arrow, and it
+  blows on until another disc turns it; after the statues' steps it pushes every statue she does not see one place
+  downwind (their veils catch it; her it does not move): along the floor or down off a ledge, never up, never into a
+  column or another statue; off the edge into the sea it is gone; onto her, it takes her. What she sees holds still, so
+  she anchors a statue by looking at it; with the wind at their backs they come two places a step, against it they stand
+  still. Plates and bridges are in the rules (the sixth level's) but no tier uses them: the annealer's plates came out
+  unreachable, their bridges only holes, and were taken out. Solver `tools/go/winds_trial.py` (`STAGES`: the wind 6
+  (made by hand), against the wind 7, the stairs 12, the turn 13, the look 16, four winds 18; each one way; annealed
+  about an all-floor grid, rewarding winds turned, pushes, statues held by her look, lost and fallen, every statue and
+  disc needed, no step back, then pruned; the annealer and pruner in the scratchpad's way). Playable, isometric, at
+  https://claude.ai/artifact/NpDJcMCzchJWyMEnGXye2T (`design/level7/winds/play.html`: the discs with their arrows, the
+  wind's streaks drifting over the tier, the veils leaning downwind, the wind named in the stats; its rules checked
+  against the solver on 6,000 move strings; `boards.png`); the six tiers stacked as a blockout (`blockout.jpg`) painted
+  by the image model in the Greek tower's style (`concept.jpg`, `concept_prompt.txt`: Doric colonnades, the winged
+  winds' frieze, the conical roof and its vane, the discs, veils and mist streaming).
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
