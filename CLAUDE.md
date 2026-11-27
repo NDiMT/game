@@ -87,6 +87,13 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   are: never frontal, at eye level or from below. Build them in 3D and have the image model repaint the render (the
   skill's "Where perspective and fit matter, 3D first"), or paint them into the game's own frame, where the model sees
   the level's perspective and its statues; check them beside the level in a whole still before showing.
+- **Each map a series of clever puzzles on a great structure** (the owner, 27/11, after asking what kind of puzzles
+  Monument Valley has and how long its chapters last: "I don't want the perspective thing, but I want each map to be a
+  series of clever puzzles on large structures"): a level is one large built structure (a sanctuary rising in tiers out
+  of the sea, a tower, a ruin over many islands), five to fifteen minutes of play, a run of three to six puzzles in a row
+  joined by the way (each opens the way to the next), its mechanism growing through them, and things carried from one to
+  the next; never the eye's perspective as a rule (paths that join because they look joined). As every level, it is
+  first a playable isometric preview, then built in the game.
 - **Something adorns the foot of the screen** (the owner, 26/11, of the sixth level: "I also want something to adorn the
   bottom part of the screen"): no level leaves the bottom of the picture as empty water; things in the water there, part
   of the scene (not before the eye: "Nothing before the eye; details in the water instead").
