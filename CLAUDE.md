@@ -1190,6 +1190,27 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   against the solver on 6,000 move strings; `boards.png`); the six tiers stacked as a blockout (`blockout.jpg`) painted
   by the image model in the Greek tower's style (`concept.jpg`, `concept_prompt.txt`: Doric colonnades, the winged
   winds' frieze, the conical roof and its vane, the discs, veils and mist streaming).
+  The owner: "no, something smarter". Two put to him (the tries; everyone's eyes: what anyone sees does not move, the
+  statues seeing straight ahead, pinning each other); he: "let's see the one", and "in general, can you find me puzzles
+  where you control many statues?".
+- **Level 7, a proposal (27/11): the tries** (the script's "he carved a thousand statues, but none was her": each of
+  her failed tries is one of them): she may step off into the sea (or onto a bridge that is down) and fall; her try is
+  carved, a statue of her that walks the very same walk again: the floor begins over, she and every statue of her tries
+  at the start, each taking its recorded step at each of her steps; at the end of its walk it stands still for good,
+  where she stood when she fell. The statues pass through her and each other but weigh: a plate holds its bridges up
+  while she or any of them stands on it (the sixth level's plates and bridges). A floor carves at most K statues; a fall
+  beyond them begins the floor over with the same statues. So she must fail on purpose and plan where and when; a try
+  that passes over a plate holds it only for those steps. (The statues are the same walks in a world where more stand on
+  plates, so every bridge one of them crossed is up again when it crosses it.) Solver `tools/go/tries_trial.py` (a try
+  kept as the plates it holds and when; four floors made by hand: the first try 8, the wait 9 (her try is slower than
+  she is: a step back), two jobs 15 (one try passes over the near plates at the very steps she crosses their bridge and
+  ends on the far plate), two tries 17 (the first holds the near bridge, the second crosses it to the far plate); an
+  annealer was too slow, its unsolvable boards searching to the end of time; in the scratchpad's way). Playable,
+  isometric, at https://claude.ai/artifact/6jFY7BEx1DwWEZZfXwXCU6 (`design/level7/tries/play.html`: the tries drawn
+  as her figure in stone with their numbers, the statues the floor still has as slots by the count; its rules checked
+  against the solver on 6,000 move strings; `boards.png`); a moment of the fourth floor painted by the image model in
+  the second level's style (`concept.jpg` from `concept_frame.jpg`, `concept_prompt.txt`: two marble statues of her on
+  the plates).
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
