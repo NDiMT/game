@@ -154,9 +154,20 @@ def trace(b, path):
 
 
 STAGES = [
-    # the counterweight: she waits on the low end; the statue up on the terrace comes after her and steps onto the high
-    # end, which goes down under it, and her end comes up to the terrace and the way out
-    ('the counterweight', ['.' * 2 + '1G1o1o1M', '0o0A0a1o1o', '0o0o.' + '.' * 5, '0S0o.' + '.' * 5], (0, -1), None),
+    # the counterweight: she walks onto the low end; the statue on its plinth beside the high end, behind her back now,
+    # steps onto it, which goes down under it, and her end comes up to the way out (let it step down before she is on
+    # her end and her end goes up empty, out of reach). (annealed: one way, no step back)
+    ('the counterweight', ['......1G', '..0o1a0A', '0o0o2M0o', '0S0o0o0o'], (0, -1), None),
+    # (the next four found by annealing about an all-floor grid (a score for the way's length, one way, the hoists moved,
+    # every statue and hoist needed, few stairs, no step back) and pruned of cells that changed nothing)
+    # the two tiers: ride the hoist up, then bring it back down for the statue to send you up again
+    ('the ride', ['......1o1G', '0o0/..0/..', '0o1o1o0A..', '0o2M1a1o..', '0o....1o..', '0o0o0o0o0S'], (0, -1), None),
+    # two statues: one weighs the hoist down, the other follows you up the stair behind your back
+    ('two weights', ['1G........', '1o........', '1M0/0o....', '....0a0o0o', '0o1o0/2M0/', '0S0o0o0o0A'], (0, -1), None),
+    # two hoists and one statue, many ways to be caught
+    ('two ropes', ['2G1/......', '1o1M1o....', '0/0o0a0o0o', '1o....0o0b', '1A0o0o0o1o', '0S0o1B0o0/'], (0, -1), None),
+    # two hoists and two statues, the hoists moved five times
+    ('the summit', ['0o0o0/..1G', '0b..1M1M1o', '0A0o0a..1o', '1o0/....0B', '..1o0o0o0o', '..0/0o..0S'], (0, -1), None),
 ]
 
 if __name__ == '__main__':

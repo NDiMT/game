@@ -1138,11 +1138,27 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   0.244]); no darkening at the edges (`vr` hidden, as the fourth level's); no birds; a line of foam all round its stone
   (`IVB_LIP`: the sea shader's `lip_k`, `lip_all`, `lip_w`); soft banks of mist on the water where the concept has them
   (`IVB_MISTS`, the fourth level's mist shader, placed by `IV_WD_PICK`; `IV_MISTS=0`); the far crowd restaged at the
-  concept's places and sizes, upper left, six statues seen from above, in its mist (`goback/wd_statues.png`,
-  `design/level6/back/far2/README.txt`); at the foot, the colossal veiled head half sunk at the lower right, as the
-  concept has it (`goback/wd_head.png`, `design/level6/back/head/`). Level 5's gate leads
+  concept's places and sizes, upper left, six statues seen from above, in its mist (`design/level6/back/far2/README.txt`);
+  then (the owner: "the head with facets and the statues behind as in concept 5?") the concept's own statues lifted from
+  it (`goback/wd_statues.png`, `design/level6/back/c5stat/README.txt`); at the foot, the colossal veiled head half sunk
+  at the lower right, as the concept has it, repainted with facets and then softer ones ("less visible facets":
+  `goback/wd_head.png` from `head_facets_soft*`, `design/level6/back/head/`). Level 5's gate leads
   on into it; the end screen after it; the start screen's numbers 1 to 6. `IV_SOL="c16 c15 c16"` is taken,
   `IV_SOL="c36 c35 c34 c33 c23"` sinks with a bridge.
+- **Level 7, a proposal (27/11): the counterweights** (the owner, after asking about Monument Valley's puzzles and the
+  length of its chapters: "each map a series of clever puzzles on large structures", then "make a new proposal"):
+  Theron's workshop, a tower of five tiers out of the sea where the marble was hoisted on counterweights; each tier a
+  puzzle, its ring's light taking her up to the next (in the game the eye shows one tier at a time). Two rules, one of
+  them known: hoists (two platforms on one rope over wheels, one tier apart; after every step the heavier side goes down,
+  equal they stay; she weighs 1, a statue 2) and the sixth level's statues that move only behind her back, which ride
+  the hoists and climb the stairs as she does; stairs join a tier to the next. Solver `tools/go/tower_trial.py`
+  (`STAGES`: the counterweight 6, the ride 15, two weights 17, two ropes 17, the summit 19; each one way; found by
+  annealing about an all-floor grid, its score for the way's length, one way, the hoists moved, every statue and hoist
+  needed, few stairs and no step back, then pruned of cells that changed nothing; the scripts in the scratchpad's way).
+  Playable, isometric, at https://claude.ai/artifact/BWSHyjRTVmXJQB3Sf5wLzo (`design/level7/tower/play.html`: the
+  frames, ropes and wheels drawn, the platforms riding; its rules checked against the solver on 6,000 move strings;
+  `boards.png`); the whole tower as one structure, the five tiers stacked on a rock core as a blockout
+  (`blockout.jpg`) and painted by the image model in the second level's style (`concept.jpg`, `concept_prompt.txt`).
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
