@@ -1158,7 +1158,16 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   Playable, isometric, at https://claude.ai/artifact/BWSHyjRTVmXJQB3Sf5wLzo (`design/level7/tower/play.html`: the
   frames, ropes and wheels drawn, the platforms riding; its rules checked against the solver on 6,000 move strings;
   `boards.png`); the whole tower as one structure, the five tiers stacked on a rock core as a blockout
-  (`blockout.jpg`) and painted by the image model in the second level's style (`concept.jpg`, `concept_prompt.txt`).
+  (`blockout.jpg`) and painted by the image model in the second level's style (`concept_first.jpg`, `concept_prompt.txt`).
+  **Then more ancient Greek** (the owner: "can we make the tower more ancient Greek?"): the model kept the first
+  painting's arches and rough masonry when asked only to edit it (meanders and friezes laid on, nothing more), so it was
+  painted again from the blockout with the Greek named first (Doric colonnades between the floors with their architrave,
+  triglyphs and metopes and cornice, ashlar walls, a stepped crepidoma into the water, a temple front with acroteria on
+  top, meander bands, faint paint on the frieze, the hoists as Greek builders' cranes; post and lintel only, not one
+  arch), then edited once more to take out the arches it still kept: `concept.jpg` (`concept_greek_prompt.txt`, then
+  `concept_greek_noarch_prompt.txt`); B, the first painting edited twice, a colonnade on a crepidoma at its foot
+  (`concept_greek_b.jpg`); `greek_compare.jpg` the three side by side. Name post and lintel and "not one arch"
+  explicitly: the model paints a tower with Romanesque arches by default.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
