@@ -1,0 +1,10 @@
+The first image is a frame of a level of our game, seen from above at an angle (isometric): a floor of Theron the sculptor's great bronze mechanism standing in a still sea, like a colossal Antikythera mechanism. The second image is a concept painting of another level of the same game: paint in exactly its style, light and atmosphere (soft painterly 3D, thick carved white marble slabs with chamfered broken edges, a hazy glowing golden-morning sky, a soft sun, a still sea mirroring it, mist). The third image is the heroine: a young woman of white marble wrapped in spiral terracotta bands.
+
+Repaint the first image as one finished concept painting in the second image's style, keeping its layout exactly (the same slabs, the same four great wheels, the same places, the same angle):
+- The four large round wheels are colossal gear wheels of aged bronze with a green-gold patina, lying flat on the water, their rims cut with fine gear teeth; where two rims touch, their teeth mesh. Each wheel has a round marble hub in its middle and long carved marble spokes, thick slabs, reaching from the hub to the rim; between the spokes the clear water shows the bronze cross of the wheel beneath.
+- The small bronze gears on posts beside the rims are pinions meshed with the wheels' teeth, each with an upright bronze crank handle with a round knob.
+- The square slabs are carved white marble slabs, as in the second image, standing on dark faceted rock in the water.
+- The figure in white with terracotta bands is the heroine, as in the third image, standing on a spoke of the wheel nearest the eye, her hand reaching for the crank beside her.
+- The round ring at the left is a ring of soft white light set in a stone disc, a column of light rising from it.
+- The curved terracotta arrows are not to be painted.
+- Engraved on the bronze rims, faint Greek meander bands and zodiac-like marks, as on the Antikythera mechanism, but no readable text, no letters, no numbers.

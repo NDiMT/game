@@ -1237,6 +1237,24 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   pillars rise and sink in its pattern, she rides them up), the clock hand (a long bridge sweeping one place a step
   about a pivot, she rides it, a lever turns it back), the automata (Hero's theatre: platforms on carved tracks, one
   cord moves them all a place along their own tracks).
+- **Level 7, a proposal (28/11): the gears** (the owner chose "1" of the five: the Antikythera mechanism): Theron's great
+  bronze mechanism in the sea, its floors round wheels three places across, a marble hub and up to four marble spokes to
+  a bronze toothed rim, open water between them. A crank (a bronze pinion on a post at a wheel's corner, a handle on it)
+  is turned by a swipe into it, she not moving: the wheel turns a quarter the way she pushes the handle round its hub
+  (pushed from the east, west round; the sign of r × d, r the crank's corner from the hub); wheels whose hubs are three
+  places apart in a row or a column mesh and turn each the other way, the whole train at once; whatever stands on a
+  wheel rides it round (she from spoke to spoke). The sea and columns stop her, no one falls, so there are no dead
+  ends; a crank may be pushed from a slab or from a spoke of another wheel beside it. Solver `tools/go/gears_trial.py`
+  (`STAGES`: the wheel 10, two wheels 16, the pair 15, from afar 16 (a wheel with no spoke turns the train from the far
+  slab), the mechanism 22 (four wheels, two trains); each one way; found by annealing (`anneal_g.py` in the
+  scratchpad's way: the way's length, one way, turns, rides, cranks used, every crank and wheel needed, the meshing
+  needed, few slabs, and how rarely a player swiping at random comes through, `rw.py`: 0.06% for the mechanism in 150
+  swipes) and pruned). Playable, isometric, at https://claude.ai/artifact/Xk5jCQ3NrcLZZqFniWiSjF
+  (`design/level7/gears/play.html`: the wheels turning, the pinions spinning against their rims, an arrow on the rim
+  showing which way a crank beside her would turn it; its rules checked against the solver on 7,500 move strings;
+  `boards.png`); the mechanism's floor painted by the image model from its own frame (`concept.jpg` from
+  `concept_frame.jpg`, `concept_prompt.txt`: patinated bronze gear wheels with meander bands on their rims, marble
+  spokes, pinions with handles; it kept the layout).
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
