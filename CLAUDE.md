@@ -1230,7 +1230,13 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   not keep the layout). **The boards sheets' titles are drawn in FreeSerif** (`/usr/share/fonts/truetype/freefont/`):
   the repo's Cormorant variable font has no Greek, and the first sheets of the tower, the winds and the tries showed
   boxes for every Greek letter (all four rebuilt). **The owner, 28/11: "nice, keep it for one of the maps"**, and "find
-  me others, more mechanical".
+  me others, more mechanical". Five put to him, each an ancient machine, none with a stone pushed or a hoist: the gears
+  (the Antikythera mechanism: round floors of slabs meshed as gears, a quarter turn at a bronze handle, the meshed ones
+  turning the other way, whatever stands on them riding round; recommended), the water clock (Ctesibius: valves, the
+  water rising a step at each of her steps, floating slabs), the music box (Hero's cam drum: a pedal turns it a notch,
+  pillars rise and sink in its pattern, she rides them up), the clock hand (a long bridge sweeping one place a step
+  about a pivot, she rides it, a lever turns it back), the automata (Hero's theatre: platforms on carved tracks, one
+  cord moves them all a place along their own tracks).
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
