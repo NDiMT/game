@@ -1272,6 +1272,18 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   floor turns the drum and every floor's inner wheel; a stair winds up round the drum's front; the dial crowns it, its
   hand a bridge to the gate. Blockout `design/level7/gears/tower_blockout.html` → `tower_blockout.jpg`, painted as
   `tower.jpg` (`tower_prompt.txt`; it kept the layout and added a winding stair round the drum).
+  Asked "is it clear though?": one floor is, the link between floors is not (an effect on a floor the eye does not show
+  reads as chance; the drum's flutes read as ornament; solving above undoing below annoys); put to him: link only the
+  next floor and keep both in view, make the link seen (the meshed wheels alike, a marker on the drum, a first floor
+  that teaches it), a bronze pin locking a floor once left. **Then "I'd like the player never to be hidden at all"**:
+  the rule for any structure: on every line the eye looks along (x - y the same, toward +x+y) the floors only get lower
+  toward the eye, so a higher floor is always further back and never above or before a place she can stand; stairs and
+  toothed columns stand at a floor's sides or back, or before a floor only below its top; and in the game, as a safety
+  net, anything that still comes between her and the eye fades. **The open tower** (`tower_open*`): the fluted core and
+  its dial at the very back, the four floors coming down its front toward the sea in a zigzag (front, left, right, left,
+  each a block of ashlar with its pool of wheels), stairs at their sides, a toothed column between two of them;
+  blockout `design/level7/gears/tower_open_blockout.html` → `tower_open_blockout.jpg`, painted as `tower_open.jpg`
+  (`tower_open_prompt.txt`; it kept the layout, every floor's top in view).
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
