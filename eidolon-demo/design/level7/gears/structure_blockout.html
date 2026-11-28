@@ -1,0 +1,204 @@
+<!doctype html><meta charset="utf-8"><title>structure</title>
+<style>html,body{margin:0;background:#b4bad8}canvas{display:block}</style>
+<canvas id="cv"></canvas>
+<script>
+// a blockout of the whole mechanism as one structure: basins of water in tiers out of the sea, each holding a floor of
+// wheels, toothed columns meshing a wheel below with a wheel above, stairs, and on top the great dial with its hand
+const W = 1400, H = 1120, TW = 72, TH = 36, ZH = 45;
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d'); cv.width = W; cv.height = H;
+const OX = W / 2, OY = 420;
+const scr = (x, y, z) => [OX + (x - y) * TW / 2, OY + (x + y) * TH / 2 - z * ZH];
+const SLAB = 0.22, RIM = 1.47;
+const COL = { sea: '#b4bad8', shim: '#c9cde3', top: '#faf6f4', topE: '#d9cfd5', side1: '#8a7a8c', side2: '#6f5f71', way: '#c79a84',
+  bronze: '#b58248', bronzeL: '#e0b574', bronzeD: '#7a5131', stone: '#d8ccc8', stone1: '#a89aa4', stone2: '#8c7d8a', pool: '#a9b3d6', poolE: '#c3c9e4' };
+function poly(pts) { ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo : ctx.moveTo).call(ctx, x, y)); ctx.closePath(); }
+function box(x0, y0, x1, y1, z0, z1, top, s1, s2, edge) {
+  poly([scr(x1, y0, z1), scr(x1, y1, z1), scr(x1, y1, z0), scr(x1, y0, z0)]); ctx.fillStyle = s1; ctx.fill(); ctx.strokeStyle = edge; ctx.lineWidth = 1; ctx.stroke();
+  poly([scr(x0, y1, z1), scr(x1, y1, z1), scr(x1, y1, z0), scr(x0, y1, z0)]); ctx.fillStyle = s2; ctx.fill(); ctx.stroke();
+  poly([scr(x0, y0, z1), scr(x1, y0, z1), scr(x1, y1, z1), scr(x0, y1, z1)]); ctx.fillStyle = top; ctx.fill(); ctx.stroke();
+}
+function prism(pts, z0, z1, top, s1, s2, edge) {
+  const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length, cy = pts.reduce((s, p) => s + p[1], 0) / pts.length;
+  pts.forEach((p, i) => {
+    const q = pts[(i + 1) % pts.length]; let nx = q[1] - p[1], ny = p[0] - q[0];
+    if (nx * ((p[0] + q[0]) / 2 - cx) + ny * ((p[1] + q[1]) / 2 - cy) < 0) { nx = -nx; ny = -ny; }
+    if (nx + ny <= 0.001) return;
+    poly([scr(p[0], p[1], z1), scr(q[0], q[1], z1), scr(q[0], q[1], z0), scr(p[0], p[1], z0)]);
+    ctx.fillStyle = Math.abs(nx) >= Math.abs(ny) ? s1 : s2; ctx.fill(); ctx.strokeStyle = edge; ctx.lineWidth = 1; ctx.stroke();
+  });
+  poly(pts.map(p => scr(p[0], p[1], z1))); ctx.fillStyle = top; ctx.fill(); ctx.strokeStyle = edge; ctx.lineWidth = 1; ctx.stroke();
+}
+function ell(x, y, z, r) { const c = scr(x, y, z); ctx.beginPath(); ctx.ellipse(c[0], c[1], r * TW / Math.SQRT2, r * TH / Math.SQRT2, 0, 0, Math.PI * 2); }
+function cylinder(x, y, z0, z1, r, top, side, edge) {
+  const a = scr(x, y, z0), c = scr(x, y, z1), rx = r * TW / Math.SQRT2, ry = r * TH / Math.SQRT2;
+  const g = ctx.createLinearGradient(a[0] - rx, 0, a[0] + rx, 0);
+  g.addColorStop(0, side[0]); g.addColorStop(0.55, side[1]); g.addColorStop(1, side[2]);
+  ctx.fillStyle = g; ctx.strokeStyle = edge; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(a[0] - rx, a[1]); ctx.lineTo(c[0] - rx, c[1]); ctx.ellipse(c[0], c[1], rx, ry, 0, Math.PI, 0, true);
+  ctx.lineTo(a[0] + rx, a[1]); ctx.ellipse(a[0], a[1], rx, ry, 0, 0, Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(c[0], c[1], rx, ry, 0, 0, Math.PI * 2); ctx.fillStyle = top; ctx.fill(); ctx.stroke();
+}
+function rimTeeth(cx, cy, z, R, n, th, len, w) {
+  ctx.strokeStyle = COL.bronze; ctx.lineWidth = w; ctx.lineCap = 'butt';
+  for (let t = 0; t < n; t++) {
+    const a = th + t * 2 * Math.PI / n, p0 = scr(cx + Math.cos(a) * R, cy + Math.sin(a) * R, z), p1 = scr(cx + Math.cos(a) * (R + len), cy + Math.sin(a) * (R + len), z);
+    ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke();
+  }
+}
+// a wheel of the game, at level L: hub at cell (hx, hy), spokes as directions, turned th
+function wheel(hx, hy, L, spokes, th, her) {
+  const cx = hx + 0.5, cy = hy + 0.5, R = (u, v) => [cx + u * Math.cos(th) - v * Math.sin(th), cy + u * Math.sin(th) + v * Math.cos(th)];
+  const zr = L + SLAB * 0.45;
+  ell(cx, cy, L - 0.02, RIM + 0.06); ctx.fillStyle = 'rgba(120,88,70,0.22)'; ctx.fill();
+  ell(cx, cy, zr, RIM); ctx.strokeStyle = COL.bronzeD; ctx.lineWidth = 5; ctx.stroke();
+  ell(cx, cy, zr + 0.02, RIM); ctx.strokeStyle = COL.bronze; ctx.lineWidth = 3; ctx.stroke();
+  rimTeeth(cx, cy, zr, RIM + 0.02, 28, th, 0.12, 2.5);
+  ctx.strokeStyle = 'rgba(122,81,49,0.55)'; ctx.lineWidth = 3;
+  for (const a of [[1, 0], [0, 1], [-1, 0], [0, -1]]) { const p0 = R(0, 0), p1 = R(a[0] * RIM, a[1] * RIM), s0 = scr(p0[0], p0[1], zr - 0.03), s1 = scr(p1[0], p1[1], zr - 0.03); ctx.beginPath(); ctx.moveTo(s0[0], s0[1]); ctx.lineTo(s1[0], s1[1]); ctx.stroke(); }
+  const arm = a => { const pp = [-a[1], a[0]]; return [[0.42, -0.45], [RIM - 0.01, -0.45], [RIM - 0.01, 0.45], [0.42, 0.45]].map(([u, v]) => R(a[0] * u + pp[0] * v, a[1] * u + pp[1] * v)); };
+  const arms = spokes.map(a => ({ a, d: R(a[0], a[1]) })).sort((p, q) => (p.d[0] + p.d[1]) - (q.d[0] + q.d[1]));
+  arms.filter(o => o.d[0] + o.d[1] < cx + cy).forEach(o => prism(arm(o.a), L, L + SLAB, COL.top, COL.side1, COL.side2, COL.topE));
+  cylinder(cx, cy, L, L + SLAB, 0.62, COL.top, ['#d7cbd2', '#9d8d9f', '#6f5f71'], COL.topE);
+  arms.filter(o => o.d[0] + o.d[1] >= cx + cy).forEach(o => prism(arm(o.a), L, L + SLAB, COL.top, COL.side1, COL.side2, COL.topE));
+  ell(cx, cy, L + SLAB + 0.002, 0.2); ctx.fillStyle = COL.bronze; ctx.fill();
+  if (her) figure(R(her[0], her[1]), L + SLAB);
+}
+function crank(hx, hy, c, L) {
+  const len = Math.hypot(c[0], c[1]), px = hx + 0.5 + c[0] / len * 1.69, py = hy + 0.5 + c[1] / len * 1.69, zr = L + SLAB * 0.45;
+  cylinder(px, py, L - 0.3, zr - 0.05, 0.11, '#9a8c98', ['#cfc3cb', '#a2939f', '#7d6f7b'], '#a99aa6');
+  cylinder(px, py, zr - 0.05, zr + 0.06, 0.24, COL.bronze, [COL.bronzeL, COL.bronze, COL.bronzeD], COL.bronzeD);
+  const s0 = scr(px + 0.1, py, zr + 0.06), s1 = scr(px + 0.1, py, zr + 0.6);
+  ctx.strokeStyle = COL.bronzeD; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(s0[0], s0[1]); ctx.lineTo(s1[0], s1[1]); ctx.stroke();
+  ctx.fillStyle = COL.bronzeL; ctx.beginPath(); ctx.arc(s1[0], s1[1], 4, 0, Math.PI * 2); ctx.fill();
+}
+const slab = (x, y, L) => box(x + 0.03, y + 0.03, x + 0.97, y + 0.97, L, L + SLAB, COL.top, COL.side1, COL.side2, COL.topE);
+function figure([x, y], z) {
+  const [cx, cy] = scr(x, y, z), r = TW * 0.13;
+  ctx.fillStyle = '#fcfaf8'; ctx.strokeStyle = '#463a4a'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(cx - r, cy); ctx.lineTo(cx - r * 0.7, cy - r * 2.2); ctx.lineTo(cx + r * 0.7, cy - r * 2.2); ctx.lineTo(cx + r, cy); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.save(); ctx.clip(); ctx.strokeStyle = '#bb6243'; ctx.lineWidth = 3;
+  for (const o of [0.4, 1.0, 1.6]) { ctx.beginPath(); ctx.moveTo(cx - r, cy - o * r - r * 0.25); ctx.lineTo(cx + r, cy - o * r + r * 0.25); ctx.stroke(); }
+  ctx.restore(); ctx.beginPath(); ctx.arc(cx, cy - r * 2.65, r * 0.62, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+}
+// a basin: a block of ashlar out of the sea to its level, its top a pool of still water in a stone rim
+function basin(x0, y0, x1, y1, L) {
+  box(x0, y0, x1, y1, -0.4, L - 0.08, COL.pool, COL.stone1, COL.stone2, '#7c6d7a');
+  ctx.strokeStyle = 'rgba(110,98,120,0.35)'; ctx.lineWidth = 1;
+  for (let z = -0.4 + 0.45; z < L - 0.1; z += 0.45) {      // courses of the ashlar
+    let a = scr(x1, y0, z), c = scr(x1, y1, z); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(c[0], c[1]); ctx.stroke();
+    a = scr(x0, y1, z); c = scr(x1, y1, z); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(c[0], c[1]); ctx.stroke();
+  }
+  for (let i = 0; i < 6; i++) { const y = y0 + (y1 - y0) * (0.15 + 0.13 * i), a = scr(x0 + 0.6, y, L - 0.08), c = scr(x1 - 0.6 - (i % 3) * 0.7, y, L - 0.08); ctx.strokeStyle = COL.poolE; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(c[0], c[1]); ctx.stroke(); }
+  const t = 0.28;      // the rim, a low kerb of stone round the pool
+  box(x0, y0, x1, y0 + t, L - 0.08, L + 0.06, COL.stone, COL.stone1, COL.stone2, '#7c6d7a');
+  box(x0, y0, x0 + t, y1, L - 0.08, L + 0.06, COL.stone, COL.stone1, COL.stone2, '#7c6d7a');
+}
+function basinFront(x0, y0, x1, y1, L) {
+  const t = 0.28;
+  box(x1 - t, y0, x1, y1, L - 0.08, L + 0.06, COL.stone, COL.stone1, COL.stone2, '#7c6d7a');
+  box(x0, y1 - t, x1, y1, L - 0.08, L + 0.06, COL.stone, COL.stone1, COL.stone2, '#7c6d7a');
+}
+// a toothed column: a fluted drum of bronze-banded marble standing between two basins, its flutes teeth meshing with a
+// wheel of the one below and a wheel of the one above
+function toothed(x, y, z0, z1) {
+  cylinder(x, y, z0, z1, 0.5, COL.bronze, ['#e6d6c8', '#c0aca4', '#8f7c80'], '#7c6d7a');
+  const c0 = scr(x, y, z0), c1 = scr(x, y, z1), r = 0.5 * TW / Math.SQRT2;
+  ctx.strokeStyle = 'rgba(122,81,49,0.75)'; ctx.lineWidth = 2;
+  for (let k = -4; k <= 4; k++) { const f = k / 4.6; ctx.beginPath(); ctx.moveTo(c0[0] + f * r, c0[1] + Math.sqrt(1 - f * f) * r * 0.5); ctx.lineTo(c1[0] + f * r, c1[1] + Math.sqrt(1 - f * f) * r * 0.5); ctx.stroke(); }
+  for (const z of [z0 + 0.1, z1 - 0.1]) { ell(x, y, z, 0.56); ctx.strokeStyle = COL.bronzeD; ctx.lineWidth = 4; ctx.stroke(); }
+  ell(x, y, z1 + 0.01, 0.62); ctx.fillStyle = COL.bronze; ctx.fill(); ctx.strokeStyle = COL.bronzeD; ctx.lineWidth = 1; ctx.stroke();
+}
+function stair(x, y, dx, dy, z0, z1, n) {      // a flight of n steps from (x, y) going (dx, dy), rising z0 to z1
+  for (let i = 0; i < n; i++) {
+    const zt = z0 + (z1 - z0) * (i + 1) / n, ax = x + dx * i / n, ay = y + dy * i / n;
+    const x0 = Math.min(ax, ax + dx / n + (dx ? 0 : 1)), x1 = Math.max(ax, ax + dx / n + (dx ? 0 : 1)), y0 = Math.min(ay, ay + dy / n + (dy ? 0 : 1)), y1 = Math.max(ay, ay + dy / n + (dy ? 0 : 1));
+    box(x0 + 0.03, y0 + 0.03, x1 - 0.03, y1 - 0.03, z0 - 0.3, zt, COL.top, COL.side1, COL.side2, COL.topE);
+  }
+}
+// the great dial: a round bronze face lying in its basin, its zodiac ring and its hand, a bridge to the gate
+function dial(cx, cy, L, R, th) {
+  ell(cx, cy, L, R + 0.25); ctx.fillStyle = COL.bronzeD; ctx.fill();
+  ell(cx, cy, L + 0.05, R + 0.1); ctx.fillStyle = COL.bronze; ctx.fill();
+  ell(cx, cy, L + 0.06, R - 0.55); ctx.fillStyle = '#a7743f'; ctx.fill();
+  ell(cx, cy, L + 0.07, R - 0.6); ctx.strokeStyle = COL.bronzeL; ctx.lineWidth = 2; ctx.stroke();
+  ctx.strokeStyle = COL.bronzeD; ctx.lineWidth = 2;
+  for (let t = 0; t < 12; t++) { const a = t * Math.PI / 6, p0 = scr(cx + Math.cos(a) * (R - 0.55), cy + Math.sin(a) * (R - 0.55), L + 0.06), p1 = scr(cx + Math.cos(a) * (R + 0.08), cy + Math.sin(a) * (R + 0.08), L + 0.06); ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke(); }
+  for (let t = 0; t < 72; t++) { const a = t * Math.PI / 36, p0 = scr(cx + Math.cos(a) * (R - 0.1), cy + Math.sin(a) * (R - 0.1), L + 0.06), p1 = scr(cx + Math.cos(a) * (R + 0.08), cy + Math.sin(a) * (R + 0.08), L + 0.06); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke(); }
+  rimTeeth(cx, cy, L, R + 0.25, 60, 0, 0.16, 3);
+  const u = [Math.cos(th), Math.sin(th)], v = [-u[1], u[0]], P = (a, b) => [cx + u[0] * a + v[0] * b, cy + u[1] * a + v[1] * b];
+  prism([P(-0.9, -0.42), P(R + 1.3, -0.42), P(R + 1.3, 0.42), P(-0.9, 0.42)], L + 0.1, L + 0.1 + SLAB, COL.top, COL.side1, COL.side2, COL.topE);
+  cylinder(cx, cy, L + 0.1, L + 0.1 + SLAB + 0.05, 0.7, COL.top, ['#d7cbd2', '#9d8d9f', '#6f5f71'], COL.topE);
+  ell(cx, cy, L + SLAB + 0.16, 0.28); ctx.fillStyle = COL.bronze; ctx.fill();
+}
+function gate(x, y, L) {      // two Doric columns and their lintel, the opening white
+  const c = (px, py) => { cylinder(px, py, L, L + 2.4, 0.22, '#f4efee', ['#f3eef0', '#ddd3d8', '#b9abb5'], '#a99aa6'); };
+  c(x, y - 0.6); c(x, y + 0.6);
+  box(x - 0.35, y - 0.95, x + 0.35, y + 0.95, L + 2.4, L + 2.85, COL.top, COL.side1, COL.side2, COL.topE);
+  const a = scr(x, y - 0.4, L + 0.05), b = scr(x, y + 0.4, L + 0.05), d = scr(x, y - 0.4, L + 2.35), e = scr(x, y + 0.4, L + 2.35);
+  ctx.fillStyle = 'rgba(255,252,240,0.92)'; poly([a, b, e, d]); ctx.fill();
+}
+function ring(x, y, L) {
+  const c = scr(x, y, L + SLAB);
+  ctx.fillStyle = '#9a7a6c'; ctx.beginPath(); ctx.ellipse(c[0], c[1], TW * 0.3, TH * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#fdfbf6'; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(c[0], c[1], TW * 0.22, TH * 0.22, 0, 0, Math.PI * 2); ctx.stroke();
+}
+
+// ---- the scene ----
+ctx.fillStyle = COL.sea; ctx.fillRect(0, 0, W, H);
+ctx.strokeStyle = COL.shim; ctx.lineWidth = 1.5;
+for (let i = 0; i < H / 16; i++) { const y = 8 + i * 16, len = W * (0.12 + 0.3 * ((i * 37) % 11) / 11), x = 10 + ((i * 53) % 7) / 7 * (W - len - 20); ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + len, y); ctx.stroke(); }
+const LV = [0, 1.8, 3.6, 5.4], N = 18, WS = 4;
+const E = [1, 0], Sd = [0, 1], Wd = [-1, 0], Nd = [0, -1];
+// the terraces: each a square block of ashlar from the sea, its top a pool, the higher ones further back
+function terrace(k) {
+  const e = N - k * WS, L = LV[k];
+  box(0, 0, e, e, -0.4, L - 0.08, COL.pool, COL.stone1, COL.stone2, '#7c6d7a');
+  ctx.strokeStyle = 'rgba(110,98,120,0.35)'; ctx.lineWidth = 1;
+  const z0 = k ? LV[k - 1] : -0.4;
+  for (let z = z0 + 0.45; z < L - 0.1; z += 0.45) {
+    let a = scr(e, 0, z), c = scr(e, e, z); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(c[0], c[1]); ctx.stroke();
+    a = scr(0, e, z); ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(c[0], c[1]); ctx.stroke();
+  }
+  // the rim of the pool along the terrace's front edges
+  const t = 0.3;
+  box(e - t, 0, e, e, L - 0.08, L + 0.08, COL.stone, COL.stone1, COL.stone2, '#7c6d7a');
+  box(0, e - t, e, e, L - 0.08, L + 0.08, COL.stone, COL.stone1, COL.stone2, '#7c6d7a');
+}
+function diag_gate(x, y, L) {      // the gate at the summit, facing down the diagonal: two Doric columns, a lintel
+  const a = [x + 0.5, y - 0.5], b = [x - 0.5, y + 0.5];
+  cylinder(a[0], a[1], L, L + 2.4, 0.22, '#f4efee', ['#f3eef0', '#ddd3d8', '#b9abb5'], '#a99aa6');
+  cylinder(b[0], b[1], L, L + 2.4, 0.22, '#f4efee', ['#f3eef0', '#ddd3d8', '#b9abb5'], '#a99aa6');
+  prism([[a[0] + 0.25, a[1] - 0.25], [a[0] + 0.5, a[1]], [b[0], b[1] + 0.5], [b[0] - 0.25, b[1] + 0.25]], L + 2.4, L + 2.85, COL.top, COL.side1, COL.side2, COL.topE);
+  const p = scr(a[0] - 0.2, a[1] + 0.2, L + 0.05), q = scr(b[0] + 0.2, b[1] - 0.2, L + 0.05), r = scr(b[0] + 0.2, b[1] - 0.2, L + 2.38), s2 = scr(a[0] - 0.2, a[1] + 0.2, L + 2.38);
+  ctx.fillStyle = 'rgba(255,252,240,0.95)'; poly([p, q, r, s2]); ctx.fill();
+}
+const items = [[], [], [], []];      // per level: [depth, draw]
+const put = (k, d, f) => items[k].push([d, f]);
+const W_ = (k, hx, hy, spokes, th, her) => put(k, hx + hy - 1.2, () => wheel(hx, hy, LV[k], spokes, th, her));
+const C_ = (k, hx, hy, c) => put(k, hx + hy + c[0] + c[1] + 0.2, () => crank(hx, hy, c, LV[k]));
+const S_ = (k, x, y) => put(k, x + y, () => slab(x, y, LV[k]));
+const T_ = (k, x, y) => put(k, x + y + 0.5, () => toothed(x, y, LV[k] - 0.1, LV[k + 1] + 0.12));
+const ST = (k, x, y, dx, dy, n) => put(k, x + y + 0.3, () => stair(x, y, dx, dy, LV[k] + SLAB, LV[k + 1] + SLAB, n));
+// level 0, at the sea: her landing at the front corner; two trains of two along the two arms
+for (const [x, y] of [[16, 16], [17, 16], [16, 17], [17, 17], [14, 17], [15, 17], [17, 14], [17, 15], [6, 17], [7, 17], [5, 17], [5, 16], [4, 16], [5, 15]]) S_(0, x, y);
+W_(0, 11, 15, [E, Nd], 0); W_(0, 8, 15, [E], Math.PI / 2); C_(0, 11, 15, [1, 1]); C_(0, 8, 15, [-1, 1]); C_(0, 11, 15, [-1, 1]);
+W_(0, 15, 11, [Sd, E], 0, [1, 0]); W_(0, 15, 8, [Wd, Sd], 0); C_(0, 15, 11, [1, 1]); C_(0, 15, 8, [1, -1]); C_(0, 15, 8, [1, 1]);
+T_(0, 11.5, 13.6); T_(0, 13.6, 11.5);
+ST(0, 4, 15, 0, -2, 7); ST(0, 5, 15, 0, -2, 7);
+// level 1: a train of three about its corner, both lower trains meshed into it by the toothed columns
+W_(1, 11, 11, [Wd, Nd, E], 0.3); W_(1, 8, 11, [E, Sd], -0.3); W_(1, 11, 8, [Sd], 0.3);
+C_(1, 8, 11, [-1, 1]); C_(1, 11, 8, [1, -1]); C_(1, 11, 11, [1, 1]);
+for (const [x, y] of [[4, 12], [5, 12], [4, 11], [12, 4], [12, 5], [13, 4], [13, 5], [13, 13], [12, 13]]) S_(1, x, y);
+T_(1, 8.0, 9.55); T_(1, 9.55, 8.0);
+ST(1, 13, 4, -2, 0, 7); ST(1, 13, 5, -2, 0, 7);
+// level 2: a corner wheel and one beside it, meshed up into the dial
+W_(2, 7, 7, [Nd, Wd], 0); W_(2, 4, 7, [E, Wd], 0); C_(2, 7, 7, [1, 1]); C_(2, 4, 7, [-1, 1]);
+for (const [x, y] of [[8, 4], [9, 4], [8, 5], [9, 5], [1, 8], [2, 8], [1, 9], [2, 9]]) S_(2, x, y);
+T_(2, 3.98, 5.92);
+ST(2, 1, 8, 0, -2, 7); ST(2, 2, 8, 0, -2, 7);
+// the summit: the great dial lying in its pool, its hand a bridge to the gate at the back corner
+put(3, 6, () => dial(3, 3, LV[3], 2.15, -3 * Math.PI / 4));
+put(3, 1, () => diag_gate(0.55, 0.55, LV[3] + 0.1));
+for (let k = 0; k < 4; k++) terrace(k);
+for (let k = 3; k >= 0; k--) items[k].sort((a, b) => a[0] - b[0]).forEach(([d, f]) => f());
+</script>

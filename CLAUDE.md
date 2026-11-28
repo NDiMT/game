@@ -1255,6 +1255,16 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   `boards.png`); the mechanism's floor painted by the image model from its own frame (`concept.jpg` from
   `concept_frame.jpg`, `concept_prompt.txt`: patinated bronze gear wheels with meander bands on their rims, marble
   spokes, pinions with handles; it kept the layout).
+  **As one great structure** (the owner: "how would we make these into large structures?"): a stepped sanctuary that is
+  a machine, four terraces of ashlar out of the sea, the top of each a shallow pool holding its floor of wheels (one
+  puzzle a terrace), stairs between them; the walls between terraces hold fluted columns whose flutes are gear teeth,
+  each meshing a wheel of the terrace below with one of the terrace above, so the whole is one train from the sea to the
+  summit (a turn below turns the floor above: how she leaves one floor sets the next, and she may go back down); on the
+  summit the great dial lies flat in its pool, its hand a marble bridge to the gate, driven by every train beneath
+  (the last puzzle: set the whole machine so the hand points to the gate). Blockout drawn in the page's own isometric
+  code (`design/level7/gears/structure_blockout.html` → `structure_blockout.jpg`), painted by the image model with the
+  gears concept and the second level's for style (`structure.jpg`, `structure_prompt.txt`; it kept the layout). Not yet
+  a playable whole: the columns' links between floors are not in the solver.
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
