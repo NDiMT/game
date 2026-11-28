@@ -1229,7 +1229,8 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   solver on 7,500 move strings; `boards.png`); a painting of its look from the third floor (`concept.jpg`; the model did
   not keep the layout). **The boards sheets' titles are drawn in FreeSerif** (`/usr/share/fonts/truetype/freefont/`):
   the repo's Cormorant variable font has no Greek, and the first sheets of the tower, the winds and the tries showed
-  boxes for every Greek letter (all four rebuilt).
+  boxes for every Greek letter (all four rebuilt). **The owner, 28/11: "nice, keep it for one of the maps"**, and "find
+  me others, more mechanical".
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
