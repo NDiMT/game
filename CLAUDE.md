@@ -1211,6 +1211,25 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   against the solver on 6,000 move strings; `boards.png`); a moment of the fourth floor painted by the image model in
   the second level's style (`concept.jpg` from `concept_frame.jpg`, `concept_prompt.txt`: two marble statues of her on
   the plates).
+  Then four kinds of puzzle where she moves many statues were put to him (the dance: every statue takes her step; the
+  procession: they follow in a line; the soul that changes body; the mirror); he: "4, the one goes up, the other goes
+  down".
+- **Level 7, a proposal (28/11): the mirror** (`tools/go/mirror_trial.py`): her image, a statue of her in a pale lilac
+  stone with a light about it, takes every step she takes, mirrored as an image in still water: up the board (screen
+  ↗) it goes down (↙), down it goes up, left and right her way. Each swipe moves both one place; the sea, a column or a
+  bridge that is down stops each on its own (the one stays, the other goes: that is how she sets them apart); they are
+  bodies, neither steps into the other, and if both would come to one place or pass through each other neither moves;
+  plates and bridges as the sixth level's, a sinking bridge taking either and the floor beginning again; done when she
+  stands in her white ring and her image in its lilac one, at once. A column and the sea stop alike (no one falls), so
+  a hole within an island is drawn as a column. Five floors found by annealing (`anneal_m.py` in the scratchpad's way:
+  a score for the way's length, one way, the steps where one is stopped and the other goes, bridges crossed, every
+  bridge needed, no step back) and pruned: the image 9, apart 13, the bridge 15, the plate 19 (98 places they can no
+  longer come out of), two bridges 22; each one way. Playable, isometric, at
+  https://claude.ai/artifact/KhLD5mmShVY7xNfEXxkRHp (`design/level7/mirror/play.html`, its rules checked against the
+  solver on 7,500 move strings; `boards.png`); a painting of its look from the third floor (`concept.jpg`; the model did
+  not keep the layout). **The boards sheets' titles are drawn in FreeSerif** (`/usr/share/fonts/truetype/freefont/`):
+  the repo's Cormorant variable font has no Greek, and the first sheets of the tower, the winds and the tries showed
+  boxes for every Greek letter (all four rebuilt).
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
