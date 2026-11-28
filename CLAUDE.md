@@ -1265,6 +1265,13 @@ project skill `.claude/skills/go-level/SKILL.md`: load it for any work on the ga
   code (`design/level7/gears/structure_blockout.html` → `structure_blockout.jpg`), painted by the image model with the
   gears concept and the second level's for style (`structure.jpg`, `structure_prompt.txt`; it kept the layout). Not yet
   a playable whole: the columns' links between floors are not in the solver.
+  **As a tower** (the owner: "in the form of a tower?"): floors stacked as full decks hid one another from the game's
+  eye (`tower1` in the scratchpad's way), so the tower's core is a colossal fluted drum whose flutes are gear teeth, bound
+  in bronze at each floor, and the floors stand out round it in a spiral (right, left, right, left, rising), each a
+  marble platform on Doric columns holding a pool of wheels, its innermost wheel meshed with the drum, so a turn on any
+  floor turns the drum and every floor's inner wheel; a stair winds up round the drum's front; the dial crowns it, its
+  hand a bridge to the gate. Blockout `design/level7/gears/tower_blockout.html` → `tower_blockout.jpg`, painted as
+  `tower.jpg` (`tower_prompt.txt`; it kept the layout and added a winding stair round the drum).
 - Open: puzzles "The Mirror" and "The Thousand Gazes"; the quarry restyle; faster recordings (below).
 
 ## Tools and where they are
